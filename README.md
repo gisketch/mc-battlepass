@@ -9,6 +9,7 @@ Starter shell for NeoForge 1.21.1 mods using Kotlin, Kotlin For Forge, and Archi
 - Kotlin JVM `2.3.0`
 - Kotlin For Forge NeoForge `5.11.0`
 - Architectury API NeoForge `13.0.8`
+- owo-lib `0.12.15.5-beta.1+1.21`
 - Java toolchain `21`
 - Gradle Kotlin DSL
 - `scripts/init-mod.sh` metadata initializer
