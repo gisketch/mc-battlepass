@@ -1,0 +1,16 @@
+.gradle/
+build/
+out/
+run/
+runs/
+logs/
+*.log
+*.ipr
+*.iws
+*.iml
+.idea/
+.vscode/
+!/.vscode/extensions.json
+.github/
+openspec/
+src/generated/resources/.cache/
