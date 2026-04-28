@@ -1,193 +1,244 @@
 package dev.gisketch.battlepass
 
-import io.wispforest.owo.ui.base.BaseOwoScreen
-import io.wispforest.owo.ui.component.Components
-import io.wispforest.owo.ui.container.Containers
-import io.wispforest.owo.ui.container.FlowLayout
-import io.wispforest.owo.ui.core.HorizontalAlignment
-import io.wispforest.owo.ui.core.Insets
-import io.wispforest.owo.ui.core.OwoUIAdapter
-import io.wispforest.owo.ui.core.Sizing
-import io.wispforest.owo.ui.core.Surface
-import io.wispforest.owo.ui.core.VerticalAlignment
-import io.wispforest.owo.ui.event.MouseDown
 import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
+import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.screens.Screen
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
+import net.minecraft.util.Mth
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 
-class BattlepassScreen : BaseOwoScreen<FlowLayout>(Component.translatable("screen.${BattlepassMod.MOD_ID}.battlepass")) {
+class BattlepassScreen : Screen(Component.translatable("screen.${BattlepassMod.MOD_ID}.battlepass")) {
     private enum class ViewMode { PASS_SELECTION, PASS_DETAIL }
 
-    private lateinit var content: FlowLayout
+    private data class Rect(val x: Int, val y: Int, val width: Int, val height: Int) {
+        fun contains(mouseX: Double, mouseY: Double): Boolean =
+            mouseX >= x && mouseX < x + width && mouseY >= y && mouseY < y + height
+    }
+
+    private data class RewardSlot(
+        val rect: Rect,
+        val tier: BattlepassProgressionDefinition,
+        val reward: BattlepassRewardDefinition,
+        val stack: ItemStack,
+        val claimed: Boolean,
+        val unlocked: Boolean,
+        val claimable: Boolean,
+        val current: Boolean,
+        val previousXp: Int,
+    )
+
     private var selectedPassId: String? = null
     private var viewMode = ViewMode.PASS_SELECTION
+    private var scroll = 0.0f
+    private var targetScroll = 0.0f
+    private var backRect = Rect(0, 0, 0, 0)
+    private var passRects: List<Pair<Rect, BattlepassPassDefinition>> = emptyList()
+    private var rewardSlots: List<RewardSlot> = emptyList()
 
-    override fun createAdapter(): OwoUIAdapter<FlowLayout> = OwoUIAdapter.create(this, Containers::verticalFlow)
-
-    override fun build(rootComponent: FlowLayout) {
+    override fun init() {
         BattlepassPassRegistry.reload()
         selectedPassId = selectedPassId ?: BattlepassPassRegistry.all().firstOrNull()?.id
+    }
 
-        rootComponent
-            .surface(Surface.VANILLA_TRANSLUCENT)
-            .alignment(HorizontalAlignment.RIGHT, VerticalAlignment.CENTER)
-            .padding(Insets.of(10))
-
-        content = Containers.verticalFlow(Sizing.fill(100), Sizing.expand()).gap(8)
-
-        val panel = Containers.verticalFlow(Sizing.fill(96), Sizing.fill(88))
-        panel.surface(Surface.flat(0xDD10141C.toInt()).and(Surface.outline(0x663A70C4)))
-        panel.padding(Insets.of(8))
-        panel.gap(8)
-        panel.child(Components.label(Component.translatable("screen.${BattlepassMod.MOD_ID}.battlepass")).shadow(true))
-        panel.child(content)
-        rootComponent.child(panel)
-
-        rebuild()
+    override fun render(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) {
+        scroll = Mth.lerp(0.24f, scroll, targetScroll)
+        if (viewMode == ViewMode.PASS_SELECTION) {
+            renderSelection(guiGraphics, mouseX, mouseY)
+        } else {
+            renderDetail(guiGraphics, mouseX, mouseY)
+        }
     }
 
     override fun isPauseScreen(): Boolean = false
 
     override fun removed() {
-        super.removed()
         BattlepassCameraController.stop()
     }
 
-    private fun rebuild() {
-        content.clearChildren()
+    override fun mouseClicked(mouseX: Double, mouseY: Double, button: Int): Boolean {
+        if (button != 0) return super.mouseClicked(mouseX, mouseY, button)
 
-        if (viewMode == ViewMode.PASS_SELECTION) {
-            buildSelection()
-        } else {
-            buildDetail()
-        }
-    }
-
-    private fun buildSelection() {
-        content.child(Components.label(Component.translatable("ui.${BattlepassMod.MOD_ID}.select_pass")).shadow(true))
-
-        val list = Containers.verticalFlow(Sizing.fill(42), Sizing.content()).gap(4)
-        BattlepassPassRegistry.all().forEach { pass -> list.child(passRow(pass)) }
-        if (BattlepassPassRegistry.all().isEmpty()) {
-            list.child(Components.label(Component.translatable("ui.${BattlepassMod.MOD_ID}.empty")).shadow(true))
-        }
-        content.child(Containers.verticalScroll(Sizing.fill(46), Sizing.expand(), list))
-    }
-
-    private fun buildDetail() {
-        val passes = BattlepassPassRegistry.all().toList()
-        val selectedPass = passes.firstOrNull { pass -> pass.id == selectedPassId } ?: run {
+        if (viewMode == ViewMode.PASS_DETAIL && backRect.contains(mouseX, mouseY)) {
             viewMode = ViewMode.PASS_SELECTION
-            buildSelection()
+            scroll = 0.0f
+            targetScroll = 0.0f
+            return true
+        }
+
+        val clickedPass = if (viewMode == ViewMode.PASS_SELECTION) passRects.firstOrNull { (rect, _) -> rect.contains(mouseX, mouseY) }?.second else null
+        if (clickedPass != null) {
+            selectedPassId = clickedPass.id
+            viewMode = ViewMode.PASS_DETAIL
+            scroll = 0.0f
+            targetScroll = 0.0f
+            return true
+        }
+
+        val clickedReward = rewardSlots.firstOrNull { slot -> slot.rect.contains(mouseX, mouseY) }
+        if (viewMode == ViewMode.PASS_DETAIL && clickedReward?.claimable == true) {
+            Minecraft.getInstance().connection?.sendCommand("battlepass claim ${selectedPassId ?: return true} ${clickedReward.tier.xp}")
+            return true
+        }
+
+        return super.mouseClicked(mouseX, mouseY, button)
+    }
+
+    override fun mouseScrolled(mouseX: Double, mouseY: Double, scrollX: Double, scrollY: Double): Boolean {
+        if (viewMode != ViewMode.PASS_DETAIL || !hotbarRect().contains(mouseX, mouseY)) {
+            return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY)
+        }
+
+        targetScroll = (targetScroll - (scrollY.toFloat() * 36.0f)).coerceIn(0.0f, maxScroll())
+        return true
+    }
+
+    private fun renderSelection(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
+        val panel = mainRect()
+        drawFrame(guiGraphics, panel, 0x22000000, 0xAAE0E6F0.toInt())
+        guiGraphics.drawString(font, Component.translatable("ui.${BattlepassMod.MOD_ID}.select_pass"), panel.x + 22, panel.y + 20, 0xF0F4FF, true)
+
+        val passes = BattlepassPassRegistry.all().toList()
+        passRects = passes.mapIndexed { index, pass ->
+            val rect = Rect(panel.x + 28, panel.y + 56 + index * 42, 224, 34)
+            val hovered = rect.contains(mouseX.toDouble(), mouseY.toDouble())
+            drawFrame(guiGraphics, rect, if (hovered) 0x663A70C4 else 0x3310141C, if (hovered) 0xFF8DB3FF.toInt() else 0x88D7DDEA.toInt())
+            guiGraphics.drawString(font, pass.displayName, rect.x + 10, rect.y + 7, 0xF0F4FF, true)
+            guiGraphics.drawString(font, pass.categories.joinToString(" | "), rect.x + 10, rect.y + 20, 0x9CA3AF, false)
+            rect to pass
+        }
+
+        if (passes.isEmpty()) {
+            guiGraphics.drawString(font, Component.translatable("ui.${BattlepassMod.MOD_ID}.empty"), panel.x + 28, panel.y + 58, 0xAAB2C0, true)
+        }
+    }
+
+    private fun renderDetail(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
+        val selectedPass = BattlepassPassRegistry.all().firstOrNull { pass -> pass.id == selectedPassId } ?: run {
+            viewMode = ViewMode.PASS_SELECTION
+            renderSelection(guiGraphics, mouseX, mouseY)
             return
         }
+        val currentXp = Minecraft.getInstance().player?.uuid?.let { BattlepassXpStore.getXp(it, selectedPass.id) } ?: 0
+        val panel = mainRect()
+        drawFrame(guiGraphics, panel, 0x16000000, 0xAAE0E6F0.toInt())
 
-        val playerId = Minecraft.getInstance().player?.uuid
-        val currentXp = playerId?.let { BattlepassXpStore.getXp(it, selectedPass.id) } ?: 0
+        val titleRect = Rect(panel.x + 24, panel.y + 18, 172, 28)
+        drawFrame(guiGraphics, titleRect, 0x4410141C, 0xDDFFFFFF.toInt())
+        guiGraphics.drawString(font, selectedPass.displayName, titleRect.x + 12, titleRect.y + 9, 0xF0F4FF, true)
 
-        val topRow = Containers.horizontalFlow(Sizing.fill(100), Sizing.fixed(24))
-        topRow.gap(6)
-        topRow.verticalAlignment(VerticalAlignment.CENTER)
-        topRow.child(backButton())
-        topRow.child(Components.label(Component.literal(selectedPass.displayName)).shadow(true).maxWidth(220))
-        content.child(topRow)
+        backRect = Rect(panel.x + panel.width - 118, panel.y + 18, 92, 28)
+        val backHovered = backRect.contains(mouseX.toDouble(), mouseY.toDouble())
+        drawFrame(guiGraphics, backRect, if (backHovered) 0x663A70C4 else 0x4410141C, 0xDDFFFFFF.toInt())
+        guiGraphics.drawString(font, Component.translatable("ui.${BattlepassMod.MOD_ID}.back"), backRect.x + 31, backRect.y + 9, 0xF0F4FF, true)
 
-        val infoPanel = Containers.verticalFlow(Sizing.fill(42), Sizing.content())
-        infoPanel.surface(Surface.PANEL)
-        infoPanel.padding(Insets.of(6))
-        infoPanel.gap(4)
-        infoPanel.child(Components.label(Component.literal("XP: $currentXp").withStyle(ChatFormatting.AQUA)).shadow(true))
-        infoPanel.child(Components.label(Component.literal(selectedPass.description).withStyle(ChatFormatting.GRAY)).maxWidth(360))
-        content.child(infoPanel)
+        guiGraphics.drawString(font, Component.literal("XP $currentXp").withStyle(ChatFormatting.AQUA), panel.x + 24, panel.y + 54, 0x8DEBFF, true)
+        guiGraphics.drawString(font, selectedPass.description, panel.x + 24, panel.y + 68, 0xAAB2C0, false)
 
-        val spacer = Containers.verticalFlow(Sizing.fill(100), Sizing.expand())
-        content.child(spacer)
-
-        content.child(Components.label(Component.translatable("ui.${BattlepassMod.MOD_ID}.rewards")).shadow(true))
-        val rewardRow = Containers.horizontalFlow(Sizing.content(), Sizing.fixed(68))
-        rewardRow.gap(6)
-        selectedPass.progression.sortedBy { tier -> tier.xp }.forEach { tier -> rewardRow.child(rewardTierRow(tier, currentXp)) }
-        val hotbar = Containers.horizontalScroll(Sizing.fill(100), Sizing.fixed(78), rewardRow)
-        hotbar.surface(Surface.flat(0xAA05070A.toInt()).and(Surface.outline(0x884C566A.toInt())))
-        hotbar.padding(Insets.of(6))
-        content.child(hotbar)
+        val hotbar = hotbarRect()
+        drawFrame(guiGraphics, hotbar, 0x08000000, 0x33FFFFFF)
+        renderRewardHotbar(guiGraphics, hotbar, selectedPass, currentXp, mouseX, mouseY)
     }
 
-    private fun backButton(): FlowLayout {
-        val row = Containers.horizontalFlow(Sizing.fixed(54), Sizing.fixed(22))
-        row.surface(Surface.PANEL)
-        row.padding(Insets.of(4))
-        row.verticalAlignment(VerticalAlignment.CENTER)
-        row.horizontalAlignment(HorizontalAlignment.CENTER)
-        row.child(Components.label(Component.translatable("ui.${BattlepassMod.MOD_ID}.back")).shadow(true))
-        row.mouseDown().subscribe(MouseDown { _, _, button ->
-            if (button == 0) {
-                viewMode = ViewMode.PASS_SELECTION
-                rebuild()
-                true
-            } else {
-                false
+    private fun renderRewardHotbar(
+        guiGraphics: GuiGraphics,
+        hotbar: Rect,
+        pass: BattlepassPassDefinition,
+        currentXp: Int,
+        mouseX: Int,
+        mouseY: Int,
+    ) {
+        val sortedTiers = pass.progression.sortedBy { tier -> tier.xp }
+        val contentWidth = sortedTiers.size * SLOT_STEP + 10
+        targetScroll = targetScroll.coerceIn(0.0f, maxScroll(contentWidth, hotbar.width))
+        scroll = scroll.coerceIn(0.0f, maxScroll(contentWidth, hotbar.width))
+        rewardSlots = emptyList()
+
+        guiGraphics.enableScissor(hotbar.x + 6, hotbar.y + 2, hotbar.x + hotbar.width - 6, hotbar.y + hotbar.height - 2)
+        sortedTiers.forEachIndexed { index, tier ->
+            val x = hotbar.x + 12 + index * SLOT_STEP - scroll.toInt()
+            val y = hotbar.y + 12
+            val previousXp = sortedTiers.getOrNull(index - 1)?.xp ?: 0
+            val claimed = Minecraft.getInstance().player?.uuid?.let { playerId -> BattlepassXpStore.isClaimed(playerId, pass.id, tier.xp) } == true
+            val unlocked = currentXp >= tier.xp
+            val claimable = unlocked && !claimed
+            val current = !claimed && currentXp >= previousXp && !unlocked
+            tier.rewards.firstOrNull()?.let { reward ->
+                val slot = RewardSlot(Rect(x, y, SLOT_SIZE, SLOT_SIZE), tier, reward, rewardStack(reward), claimed, unlocked, claimable, current, previousXp)
+                renderRewardSlot(guiGraphics, slot, index + 1, currentXp)
+                rewardSlots = rewardSlots + slot
             }
-        })
-        return row
+        }
+        guiGraphics.disableScissor()
+
+        rewardSlots.firstOrNull { slot -> slot.rect.contains(mouseX.toDouble(), mouseY.toDouble()) }?.let { slot ->
+            guiGraphics.renderComponentTooltip(font, tooltipFor(slot, currentXp), mouseX, mouseY)
+        }
     }
 
-    private fun passRow(pass: BattlepassPassDefinition): FlowLayout {
-        val selected = pass.id == selectedPassId
-        val row = Containers.verticalFlow(Sizing.fill(100), Sizing.content())
-        row.surface(if (selected) Surface.flat(0x883A70C4.toInt()).and(Surface.outline(0xFF8DB3FF.toInt())) else Surface.DARK_PANEL)
-        row.padding(Insets.of(5))
-        row.gap(2)
-        row.child(Components.label(Component.literal(pass.displayName)).shadow(true).maxWidth(220))
-        row.child(Components.label(Component.literal(pass.categories.joinToString(" | ")).withStyle(ChatFormatting.GRAY)).maxWidth(220))
-        row.mouseDown().subscribe(MouseDown { _, _, button ->
-            if (button == 0) {
-                selectedPassId = pass.id
-                viewMode = ViewMode.PASS_DETAIL
-                rebuild()
-                true
-            } else {
-                false
-            }
-        })
-        return row
+    private fun renderRewardSlot(guiGraphics: GuiGraphics, slot: RewardSlot, number: Int, currentXp: Int) {
+        val rect = slot.rect
+        val texture = when {
+            slot.claimed -> REWARD_CLAIMED_TEXTURE
+            slot.current || slot.claimable -> REWARD_ACTIVE_TEXTURE
+            else -> REWARD_INACTIVE_TEXTURE
+        }
+        guiGraphics.blit(texture, rect.x, rect.y, rect.width, rect.height, 0.0f, 0.0f, 32, 32, 32, 32)
+
+        if (slot.current || slot.claimable) {
+            drawFrame(guiGraphics, Rect(rect.x - 2, rect.y - 2, rect.width + 4, rect.height + 4), 0x00000000, 0xCC8DEBFF.toInt())
+            val progress = progressFor(slot, currentXp)
+            val barWidth = ((rect.width - 8) * progress).toInt().coerceIn(0, rect.width - 8)
+            guiGraphics.fill(rect.x + 4, rect.y + rect.height - 8, rect.x + 4 + barWidth, rect.y + rect.height - 4, 0xCC57D7FF.toInt())
+            guiGraphics.fill(rect.x + 4 + barWidth, rect.y + rect.height - 8, rect.x + rect.width - 4, rect.y + rect.height - 4, 0x66000000)
+        }
+
+        guiGraphics.renderItem(slot.stack, rect.x + 17, rect.y + 16, number)
+        guiGraphics.renderItemDecorations(font, slot.stack, rect.x + 17, rect.y + 16, if (slot.reward.quantity > 1) slot.reward.quantity.toString() else null)
+
+        if (!slot.unlocked && !slot.current) {
+            guiGraphics.fill(rect.x, rect.y, rect.x + rect.width, rect.y + rect.height, 0x66000000)
+        }
+
+        val color = when {
+            slot.claimed -> 0xC8FFD7
+            slot.claimable || slot.current -> 0x8DEBFF
+            else -> 0x858B96
+        }
+        guiGraphics.drawString(font, number.toString(), rect.x + 7, rect.y + 6, color, true)
     }
 
-    private fun rewardTierRow(tier: BattlepassProgressionDefinition, currentXp: Int): FlowLayout {
-        val unlocked = currentXp >= tier.xp
-        val row = Containers.verticalFlow(Sizing.fixed(104), Sizing.fixed(64))
-        row.surface(if (unlocked) Surface.PANEL else Surface.flat(0x66303030))
-        row.padding(Insets.of(4))
-        row.gap(3)
-        row.horizontalAlignment(HorizontalAlignment.CENTER)
-        row.child(Components.label(lockLabel(unlocked, tier.xp)).shadow(true).maxWidth(92))
-        val rewards = Containers.horizontalFlow(Sizing.content(), Sizing.fixed(22))
-        rewards.gap(4)
-        rewards.verticalAlignment(VerticalAlignment.CENTER)
-        tier.rewards.take(3).forEach { reward -> rewards.child(rewardIcon(reward, unlocked)) }
-        row.child(rewards)
-        return row
+    private fun tooltipFor(slot: RewardSlot, currentXp: Int): List<Component> {
+        val remaining = (slot.tier.xp - currentXp).coerceAtLeast(0)
+        val status = when {
+            slot.claimed -> Component.literal("Claimed").withStyle(ChatFormatting.GREEN)
+            slot.claimable -> Component.literal("Click to claim").withStyle(ChatFormatting.AQUA)
+            slot.current -> Component.literal("$remaining XP to claim").withStyle(ChatFormatting.AQUA)
+            else -> Component.literal("Locked - $remaining XP needed").withStyle(ChatFormatting.GRAY)
+        }
+
+        return listOf(
+            Component.literal("Tier ${slot.tier.xp} XP").withStyle(ChatFormatting.GOLD),
+            Component.literal("${slot.stack.hoverName.string} x${slot.reward.quantity}"),
+            status,
+        )
     }
 
-    private fun lockLabel(unlocked: Boolean, xp: Int): Component {
-        val label = if (unlocked) "Open" else "Lock"
-        val style = if (unlocked) ChatFormatting.GREEN else ChatFormatting.DARK_GRAY
-        return Component.literal("$label $xp XP").withStyle(style)
+    private fun progressFor(slot: RewardSlot, currentXp: Int): Float {
+        if (slot.claimable || slot.claimed) return 1.0f
+        val span = (slot.tier.xp - slot.previousXp).coerceAtLeast(1)
+        return ((currentXp - slot.previousXp).toFloat() / span.toFloat()).coerceIn(0.0f, 1.0f)
     }
 
-    private fun rewardIcon(reward: BattlepassRewardDefinition, unlocked: Boolean): io.wispforest.owo.ui.core.Component {
-        val stack = rewardStack(reward)
-        val labelStyle = if (unlocked) ChatFormatting.WHITE else ChatFormatting.DARK_GRAY
-        val group = Containers.horizontalFlow(Sizing.content(), Sizing.fixed(20))
-        group.gap(4)
-        group.verticalAlignment(VerticalAlignment.CENTER)
-        group.child(Components.item(stack).showOverlay(false))
-        group.child(Components.label(Component.literal("x${reward.quantity}").withStyle(labelStyle)).shadow(unlocked))
-        return group
+    private fun drawFrame(guiGraphics: GuiGraphics, rect: Rect, fillColor: Int, borderColor: Int) {
+        guiGraphics.fill(rect.x, rect.y, rect.x + rect.width, rect.y + rect.height, fillColor)
+        guiGraphics.hLine(rect.x, rect.x + rect.width - 1, rect.y, borderColor)
+        guiGraphics.hLine(rect.x, rect.x + rect.width - 1, rect.y + rect.height - 1, borderColor)
+        guiGraphics.vLine(rect.x, rect.y, rect.y + rect.height - 1, borderColor)
+        guiGraphics.vLine(rect.x + rect.width - 1, rect.y, rect.y + rect.height - 1, borderColor)
     }
 
     private fun rewardStack(reward: BattlepassRewardDefinition): ItemStack {
@@ -195,5 +246,30 @@ class BattlepassScreen : BaseOwoScreen<FlowLayout>(Component.translatable("scree
             ?.let { id -> BuiltInRegistries.ITEM.getOptional(id).orElse(Items.BARRIER) }
             ?: Items.BARRIER
         return ItemStack(item, reward.quantity.coerceIn(1, 64))
+    }
+
+    private fun mainRect(): Rect {
+        val panelWidth = (width * 0.72f).toInt().coerceAtLeast(360).coerceAtMost(width - 24)
+        val panelHeight = (height * 0.72f).toInt().coerceAtLeast(240).coerceAtMost(height - 24)
+        return Rect((width - panelWidth) / 2, (height - panelHeight) / 2, panelWidth, panelHeight)
+    }
+
+    private fun hotbarRect(): Rect {
+        val panel = mainRect()
+        return Rect(panel.x + 24, panel.y + panel.height - 100, panel.width - 48, 78)
+    }
+
+    private fun maxScroll(): Float = maxScroll((selectedPass()?.progression?.size ?: 0) * SLOT_STEP + 10, hotbarRect().width)
+
+    private fun maxScroll(contentWidth: Int, visibleWidth: Int): Float = (contentWidth - visibleWidth + 24).coerceAtLeast(0).toFloat()
+
+    private fun selectedPass(): BattlepassPassDefinition? = BattlepassPassRegistry.all().firstOrNull { pass -> pass.id == selectedPassId }
+
+    companion object {
+        private val REWARD_CLAIMED_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(BattlepassMod.MOD_ID, "textures/gui/reward_claimed.png")
+        private val REWARD_ACTIVE_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(BattlepassMod.MOD_ID, "textures/gui/reward_active.png")
+        private val REWARD_INACTIVE_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(BattlepassMod.MOD_ID, "textures/gui/reward_inactive.png")
+        private const val SLOT_SIZE = 52
+        private const val SLOT_STEP = 68
     }
 }
