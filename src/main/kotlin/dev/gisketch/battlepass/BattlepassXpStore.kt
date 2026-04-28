@@ -5,6 +5,7 @@ import net.minecraft.server.level.ServerPlayer
 import net.neoforged.fml.loading.FMLPaths
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.UUID
 import kotlin.io.path.bufferedReader
 import kotlin.io.path.bufferedWriter
 import kotlin.io.path.createDirectories
@@ -47,6 +48,11 @@ object BattlepassXpStore {
     fun getXp(player: ServerPlayer, passId: String): Int {
         if (!loaded) load()
         return playerXp[player.stringUUID]?.get(passId) ?: 0
+    }
+
+    fun getXp(playerId: UUID, passId: String): Int {
+        if (!loaded) load()
+        return playerXp[playerId.toString()]?.get(passId) ?: 0
     }
 
     private fun save() {

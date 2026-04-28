@@ -14,6 +14,8 @@ val neoVersionRange = providers.gradleProperty("neo_version_range").get()
 val loaderVersionRange = providers.gradleProperty("loader_version_range").get()
 val kotlinForForgeVersion = providers.gradleProperty("kotlin_for_forge_version").get()
 val kotlinForForgeVersionRange = providers.gradleProperty("kotlin_for_forge_version_range").get()
+val owoLibVersion = providers.gradleProperty("owo_lib_version").get()
+val owoVersionRange = providers.gradleProperty("owo_version_range").get()
 val modId = providers.gradleProperty("mod_id").get()
 val modName = providers.gradleProperty("mod_name").get()
 val modLicense = providers.gradleProperty("mod_license").get()
@@ -43,6 +45,7 @@ repositories {
     mavenCentral()
     maven("https://maven.neoforged.net/releases/")
     maven("https://thedarkcolour.github.io/KotlinForForge/")
+    maven("https://api.modrinth.com/maven")
 }
 
 neoForge {
@@ -91,6 +94,7 @@ sourceSets {
 
 dependencies {
     implementation("thedarkcolour:kotlinforforge-neoforge:$kotlinForForgeVersion")
+    implementation("maven.modrinth:owo-lib:$owoLibVersion")
 
     testImplementation(kotlin("test"))
 }
@@ -104,6 +108,7 @@ tasks.processResources {
         "loader_version_range" to loaderVersionRange,
         "kotlin_for_forge_version" to kotlinForForgeVersion,
         "kotlin_for_forge_version_range" to kotlinForForgeVersionRange,
+        "owo_version_range" to owoVersionRange,
         "mod_id" to modId,
         "mod_name" to modName,
         "mod_license" to modLicense,

@@ -49,11 +49,17 @@ Pass files are loaded from the game config folder. On first launch, the mod crea
 /battlePass <pass> xp <amount> <targets>
 ```
 
+## TODO
+
+- UI edit: pass selection/detail layout, reward claiming states, and stronger locked-item presentation.
+- Events: add more built-in Minecraft event adapters and pack-defined custom event hooks.
+- Multiplayer: sync server-owned pass XP to the client UI instead of only reading local preview data.
+
 ## Build and run
 
 ```bash
 ./gradlew build
-./gradlew runClient
+./scripts/run-client.sh
 ./gradlew runServer
 ```
 

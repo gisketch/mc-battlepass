@@ -99,6 +99,96 @@ object BattlepassPassRegistry {
                   "quantity": 1
                 }
               ]
+            },
+            {
+              "xp": 200,
+              "rewards": [
+                {
+                  "type": "item",
+                  "item": "minecraft:emerald",
+                  "quantity": 3
+                }
+              ]
+            },
+            {
+              "xp": 300,
+              "rewards": [
+                {
+                  "type": "item",
+                  "item": "minecraft:golden_apple",
+                  "quantity": 1
+                }
+              ]
+            },
+            {
+              "xp": 400,
+              "rewards": [
+                {
+                  "type": "item",
+                  "item": "minecraft:lapis_lazuli",
+                  "quantity": 16
+                }
+              ]
+            },
+            {
+              "xp": 500,
+              "rewards": [
+                {
+                  "type": "item",
+                  "item": "minecraft:amethyst_shard",
+                  "quantity": 8
+                }
+              ]
+            },
+            {
+              "xp": 600,
+              "rewards": [
+                {
+                  "type": "item",
+                  "item": "minecraft:experience_bottle",
+                  "quantity": 12
+                }
+              ]
+            },
+            {
+              "xp": 700,
+              "rewards": [
+                {
+                  "type": "item",
+                  "item": "minecraft:name_tag",
+                  "quantity": 1
+                }
+              ]
+            },
+            {
+              "xp": 800,
+              "rewards": [
+                {
+                  "type": "item",
+                  "item": "minecraft:ender_pearl",
+                  "quantity": 8
+                }
+              ]
+            },
+            {
+              "xp": 900,
+              "rewards": [
+                {
+                  "type": "item",
+                  "item": "minecraft:netherite_scrap",
+                  "quantity": 1
+                }
+              ]
+            },
+            {
+              "xp": 1000,
+              "rewards": [
+                {
+                  "type": "item",
+                  "item": "minecraft:nether_star",
+                  "quantity": 1
+                }
+              ]
             }
           ]
         }
@@ -131,6 +221,96 @@ object BattlepassPassRegistry {
                   "type": "item",
                   "item": "minecraft:iron_ingot",
                   "quantity": 16
+                }
+              ]
+            },
+            {
+              "xp": 200,
+              "rewards": [
+                {
+                  "type": "item",
+                  "item": "minecraft:arrow",
+                  "quantity": 32
+                }
+              ]
+            },
+            {
+              "xp": 300,
+              "rewards": [
+                {
+                  "type": "item",
+                  "item": "minecraft:shield",
+                  "quantity": 1
+                }
+              ]
+            },
+            {
+              "xp": 400,
+              "rewards": [
+                {
+                  "type": "item",
+                  "item": "minecraft:bow",
+                  "quantity": 1
+                }
+              ]
+            },
+            {
+              "xp": 500,
+              "rewards": [
+                {
+                  "type": "item",
+                  "item": "minecraft:diamond",
+                  "quantity": 2
+                }
+              ]
+            },
+            {
+              "xp": 600,
+              "rewards": [
+                {
+                  "type": "item",
+                  "item": "minecraft:enchanted_book",
+                  "quantity": 1
+                }
+              ]
+            },
+            {
+              "xp": 700,
+              "rewards": [
+                {
+                  "type": "item",
+                  "item": "minecraft:golden_apple",
+                  "quantity": 2
+                }
+              ]
+            },
+            {
+              "xp": 800,
+              "rewards": [
+                {
+                  "type": "item",
+                  "item": "minecraft:diamond_sword",
+                  "quantity": 1
+                }
+              ]
+            },
+            {
+              "xp": 900,
+              "rewards": [
+                {
+                  "type": "item",
+                  "item": "minecraft:totem_of_undying",
+                  "quantity": 1
+                }
+              ]
+            },
+            {
+              "xp": 1000,
+              "rewards": [
+                {
+                  "type": "item",
+                  "item": "minecraft:netherite_ingot",
+                  "quantity": 1
                 }
               ]
             }

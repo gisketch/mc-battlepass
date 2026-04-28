@@ -13,11 +13,11 @@ import org.slf4j.Logger
 class BattlepassMod(modBus: IEventBus, container: ModContainer) {
     init {
         LOGGER.info("Loading {}", container.modInfo.displayName)
-        container.registerConfig(ModConfig.Type.CLIENT, BattlepassConfig.SPEC)
         BattlepassPassRegistry.reload()
         BattlepassXpStore.load()
         BattlepassCommands.register()
         if (FMLEnvironment.dist == Dist.CLIENT) {
+            container.registerConfig(ModConfig.Type.CLIENT, BattlepassConfig.SPEC)
             BattlepassClient.register(modBus, container)
         }
     }

@@ -4,8 +4,6 @@ import com.mojang.blaze3d.platform.InputConstants
 import net.minecraft.client.CameraType
 import net.minecraft.client.KeyMapping
 import net.minecraft.client.Minecraft
-import net.minecraft.client.gui.GuiGraphics
-import net.minecraft.client.gui.screens.Screen
 import net.minecraft.network.chat.Component
 import net.minecraft.util.Mth
 import net.neoforged.bus.api.IEventBus
@@ -55,14 +53,14 @@ object BattlepassClient {
 
     private fun openBattlepassCamera() {
         val minecraft = Minecraft.getInstance()
-        if (minecraft.player == null || minecraft.screen is BattlepassCameraScreen) return
+        if (minecraft.player == null || minecraft.screen is BattlepassScreen) return
 
         BattlepassCameraController.start()
-        minecraft.setScreen(BattlepassCameraScreen())
+        minecraft.setScreen(BattlepassScreen())
     }
 }
 
-private object BattlepassCameraController {
+object BattlepassCameraController {
     private const val FRONT_DISTANCE = 3.2f
     private const val FRONT_PITCH = 8.0f
 
@@ -153,16 +151,5 @@ private object BattlepassCameraController {
         player.yBodyRotO = previewYaw
         player.yHeadRot = previewYaw
         player.yHeadRotO = previewYaw
-    }
-}
-
-private class BattlepassCameraScreen : Screen(Component.translatable("screen.${BattlepassMod.MOD_ID}.battlepass_camera")) {
-    override fun render(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) {
-    }
-
-    override fun isPauseScreen(): Boolean = false
-
-    override fun removed() {
-        BattlepassCameraController.stop()
     }
 }
