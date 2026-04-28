@@ -31,17 +31,3 @@ type="required"
 versionRange="${kotlin_for_forge_version_range}"
 ordering="NONE"
 side="BOTH"
-
-[[dependencies.${mod_id}]]
-modId="architectury"
-type="required"
-versionRange="${architectury_version_range}"
-ordering="NONE"
-side="BOTH"
-
-[[dependencies.${mod_id}]]
-modId="owo"
-type="required"
-versionRange="${owo_version_range}"
-ordering="NONE"
-side="BOTH"

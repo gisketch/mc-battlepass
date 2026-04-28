@@ -1,6 +1,6 @@
-# NeoForge 1.21.1 Kotlin Starter SDK
+# gisketch's Battlepass
 
-Starter shell for NeoForge 1.21.1 mods using Kotlin, Kotlin For Forge, and Architectury API.
+Barebones NeoForge 1.21.1 Kotlin mod shell for a future battlepass feature.
 
 ## What is included
 
@@ -8,27 +8,19 @@ Starter shell for NeoForge 1.21.1 mods using Kotlin, Kotlin For Forge, and Archi
 - NeoForge `21.1.228`
 - Kotlin JVM `2.3.0`
 - Kotlin For Forge NeoForge `5.11.0`
-- Architectury API NeoForge `13.0.8`
-- owo-lib `0.12.15.5-beta.1+1.21`
 - Java toolchain `21`
 - Gradle Kotlin DSL
-- `scripts/init-mod.sh` metadata initializer
-- OpenSpec baseline in `openspec/`
-- Copilot project instructions in `.github/copilot-instructions.md`
-
-## Use as new mod
-
-```bash
-./scripts/init-mod.sh
-```
-
-Script asks for mod id, display name, package/group, and optional icon path. It updates Gradle properties, Kotlin package, resources, and NeoForge metadata.
+- Battlepass keybind (`B` by default)
+- Transparent camera preview mode closed with `Esc`
+- Client config screen in NeoForge Mods menu
+- `cam_animation` client config, default `8` ticks
 
 ## Build and run
 
 ```bash
 ./gradlew build
 ./gradlew runClient
+./scripts/run-client.sh
 ./gradlew runServer
 ```
 

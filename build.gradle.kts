@@ -12,12 +12,8 @@ val minecraftVersionRange = providers.gradleProperty("minecraft_version_range").
 val neoVersion = providers.gradleProperty("neo_version").get()
 val neoVersionRange = providers.gradleProperty("neo_version_range").get()
 val loaderVersionRange = providers.gradleProperty("loader_version_range").get()
-val architecturyApiVersion = providers.gradleProperty("architectury_api_version").get()
-val architecturyVersionRange = providers.gradleProperty("architectury_version_range").get()
 val kotlinForForgeVersion = providers.gradleProperty("kotlin_for_forge_version").get()
 val kotlinForForgeVersionRange = providers.gradleProperty("kotlin_for_forge_version_range").get()
-val owoLibVersion = providers.gradleProperty("owo_lib_version").get()
-val owoVersionRange = providers.gradleProperty("owo_version_range").get()
 val modId = providers.gradleProperty("mod_id").get()
 val modName = providers.gradleProperty("mod_name").get()
 val modLicense = providers.gradleProperty("mod_license").get()
@@ -46,9 +42,7 @@ kotlin {
 repositories {
     mavenCentral()
     maven("https://maven.neoforged.net/releases/")
-    maven("https://maven.architectury.dev/")
     maven("https://thedarkcolour.github.io/KotlinForForge/")
-    maven("https://api.modrinth.com/maven")
 }
 
 neoForge {
@@ -97,8 +91,6 @@ sourceSets {
 
 dependencies {
     implementation("thedarkcolour:kotlinforforge-neoforge:$kotlinForForgeVersion")
-    implementation("dev.architectury:architectury-neoforge:$architecturyApiVersion")
-    implementation("maven.modrinth:owo-lib:$owoLibVersion")
 
     testImplementation(kotlin("test"))
 }
@@ -110,11 +102,8 @@ tasks.processResources {
         "neo_version" to neoVersion,
         "neo_version_range" to neoVersionRange,
         "loader_version_range" to loaderVersionRange,
-        "architectury_api_version" to architecturyApiVersion,
-        "architectury_version_range" to architecturyVersionRange,
         "kotlin_for_forge_version" to kotlinForForgeVersion,
         "kotlin_for_forge_version_range" to kotlinForForgeVersionRange,
-        "owo_version_range" to owoVersionRange,
         "mod_id" to modId,
         "mod_name" to modName,
         "mod_license" to modLicense,

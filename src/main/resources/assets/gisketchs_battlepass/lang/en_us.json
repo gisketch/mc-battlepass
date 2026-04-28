@@ -1,0 +1,9 @@
+{
+  "config.gisketchs_battlepass.cam_animation": "Camera animation duration",
+  "config.gisketchs_battlepass.camera_offset_horizontal": "Camera horizontal offset",
+  "config.gisketchs_battlepass.camera_offset_vertical": "Camera vertical offset",
+  "config.gisketchs_battlepass.camera_zoom_offset": "Camera zoom offset",
+  "key.category.gisketchs_battlepass.battlepass": "Battlepass",
+  "key.gisketchs_battlepass.open_battlepass": "Open Battlepass",
+  "screen.gisketchs_battlepass.battlepass_camera": "Battlepass Preview"
+}
