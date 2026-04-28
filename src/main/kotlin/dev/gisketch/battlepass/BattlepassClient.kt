@@ -9,10 +9,13 @@ import net.minecraft.client.gui.screens.Screen
 import net.minecraft.network.chat.Component
 import net.minecraft.util.Mth
 import net.neoforged.bus.api.IEventBus
+import net.neoforged.fml.ModContainer
 import net.neoforged.neoforge.client.event.CalculateDetachedCameraDistanceEvent
 import net.neoforged.neoforge.client.event.ClientTickEvent
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent
 import net.neoforged.neoforge.client.event.ViewportEvent
+import net.neoforged.neoforge.client.gui.ConfigurationScreen
+import net.neoforged.neoforge.client.gui.IConfigScreenFactory
 import net.neoforged.neoforge.client.settings.KeyConflictContext
 import net.neoforged.neoforge.client.settings.KeyModifier
 import net.neoforged.neoforge.common.NeoForge
@@ -29,7 +32,10 @@ object BattlepassClient {
         CATEGORY,
     )
 
-    fun register(modBus: IEventBus) {
+    fun register(modBus: IEventBus, container: ModContainer) {
+        container.registerExtensionPoint(IConfigScreenFactory::class.java, IConfigScreenFactory { modContainer, parent ->
+            ConfigurationScreen(modContainer, parent)
+        })
         modBus.addListener(::registerKeyMappings)
         NeoForge.EVENT_BUS.addListener(::onClientTick)
         NeoForge.EVENT_BUS.addListener(BattlepassCameraController::onCameraAngles)

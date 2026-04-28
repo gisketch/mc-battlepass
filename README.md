@@ -12,15 +12,48 @@ Barebones NeoForge 1.21.1 Kotlin mod shell for a future battlepass feature.
 - Gradle Kotlin DSL
 - Battlepass keybind (`B` by default)
 - Transparent camera preview mode closed with `Esc`
-- Client config screen in NeoForge Mods menu
-- `cam_animation` client config, default `8` ticks
+- Data-driven pass definitions in `config/gisketchs_battlepass/passes/*.json`
+- `/battlepass` commands for pass reload/list and manual XP grants
+
+## Pass data
+
+Pass files are loaded from the game config folder. On first launch, the mod creates example `cobblemon.json` and `combat.json` files.
+
+```json
+{
+	"id": "cobblemon",
+	"displayName": "Cobblemon Pass",
+	"description": "Progress from Cobblemon captures and battles.",
+	"categories": ["cobblemon", "season_1"],
+	"xpEvents": [
+		{ "event": "cobblemon:pokemon_captured", "xp": 10 },
+		{ "event": "cobblemon:pokemon_defeated", "xp": 5 }
+	],
+	"progression": [
+		{
+			"xp": 100,
+			"rewards": [
+				{ "type": "item", "item": "minecraft:diamond", "quantity": 1 }
+			]
+		}
+	]
+}
+```
+
+## Commands
+
+```mcfunction
+/battlepass list
+/battlepass reload
+/battlepass xp add <pass> <amount> <targets>
+/battlePass <pass> xp <amount> <targets>
+```
 
 ## Build and run
 
 ```bash
 ./gradlew build
 ./gradlew runClient
-./scripts/run-client.sh
 ./gradlew runServer
 ```
 
