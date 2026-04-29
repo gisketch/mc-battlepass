@@ -86,15 +86,19 @@ object BattlepassNetwork {
     private fun createSyncPayload(receiver: ServerPlayer): BattlepassSyncPayload {
         val passes = BattlepassPassRegistry.all().toList()
         val passIds = passes.map { pass -> pass.id }
+        receiver.server.playerList.players.forEach(CobblemonBattlepassIntegration::refreshCobblemonProgress)
+        val activeMissionKeysByPass = passes.associate { pass -> pass.id to BattlepassMissionProgressStore.activeMissionKeys(pass) }
         val players = receiver.server.playerList.players.map { player ->
             BattlepassPlayerProgressPayload(
                 player.uuid,
                 player.gameProfile.name,
                 passIds.associateWith { passId -> BattlepassXpStore.getXp(player.uuid, passId) },
                 passIds.associateWith { passId -> BattlepassXpStore.claimedTiers(player.uuid, passId).sorted() },
+                passes.associate { pass -> pass.id to BattlepassMissionProgressStore.progressForPass(player.uuid, pass) },
+                passes.associate { pass -> pass.id to BattlepassMissionProgressStore.completedKeysForPass(player.uuid, pass) },
             )
         }
-        return BattlepassSyncPayload(passes.map { pass -> gson.toJson(pass) }, players, receiver.uuid)
+        return BattlepassSyncPayload(passes.map { pass -> gson.toJson(pass) }, players, activeMissionKeysByPass, receiver.uuid)
     }
 }
 
@@ -143,6 +147,7 @@ data class BattlepassClaimAllRequestPayload(val passId: String) : CustomPacketPa
 data class BattlepassSyncPayload(
     val passesJson: List<String>,
     val players: List<BattlepassPlayerProgressPayload>,
+    val activeMissionKeysByPass: Map<String, List<String>>,
     val selfId: UUID,
 ) : CustomPacketPayload {
     override fun type(): CustomPacketPayload.Type<BattlepassSyncPayload> = TYPE
@@ -153,7 +158,12 @@ data class BattlepassSyncPayload(
             override fun decode(buffer: RegistryFriendlyByteBuf): BattlepassSyncPayload {
                 val passes = List(buffer.readVarInt()) { buffer.readUtf(MAX_PASS_JSON_LENGTH) }
                 val players = List(buffer.readVarInt()) { BattlepassPlayerProgressPayload.decode(buffer) }
-                return BattlepassSyncPayload(passes, players, buffer.readUUID())
+                val activeMissionKeysByPass = linkedMapOf<String, List<String>>()
+                repeat(buffer.readVarInt()) {
+                    val passId = buffer.readUtf(MAX_STRING_LENGTH)
+                    activeMissionKeysByPass[passId] = List(buffer.readVarInt()) { buffer.readUtf(MAX_STRING_LENGTH) }
+                }
+                return BattlepassSyncPayload(passes, players, activeMissionKeysByPass, buffer.readUUID())
             }
 
             override fun encode(buffer: RegistryFriendlyByteBuf, value: BattlepassSyncPayload) {
@@ -161,6 +171,12 @@ data class BattlepassSyncPayload(
                 value.passesJson.forEach { passJson -> buffer.writeUtf(passJson, MAX_PASS_JSON_LENGTH) }
                 buffer.writeVarInt(value.players.size)
                 value.players.forEach { player -> player.encode(buffer) }
+                buffer.writeVarInt(value.activeMissionKeysByPass.size)
+                value.activeMissionKeysByPass.forEach { (passId, keys) ->
+                    buffer.writeUtf(passId, MAX_STRING_LENGTH)
+                    buffer.writeVarInt(keys.size)
+                    keys.forEach { key -> buffer.writeUtf(key, MAX_STRING_LENGTH) }
+                }
                 buffer.writeUUID(value.selfId)
             }
         }
@@ -172,6 +188,8 @@ data class BattlepassPlayerProgressPayload(
     val name: String,
     val xpByPass: Map<String, Int>,
     val claimedByPass: Map<String, List<Int>>,
+    val missionProgressByPass: Map<String, Map<String, Int>>,
+    val completedMissionKeysByPass: Map<String, List<String>>,
 ) {
     fun encode(buffer: RegistryFriendlyByteBuf) {
         buffer.writeUUID(uuid)
@@ -186,6 +204,21 @@ data class BattlepassPlayerProgressPayload(
             buffer.writeUtf(passId, MAX_STRING_LENGTH)
             buffer.writeVarInt(tiers.size)
             tiers.forEach(buffer::writeVarInt)
+        }
+        buffer.writeVarInt(missionProgressByPass.size)
+        missionProgressByPass.forEach { (passId, events) ->
+            buffer.writeUtf(passId, MAX_STRING_LENGTH)
+            buffer.writeVarInt(events.size)
+            events.forEach { (eventId, progress) ->
+                buffer.writeUtf(eventId, MAX_STRING_LENGTH)
+                buffer.writeVarInt(progress)
+            }
+        }
+        buffer.writeVarInt(completedMissionKeysByPass.size)
+        completedMissionKeysByPass.forEach { (passId, keys) ->
+            buffer.writeUtf(passId, MAX_STRING_LENGTH)
+            buffer.writeVarInt(keys.size)
+            keys.forEach { key -> buffer.writeUtf(key, MAX_STRING_LENGTH) }
         }
     }
 
@@ -202,7 +235,21 @@ data class BattlepassPlayerProgressPayload(
                 val passId = buffer.readUtf(MAX_STRING_LENGTH)
                 claimedByPass[passId] = List(buffer.readVarInt()) { buffer.readVarInt() }
             }
-            return BattlepassPlayerProgressPayload(uuid, name, xpByPass, claimedByPass)
+            val missionProgressByPass = linkedMapOf<String, Map<String, Int>>()
+            repeat(buffer.readVarInt()) {
+                val passId = buffer.readUtf(MAX_STRING_LENGTH)
+                val eventProgress = linkedMapOf<String, Int>()
+                repeat(buffer.readVarInt()) {
+                    eventProgress[buffer.readUtf(MAX_STRING_LENGTH)] = buffer.readVarInt()
+                }
+                missionProgressByPass[passId] = eventProgress
+            }
+            val completedMissionKeysByPass = linkedMapOf<String, List<String>>()
+            repeat(buffer.readVarInt()) {
+                val passId = buffer.readUtf(MAX_STRING_LENGTH)
+                completedMissionKeysByPass[passId] = List(buffer.readVarInt()) { buffer.readUtf(MAX_STRING_LENGTH) }
+            }
+            return BattlepassPlayerProgressPayload(uuid, name, xpByPass, claimedByPass, missionProgressByPass, completedMissionKeysByPass)
         }
     }
 }

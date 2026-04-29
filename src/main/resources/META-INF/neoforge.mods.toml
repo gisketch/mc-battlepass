@@ -38,3 +38,9 @@ type="required"
 versionRange="${owo_version_range}"
 ordering="AFTER"
 side="CLIENT"
+
+[[dependencies.${mod_id}]]
+modId="cobblemon"
+type="optional"
+ordering="AFTER"
+side="BOTH"

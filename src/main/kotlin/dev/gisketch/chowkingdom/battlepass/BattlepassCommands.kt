@@ -5,12 +5,15 @@ import com.mojang.brigadier.arguments.StringArgumentType
 import com.mojang.brigadier.builder.LiteralArgumentBuilder
 import com.mojang.brigadier.context.CommandContext
 import com.mojang.brigadier.exceptions.SimpleCommandExceptionType
+import com.mojang.brigadier.suggestion.Suggestions
+import com.mojang.brigadier.suggestion.SuggestionsBuilder
 import net.minecraft.commands.CommandSourceStack
 import net.minecraft.commands.Commands
 import net.minecraft.commands.arguments.EntityArgument
 import net.minecraft.network.chat.Component
 import net.neoforged.neoforge.common.NeoForge
 import net.neoforged.neoforge.event.RegisterCommandsEvent
+import java.util.concurrent.CompletableFuture
 
 object BattlepassCommands {
     private val unknownPass = SimpleCommandExceptionType(Component.literal("Unknown battlepass pass"))
@@ -31,6 +34,21 @@ object BattlepassCommands {
     private fun battlepassRoot(name: String): LiteralArgumentBuilder<CommandSourceStack> = Commands.literal(name)
         .then(Commands.literal("list").executes(::listPasses))
         .then(Commands.literal("reload").requires { source -> source.hasPermission(2) }.executes(::reloadPasses))
+        .then(
+            Commands.literal("reset")
+                .requires { source -> source.hasPermission(2) }
+                .then(Commands.literal("daily").executes { context -> resetMissions(context, BattlepassMissionScope.DAILY) })
+                .then(Commands.literal("weekly").executes { context -> resetMissions(context, BattlepassMissionScope.WEEKLY) }),
+        )
+        .then(
+            Commands.literal("complete")
+                .requires { source -> source.hasPermission(2) }
+                .then(
+                    Commands.argument("mission", StringArgumentType.word())
+                        .suggests(::suggestMissions)
+                        .then(Commands.argument("targets", EntityArgument.players()).executes(::completeMission)),
+                ),
+        )
         .then(
             Commands.literal("claim")
                 .then(
@@ -72,6 +90,7 @@ object BattlepassCommands {
     private fun reloadPasses(context: CommandContext<CommandSourceStack>): Int {
         val count = BattlepassPassRegistry.reload()
         BattlepassXpStore.load()
+        BattlepassMissionProgressStore.load()
         BattlepassNetwork.syncAllPlayers()
         context.source.sendSuccess({ Component.literal("Reloaded $count battlepass pass(es).") }, true)
         return count
@@ -80,6 +99,29 @@ object BattlepassCommands {
     private fun addXpFromActionSyntax(context: CommandContext<CommandSourceStack>): Int = addXp(context)
 
     private fun addXpFromPassSyntax(context: CommandContext<CommandSourceStack>): Int = addXp(context)
+
+    private fun resetMissions(context: CommandContext<CommandSourceStack>, scope: BattlepassMissionScope): Int {
+        val count = BattlepassMissionProgressStore.reset(scope)
+        BattlepassNetwork.syncAllPlayers()
+        context.source.sendSuccess({ Component.literal("Reset $count ${scope.id} battlepass mission pool(s).") }, true)
+        return count
+    }
+
+    private fun completeMission(context: CommandContext<CommandSourceStack>): Int {
+        val missionKey = StringArgumentType.getString(context, "mission")
+        val targets = EntityArgument.getPlayers(context, "targets")
+        val completed = targets.count { player -> BattlepassMissionProgressStore.completeMission(player, missionKey) }
+        BattlepassNetwork.syncAllPlayers()
+        context.source.sendSuccess({ Component.literal("Completed $missionKey for $completed player(s).") }, true)
+        return completed
+    }
+
+    private fun suggestMissions(context: CommandContext<CommandSourceStack>, builder: SuggestionsBuilder): CompletableFuture<Suggestions> {
+        BattlepassMissionProgressStore.activeMissionKeys()
+            .filter { key -> key.startsWith(builder.remaining, ignoreCase = true) }
+            .forEach(builder::suggest)
+        return builder.buildFuture()
+    }
 
     private fun addXp(context: CommandContext<CommandSourceStack>): Int {
         val passId = StringArgumentType.getString(context, "pass")

@@ -3,7 +3,6 @@ package dev.gisketch.chowkingdom.battlepass
 import com.google.gson.GsonBuilder
 import dev.gisketch.chowkingdom.ChowKingdomMod
 import net.minecraft.server.level.ServerPlayer
-import net.neoforged.fml.loading.FMLPaths
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.UUID
@@ -19,7 +18,7 @@ object BattlepassXpStore {
     private var loaded = false
 
     private val file: Path
-        get() = FMLPaths.CONFIGDIR.get().resolve(ChowKingdomMod.MOD_ID).resolve("battlepass").resolve("player_xp.json")
+        get() = BattlepassWorldData.battlepassDirectory().resolve("player_xp.json")
 
     fun load() {
         file.parent.createDirectories()

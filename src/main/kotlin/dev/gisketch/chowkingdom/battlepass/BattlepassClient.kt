@@ -7,6 +7,7 @@ import net.minecraft.client.Minecraft
 import net.neoforged.bus.api.IEventBus
 import net.neoforged.neoforge.client.event.ClientTickEvent
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent
+import net.neoforged.neoforge.client.event.RenderGuiLayerEvent
 import net.neoforged.neoforge.client.settings.KeyConflictContext
 import net.neoforged.neoforge.client.settings.KeyModifier
 import net.neoforged.neoforge.common.NeoForge
@@ -26,6 +27,7 @@ object BattlepassClient {
     fun register(modBus: IEventBus) {
         modBus.addListener(::registerKeyMappings)
         NeoForge.EVENT_BUS.addListener(::onClientTick)
+        NeoForge.EVENT_BUS.addListener(::hideHudBehindBattlepass)
     }
 
     private fun registerKeyMappings(event: RegisterKeyMappingsEvent) {
@@ -35,6 +37,12 @@ object BattlepassClient {
     private fun onClientTick(event: ClientTickEvent.Post) {
         while (OPEN_BATTLEPASS.consumeClick()) {
             openBattlepass()
+        }
+    }
+
+    private fun hideHudBehindBattlepass(event: RenderGuiLayerEvent.Pre) {
+        if (Minecraft.getInstance().screen is BattlepassScreen) {
+            event.isCanceled = true
         }
     }
 
