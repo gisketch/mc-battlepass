@@ -1,6 +1,7 @@
-package dev.gisketch.battlepass
+package dev.gisketch.chowkingdom.battlepass
 
 import com.google.gson.GsonBuilder
+import dev.gisketch.chowkingdom.ChowKingdomMod
 import net.minecraft.server.level.ServerPlayer
 import net.neoforged.fml.loading.FMLPaths
 import java.nio.file.Files
@@ -18,7 +19,7 @@ object BattlepassXpStore {
     private var loaded = false
 
     private val file: Path
-        get() = FMLPaths.CONFIGDIR.get().resolve(BattlepassMod.MOD_ID).resolve("player_xp.json")
+        get() = FMLPaths.CONFIGDIR.get().resolve(ChowKingdomMod.MOD_ID).resolve("battlepass").resolve("player_xp.json")
 
     fun load() {
         file.parent.createDirectories()
@@ -33,7 +34,7 @@ object BattlepassXpStore {
                     claimedTiers[playerId] = passes.mapValues { (_, tiers) -> tiers.toMutableSet() }.toMutableMap()
                 }
             } catch (exception: Exception) {
-                BattlepassMod.LOGGER.warn("Failed to load battlepass XP store {}", file, exception)
+                ChowKingdomMod.LOGGER.warn("Failed to load battlepass XP store {}", file, exception)
             }
         }
 

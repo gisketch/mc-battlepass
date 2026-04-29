@@ -1,5 +1,6 @@
-package dev.gisketch.battlepass
+package dev.gisketch.chowkingdom.battlepass
 
+import dev.gisketch.chowkingdom.ChowKingdomMod
 import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
@@ -11,7 +12,7 @@ import net.minecraft.util.Mth
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 
-class BattlepassScreen : Screen(Component.translatable("screen.${BattlepassMod.MOD_ID}.battlepass")) {
+class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.MOD_ID}.battlepass")) {
     private enum class ViewMode { PASS_SELECTION, PASS_DETAIL }
 
     private data class Rect(val x: Int, val y: Int, val width: Int, val height: Int) {
@@ -80,7 +81,7 @@ class BattlepassScreen : Screen(Component.translatable("screen.${BattlepassMod.M
 
         val clickedReward = rewardSlots.firstOrNull { slot -> slot.rect.contains(mouseX, mouseY) }
         if (viewMode == ViewMode.PASS_DETAIL && clickedReward?.claimable == true) {
-            Minecraft.getInstance().connection?.sendCommand("battlepass claim ${selectedPassId ?: return true} ${clickedReward.tier.xp}")
+            Minecraft.getInstance().connection?.sendCommand("chowkingdom battlepass claim ${selectedPassId ?: return true} ${clickedReward.tier.xp}")
             return true
         }
 
@@ -99,7 +100,7 @@ class BattlepassScreen : Screen(Component.translatable("screen.${BattlepassMod.M
     private fun renderSelection(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
         val panel = mainRect()
         drawFrame(guiGraphics, panel, 0x22000000, 0xAAE0E6F0.toInt())
-        guiGraphics.drawString(font, Component.translatable("ui.${BattlepassMod.MOD_ID}.select_pass"), panel.x + 22, panel.y + 20, 0xF0F4FF, true)
+        guiGraphics.drawString(font, Component.translatable("ui.${ChowKingdomMod.MOD_ID}.battlepass.select_pass"), panel.x + 22, panel.y + 20, 0xF0F4FF, true)
 
         val passes = BattlepassPassRegistry.all().toList()
         passRects = passes.mapIndexed { index, pass ->
@@ -112,7 +113,7 @@ class BattlepassScreen : Screen(Component.translatable("screen.${BattlepassMod.M
         }
 
         if (passes.isEmpty()) {
-            guiGraphics.drawString(font, Component.translatable("ui.${BattlepassMod.MOD_ID}.empty"), panel.x + 28, panel.y + 58, 0xAAB2C0, true)
+            guiGraphics.drawString(font, Component.translatable("ui.${ChowKingdomMod.MOD_ID}.battlepass.empty"), panel.x + 28, panel.y + 58, 0xAAB2C0, true)
         }
     }
 
@@ -133,7 +134,7 @@ class BattlepassScreen : Screen(Component.translatable("screen.${BattlepassMod.M
         backRect = Rect(panel.x + panel.width - 118, panel.y + 18, 92, 28)
         val backHovered = backRect.contains(mouseX.toDouble(), mouseY.toDouble())
         drawFrame(guiGraphics, backRect, if (backHovered) 0x663A70C4 else 0x4410141C, 0xDDFFFFFF.toInt())
-        guiGraphics.drawString(font, Component.translatable("ui.${BattlepassMod.MOD_ID}.back"), backRect.x + 31, backRect.y + 9, 0xF0F4FF, true)
+        guiGraphics.drawString(font, Component.translatable("ui.${ChowKingdomMod.MOD_ID}.back"), backRect.x + 31, backRect.y + 9, 0xF0F4FF, true)
 
         guiGraphics.drawString(font, Component.literal("XP $currentXp").withStyle(ChatFormatting.AQUA), panel.x + 24, panel.y + 54, 0x8DEBFF, true)
         guiGraphics.drawString(font, selectedPass.description, panel.x + 24, panel.y + 68, 0xAAB2C0, false)
@@ -266,9 +267,9 @@ class BattlepassScreen : Screen(Component.translatable("screen.${BattlepassMod.M
     private fun selectedPass(): BattlepassPassDefinition? = BattlepassPassRegistry.all().firstOrNull { pass -> pass.id == selectedPassId }
 
     companion object {
-        private val REWARD_CLAIMED_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(BattlepassMod.MOD_ID, "textures/gui/reward_claimed.png")
-        private val REWARD_ACTIVE_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(BattlepassMod.MOD_ID, "textures/gui/reward_active.png")
-        private val REWARD_INACTIVE_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(BattlepassMod.MOD_ID, "textures/gui/reward_inactive.png")
+        private val REWARD_CLAIMED_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/reward_claimed.png")
+        private val REWARD_ACTIVE_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/reward_active.png")
+        private val REWARD_INACTIVE_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/reward_inactive.png")
         private const val SLOT_SIZE = 52
         private const val SLOT_STEP = 68
     }

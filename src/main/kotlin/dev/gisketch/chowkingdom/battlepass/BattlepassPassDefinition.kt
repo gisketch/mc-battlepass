@@ -1,4 +1,4 @@
-package dev.gisketch.battlepass
+package dev.gisketch.chowkingdom.battlepass
 
 class BattlepassPassDefinition {
     var id: String = ""

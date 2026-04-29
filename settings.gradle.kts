@@ -10,4 +10,4 @@ plugins {
     id("org.gradle.toolchains.foojay-resolver-convention") version "0.10.0"
 }
 
-rootProject.name = "gisketchs_battlepass"
+rootProject.name = "gisketchs_chowkingdom_mod"

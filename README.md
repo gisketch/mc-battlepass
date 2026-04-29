@@ -1,6 +1,6 @@
-# gisketch's Battlepass
+# gisketch's Chow Kingdom Mod
 
-Barebones NeoForge 1.21.1 Kotlin mod shell for a future battlepass feature.
+Barebones NeoForge 1.21.1 Kotlin mod shell for Chow Kingdom systems.
 
 ## What is included
 
@@ -10,10 +10,11 @@ Barebones NeoForge 1.21.1 Kotlin mod shell for a future battlepass feature.
 - Kotlin For Forge NeoForge `5.11.0`
 - Java toolchain `21`
 - Gradle Kotlin DSL
-- Battlepass keybind (`B` by default)
+- Battlepass feature keybind (`B` by default)
 - Transparent camera preview mode closed with `Esc`
-- Data-driven pass definitions in `config/gisketchs_battlepass/passes/*.json`
-- `/battlepass` commands for pass reload/list and manual XP grants
+- Data-driven pass definitions in `config/gisketchs_chowkingdom_mod/battlepass/passes/*.json`
+- `/chowkingdom battlepass` commands for pass reload/list, claiming, and manual XP grants
+- Package scaffold ready for future wallets, shops, and profiles features
 
 ## Pass data
 
@@ -43,15 +44,19 @@ Pass files are loaded from the game config folder. On first launch, the mod crea
 ## Commands
 
 ```mcfunction
-/battlepass list
-/battlepass reload
-/battlepass xp add <pass> <amount> <targets>
-/battlePass <pass> xp <amount> <targets>
+/chowkingdom battlepass list
+/chowkingdom battlepass reload
+/chowkingdom battlepass claim <pass> <tierXp>
+/chowkingdom battlepass xp add <pass> <amount> <targets>
+/ck battlepass <pass> xp <amount> <targets>
 ```
 
 ## TODO
 
-- UI edit: pass selection/detail layout, reward claiming states, and stronger locked-item presentation.
+- Wallets: add currency storage and transfer commands.
+- Shops: add data-driven shop definitions and purchase flow.
+- Profiles: add player profile data and UI shell.
+- Battlepass UI: pass selection/detail layout, reward claiming states, and stronger locked-item presentation.
 - Events: add more built-in Minecraft event adapters and pack-defined custom event hooks.
 - Multiplayer: sync server-owned pass XP to the client UI instead of only reading local preview data.
 
@@ -61,6 +66,14 @@ Pass files are loaded from the game config folder. On first launch, the mod crea
 ./gradlew build
 ./scripts/run-client.sh
 ./gradlew runServer
+```
+
+Windows PowerShell:
+
+```powershell
+.\gradlew.bat build
+.\scripts\run-client.ps1
+.\gradlew.bat runServer
 ```
 
 First Gradle run downloads Minecraft, NeoForge, mappings, and dependencies.

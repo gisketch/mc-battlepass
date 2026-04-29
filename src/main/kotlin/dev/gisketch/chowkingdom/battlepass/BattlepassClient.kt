@@ -1,6 +1,7 @@
-package dev.gisketch.battlepass
+package dev.gisketch.chowkingdom.battlepass
 
 import com.mojang.blaze3d.platform.InputConstants
+import dev.gisketch.chowkingdom.ChowKingdomMod
 import net.minecraft.client.CameraType
 import net.minecraft.client.KeyMapping
 import net.minecraft.client.Minecraft
@@ -19,10 +20,10 @@ import net.neoforged.neoforge.client.settings.KeyModifier
 import net.neoforged.neoforge.common.NeoForge
 
 object BattlepassClient {
-    private const val CATEGORY = "key.category.${BattlepassMod.MOD_ID}.battlepass"
+    private const val CATEGORY = "key.category.${ChowKingdomMod.MOD_ID}"
 
     val OPEN_BATTLEPASS: KeyMapping = KeyMapping(
-        "key.${BattlepassMod.MOD_ID}.open_battlepass",
+        "key.${ChowKingdomMod.MOD_ID}.battlepass.open",
         KeyConflictContext.IN_GAME,
         KeyModifier.NONE,
         InputConstants.Type.KEYSYM,

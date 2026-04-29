@@ -1,0 +1,15 @@
+{
+  "config.gisketchs_chowkingdom_mod.battlepass.cam_animation": "Battlepass camera animation duration",
+  "config.gisketchs_chowkingdom_mod.battlepass.camera_offset_horizontal": "Battlepass camera horizontal offset",
+  "config.gisketchs_chowkingdom_mod.battlepass.camera_offset_vertical": "Battlepass camera vertical offset",
+  "config.gisketchs_chowkingdom_mod.battlepass.camera_zoom_offset": "Battlepass camera zoom offset",
+  "key.category.gisketchs_chowkingdom_mod": "Chow Kingdom",
+  "key.gisketchs_chowkingdom_mod.battlepass.open": "Open Battlepass",
+  "screen.gisketchs_chowkingdom_mod.battlepass": "Battlepass",
+  "screen.gisketchs_chowkingdom_mod.battlepass_camera": "Battlepass Preview",
+  "ui.gisketchs_chowkingdom_mod.back": "Back",
+  "ui.gisketchs_chowkingdom_mod.battlepass.empty": "No passes loaded",
+  "ui.gisketchs_chowkingdom_mod.battlepass.passes": "Passes",
+  "ui.gisketchs_chowkingdom_mod.battlepass.rewards": "Rewards",
+  "ui.gisketchs_chowkingdom_mod.battlepass.select_pass": "Select Pass"
+}

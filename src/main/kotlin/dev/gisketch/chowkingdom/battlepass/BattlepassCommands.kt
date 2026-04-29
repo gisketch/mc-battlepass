@@ -1,4 +1,4 @@
-package dev.gisketch.battlepass
+package dev.gisketch.chowkingdom.battlepass
 
 import com.mojang.brigadier.arguments.IntegerArgumentType
 import com.mojang.brigadier.arguments.StringArgumentType
@@ -24,11 +24,15 @@ object BattlepassCommands {
     }
 
     private fun onRegisterCommands(event: RegisterCommandsEvent) {
-        event.dispatcher.register(root("battlepass"))
-        event.dispatcher.register(root("battlePass"))
+        event.dispatcher.register(chowKingdomRoot("chowkingdom"))
+        event.dispatcher.register(chowKingdomRoot("ck"))
+        event.dispatcher.register(battlepassRoot("battlepass"))
     }
 
-    private fun root(name: String): LiteralArgumentBuilder<CommandSourceStack> = Commands.literal(name)
+    private fun chowKingdomRoot(name: String): LiteralArgumentBuilder<CommandSourceStack> = Commands.literal(name)
+        .then(battlepassRoot("battlepass"))
+
+    private fun battlepassRoot(name: String): LiteralArgumentBuilder<CommandSourceStack> = Commands.literal(name)
         .then(Commands.literal("list").executes(::listPasses))
         .then(Commands.literal("reload").requires { source -> source.hasPermission(2) }.executes(::reloadPasses))
         .then(

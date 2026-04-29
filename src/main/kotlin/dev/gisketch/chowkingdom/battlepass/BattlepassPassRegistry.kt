@@ -1,6 +1,7 @@
-package dev.gisketch.battlepass
+package dev.gisketch.chowkingdom.battlepass
 
 import com.google.gson.GsonBuilder
+import dev.gisketch.chowkingdom.ChowKingdomMod
 import net.neoforged.fml.loading.FMLPaths
 import java.nio.file.Files
 import java.nio.file.Path
@@ -16,7 +17,7 @@ object BattlepassPassRegistry {
     private val passes: MutableMap<String, BattlepassPassDefinition> = linkedMapOf()
 
     val passDirectory: Path
-        get() = FMLPaths.CONFIGDIR.get().resolve(BattlepassMod.MOD_ID).resolve("passes")
+        get() = FMLPaths.CONFIGDIR.get().resolve(ChowKingdomMod.MOD_ID).resolve("battlepass").resolve("passes")
 
     fun reload(): Int {
         ensureDefaultPasses()
@@ -29,7 +30,7 @@ object BattlepassPassRegistry {
                 .forEach(::loadPass)
         }
 
-        BattlepassMod.LOGGER.info("Loaded {} battlepass definition(s)", passes.size)
+        ChowKingdomMod.LOGGER.info("Loaded {} battlepass definition(s)", passes.size)
         return passes.size
     }
 
@@ -55,7 +56,7 @@ object BattlepassPassRegistry {
             }
             passes[id] = pass
         } catch (exception: Exception) {
-            BattlepassMod.LOGGER.warn("Failed to load battlepass pass {}", path, exception)
+            ChowKingdomMod.LOGGER.warn("Failed to load battlepass pass {}", path, exception)
         }
     }
 
