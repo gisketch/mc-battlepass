@@ -141,6 +141,15 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
             return true
         }
 
+        val clickedMission = if (viewMode == ViewMode.PASS_DETAIL && missionsRect.contains(mouseX, mouseY)) {
+            missionSlots.firstOrNull { slot -> slot.rect.contains(mouseX, mouseY) }
+        } else null
+        if (clickedMission != null) {
+            val tracked = BattlepassTrackedMissions.toggle(selectedPass() ?: return true, clickedMission.entry)
+            if (!tracked) Minecraft.getInstance().player?.displayClientMessage(Component.literal("Track limit reached (5 missions)"), true)
+            return true
+        }
+
         val clickedReward = rewardSlots.firstOrNull { slot -> slot.rect.contains(mouseX, mouseY) }
         if (clickedReward != null) {
             clickProgressBySlot[slotKey(clickedReward)] = 1.0f
@@ -198,6 +207,7 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
         val currentPlayerId = currentPlayerId()
         val currentXp = currentPlayerId?.let { playerId -> xpFor(playerId, selectedPass.id) } ?: 0
         val panel = mainRect()
+        BattlepassTrackedMissions.sync(passes())
         drawFrame(guiGraphics, panel, 0x16000000, 0x00000000)
 
         val titleBottom = renderPassTitle(guiGraphics, selectedPass, panel.x + 28, panel.y + 18)
@@ -285,7 +295,7 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
                 if (isProgressiveMission(entry.event) || BattlepassMissionService.isCappedRepeating(entry.event)) {
                     renderProgressiveMission(guiGraphics, pass.id, entry, rowY, completed)
                 } else {
-                    renderRepeatingMission(guiGraphics, entry, rowY, completed)
+                    renderRepeatingMission(guiGraphics, pass.id, entry, rowY, completed)
                 }
                 rowY += missionRowHeight(entry.event)
             }
@@ -294,17 +304,34 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
         pose.popPose()
         guiGraphics.disableScissor()
 
+        renderMissionsScrollbar(guiGraphics, rectX, rectY, rectWidth, rectHeight)
+
         missionSlots.firstOrNull { slot -> missionsRect.contains(mouseX.toDouble(), mouseY.toDouble()) && slot.rect.contains(mouseX.toDouble(), mouseY.toDouble()) }?.let { slot ->
             guiGraphics.renderComponentTooltip(font, tooltipFor(slot), mouseX, mouseY)
         }
     }
 
-    private fun renderRepeatingMission(guiGraphics: GuiGraphics, entry: BattlepassMissionEntry, y: Int, completed: Boolean) {
+    private fun renderMissionsScrollbar(guiGraphics: GuiGraphics, rectX: Int, rectY: Int, rectWidth: Int, rectHeight: Int) {
+        if (missionsMaxScroll <= 0.0f) return
+
+        val trackX = rectX + rectWidth - MISSIONS_SCROLLBAR_RIGHT_INSET
+        val trackY = rectY
+        val trackHeight = rectHeight
+        val contentHeight = rectHeight + missionsMaxScroll
+        val thumbHeight = (trackHeight * (rectHeight / contentHeight)).toInt().coerceIn(MISSIONS_SCROLLBAR_MIN_THUMB_HEIGHT, trackHeight)
+        val thumbTravel = (trackHeight - thumbHeight).coerceAtLeast(1)
+        val thumbY = trackY + (thumbTravel * (missionsScroll / missionsMaxScroll)).toInt().coerceIn(0, thumbTravel)
+
+        guiGraphics.fill(trackX, trackY, trackX + MISSIONS_SCROLLBAR_WIDTH, trackY + trackHeight, MISSIONS_SCROLLBAR_TRACK)
+        guiGraphics.fill(trackX, thumbY, trackX + MISSIONS_SCROLLBAR_WIDTH, thumbY + thumbHeight, MISSIONS_SCROLLBAR_THUMB)
+    }
+
+    private fun renderRepeatingMission(guiGraphics: GuiGraphics, passId: String, entry: BattlepassMissionEntry, y: Int, completed: Boolean) {
         val event = entry.event
         val xpText = "+${event.xp}"
         val alpha = if (completed) MISSIONS_COMPLETED_ALPHA else 1.0f
         val color = missionColor(entry.scope)
-        drawMissionString(guiGraphics, missionDescription(event), 0, y, color, alpha)
+        drawMissionTitle(guiGraphics, passId, entry, y, color, alpha)
         drawMissionString(guiGraphics, xpText, rightAlignedMissionX(xpText), y, color, alpha)
         drawMissionSeparator(guiGraphics, y + MISSIONS_REPEATING_ROW_HEIGHT - MISSIONS_SEPARATOR_BOTTOM_GAP, color, alpha)
     }
@@ -324,12 +351,12 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
         val xpText = "+$xp"
         val progressText = "$progress/$goal"
         val progressTextWidth = missionStringWidth(progressText)
-        val barWidth = (MISSIONS_CONTAINER_WIDTH - progressTextWidth - MISSIONS_PROGRESS_TEXT_GAP).coerceAtLeast(MISSIONS_PROGRESS_BAR_MIN_WIDTH)
+        val barWidth = (MISSIONS_CONTENT_WIDTH - progressTextWidth - MISSIONS_PROGRESS_TEXT_GAP).coerceAtLeast(MISSIONS_PROGRESS_BAR_MIN_WIDTH)
         val progressWidth = (barWidth * (localProgress / span.toFloat())).toInt().coerceIn(0, barWidth)
         val alpha = if (completed) MISSIONS_COMPLETED_ALPHA else 1.0f
         val color = missionColor(entry.scope)
 
-        drawMissionString(guiGraphics, missionDescription(event), 0, y, color, alpha)
+        drawMissionTitle(guiGraphics, passId, entry, y, color, alpha)
         drawMissionString(guiGraphics, xpText, rightAlignedMissionX(xpText), y, color, alpha)
         guiGraphics.fill(0, y + MISSIONS_PROGRESS_BAR_Y, barWidth, y + MISSIONS_PROGRESS_BAR_Y + MISSIONS_PROGRESS_BAR_HEIGHT, colorWithAlpha(MISSIONS_PROGRESS_BAR_BACKGROUND, alpha * MISSIONS_PROGRESS_BAR_BACKGROUND_ALPHA))
         guiGraphics.fill(0, y + MISSIONS_PROGRESS_BAR_Y, progressWidth, y + MISSIONS_PROGRESS_BAR_Y + MISSIONS_PROGRESS_BAR_HEIGHT, colorWithAlpha(color, alpha))
@@ -346,16 +373,27 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
         pose.popPose()
     }
 
+    private fun drawMissionTitle(guiGraphics: GuiGraphics, passId: String, entry: BattlepassMissionEntry, y: Int, color: Int, alpha: Float) {
+        val tracked = BattlepassTrackedMissions.isTracked(passId, entry.key)
+        val textX = if (tracked) MISSIONS_STAR_SIZE + MISSIONS_STAR_GAP else 0
+        if (tracked) {
+            guiGraphics.setColor(1.0f, 1.0f, 1.0f, alpha)
+            guiGraphics.blit(STAR_TEXTURE, 0, y, MISSIONS_STAR_SIZE, MISSIONS_STAR_SIZE, 0.0f, 0.0f, STAR_TEXTURE_SIZE, STAR_TEXTURE_SIZE, STAR_TEXTURE_SIZE, STAR_TEXTURE_SIZE)
+            guiGraphics.setColor(1.0f, 1.0f, 1.0f, 1.0f)
+        }
+        drawMissionString(guiGraphics, missionDescription(entry.event), textX, y, color, alpha)
+    }
+
     private fun drawMissionSeparator(guiGraphics: GuiGraphics, y: Int, color: Int, alpha: Float) {
         drawMissionString(guiGraphics, fullMissionSeparator(), 0, y, color, alpha * MISSIONS_SEPARATOR_ALPHA)
     }
 
     private fun fullMissionSeparator(): String {
         val unitWidth = missionStringWidth(MISSIONS_SEPARATOR_TEXT).coerceAtLeast(1)
-        return MISSIONS_SEPARATOR_TEXT.repeat((MISSIONS_CONTAINER_WIDTH / unitWidth) + 2)
+        return MISSIONS_SEPARATOR_TEXT.repeat((MISSIONS_CONTENT_WIDTH / unitWidth) + 2)
     }
 
-    private fun rightAlignedMissionX(text: String): Int = MISSIONS_CONTAINER_WIDTH - missionStringWidth(text)
+    private fun rightAlignedMissionX(text: String): Int = MISSIONS_CONTENT_WIDTH - missionStringWidth(text)
 
     private fun missionStringWidth(text: String): Int = (font.width(text) * MISSIONS_EVENT_TEXT_SCALE).toInt()
 
@@ -855,7 +893,6 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
 
     private fun slotKey(slot: RewardSlot): String = "${slot.passId}:${slot.tier.xp}"
 
-    companion object {
         private val REWARD_CONTAINER_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/battlepass_container.png")
         private val REWARD_CLAIMABLE_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/battlepass-claimable.png.png")
         private val REWARD_LOCKED_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/battlepass-locked.png")
@@ -863,110 +900,119 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
         private val CLAIMED_OVERLAY_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/check.png")
         private val MARKER_ARROW_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/right_arrow.png")
         private val MISSIONS_BOOK_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/bp_book.png")
-        private const val SLOT_SIZE = 52
-        private const val PROMINENT_SLOT_SIZE = 65
-        private const val SLOT_GAP = 12
-        private const val CONTAINER_TEXTURE_SOURCE_SIZE = 64
-        private const val CLAIMABLE_TEXTURE_SOURCE_SIZE = 72
-        private const val CLAIMABLE_TEXTURE_SIZE = 60
-        private const val CLAIMABLE_TEXTURE_OFFSET = 4
-        private const val BASE_ITEM_RENDER_SIZE = 16
-        private const val ITEM_SIZE = 32
-        private const val LOCKED_OVERLAY_SIZE = 40
-        private const val LOCKED_ITEM_ALPHA = 0.5f
-        private const val OVERLAY_TEXTURE_SIZE = 16
-        private const val CLAIMED_OVERLAY_SIZE = 24
-        private const val OVERLAY_Z = 300.0f
-        private const val TITLE_IMAGE_MIN_WIDTH = 120
-        private const val TITLE_IMAGE_MAX_HEIGHT = 48
-        private const val CONTENT_PADDING = 28
-        private const val CONTENT_TOP_GAP = 12
-        private const val CONTENT_BOTTOM_GAP = 12
-        private const val HEADER_MIN_TEXT_Y = 8
-        private const val MISSIONS_BOOK_WIDTH = 201
-        private const val MISSIONS_BOOK_HEIGHT = 169
-        private const val MISSIONS_BOOK_MIN_WIDTH = 96
-        private const val MISSIONS_BOOK_MIN_HEIGHT = 108
-        private const val MISSIONS_TITLE_X = 18
-        private const val MISSIONS_TITLE_Y = 16
-        private const val MISSIONS_TITLE_COLOR = 0x773A2F
-        private const val MISSIONS_TITLE_SCALE = 12.0f / 9.0f
-        private const val MISSIONS_FILTER_X = 132
-        private const val MISSIONS_FILTER_Y = 13
-        private const val MISSIONS_FILTER_WIDTH = 39
-        private const val MISSIONS_FILTER_HEIGHT = 14
-        private const val MISSIONS_FILTER_FILL = 0x66C69A62
-        private const val MISSIONS_FILTER_HOVER_FILL = 0x88D3AA72.toInt()
-        private const val MISSIONS_FILTER_BORDER = 0xAA7A5131.toInt()
-        private const val MISSIONS_FILTER_HOVER_BORDER = 0xFF7A5131.toInt()
-        private const val MISSIONS_FILTER_TEXT = 0x4A2819
-        private const val MISSIONS_CONTAINER_X = 18
-        private const val MISSIONS_CONTAINER_Y = 34
-        private const val MISSIONS_CONTAINER_RIGHT = 178
-        private const val MISSIONS_CONTAINER_BOTTOM = 146
-        private const val MISSIONS_CONTAINER_WIDTH = MISSIONS_CONTAINER_RIGHT - MISSIONS_CONTAINER_X
-        private const val MISSIONS_REPEATING_ROW_HEIGHT = 18
-        private const val MISSIONS_PROGRESSIVE_ROW_HEIGHT = 36
-        private const val MISSIONS_PROGRESS_BAR_Y = 14
-        private const val MISSIONS_PROGRESS_BAR_MIN_WIDTH = 40
-        private const val MISSIONS_PROGRESS_BAR_HEIGHT = 5
-        private const val MISSIONS_PROGRESS_TEXT_GAP = 6
-        private const val MISSIONS_PROGRESS_TEXT_Y_OFFSET = 1
-        private const val MISSIONS_EVENT_TEXT_SCALE = 0.8f
-        private const val MISSIONS_COMPLETED_ALPHA = 0.25f
-        private const val MISSIONS_SEPARATOR_ALPHA = 0.25f
-        private const val MISSIONS_SEPARATOR_TEXT = "- - - - - - - - -"
-        private const val MISSIONS_SEPARATOR_BOTTOM_GAP = 7
-        private const val MISSIONS_EVENT_COLOR = 0x773A2F
-        private const val MISSIONS_EVENT_DETAIL_COLOR = 0x5E4A3D
-        private const val MISSIONS_SEPARATOR_COLOR = 0x773A2F
-        private const val MISSIONS_DAILY_COLOR = 0x8A5528
-        private const val MISSIONS_WEEKLY_COLOR = 0x8B3F2B
-        private const val MISSIONS_PERMANENT_COLOR = 0x5E5A2F
-        private const val MISSIONS_PROGRESS_BAR_BACKGROUND = 0x321F18
-        private const val MISSIONS_PROGRESS_BAR_BACKGROUND_ALPHA = 0.5f
-        private const val MISSIONS_PROGRESS_BAR_FILL = 0xFF773A2F.toInt()
-        private const val MISSIONS_SCROLL_STEP = 18.0f
-        private const val ITEM_STRIP_HEIGHT = 76
-        private const val ITEM_STRIP_GAP = 10
-        private const val FOOTER_HEIGHT = 46
-        private const val FOOTER_PADDING = 28
-        private const val PLAYER_PREVIEW_MIN_WIDTH = 112
-        private const val PLAYER_PREVIEW_MAX_WIDTH = 190
-        private const val PLAYER_PREVIEW_MIN_HEIGHT = 130
-        private const val PLAYER_PREVIEW_ASPECT_NUMERATOR = 3
-        private const val PLAYER_PREVIEW_ASPECT_DENOMINATOR = 4
-        private const val PLAYER_PREVIEW_RIGHT_PADDING = 44
-        private const val PLAYER_PREVIEW_MIN_SIZE = 58
-        private const val PLAYER_PREVIEW_MAX_SIZE = 104
-        private const val PLAYER_PREVIEW_SIZE_NUMERATOR = 11
-        private const val PLAYER_PREVIEW_SIZE_DENOMINATOR = 20
-        private const val PLAYER_PREVIEW_Y_OFFSET = 0.0625f
-        private const val PLAYER_PREVIEW_ANGLE_X = 0.15f
-        private const val PLAYER_PREVIEW_ANGLE_Y = 0.0f
-        private const val PLAYER_PREVIEW_XP_GAP = 14
-        private const val CLAIM_ALL_WIDTH = 124
-        private const val BACK_BUTTON_WIDTH = 92
-        private const val BUTTON_HEIGHT = 20
-        private const val MARKER_AVATAR_SIZE = 24
-        private const val MARKER_ARROW_SIZE = 24
-        private const val MARKER_ARROW_SOURCE_SIZE = 16
-        private const val MARKER_GAP = 2
-        private const val MARKER_TOTAL_HEIGHT = MARKER_AVATAR_SIZE + MARKER_ARROW_SIZE + MARKER_GAP * 2
-        private const val PLAYER_MARKER_BASE_SIZE = 18
-        private const val PLAYER_MARKER_MIN_SIZE = 10
-        private const val PLAYER_MARKER_SHRINK_STEP = 2
-        private const val PLAYER_MARKER_GAP = 2
-        private const val PLAYER_MARKER_TOP_GAP = 4
-        private const val PLAYER_MARKER_MAX_COLUMNS = 3
-        private const val PLAYER_MARKER_SCISSOR_EXTRA = 112
-        private const val HOVER_LIFT = 4.0f
-        private const val HOVER_ANIMATION_SPEED = 0.22f
-        private const val CLICK_ANIMATION_SPEED = 0.32f
-        private const val CLICK_SCALE = 0.12f
-        private const val GOAL_FLOAT_SPEED = 0.18f
-        private const val GOAL_FLOAT_DISTANCE = 2.0f
-        private const val BACK_EASE_C1 = 1.15f
-        private const val BACK_EASE_C3 = BACK_EASE_C1 + 1.0f
-    }
+        private val STAR_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/star.png")
+        private val SLOT_SIZE = 52
+        private val PROMINENT_SLOT_SIZE = 65
+        private val SLOT_GAP = 12
+        private val CONTAINER_TEXTURE_SOURCE_SIZE = 64
+        private val CLAIMABLE_TEXTURE_SOURCE_SIZE = 72
+        private val CLAIMABLE_TEXTURE_SIZE = 60
+        private val CLAIMABLE_TEXTURE_OFFSET = 4
+        private val BASE_ITEM_RENDER_SIZE = 16
+        private val ITEM_SIZE = 32
+        private val LOCKED_OVERLAY_SIZE = 40
+        private val LOCKED_ITEM_ALPHA = 0.5f
+        private val OVERLAY_TEXTURE_SIZE = 16
+        private val CLAIMED_OVERLAY_SIZE = 24
+        private val OVERLAY_Z = 300.0f
+        private val TITLE_IMAGE_MIN_WIDTH = 120
+        private val TITLE_IMAGE_MAX_HEIGHT = 48
+        private val CONTENT_PADDING = 28
+        private val CONTENT_TOP_GAP = 12
+        private val CONTENT_BOTTOM_GAP = 12
+        private val HEADER_MIN_TEXT_Y = 8
+        private val MISSIONS_BOOK_WIDTH = 201
+        private val MISSIONS_BOOK_HEIGHT = 169
+        private val MISSIONS_BOOK_MIN_WIDTH = 96
+        private val MISSIONS_BOOK_MIN_HEIGHT = 108
+        private val MISSIONS_TITLE_X = 18
+        private val MISSIONS_TITLE_Y = 16
+        private val MISSIONS_TITLE_COLOR = 0x773A2F
+        private val MISSIONS_TITLE_SCALE = 1.0f
+        private val MISSIONS_FILTER_X = 122
+        private val MISSIONS_FILTER_Y = 13
+        private val MISSIONS_FILTER_WIDTH = 39
+        private val MISSIONS_FILTER_HEIGHT = 14
+        private val MISSIONS_FILTER_FILL = 0x66C69A62
+        private val MISSIONS_FILTER_HOVER_FILL = 0x88D3AA72.toInt()
+        private val MISSIONS_FILTER_BORDER = 0xAA7A5131.toInt()
+        private val MISSIONS_FILTER_HOVER_BORDER = 0xFF7A5131.toInt()
+        private val MISSIONS_FILTER_TEXT = 0x4A2819
+        private val MISSIONS_CONTAINER_X = 18
+        private val MISSIONS_CONTAINER_Y = 34
+        private val MISSIONS_CONTAINER_RIGHT = 178
+        private val MISSIONS_CONTAINER_BOTTOM = 146
+        private val MISSIONS_CONTAINER_WIDTH = MISSIONS_CONTAINER_RIGHT - MISSIONS_CONTAINER_X
+        private val MISSIONS_CONTENT_WIDTH = MISSIONS_CONTAINER_WIDTH - 9
+        private val MISSIONS_REPEATING_ROW_HEIGHT = 13
+        private val MISSIONS_PROGRESSIVE_ROW_HEIGHT = 23
+        private val MISSIONS_PROGRESS_BAR_Y = 10
+        private val MISSIONS_PROGRESS_BAR_MIN_WIDTH = 40
+        private val MISSIONS_PROGRESS_BAR_HEIGHT = 3
+        private val MISSIONS_PROGRESS_TEXT_GAP = 6
+        private val MISSIONS_PROGRESS_TEXT_Y_OFFSET = 1
+        private val MISSIONS_STAR_SIZE = 8
+        private val MISSIONS_STAR_GAP = 2
+        private val STAR_TEXTURE_SIZE = 16
+        private val MISSIONS_EVENT_TEXT_SCALE = 0.68f
+        private val MISSIONS_COMPLETED_ALPHA = 0.25f
+        private val MISSIONS_SEPARATOR_ALPHA = 0.25f
+        private val MISSIONS_SEPARATOR_TEXT = "- - - - - - - - -"
+        private val MISSIONS_SEPARATOR_BOTTOM_GAP = 7
+        private val MISSIONS_EVENT_COLOR = 0x773A2F
+        private val MISSIONS_EVENT_DETAIL_COLOR = 0x5E4A3D
+        private val MISSIONS_SEPARATOR_COLOR = 0x773A2F
+        private val MISSIONS_DAILY_COLOR = 0x9B652C
+        private val MISSIONS_WEEKLY_COLOR = 0x7D2F27
+        private val MISSIONS_PERMANENT_COLOR = 0x5E5A2F
+        private val MISSIONS_PROGRESS_BAR_BACKGROUND = 0x321F18
+        private val MISSIONS_PROGRESS_BAR_BACKGROUND_ALPHA = 0.5f
+        private val MISSIONS_PROGRESS_BAR_FILL = 0xFF773A2F.toInt()
+        private val MISSIONS_SCROLLBAR_WIDTH = 2
+        private val MISSIONS_SCROLLBAR_RIGHT_INSET = 3
+        private val MISSIONS_SCROLLBAR_MIN_THUMB_HEIGHT = 12
+        private val MISSIONS_SCROLLBAR_TRACK = 0x44321F18
+        private val MISSIONS_SCROLLBAR_THUMB = 0xAA7A5131.toInt()
+        private val MISSIONS_SCROLL_STEP = 18.0f
+        private val ITEM_STRIP_HEIGHT = 76
+        private val ITEM_STRIP_GAP = 10
+        private val FOOTER_HEIGHT = 46
+        private val FOOTER_PADDING = 28
+        private val PLAYER_PREVIEW_MIN_WIDTH = 112
+        private val PLAYER_PREVIEW_MAX_WIDTH = 190
+        private val PLAYER_PREVIEW_MIN_HEIGHT = 130
+        private val PLAYER_PREVIEW_ASPECT_NUMERATOR = 3
+        private val PLAYER_PREVIEW_ASPECT_DENOMINATOR = 4
+        private val PLAYER_PREVIEW_RIGHT_PADDING = 44
+        private val PLAYER_PREVIEW_MIN_SIZE = 58
+        private val PLAYER_PREVIEW_MAX_SIZE = 104
+        private val PLAYER_PREVIEW_SIZE_NUMERATOR = 11
+        private val PLAYER_PREVIEW_SIZE_DENOMINATOR = 20
+        private val PLAYER_PREVIEW_Y_OFFSET = 0.0625f
+        private val PLAYER_PREVIEW_ANGLE_X = 0.15f
+        private val PLAYER_PREVIEW_ANGLE_Y = 0.0f
+        private val PLAYER_PREVIEW_XP_GAP = 14
+        private val CLAIM_ALL_WIDTH = 124
+        private val BACK_BUTTON_WIDTH = 92
+        private val BUTTON_HEIGHT = 20
+        private val MARKER_AVATAR_SIZE = 24
+        private val MARKER_ARROW_SIZE = 24
+        private val MARKER_ARROW_SOURCE_SIZE = 16
+        private val MARKER_GAP = 2
+        private val MARKER_TOTAL_HEIGHT = MARKER_AVATAR_SIZE + MARKER_ARROW_SIZE + MARKER_GAP * 2
+        private val PLAYER_MARKER_BASE_SIZE = 18
+        private val PLAYER_MARKER_MIN_SIZE = 10
+        private val PLAYER_MARKER_SHRINK_STEP = 2
+        private val PLAYER_MARKER_GAP = 2
+        private val PLAYER_MARKER_TOP_GAP = 4
+        private val PLAYER_MARKER_MAX_COLUMNS = 3
+        private val PLAYER_MARKER_SCISSOR_EXTRA = 112
+        private val HOVER_LIFT = 4.0f
+        private val HOVER_ANIMATION_SPEED = 0.22f
+        private val CLICK_ANIMATION_SPEED = 0.32f
+        private val CLICK_SCALE = 0.12f
+        private val GOAL_FLOAT_SPEED = 0.18f
+        private val GOAL_FLOAT_DISTANCE = 2.0f
+        private val BACK_EASE_C1 = 1.15f
+        private val BACK_EASE_C3 = BACK_EASE_C1 + 1.0f
 }
