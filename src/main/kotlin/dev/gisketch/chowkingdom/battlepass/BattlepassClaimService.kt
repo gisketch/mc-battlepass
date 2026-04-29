@@ -1,5 +1,7 @@
 package dev.gisketch.chowkingdom.battlepass
 
+import dev.gisketch.chowkingdom.wallets.ChowcoinNetwork
+import dev.gisketch.chowkingdom.wallets.ChowcoinStore
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
@@ -60,6 +62,11 @@ object BattlepassClaimService {
     }
 
     private fun giveReward(player: ServerPlayer, reward: BattlepassRewardDefinition) {
+        if (isChowcoinReward(reward)) {
+            ChowcoinStore.add(player, chowcoinAmount(reward))
+            ChowcoinNetwork.syncTo(player)
+            return
+        }
         if (reward.type != "item") return
         val item = runCatching { ResourceLocation.parse(reward.item) }.getOrNull()
             ?.let { id -> BuiltInRegistries.ITEM.getOptional(id).orElse(Items.AIR) }
@@ -71,4 +78,11 @@ object BattlepassClaimService {
             player.drop(stack, false)
         }
     }
+
+    private fun isChowcoinReward(reward: BattlepassRewardDefinition): Boolean {
+        if (reward.type.equals("chowcoin", ignoreCase = true) || reward.type.equals("chowcoins", ignoreCase = true)) return true
+        return reward.type.equals("currency", ignoreCase = true) && reward.data["currency"]?.equals("chowcoin", ignoreCase = true) == true
+    }
+
+    private fun chowcoinAmount(reward: BattlepassRewardDefinition): Long = reward.data["amount"]?.toLongOrNull() ?: reward.quantity.toLong()
 }

@@ -9,6 +9,7 @@ import dev.gisketch.chowkingdom.battlepass.BattlepassMissionService
 import dev.gisketch.chowkingdom.battlepass.BattlepassPassRegistry
 import dev.gisketch.chowkingdom.battlepass.BattlepassTrackedMissions
 import dev.gisketch.chowkingdom.battlepass.BattlepassXpEventDefinition
+import dev.gisketch.chowkingdom.wallets.ChowcoinClientState
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.components.PlayerFaceRenderer
@@ -72,18 +73,19 @@ object ChowKingdomHud {
         val trackedMissions = BattlepassTrackedMissions.trackedMissions(passes)
         val headerOffset = textX - trackedX
         val selfId = BattlepassClientState.selfId() ?: player.uuid
-        val sharedWidth = sharedRowWidth(minecraft, name, trackedMissions, headerOffset, selfId)
+        val chowcoinText = formatChowcoins(ChowcoinClientState.balance())
+        val sharedWidth = sharedRowWidth(minecraft, name, chowcoinText, trackedMissions, headerOffset, selfId)
         val headerWidth = (sharedWidth - headerOffset).coerceAtLeast(TRACKED_MIN_WIDTH)
         renderNamePill(guiGraphics, minecraft, textX, nameY, name, headerWidth)
-        renderCoinPill(guiGraphics, minecraft, textX, coinY, "100K", headerWidth)
+        renderCoinPill(guiGraphics, minecraft, textX, coinY, chowcoinText, headerWidth)
         renderTrackedMissions(guiGraphics, minecraft, trackedX, trackedY, trackedMissions, missionPillWidth(sharedWidth))
         renderCompletionToasts(guiGraphics, minecraft)
     }
 
-    private fun sharedRowWidth(minecraft: Minecraft, name: String, missions: List<BattlepassTrackedMissions.TrackedMission>, headerOffset: Int, playerId: java.util.UUID): Int {
+    private fun sharedRowWidth(minecraft: Minecraft, name: String, chowcoinText: String, missions: List<BattlepassTrackedMissions.TrackedMission>, headerOffset: Int, playerId: java.util.UUID): Int {
         val maxTextWidth = ((TRACKED_MAX_WIDTH - TRACKED_TEXT_PADDING * 2) / TRACKED_TEXT_SCALE).toInt()
         val nameWidth = headerOffset + pillWidthFor(minecraft, trimToWidth(minecraft, name, maxTextWidth))
-        val coinWidth = headerOffset + HEADER_ICON_SIZE + HEADER_ICON_GAP + pillWidthFor(minecraft, "100K")
+        val coinWidth = headerOffset + HEADER_ICON_SIZE + HEADER_ICON_GAP + pillWidthFor(minecraft, chowcoinText)
         val missionWidth = missions.maxOfOrNull { mission -> TRACKED_MARKER_SIZE + TRACKED_MARKER_GAP + pillWidthFor(minecraft, trimToWidth(minecraft, missionDescription(mission.pass.id, mission.entry, playerId), maxTextWidth)) } ?: TRACKED_MIN_WIDTH
         return maxOf(nameWidth, coinWidth, missionWidth).coerceIn(TRACKED_MIN_WIDTH, TRACKED_MAX_WIDTH)
     }
@@ -203,6 +205,13 @@ object ChowKingdomHud {
     }
 
     private fun pillWidthFor(minecraft: Minecraft, text: String): Int = ((minecraft.font.width(text) * TRACKED_TEXT_SCALE).toInt() + TRACKED_TEXT_PADDING * 2).coerceIn(TRACKED_MIN_WIDTH, TRACKED_MAX_WIDTH)
+
+    private fun formatChowcoins(amount: Long): String = when {
+        amount >= 1_000_000_000L -> "${amount / 1_000_000_000L}B"
+        amount >= 1_000_000L -> "${amount / 1_000_000L}M"
+        amount >= 1_000L -> "${amount / 1_000L}K"
+        else -> amount.toString()
+    }
 
     private fun missionMask(scope: BattlepassMissionScope): ResourceLocation = when (scope) {
         BattlepassMissionScope.DAILY -> GREEN_BORDER_MASK_TEXTURE

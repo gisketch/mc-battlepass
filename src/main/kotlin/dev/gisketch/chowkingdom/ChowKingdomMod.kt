@@ -33,7 +33,7 @@ class ChowKingdomMod(modBus: IEventBus, container: ModContainer) {
         BattlepassVanillaEventIntegration.register()
         CobblemonBattlepassIntegration.register()
         BattlepassCommands.register()
-        WalletsFeature.register()
+        WalletsFeature.register(modBus)
         ShopsFeature.register()
         ProfilesFeature.register()
         if (FMLEnvironment.dist == Dist.CLIENT) {

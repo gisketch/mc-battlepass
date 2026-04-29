@@ -379,7 +379,7 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
     }
 
     private fun renderSelectionRewardTooltip(guiGraphics: GuiGraphics, tooltip: SelectionRewardTooltip, mouseX: Int, mouseY: Int) {
-        val itemName = tooltip.stack.hoverName.string
+        val itemName = rewardName(tooltip.reward, tooltip.stack)
         val quantity = if (tooltip.reward.quantity > 1) " x${tooltip.reward.quantity}" else ""
         val status = if (tooltip.currentXp >= tooltip.tier.xp) "Ready to claim" else "${tooltip.tier.xp - tooltip.currentXp} XP needed"
         val lines = listOf("Next Reward", "${itemName}$quantity", "${tooltip.pass.displayName} ${tooltip.tier.xp} XP", status)
@@ -389,8 +389,15 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
         val y = (mouseY + TOOLTIP_MOUSE_GAP).coerceAtMost(height - tooltipHeight - TOOLTIP_SCREEN_GAP).coerceAtLeast(TOOLTIP_SCREEN_GAP)
         renderNineSlice(guiGraphics, TOOLTIP_BACKGROUND_TEXTURE, x, y, tooltipWidth, tooltipHeight, TOOLTIP_BACKGROUND_ALPHA)
 
-        guiGraphics.renderItem(tooltip.stack, x + TOOLTIP_PADDING, y + (tooltipHeight - BASE_ITEM_RENDER_SIZE) / 2)
-        guiGraphics.renderItemDecorations(font, tooltip.stack, x + TOOLTIP_PADDING, y + (tooltipHeight - BASE_ITEM_RENDER_SIZE) / 2, if (tooltip.reward.quantity > 1) tooltip.reward.quantity.toString() else null)
+        val iconX = x + TOOLTIP_PADDING
+        val iconY = y + (tooltipHeight - BASE_ITEM_RENDER_SIZE) / 2
+        if (isChowcoinReward(tooltip.reward)) {
+            renderChowcoinIcon(guiGraphics, iconX, iconY, BASE_ITEM_RENDER_SIZE)
+            renderRewardAmount(guiGraphics, tooltip.reward.quantity, iconX, iconY)
+        } else {
+            guiGraphics.renderItem(tooltip.stack, iconX, iconY)
+            guiGraphics.renderItemDecorations(font, tooltip.stack, iconX, iconY, if (tooltip.reward.quantity > 1) tooltip.reward.quantity.toString() else null)
+        }
         var textY = y + TOOLTIP_PADDING
         val textX = x + TOOLTIP_PADDING + SELECTION_TOOLTIP_ITEM_SIZE + SELECTION_TOOLTIP_ITEM_GAP
         lines.forEachIndexed { index, line ->
@@ -1045,10 +1052,25 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
         pose.scale(itemScale, itemScale, 1.0f)
         pose.translate(-BASE_ITEM_RENDER_SIZE / 2.0f, -BASE_ITEM_RENDER_SIZE / 2.0f, 0.0f)
         guiGraphics.setColor(1.0f, 1.0f, 1.0f, alpha)
-        guiGraphics.renderItem(slot.stack, 0, 0)
-        guiGraphics.renderItemDecorations(font, slot.stack, 0, 0, if (slot.reward.quantity > 1) slot.reward.quantity.toString() else null)
+        if (isChowcoinReward(slot.reward)) {
+            renderChowcoinIcon(guiGraphics, 0, 0, BASE_ITEM_RENDER_SIZE)
+            renderRewardAmount(guiGraphics, slot.reward.quantity, 0, 0)
+        } else {
+            guiGraphics.renderItem(slot.stack, 0, 0)
+            guiGraphics.renderItemDecorations(font, slot.stack, 0, 0, if (slot.reward.quantity > 1) slot.reward.quantity.toString() else null)
+        }
         guiGraphics.setColor(1.0f, 1.0f, 1.0f, 1.0f)
         pose.popPose()
+    }
+
+    private fun renderChowcoinIcon(guiGraphics: GuiGraphics, x: Int, y: Int, size: Int) {
+        guiGraphics.blit(COINS_TEXTURE, x, y, size, size, 0.0f, 0.0f, COINS_TEXTURE_SIZE, COINS_TEXTURE_SIZE, COINS_TEXTURE_SIZE, COINS_TEXTURE_SIZE)
+    }
+
+    private fun renderRewardAmount(guiGraphics: GuiGraphics, quantity: Int, x: Int, y: Int) {
+        if (quantity <= 1) return
+        val text = compactQuantity(quantity)
+        guiGraphics.drawString(font, text, x + BASE_ITEM_RENDER_SIZE + 1 - font.width(text), y + 9, 0xFFFFFFFF.toInt(), true)
     }
 
     private fun renderOverlay(guiGraphics: GuiGraphics, texture: ResourceLocation, x: Int, y: Int, width: Int, height: Int, textureSize: Int) {
@@ -1091,7 +1113,7 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
 
         return listOf(
             Component.literal("Tier ${slot.tier.xp} XP").withStyle(ChatFormatting.GOLD),
-            Component.literal("${slot.stack.hoverName.string} x${slot.reward.quantity}"),
+            Component.literal("${rewardName(slot.reward, slot.stack)} x${slot.reward.quantity}"),
             status,
         )
     }
@@ -1217,10 +1239,24 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
     }
 
     private fun rewardStack(reward: BattlepassRewardDefinition): ItemStack {
+        if (isChowcoinReward(reward)) return ItemStack(Items.GOLD_NUGGET, reward.quantity.coerceIn(1, 64))
         val item = runCatching { ResourceLocation.parse(reward.item) }.getOrNull()
             ?.let { id -> BuiltInRegistries.ITEM.getOptional(id).orElse(Items.BARRIER) }
             ?: Items.BARRIER
         return ItemStack(item, reward.quantity.coerceIn(1, 64))
+    }
+
+    private fun rewardName(reward: BattlepassRewardDefinition, stack: ItemStack): String = if (isChowcoinReward(reward)) "Chowcoins" else stack.hoverName.string
+
+    private fun compactQuantity(quantity: Int): String = when {
+        quantity >= 1_000_000 -> "${quantity / 1_000_000}M"
+        quantity >= 1_000 -> "${quantity / 1_000}K"
+        else -> quantity.toString()
+    }
+
+    private fun isChowcoinReward(reward: BattlepassRewardDefinition): Boolean {
+        if (reward.type.equals("chowcoin", ignoreCase = true) || reward.type.equals("chowcoins", ignoreCase = true)) return true
+        return reward.type.equals("currency", ignoreCase = true) && reward.data["currency"]?.equals("chowcoin", ignoreCase = true) == true
     }
 
     private fun mainRect(): Rect {
@@ -1343,6 +1379,7 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
         private val PASS_TITLE_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/pass_title.png")
         private val TOOLTIP_BACKGROUND_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/hud-container.png")
         private val GREEN_BORDER_MASK_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/green-border-mask.png")
+        private val COINS_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/coins.png")
         private val CORNER_RETICLE_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/corner_reticle.png")
         private val STAR_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/star.png")
         private val CHECK_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/accept.png")
@@ -1354,6 +1391,7 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
         private val CLAIMABLE_TEXTURE_SIZE = 60
         private val CLAIMABLE_TEXTURE_OFFSET = 4
         private val BASE_ITEM_RENDER_SIZE = 16
+        private val COINS_TEXTURE_SIZE = 16
         private val ITEM_SIZE = 32
         private val LOCKED_OVERLAY_SIZE = 40
         private val LOCKED_ITEM_ALPHA = 0.5f
