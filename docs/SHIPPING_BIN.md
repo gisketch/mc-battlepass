@@ -73,6 +73,17 @@ Packaged datapack compatibility also contributes optional Cobblemon berry/aprico
 
 These entries are `required: false`, so the pack is safe when Cobblemon or Quality Food is absent.
 
+## Battlepass Events
+
+- `quality_food:quality_crop_harvested`: increments by quality item count dropped from crop/Quality Food blocks.
+- `quality_food:quality_food_cooked`: increments by quality result count from furnace smelting and Farmer's Delight-style cooking/crafting outputs.
+- `gisketchs_chowkingdom_mod:shipping_bin_quality_food_sold`: increments by quality item count sold through the shipping bin.
+- `gisketchs_chowkingdom_mod:shipping_bin_iron_quality_food_sold`: increments by iron quality item count sold through the shipping bin.
+- `gisketchs_chowkingdom_mod:shipping_bin_gold_quality_food_sold`: increments by gold quality item count sold through the shipping bin.
+- `gisketchs_chowkingdom_mod:shipping_bin_diamond_quality_food_sold`: increments by diamond quality item count sold through the shipping bin.
+- `gisketchs_chowkingdom_mod:shipping_bin_value_sold`: increments by total chowcoin value sold through the shipping bin.
+- `gisketchs_chowkingdom_mod:shipping_bin_quality_food_value_sold`: increments by chowcoin value from quality items only.
+
 ## Quality Food Test Items
 
 Use these commands with Quality Food installed to get wheat with each tier:

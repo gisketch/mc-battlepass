@@ -39,7 +39,7 @@ object ShippingBinClient {
     }
 
     private fun onGatherTooltipComponents(event: RenderTooltipEvent.GatherComponents) {
-        val price = ShippingBinConfig.priceFor(event.itemStack)
+        val price = stackValue(event.itemStack)
         if (price <= 0L) return
         event.tooltipElements.add(1.coerceAtMost(event.tooltipElements.size), Either.right(ShippingBinPriceTooltip(price)))
     }
@@ -68,9 +68,10 @@ object ShippingBinClient {
     }
 
     private fun previewValue(menu: ChestMenu): Long = menu.slots.take(SHIPPING_BIN_SLOTS).sumOf { slot ->
-        val stack = slot.item
-        ShippingBinConfig.priceFor(stack) * stack.count.toLong()
+        stackValue(slot.item)
     }
+
+    private fun stackValue(stack: net.minecraft.world.item.ItemStack): Long = ShippingBinConfig.priceFor(stack) * stack.count.toLong()
 
     private fun renderTitle(guiGraphics: GuiGraphics, screen: Screen, previous: Long, current: Long) {
         val minecraft = Minecraft.getInstance()

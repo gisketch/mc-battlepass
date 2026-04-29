@@ -112,6 +112,24 @@ object BattlepassPassRegistry {
               "progress_xp": [250, 500, 900]
             },
             {
+              "id": "permanent_quality_crop_keeper",
+              "event": "quality_food:quality_crop_harvested",
+              "type": "progressive",
+              "event_desc": "Harvest {goal} Quality Crops",
+              "progress": 0,
+              "progress_goals": [32, 128, 256],
+              "progress_xp": [300, 600, 1000]
+            },
+            {
+              "id": "permanent_shipping_value",
+              "event": "gisketchs_chowkingdom_mod:shipping_bin_value_sold",
+              "type": "progressive",
+              "event_desc": "Ship {goal} Chowcoins Worth",
+              "progress": 0,
+              "progress_goals": [10000, 50000, 100000],
+              "progress_xp": [300, 700, 1200]
+            },
+            {
               "id": "permanent_animal_keeper",
               "event": "minecraft:animal_bred",
               "type": "progressive",
@@ -159,6 +177,69 @@ object BattlepassPassRegistry {
                 "event_desc": "Harvest {goal} Crops",
                 "xp": 3,
                 "xp_cap": 50
+              },
+              {
+                "id": "daily_harvest_quality_crops",
+                "event": "quality_food:quality_crop_harvested",
+                "type": "progressive",
+                "event_desc": "Harvest {goal} Quality Crops",
+                "progress": 0,
+                "progress_goals": [10],
+                "progress_xp": [80]
+              },
+              {
+                "id": "daily_cook_quality_food",
+                "event": "quality_food:quality_food_cooked",
+                "type": "progressive",
+                "event_desc": "Cook {goal} Quality Foods",
+                "progress": 0,
+                "progress_goals": [10],
+                "progress_xp": [80]
+              },
+              {
+                "id": "daily_ship_quality_food",
+                "event": "gisketchs_chowkingdom_mod:shipping_bin_quality_food_sold",
+                "type": "progressive",
+                "event_desc": "Ship {goal} Quality Foods",
+                "progress": 0,
+                "progress_goals": [16],
+                "progress_xp": [100]
+              },
+              {
+                "id": "daily_ship_iron_quality_food",
+                "event": "gisketchs_chowkingdom_mod:shipping_bin_iron_quality_food_sold",
+                "type": "progressive",
+                "event_desc": "Ship {goal} Iron Quality Foods",
+                "progress": 0,
+                "progress_goals": [8],
+                "progress_xp": [80]
+              },
+              {
+                "id": "daily_ship_gold_quality_food",
+                "event": "gisketchs_chowkingdom_mod:shipping_bin_gold_quality_food_sold",
+                "type": "progressive",
+                "event_desc": "Ship {goal} Gold Quality Foods",
+                "progress": 0,
+                "progress_goals": [8],
+                "progress_xp": [100]
+              },
+              {
+                "id": "daily_ship_diamond_quality_food",
+                "event": "gisketchs_chowkingdom_mod:shipping_bin_diamond_quality_food_sold",
+                "type": "progressive",
+                "event_desc": "Ship {goal} Diamond Quality Foods",
+                "progress": 0,
+                "progress_goals": [4],
+                "progress_xp": [120]
+              },
+              {
+                "id": "daily_ship_value",
+                "event": "gisketchs_chowkingdom_mod:shipping_bin_value_sold",
+                "type": "progressive",
+                "event_desc": "Ship {goal} Chowcoins Worth",
+                "progress": 0,
+                "progress_goals": [5000],
+                "progress_xp": [120]
               },
               {
                 "id": "daily_walk_blocks",
@@ -225,6 +306,13 @@ object BattlepassPassRegistry {
             "reset_minute": 0,
             "reset_on_day": "Sunday",
             "events": [
+              { "id": "weekly_harvest_quality_crops", "event": "quality_food:quality_crop_harvested", "type": "progressive", "event_desc": "Harvest {goal} Quality Crops", "progress": 0, "progress_goals": [64], "progress_xp": [250] },
+              { "id": "weekly_cook_quality_food", "event": "quality_food:quality_food_cooked", "type": "progressive", "event_desc": "Cook {goal} Quality Foods", "progress": 0, "progress_goals": [64], "progress_xp": [250] },
+              { "id": "weekly_ship_quality_food", "event": "gisketchs_chowkingdom_mod:shipping_bin_quality_food_sold", "type": "progressive", "event_desc": "Ship {goal} Quality Foods", "progress": 0, "progress_goals": [128], "progress_xp": [300] },
+              { "id": "weekly_ship_iron_quality_food", "event": "gisketchs_chowkingdom_mod:shipping_bin_iron_quality_food_sold", "type": "progressive", "event_desc": "Ship {goal} Iron Quality Foods", "progress": 0, "progress_goals": [32], "progress_xp": [250] },
+              { "id": "weekly_ship_gold_quality_food", "event": "gisketchs_chowkingdom_mod:shipping_bin_gold_quality_food_sold", "type": "progressive", "event_desc": "Ship {goal} Gold Quality Foods", "progress": 0, "progress_goals": [32], "progress_xp": [300] },
+              { "id": "weekly_ship_diamond_quality_food", "event": "gisketchs_chowkingdom_mod:shipping_bin_diamond_quality_food_sold", "type": "progressive", "event_desc": "Ship {goal} Diamond Quality Foods", "progress": 0, "progress_goals": [16], "progress_xp": [350] },
+              { "id": "weekly_ship_value", "event": "gisketchs_chowkingdom_mod:shipping_bin_value_sold", "type": "progressive", "event_desc": "Ship {goal} Chowcoins Worth", "progress": 0, "progress_goals": [50000], "progress_xp": [350] },
               { "id": "weekly_catch_normal_type", "event": "cobblemon:catch_normal_type", "type": "progressive", "event_desc": "Catch {goal} Normal Pokemon", "progress": 0, "progress_goals": [10], "progress_xp": [250] },
               { "id": "weekly_catch_fire_type", "event": "cobblemon:catch_fire_type", "type": "progressive", "event_desc": "Catch {goal} Fire Pokemon", "progress": 0, "progress_goals": [10], "progress_xp": [250] },
               { "id": "weekly_catch_water_type", "event": "cobblemon:catch_water_type", "type": "progressive", "event_desc": "Catch {goal} Water Pokemon", "progress": 0, "progress_goals": [10], "progress_xp": [250] },

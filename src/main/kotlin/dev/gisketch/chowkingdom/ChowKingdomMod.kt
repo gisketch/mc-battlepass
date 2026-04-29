@@ -6,6 +6,7 @@ import dev.gisketch.chowkingdom.battlepass.BattlepassCommands
 import dev.gisketch.chowkingdom.battlepass.BattlepassMissionProgressStore
 import dev.gisketch.chowkingdom.battlepass.BattlepassNetwork
 import dev.gisketch.chowkingdom.battlepass.BattlepassPassRegistry
+import dev.gisketch.chowkingdom.battlepass.BattlepassQualityFoodEventIntegration
 import dev.gisketch.chowkingdom.battlepass.BattlepassVanillaEventIntegration
 import dev.gisketch.chowkingdom.battlepass.BattlepassWorldData
 import dev.gisketch.chowkingdom.battlepass.BattlepassXpStore
@@ -33,6 +34,7 @@ class ChowKingdomMod(modBus: IEventBus, container: ModContainer) {
         BattlepassNetwork.register(modBus)
         BattlepassWorldData.register()
         BattlepassVanillaEventIntegration.register()
+        BattlepassQualityFoodEventIntegration.register()
         CobblemonBattlepassIntegration.register()
         BattlepassCommands.register()
         WalletsFeature.register(modBus)

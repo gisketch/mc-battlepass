@@ -2,6 +2,8 @@ package dev.gisketch.chowkingdom.shipping
 
 import com.mojang.brigadier.builder.LiteralArgumentBuilder
 import com.mojang.brigadier.context.CommandContext
+import dev.gisketch.chowkingdom.battlepass.BattlepassMissionEventBank
+import dev.gisketch.chowkingdom.battlepass.BattlepassNetwork
 import dev.gisketch.chowkingdom.ChowKingdomMod
 import dev.gisketch.chowkingdom.wallets.ChowcoinNetwork
 import net.minecraft.commands.CommandSourceStack
@@ -69,6 +71,7 @@ object ShippingBinFeature {
                 if (player != null) {
                     ChowcoinNetwork.syncTo(player)
                     notifyReward(player, payout)
+                    recordShippingMissions(player, payout)
                     event.server.playerList.broadcastSystemMessage(Component.literal("${player.gameProfile.name} shipped ${payout.itemCount} items for ${payout.amount} chowcoins."), false)
                 } else {
                     ShippingBinStore.addPendingReward(playerId, payout)
@@ -83,6 +86,7 @@ object ShippingBinFeature {
         if (payout.hasReward()) {
             ChowcoinNetwork.syncTo(player)
             notifyReward(player, payout)
+            recordShippingMissions(player, payout)
         }
     }
 
@@ -99,7 +103,10 @@ object ShippingBinFeature {
         val player = context.source.playerOrException
         val payout = ShippingBinStore.payout(player)
         context.source.sendSuccess({ Component.literal("Sold ${payout.itemCount} shipping bin items for ${payout.amount} chowcoins.") }, true)
-        if (payout.hasReward()) notifyReward(player, payout)
+        if (payout.hasReward()) {
+            notifyReward(player, payout)
+            recordShippingMissions(player, payout)
+        }
         return payout.amount.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
     }
 
@@ -107,6 +114,35 @@ object ShippingBinFeature {
         ShippingBinNetwork.notifySale(player, payout)
     }
 
+    private fun recordShippingMissions(player: ServerPlayer, payout: ShippingBinPayout) {
+        var changed = false
+        if (payout.qualityFoodItemCount > 0) {
+            changed = BattlepassMissionEventBank.record(player, QUALITY_FOOD_SOLD_EVENT, payout.qualityFoodItemCount) || changed
+        }
+        if (payout.ironQualityFoodItemCount > 0) {
+            changed = BattlepassMissionEventBank.record(player, IRON_QUALITY_FOOD_SOLD_EVENT, payout.ironQualityFoodItemCount) || changed
+        }
+        if (payout.goldQualityFoodItemCount > 0) {
+            changed = BattlepassMissionEventBank.record(player, GOLD_QUALITY_FOOD_SOLD_EVENT, payout.goldQualityFoodItemCount) || changed
+        }
+        if (payout.diamondQualityFoodItemCount > 0) {
+            changed = BattlepassMissionEventBank.record(player, DIAMOND_QUALITY_FOOD_SOLD_EVENT, payout.diamondQualityFoodItemCount) || changed
+        }
+        if (payout.amount > 0L) {
+            changed = BattlepassMissionEventBank.record(player, VALUE_SOLD_EVENT, payout.amount.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()) || changed
+        }
+        if (payout.qualityFoodAmount > 0L) {
+            changed = BattlepassMissionEventBank.record(player, QUALITY_FOOD_VALUE_SOLD_EVENT, payout.qualityFoodAmount.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()) || changed
+        }
+        if (changed) BattlepassNetwork.syncAllPlayers()
+    }
+
     private const val DAY_TICKS = 24_000L
     private const val PAYOUT_CHECK_INTERVAL_TICKS = 200
+    private const val QUALITY_FOOD_SOLD_EVENT = "gisketchs_chowkingdom_mod:shipping_bin_quality_food_sold"
+    private const val IRON_QUALITY_FOOD_SOLD_EVENT = "gisketchs_chowkingdom_mod:shipping_bin_iron_quality_food_sold"
+    private const val GOLD_QUALITY_FOOD_SOLD_EVENT = "gisketchs_chowkingdom_mod:shipping_bin_gold_quality_food_sold"
+    private const val DIAMOND_QUALITY_FOOD_SOLD_EVENT = "gisketchs_chowkingdom_mod:shipping_bin_diamond_quality_food_sold"
+    private const val QUALITY_FOOD_VALUE_SOLD_EVENT = "gisketchs_chowkingdom_mod:shipping_bin_quality_food_value_sold"
+    private const val VALUE_SOLD_EVENT = "gisketchs_chowkingdom_mod:shipping_bin_value_sold"
 }

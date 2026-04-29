@@ -2,6 +2,7 @@ package dev.gisketch.chowkingdom.shipping
 
 import com.google.gson.GsonBuilder
 import dev.gisketch.chowkingdom.ChowKingdomMod
+import dev.gisketch.chowkingdom.integrations.QualityFoodSupport
 import dev.gisketch.chowkingdom.wallets.ChowcoinNetwork
 import dev.gisketch.chowkingdom.wallets.ChowcoinStore
 import net.minecraft.core.registries.BuiltInRegistries
@@ -45,7 +46,15 @@ object ShippingBinStore {
                 val data = file.bufferedReader().use { reader -> gson.fromJson(reader, StoredShippingBins::class.java) }
                 data?.players?.forEach { (playerId, stacks) -> bins[playerId] = stacks.toMutableList() }
                 data?.pendingRewards?.forEach { (playerId, reward) ->
-                    pendingRewards[playerId] = StoredPendingReward(reward.itemCount.coerceAtLeast(0), reward.amount.coerceAtLeast(0L))
+                    pendingRewards[playerId] = StoredPendingReward(
+                        reward.itemCount.coerceAtLeast(0),
+                        reward.amount.coerceAtLeast(0L),
+                        reward.qualityFoodItemCount.coerceAtLeast(0),
+                        reward.qualityFoodAmount.coerceAtLeast(0L),
+                        reward.ironQualityFoodItemCount.coerceAtLeast(0),
+                        reward.goldQualityFoodItemCount.coerceAtLeast(0),
+                        reward.diamondQualityFoodItemCount.coerceAtLeast(0),
+                    )
                 }
                 lastPayoutDay = data?.lastPayoutDay ?: Long.MIN_VALUE
             } catch (exception: Exception) {
@@ -93,7 +102,15 @@ object ShippingBinStore {
         if (!payout.hasReward()) return
         val key = playerId.toString()
         val current = pendingRewards[key] ?: StoredPendingReward()
-        pendingRewards[key] = StoredPendingReward(current.itemCount + payout.itemCount, current.amount + payout.amount)
+        pendingRewards[key] = StoredPendingReward(
+            current.itemCount + payout.itemCount,
+            current.amount + payout.amount,
+            current.qualityFoodItemCount + payout.qualityFoodItemCount,
+            current.qualityFoodAmount + payout.qualityFoodAmount,
+            current.ironQualityFoodItemCount + payout.ironQualityFoodItemCount,
+            current.goldQualityFoodItemCount + payout.goldQualityFoodItemCount,
+            current.diamondQualityFoodItemCount + payout.diamondQualityFoodItemCount,
+        )
         save()
     }
 
@@ -101,7 +118,15 @@ object ShippingBinStore {
         if (!loaded) load()
         val reward = pendingRewards.remove(player.stringUUID) ?: return ShippingBinPayout()
         if (reward.amount > 0L) save()
-        return ShippingBinPayout(reward.itemCount, reward.amount)
+        return ShippingBinPayout(
+            reward.itemCount,
+            reward.amount,
+            reward.qualityFoodItemCount,
+            reward.qualityFoodAmount,
+            reward.ironQualityFoodItemCount,
+            reward.goldQualityFoodItemCount,
+            reward.diamondQualityFoodItemCount,
+        )
     }
 
     fun payout(player: ServerPlayer): ShippingBinPayout {
@@ -116,13 +141,37 @@ object ShippingBinStore {
         val stacks = bins[key].orEmpty()
         var total = 0L
         var itemCount = 0
+        var qualityFoodTotal = 0L
+        var qualityFoodItemCount = 0
+        var ironQualityFoodItemCount = 0
+        var goldQualityFoodItemCount = 0
+        var diamondQualityFoodItemCount = 0
         val remaining = mutableListOf<StoredStack>()
         stacks.forEach { stored ->
             val stack = stored.toItemStack()
             val price = ShippingBinConfig.priceFor(stack)
             if (price > 0L) {
+                val stackTotal = price * stack.count.toLong()
                 itemCount += stack.count
-                total += price * stack.count.toLong()
+                total += stackTotal
+                when (QualityFoodSupport.qualityLevel(stack)) {
+                    1 -> {
+                        qualityFoodItemCount += stack.count
+                        qualityFoodTotal += stackTotal
+                        ironQualityFoodItemCount += stack.count
+                    }
+                    2 -> {
+                        qualityFoodItemCount += stack.count
+                        qualityFoodTotal += stackTotal
+                        goldQualityFoodItemCount += stack.count
+                    }
+                    3 -> {
+                        qualityFoodItemCount += stack.count
+                        qualityFoodTotal += stackTotal
+                        diamondQualityFoodItemCount += stack.count
+                    }
+                    else -> Unit
+                }
             } else {
                 remaining += stored
             }
@@ -131,7 +180,7 @@ object ShippingBinStore {
         bins[key] = remaining.toMutableList()
         ChowcoinStore.add(playerId, total)
         save()
-        return ShippingBinPayout(itemCount, total)
+        return ShippingBinPayout(itemCount, total, qualityFoodItemCount, qualityFoodTotal, ironQualityFoodItemCount, goldQualityFoodItemCount, diamondQualityFoodItemCount)
     }
 
     private fun saveContainer(playerId: UUID, container: SimpleContainer) {
@@ -156,13 +205,26 @@ class StoredShippingBins(
     var pendingRewards: MutableMap<String, StoredPendingReward> = linkedMapOf(),
 )
 
-data class ShippingBinPayout(val itemCount: Int = 0, val amount: Long = 0L) {
+data class ShippingBinPayout(
+    val itemCount: Int = 0,
+    val amount: Long = 0L,
+    val qualityFoodItemCount: Int = 0,
+    val qualityFoodAmount: Long = 0L,
+    val ironQualityFoodItemCount: Int = 0,
+    val goldQualityFoodItemCount: Int = 0,
+    val diamondQualityFoodItemCount: Int = 0,
+) {
     fun hasReward(): Boolean = itemCount > 0 && amount > 0L
 }
 
 class StoredPendingReward(
     var itemCount: Int = 0,
     var amount: Long = 0L,
+    var qualityFoodItemCount: Int = 0,
+    var qualityFoodAmount: Long = 0L,
+    var ironQualityFoodItemCount: Int = 0,
+    var goldQualityFoodItemCount: Int = 0,
+    var diamondQualityFoodItemCount: Int = 0,
 )
 
 class StoredStack(
