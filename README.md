@@ -11,7 +11,7 @@ Barebones NeoForge 1.21.1 Kotlin mod shell for Chow Kingdom systems.
 - Java toolchain `21`
 - Gradle Kotlin DSL
 - Battlepass feature keybind (`B` by default)
-- Transparent camera preview mode closed with `Esc`
+- Full-screen battlepass overlay with blurred game background
 - Data-driven pass definitions in `config/gisketchs_chowkingdom_mod/battlepass/passes/*.json`
 - `/chowkingdom battlepass` commands for pass reload/list, claiming, and manual XP grants
 - Package scaffold ready for future wallets, shops, and profiles features

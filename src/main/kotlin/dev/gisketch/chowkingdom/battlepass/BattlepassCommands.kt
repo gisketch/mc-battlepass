@@ -8,11 +8,7 @@ import com.mojang.brigadier.exceptions.SimpleCommandExceptionType
 import net.minecraft.commands.CommandSourceStack
 import net.minecraft.commands.Commands
 import net.minecraft.commands.arguments.EntityArgument
-import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.network.chat.Component
-import net.minecraft.resources.ResourceLocation
-import net.minecraft.world.item.ItemStack
-import net.minecraft.world.item.Items
 import net.neoforged.neoforge.common.NeoForge
 import net.neoforged.neoforge.event.RegisterCommandsEvent
 
@@ -76,6 +72,7 @@ object BattlepassCommands {
     private fun reloadPasses(context: CommandContext<CommandSourceStack>): Int {
         val count = BattlepassPassRegistry.reload()
         BattlepassXpStore.load()
+        BattlepassNetwork.syncAllPlayers()
         context.source.sendSuccess({ Component.literal("Reloaded $count battlepass pass(es).") }, true)
         return count
     }
@@ -91,6 +88,7 @@ object BattlepassCommands {
         val targets = EntityArgument.getPlayers(context, "targets")
 
         targets.forEach { player -> BattlepassXpStore.addXp(player, pass.id, amount) }
+        BattlepassNetwork.syncAllPlayers()
         context.source.sendSuccess(
             { Component.literal("Added $amount XP to ${targets.size} player(s) for ${pass.displayName}.") },
             true,
@@ -101,41 +99,9 @@ object BattlepassCommands {
     private fun claimTier(context: CommandContext<CommandSourceStack>): Int {
         val player = context.source.playerOrException
         val passId = StringArgumentType.getString(context, "pass")
-        val pass = BattlepassPassRegistry.get(passId) ?: throw unknownPass.create()
         val tierXp = IntegerArgumentType.getInteger(context, "tierXp")
-        val tier = pass.progression.firstOrNull { progression -> progression.xp == tierXp }
-
-        if (tier == null) {
-            context.source.sendFailure(Component.literal("Unknown tier $tierXp for ${pass.displayName}."))
-            return 0
-        }
-        if (BattlepassXpStore.isClaimed(player, pass.id, tier.xp)) {
-            player.displayClientMessage(Component.literal("Already claimed ${pass.displayName} ${tier.xp} XP reward."), true)
-            return 0
-        }
-
-        val currentXp = BattlepassXpStore.getXp(player, pass.id)
-        if (currentXp < tier.xp) {
-            player.displayClientMessage(Component.literal("${tier.xp - currentXp} XP needed for ${pass.displayName} ${tier.xp} XP reward."), true)
-            return 0
-        }
-
-        tier.rewards.forEach { reward -> giveReward(player, reward) }
-        BattlepassXpStore.markClaimed(player, pass.id, tier.xp)
-        player.displayClientMessage(Component.literal("Claimed ${pass.displayName} ${tier.xp} XP reward."), true)
-        return 1
-    }
-
-    private fun giveReward(player: net.minecraft.server.level.ServerPlayer, reward: BattlepassRewardDefinition) {
-        if (reward.type != "item") return
-        val item = runCatching { ResourceLocation.parse(reward.item) }.getOrNull()
-            ?.let { id -> BuiltInRegistries.ITEM.getOptional(id).orElse(Items.AIR) }
-            ?: Items.AIR
-        if (item == Items.AIR) return
-
-        val stack = ItemStack(item, reward.quantity.coerceAtLeast(1))
-        if (!player.inventory.add(stack)) {
-            player.drop(stack, false)
-        }
+        val claimed = BattlepassClaimService.claim(player, passId, tierXp)
+        BattlepassNetwork.syncAllPlayers()
+        return if (claimed) 1 else 0
     }
 }

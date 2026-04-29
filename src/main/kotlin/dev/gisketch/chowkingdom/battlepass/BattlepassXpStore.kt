@@ -68,6 +68,11 @@ object BattlepassXpStore {
 
     fun isClaimed(player: ServerPlayer, passId: String, tierXp: Int): Boolean = isClaimed(player.uuid, passId, tierXp)
 
+    fun claimedTiers(playerId: UUID, passId: String): Set<Int> {
+        if (!loaded) load()
+        return claimedTiers[playerId.toString()]?.get(passId)?.toSet().orEmpty()
+    }
+
     fun markClaimed(player: ServerPlayer, passId: String, tierXp: Int) {
         if (!loaded) load()
         val passClaims = claimedTiers.getOrPut(player.stringUUID) { linkedMapOf() }

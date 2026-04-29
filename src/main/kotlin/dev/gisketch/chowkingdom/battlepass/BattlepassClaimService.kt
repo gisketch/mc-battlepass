@@ -1,0 +1,74 @@
+package dev.gisketch.chowkingdom.battlepass
+
+import net.minecraft.core.registries.BuiltInRegistries
+import net.minecraft.network.chat.Component
+import net.minecraft.resources.ResourceLocation
+import net.minecraft.server.level.ServerPlayer
+import net.minecraft.world.item.ItemStack
+import net.minecraft.world.item.Items
+
+object BattlepassClaimService {
+    fun claim(player: ServerPlayer, passId: String, tierXp: Int): Boolean {
+        val pass = BattlepassPassRegistry.get(passId) ?: run {
+            player.displayClientMessage(Component.literal("Unknown battlepass pass."), true)
+            return false
+        }
+        val tier = pass.progression.firstOrNull { progression -> progression.xp == tierXp }
+
+        if (tier == null) {
+            player.displayClientMessage(Component.literal("Unknown tier $tierXp for ${pass.displayName}."), true)
+            return false
+        }
+        if (BattlepassXpStore.isClaimed(player, pass.id, tier.xp)) {
+            player.displayClientMessage(Component.literal("Already claimed ${pass.displayName} ${tier.xp} XP reward."), true)
+            return false
+        }
+
+        val currentXp = BattlepassXpStore.getXp(player, pass.id)
+        if (currentXp < tier.xp) {
+            player.displayClientMessage(Component.literal("${tier.xp - currentXp} XP needed for ${pass.displayName} ${tier.xp} XP reward."), true)
+            return false
+        }
+
+        tier.rewards.forEach { reward -> giveReward(player, reward) }
+        BattlepassXpStore.markClaimed(player, pass.id, tier.xp)
+        player.displayClientMessage(Component.literal("Claimed ${pass.displayName} ${tier.xp} XP reward."), true)
+        return true
+    }
+
+    fun claimAll(player: ServerPlayer, passId: String): Int {
+        val pass = BattlepassPassRegistry.get(passId) ?: run {
+            player.displayClientMessage(Component.literal("Unknown battlepass pass."), true)
+            return 0
+        }
+        val currentXp = BattlepassXpStore.getXp(player, pass.id)
+        val claimableTiers = pass.progression
+            .sortedBy { tier -> tier.xp }
+            .filter { tier -> currentXp >= tier.xp && !BattlepassXpStore.isClaimed(player, pass.id, tier.xp) }
+
+        if (claimableTiers.isEmpty()) {
+            player.displayClientMessage(Component.literal("No ${pass.displayName} rewards ready to claim."), true)
+            return 0
+        }
+
+        claimableTiers.forEach { tier ->
+            tier.rewards.forEach { reward -> giveReward(player, reward) }
+            BattlepassXpStore.markClaimed(player, pass.id, tier.xp)
+        }
+        player.displayClientMessage(Component.literal("Claimed ${claimableTiers.size} ${pass.displayName} reward(s)."), true)
+        return claimableTiers.size
+    }
+
+    private fun giveReward(player: ServerPlayer, reward: BattlepassRewardDefinition) {
+        if (reward.type != "item") return
+        val item = runCatching { ResourceLocation.parse(reward.item) }.getOrNull()
+            ?.let { id -> BuiltInRegistries.ITEM.getOptional(id).orElse(Items.AIR) }
+            ?: Items.AIR
+        if (item == Items.AIR) return
+
+        val stack = ItemStack(item, reward.quantity.coerceAtLeast(1))
+        if (!player.inventory.add(stack)) {
+            player.drop(stack, false)
+        }
+    }
+}

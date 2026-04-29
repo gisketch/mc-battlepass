@@ -62,7 +62,7 @@ object BattlepassPassRegistry {
 
     private fun ensureDefaultPasses() {
         passDirectory.createDirectories()
-        writeDefault("cobblemon.json", COBBLEMON_PASS)
+        writeDefault("cozy.json", COZY_PASS)
         writeDefault("combat.json", COMBAT_PASS)
     }
 
@@ -74,19 +74,22 @@ object BattlepassPassRegistry {
 
     private fun normalizeId(id: String): String = id.trim().lowercase(Locale.ROOT)
 
-    private const val COBBLEMON_PASS = """
+    private const val COZY_PASS = """
         {
-          "id": "cobblemon",
-          "displayName": "Cobblemon Pass",
-          "description": "Progress from Cobblemon captures and battles.",
-          "categories": ["cobblemon", "season_1"],
+          "id": "cozy",
+          "displayName": "Cozy Pass",
+          "description": "Progress from cozy tasks and peaceful rewards.",
+          "titleTexture": "gisketchs_chowkingdom_mod:textures/gui/cozy_pass.png",
+          "titleTextureWidth": 1024,
+          "titleTextureHeight": 230,
+          "categories": ["cozy", "season_1"],
           "xpEvents": [
             {
-              "event": "cobblemon:pokemon_captured",
+              "event": "minecraft:animal_bred",
               "xp": 10
             },
             {
-              "event": "cobblemon:pokemon_defeated",
+              "event": "minecraft:crop_harvested",
               "xp": 5
             }
           ],
@@ -200,6 +203,9 @@ object BattlepassPassRegistry {
           "id": "combat",
           "displayName": "Combat Pass",
           "description": "Progress from normal Minecraft combat and gathering events.",
+          "titleTexture": "gisketchs_chowkingdom_mod:textures/gui/combat_pass.png",
+          "titleTextureWidth": 1024,
+          "titleTextureHeight": 215,
           "categories": ["combat", "gathering"],
           "xpEvents": [
             {

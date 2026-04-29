@@ -1,9 +1,14 @@
 package dev.gisketch.chowkingdom.battlepass
 
+import com.google.gson.annotations.SerializedName
+
 class BattlepassPassDefinition {
     var id: String = ""
     var displayName: String = ""
     var description: String = ""
+    var titleTexture: String = ""
+    var titleTextureWidth: Int = 0
+    var titleTextureHeight: Int = 0
     var categories: MutableList<String> = mutableListOf("general")
     var xpEvents: MutableList<BattlepassXpEventDefinition> = mutableListOf()
     var progression: MutableList<BattlepassProgressionDefinition> = mutableListOf()
@@ -24,5 +29,7 @@ class BattlepassRewardDefinition {
     var type: String = "item"
     var item: String = "minecraft:air"
     var quantity: Int = 1
+    @SerializedName("is_prominent")
+    var isProminent: Boolean = false
     var data: MutableMap<String, String> = mutableMapOf()
 }
