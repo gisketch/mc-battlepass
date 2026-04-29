@@ -12,6 +12,7 @@ import dev.gisketch.chowkingdom.battlepass.BattlepassXpEventDefinition
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.components.PlayerFaceRenderer
+import net.minecraft.client.gui.screens.ChatScreen
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.util.Mth
 import net.neoforged.bus.api.IEventBus
@@ -19,7 +20,7 @@ import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent
 import org.lwjgl.glfw.GLFW
 
 object ChowKingdomHud {
-    private data class HudMission(val entry: BattlepassMissionEntry, val progress: Int, val title: String)
+    private data class HudMission(val entry: BattlepassMissionEntry, val progress: Int, val title: String, val completed: Boolean)
 
     private val LAYER_ID: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "player_hud")
     private val AVATAR_BORDER_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/avatar-border.png")
@@ -28,6 +29,7 @@ object ChowKingdomHud {
     private val ORANGE_BORDER_MASK_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/orange-border-mask.png")
     private val CYAN_BORDER_MASK_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/cyan-border-mask.png")
     private val MARKER_QUEST_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/marker_quest.png")
+    private val CHECK_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/accept.png")
     private val COINS_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/coins.png")
     private var detailProgress = 0.0f
 
@@ -42,7 +44,7 @@ object ChowKingdomHud {
     private fun render(guiGraphics: GuiGraphics) {
         val minecraft = Minecraft.getInstance()
         val player = minecraft.player ?: return
-        if (minecraft.options.hideGui || minecraft.screen != null) return
+        if (minecraft.options.hideGui || (minecraft.screen != null && minecraft.screen !is ChatScreen)) return
 
         val name = player.gameProfile.name
         val avatarX = HUD_PADDING
@@ -54,6 +56,8 @@ object ChowKingdomHud {
         val trackedY = avatarY + BORDER_SIZE + TRACKED_TOP_GAP
         val detailsVisible = GLFW.glfwGetKey(minecraft.window.window, GLFW.GLFW_KEY_TAB) == GLFW.GLFW_PRESS
         detailProgress = Mth.lerp(TRACKED_DETAIL_ANIMATION_SPEED, detailProgress, if (detailsVisible) 1.0f else 0.0f)
+        if (!detailsVisible && detailProgress < TRACKED_DETAIL_MIN_ALPHA) detailProgress = 0.0f
+        if (detailsVisible && detailProgress > 1.0f - TRACKED_DETAIL_MIN_ALPHA) detailProgress = 1.0f
 
         guiGraphics.blit(AVATAR_BORDER_TEXTURE, avatarX, avatarY, BORDER_SIZE, BORDER_SIZE, 0.0f, 0.0f, BORDER_SIZE, BORDER_SIZE, BORDER_SIZE, BORDER_SIZE)
         PlayerFaceRenderer.draw(guiGraphics, player.skin, avatarX + AVATAR_INSET, avatarY + AVATAR_INSET, AVATAR_SIZE)
@@ -101,7 +105,8 @@ object ChowKingdomHud {
             val progress = BattlepassClientState.missionProgress(playerId, mission.pass.id, mission.entry.key)
                 ?: BattlepassClientState.missionProgress(playerId, mission.pass.id, event.event)
                 ?: event.progress
-            HudMission(mission.entry, progress, trimToWidth(minecraft, missionDescription(event), maxTextWidth))
+            val completed = BattlepassClientState.isMissionCompleted(playerId, mission.pass.id, mission.entry.key)
+            HudMission(mission.entry, progress, trimToWidth(minecraft, missionDescription(event), maxTextWidth), completed)
         }
 
         hudMissions.forEachIndexed { index, mission ->
@@ -118,27 +123,32 @@ object ChowKingdomHud {
         val progressText = "$cappedProgress/$goal"
         val fillWidth = (pillWidth * (cappedProgress / goal.toFloat())).toInt().coerceIn(0, pillWidth)
         val pillX = x + TRACKED_MARKER_SIZE + TRACKED_MARKER_GAP
-        renderIcon(guiGraphics, MARKER_QUEST_TEXTURE, x, y, TRACKED_MARKER_SIZE, MARKER_TEXTURE_SIZE)
-        renderStretchedHudTexture(guiGraphics, HUD_CONTAINER_TEXTURE, pillX, y, pillWidth, TRACKED_HEIGHT)
+        val alpha = if (mission.completed) TRACKED_COMPLETED_ALPHA else 1.0f
+        if (mission.completed) {
+            renderIcon(guiGraphics, CHECK_TEXTURE, x + (TRACKED_MARKER_SIZE - TRACKED_CHECK_SIZE) / 2, y + (TRACKED_MARKER_SIZE - TRACKED_CHECK_SIZE) / 2, TRACKED_CHECK_SIZE, MARKER_TEXTURE_SIZE, alpha)
+        } else {
+            renderIcon(guiGraphics, MARKER_QUEST_TEXTURE, x, y, TRACKED_MARKER_SIZE, MARKER_TEXTURE_SIZE, alpha)
+        }
+        renderStretchedHudTexture(guiGraphics, HUD_CONTAINER_TEXTURE, pillX, y, pillWidth, TRACKED_HEIGHT, alpha)
         if (fillWidth > 0) {
             guiGraphics.enableScissor(pillX, y, pillX + fillWidth, y + TRACKED_HEIGHT)
-            renderStretchedHudTexture(guiGraphics, missionMask(mission.entry.scope), pillX, y, pillWidth, TRACKED_HEIGHT)
+            renderStretchedHudTexture(guiGraphics, missionMask(mission.entry.scope), pillX, y, pillWidth, TRACKED_HEIGHT, alpha)
             guiGraphics.disableScissor()
         }
-        drawPillText(guiGraphics, minecraft, mission.title, pillX, y, TRACKED_HEIGHT)
+        drawPillText(guiGraphics, minecraft, mission.title, pillX, y, TRACKED_HEIGHT, alpha)
         if (detailProgress > 0.01f) {
-            val detailX = pillX + pillWidth + TRACKED_DETAIL_GAP + ((1.0f - detailProgress) * TRACKED_DETAIL_SLIDE).toInt()
+            val detailX = pillX + pillWidth + TRACKED_DETAIL_GAP - ((1.0f - detailProgress) * TRACKED_DETAIL_SLIDE).toInt()
             val detailY = y + (TRACKED_HEIGHT - minecraft.font.lineHeight) / 2
-            guiGraphics.drawString(minecraft.font, progressText, detailX, detailY, colorWithAlpha(TRACKED_TEXT_COLOR, detailProgress), true)
+            guiGraphics.drawString(minecraft.font, progressText, detailX, detailY, colorWithAlpha(TRACKED_TEXT_COLOR, detailProgress * alpha), false)
         }
     }
 
-    private fun renderStretchedHudTexture(guiGraphics: GuiGraphics, texture: ResourceLocation, x: Int, y: Int, width: Int, height: Int) {
+    private fun renderStretchedHudTexture(guiGraphics: GuiGraphics, texture: ResourceLocation, x: Int, y: Int, width: Int, height: Int, alpha: Float = 1.0f) {
         val outputBorder = outputBorder(height).coerceAtMost(width / 2)
         val middleWidth = (width - outputBorder * 2).coerceAtLeast(0)
         RenderSystem.enableBlend()
         RenderSystem.defaultBlendFunc()
-        guiGraphics.setColor(1.0f, 1.0f, 1.0f, 1.0f)
+        guiGraphics.setColor(1.0f, 1.0f, 1.0f, alpha)
         guiGraphics.blit(texture, x, y, outputBorder, height, 0.0f, 0.0f, HUD_TEXTURE_BORDER, HUD_TEXTURE_HEIGHT, HUD_TEXTURE_WIDTH, HUD_TEXTURE_HEIGHT)
         if (middleWidth > 0) {
             guiGraphics.blit(texture, x + outputBorder, y, middleWidth, height, HUD_TEXTURE_BORDER.toFloat(), 0.0f, HUD_TEXTURE_WIDTH - HUD_TEXTURE_BORDER * 2, HUD_TEXTURE_HEIGHT, HUD_TEXTURE_WIDTH, HUD_TEXTURE_HEIGHT)
@@ -147,21 +157,21 @@ object ChowKingdomHud {
         guiGraphics.setColor(1.0f, 1.0f, 1.0f, 1.0f)
     }
 
-    private fun renderIcon(guiGraphics: GuiGraphics, texture: ResourceLocation, x: Int, y: Int, size: Int, textureSize: Int) {
+    private fun renderIcon(guiGraphics: GuiGraphics, texture: ResourceLocation, x: Int, y: Int, size: Int, textureSize: Int, alpha: Float = 1.0f) {
         RenderSystem.enableBlend()
         RenderSystem.defaultBlendFunc()
-        guiGraphics.setColor(1.0f, 1.0f, 1.0f, 1.0f)
+        guiGraphics.setColor(1.0f, 1.0f, 1.0f, alpha)
         guiGraphics.blit(texture, x, y, size, size, 0.0f, 0.0f, textureSize, textureSize, textureSize, textureSize)
         guiGraphics.setColor(1.0f, 1.0f, 1.0f, 1.0f)
     }
 
-    private fun drawPillText(guiGraphics: GuiGraphics, minecraft: Minecraft, text: String, x: Int, y: Int, height: Int) {
+    private fun drawPillText(guiGraphics: GuiGraphics, minecraft: Minecraft, text: String, x: Int, y: Int, height: Int, alpha: Float = 1.0f) {
         val textHeight = minecraft.font.lineHeight * TRACKED_TEXT_SCALE
         val pose = guiGraphics.pose()
         pose.pushPose()
         pose.translate(x + TRACKED_TEXT_PADDING.toFloat(), y + (height - textHeight) / 2.0f, 0.0f)
         pose.scale(TRACKED_TEXT_SCALE, TRACKED_TEXT_SCALE, 1.0f)
-        guiGraphics.drawString(minecraft.font, text, 0, 0, TRACKED_TITLE_COLOR, true)
+        guiGraphics.drawString(minecraft.font, text, 0, 0, colorWithAlpha(TRACKED_TITLE_COLOR, alpha), false)
         pose.popPose()
     }
 
@@ -203,7 +213,7 @@ object ChowKingdomHud {
     private const val NAME_GAP = 6
     private const val TRACKED_TOP_GAP = 5
     private const val HEADER_PILL_HEIGHT = 14
-    private const val HEADER_PILL_GAP = 8
+    private const val HEADER_PILL_GAP = 4
     private const val HEADER_ICON_SIZE = 14
     private const val HEADER_ICON_GAP = 4
     private const val HEADER_ICON_TEXTURE_SIZE = 16
@@ -214,10 +224,13 @@ object ChowKingdomHud {
     private const val TRACKED_TEXT_SCALE = 0.85f
     private const val TRACKED_TEXT_PADDING = 6
     private const val TRACKED_MARKER_SIZE = TRACKED_HEIGHT
+    private const val TRACKED_CHECK_SIZE = TRACKED_MARKER_SIZE / 2
     private const val TRACKED_MARKER_GAP = 2
     private const val TRACKED_DETAIL_GAP = 8
     private const val TRACKED_DETAIL_SLIDE = 8
     private const val TRACKED_DETAIL_ANIMATION_SPEED = 0.28f
+    private const val TRACKED_DETAIL_MIN_ALPHA = 0.02f
+    private const val TRACKED_COMPLETED_ALPHA = 0.5f
     private const val HUD_TEXTURE_WIDTH = 128
     private const val HUD_TEXTURE_HEIGHT = 24
     private const val HUD_TEXTURE_BORDER = 4

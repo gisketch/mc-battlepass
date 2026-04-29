@@ -23,11 +23,11 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
     private enum class ViewMode { PASS_SELECTION, PASS_DETAIL }
 
     private enum class MissionFilter(val label: String) {
-        ALL("ALL"),
-        DAILY("DLY"),
-        WEEKLY("WKLY"),
-        PERMANENT("PERM"),
-        COMPLETED("DONE");
+        ALL("All"),
+        WEEKLY("Weekly"),
+        DAILY("Daily"),
+        PERMANENT("Permanent"),
+        COMPLETED("Done");
 
         fun next(): MissionFilter = entries[(ordinal + 1) % entries.size]
     }
@@ -74,11 +74,13 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
     private var claimAllButton: Button? = null
     private var autoScrollKey: String? = null
     private var missionFilter = MissionFilter.ALL
+    private var missionFilterClickProgress = 0.0f
     private var passRects: List<Pair<Rect, BattlepassPassDefinition>> = emptyList()
     private var rewardSlots: List<RewardSlot> = emptyList()
     private var missionSlots: List<MissionSlot> = emptyList()
     private val hoverProgressBySlot: MutableMap<String, Float> = mutableMapOf()
     private val clickProgressBySlot: MutableMap<String, Float> = mutableMapOf()
+    private val missionClickProgressByKey: MutableMap<String, Float> = mutableMapOf()
 
     override fun init() {
         BattlepassNetwork.requestSync()
@@ -136,6 +138,7 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
 
         if (viewMode == ViewMode.PASS_DETAIL && missionFilterRect.contains(mouseX, mouseY)) {
             missionFilter = missionFilter.next()
+            missionFilterClickProgress = 1.0f
             missionsScroll = 0.0f
             targetMissionsScroll = 0.0f
             return true
@@ -145,6 +148,7 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
             missionSlots.firstOrNull { slot -> slot.rect.contains(mouseX, mouseY) }
         } else null
         if (clickedMission != null) {
+            missionClickProgressByKey[missionEntryKey(clickedMission.passId, clickedMission.entry)] = 1.0f
             val tracked = BattlepassTrackedMissions.toggle(selectedPass() ?: return true, clickedMission.entry)
             if (!tracked) Minecraft.getInstance().player?.displayClientMessage(Component.literal("Track limit reached (5 missions)"), true)
             return true
@@ -207,7 +211,7 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
         val currentPlayerId = currentPlayerId()
         val currentXp = currentPlayerId?.let { playerId -> xpFor(playerId, selectedPass.id) } ?: 0
         val panel = mainRect()
-        BattlepassTrackedMissions.sync(passes())
+        BattlepassTrackedMissions.sync(passes(), removeCompleted = true)
         drawFrame(guiGraphics, panel, 0x16000000, 0x00000000)
 
         val titleBottom = renderPassTitle(guiGraphics, selectedPass, panel.x + 28, panel.y + 18)
@@ -253,17 +257,44 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
     }
 
     private fun renderMissionFilterButton(guiGraphics: GuiGraphics, bookX: Int, bookY: Int, scale: Float, mouseX: Int, mouseY: Int) {
-        val x = bookX + (MISSIONS_FILTER_X * scale).toInt()
+        val label = missionFilter.label
         val y = bookY + (MISSIONS_FILTER_Y * scale).toInt()
-        val width = (MISSIONS_FILTER_WIDTH * scale).toInt().coerceAtLeast(24)
-        val height = (MISSIONS_FILTER_HEIGHT * scale).toInt().coerceAtLeast(10)
+        val textWidth = font.width(label)
+        val width = ((font.width(label) + MISSIONS_FILTER_PADDING * 2) * scale).toInt().coerceAtLeast(24)
+        val height = (MISSIONS_FILTER_HEIGHT * scale).toInt().coerceAtLeast(14)
+        val x = bookX + ((MISSIONS_FILTER_RIGHT_X - MISSIONS_FILTER_RIGHT_PADDING) * scale).toInt() - width
         missionFilterRect = Rect(x, y, width, height)
         val hovered = missionFilterRect.contains(mouseX.toDouble(), mouseY.toDouble())
-        drawFrame(guiGraphics, missionFilterRect, if (hovered) MISSIONS_FILTER_HOVER_FILL else MISSIONS_FILTER_FILL, if (hovered) MISSIONS_FILTER_HOVER_BORDER else MISSIONS_FILTER_BORDER)
-        val label = missionFilter.label
-        val textX = x + (width - font.width(label)) / 2
-        val textY = y + (height - font.lineHeight) / 2
-        guiGraphics.drawString(font, label, textX, textY, MISSIONS_FILTER_TEXT, false)
+        missionFilterClickProgress = Mth.lerp(CLICK_ANIMATION_SPEED, missionFilterClickProgress, 0.0f).let { value -> if (value < 0.001f) 0.0f else value }
+        val pressScale = 1.0f + (Mth.sin(missionFilterClickProgress * Math.PI.toFloat()) * MISSIONS_FILTER_PRESS_SCALE)
+        val alpha = if (hovered) 1.0f else MISSIONS_FILTER_IDLE_ALPHA
+        val textX = x + width - textWidth - (MISSIONS_FILTER_PADDING * scale)
+        val textY = y + (height - font.lineHeight) / 2.0f
+        val centerX = x + width / 2.0f
+        val centerY = y + height / 2.0f
+
+        val pose = guiGraphics.pose()
+        pose.pushPose()
+        pose.translate(centerX, centerY, 0.0f)
+        pose.scale(pressScale, pressScale, 1.0f)
+        pose.translate(-centerX, -centerY, 0.0f)
+        guiGraphics.drawString(font, label, textX.toInt(), textY.toInt(), colorWithAlpha(MISSIONS_FILTER_TEXT, alpha), false)
+        drawDottedUnderline(guiGraphics, textX.toInt(), (textY + font.lineHeight + MISSIONS_FILTER_UNDERLINE_GAP * scale).toInt(), textWidth, colorWithAlpha(MISSIONS_FILTER_TEXT, alpha))
+        pose.popPose()
+
+        if (hovered) {
+            val trackedCount = BattlepassTrackedMissions.trackedMissions(passes()).size
+            val trackedText = if (trackedCount >= 5) "Tracked full 5/5" else "Tracked $trackedCount/5"
+            guiGraphics.renderComponentTooltip(font, listOf(Component.literal(trackedText)), mouseX, mouseY)
+        }
+    }
+
+    private fun drawDottedUnderline(guiGraphics: GuiGraphics, x: Int, y: Int, width: Int, color: Int) {
+        var dotX = x
+        while (dotX < x + width) {
+            guiGraphics.hLine(dotX, (dotX + MISSIONS_FILTER_DOT_WIDTH).coerceAtMost(x + width), y, color)
+            dotX += MISSIONS_FILTER_DOT_WIDTH + MISSIONS_FILTER_DOT_GAP
+        }
     }
 
     private fun renderMissionEvents(guiGraphics: GuiGraphics, pass: BattlepassPassDefinition, bookX: Int, bookY: Int, scale: Float, mouseX: Int, mouseY: Int) {
@@ -283,20 +314,30 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
         pose.translate(rectX.toFloat(), rectY - missionsScroll, 0.0f)
         pose.scale(scale, scale, 1.0f)
 
+        val playerId = currentPlayerId()
         val missions = visibleMissionEntries(pass)
+            .map { entry -> entry to (playerId?.let { id -> BattlepassClientState.isMissionCompleted(id, pass.id, entry.key) } == true) }
+            .sortedBy { (_, completed) -> completed }
         if (missions.isEmpty()) {
             guiGraphics.drawString(font, "No missions", 0, 0, MISSIONS_EVENT_COLOR, false)
         } else {
             var rowY = 0
-            missions.forEach { entry ->
-                val completed = currentPlayerId()?.let { playerId -> BattlepassClientState.isMissionCompleted(playerId, pass.id, entry.key) } == true
+            missions.forEach { (entry, completed) ->
                 val screenRowY = rectY + (rowY * scale - missionsScroll).toInt()
                 missionSlots = missionSlots + MissionSlot(Rect(rectX, screenRowY, rectWidth, (missionRowHeight(entry.event) * scale).toInt().coerceAtLeast(1)), pass.id, entry, completed)
+                val clickProgress = updateAnimation(missionClickProgressByKey, missionEntryKey(pass.id, entry), 0.0f, CLICK_ANIMATION_SPEED)
+                val rowScale = 1.0f + (Mth.sin(clickProgress * Math.PI.toFloat()) * MISSIONS_ROW_PRESS_SCALE)
+                val rowHeight = missionRowHeight(entry.event)
+                pose.pushPose()
+                pose.translate(MISSIONS_CONTENT_WIDTH / 2.0f, rowY + rowHeight / 2.0f, 0.0f)
+                pose.scale(rowScale, rowScale, 1.0f)
+                pose.translate(-MISSIONS_CONTENT_WIDTH / 2.0f, -(rowY + rowHeight / 2.0f), 0.0f)
                 if (isProgressiveMission(entry.event) || BattlepassMissionService.isCappedRepeating(entry.event)) {
                     renderProgressiveMission(guiGraphics, pass.id, entry, rowY, completed)
                 } else {
                     renderRepeatingMission(guiGraphics, pass.id, entry, rowY, completed)
                 }
+                pose.popPose()
                 rowY += missionRowHeight(entry.event)
             }
         }
@@ -331,7 +372,7 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
         val xpText = "+${event.xp}"
         val alpha = if (completed) MISSIONS_COMPLETED_ALPHA else 1.0f
         val color = missionColor(entry.scope)
-        drawMissionTitle(guiGraphics, passId, entry, y, color, alpha)
+        drawMissionTitle(guiGraphics, passId, entry, y, color, alpha, completed)
         drawMissionString(guiGraphics, xpText, rightAlignedMissionX(xpText), y, color, alpha)
         drawMissionSeparator(guiGraphics, y + MISSIONS_REPEATING_ROW_HEIGHT - MISSIONS_SEPARATOR_BOTTOM_GAP, color, alpha)
     }
@@ -356,7 +397,7 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
         val alpha = if (completed) MISSIONS_COMPLETED_ALPHA else 1.0f
         val color = missionColor(entry.scope)
 
-        drawMissionTitle(guiGraphics, passId, entry, y, color, alpha)
+        drawMissionTitle(guiGraphics, passId, entry, y, color, alpha, completed)
         drawMissionString(guiGraphics, xpText, rightAlignedMissionX(xpText), y, color, alpha)
         guiGraphics.fill(0, y + MISSIONS_PROGRESS_BAR_Y, barWidth, y + MISSIONS_PROGRESS_BAR_Y + MISSIONS_PROGRESS_BAR_HEIGHT, colorWithAlpha(MISSIONS_PROGRESS_BAR_BACKGROUND, alpha * MISSIONS_PROGRESS_BAR_BACKGROUND_ALPHA))
         guiGraphics.fill(0, y + MISSIONS_PROGRESS_BAR_Y, progressWidth, y + MISSIONS_PROGRESS_BAR_Y + MISSIONS_PROGRESS_BAR_HEIGHT, colorWithAlpha(color, alpha))
@@ -373,13 +414,20 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
         pose.popPose()
     }
 
-    private fun drawMissionTitle(guiGraphics: GuiGraphics, passId: String, entry: BattlepassMissionEntry, y: Int, color: Int, alpha: Float) {
+    private fun drawMissionTitle(guiGraphics: GuiGraphics, passId: String, entry: BattlepassMissionEntry, y: Int, color: Int, alpha: Float, completed: Boolean) {
         val tracked = BattlepassTrackedMissions.isTracked(passId, entry.key)
-        val textX = if (tracked) MISSIONS_STAR_SIZE + MISSIONS_STAR_GAP else 0
+        var textX = 0
+        if (completed) {
+            guiGraphics.setColor(1.0f, 1.0f, 1.0f, alpha)
+            guiGraphics.blit(CHECK_TEXTURE, textX, y, MISSIONS_STAR_SIZE, MISSIONS_STAR_SIZE, 0.0f, 0.0f, STAR_TEXTURE_SIZE, STAR_TEXTURE_SIZE, STAR_TEXTURE_SIZE, STAR_TEXTURE_SIZE)
+            guiGraphics.setColor(1.0f, 1.0f, 1.0f, 1.0f)
+            textX += MISSIONS_STAR_SIZE + MISSIONS_STAR_GAP
+        }
         if (tracked) {
             guiGraphics.setColor(1.0f, 1.0f, 1.0f, alpha)
-            guiGraphics.blit(STAR_TEXTURE, 0, y, MISSIONS_STAR_SIZE, MISSIONS_STAR_SIZE, 0.0f, 0.0f, STAR_TEXTURE_SIZE, STAR_TEXTURE_SIZE, STAR_TEXTURE_SIZE, STAR_TEXTURE_SIZE)
+            guiGraphics.blit(STAR_TEXTURE, textX, y, MISSIONS_STAR_SIZE, MISSIONS_STAR_SIZE, 0.0f, 0.0f, STAR_TEXTURE_SIZE, STAR_TEXTURE_SIZE, STAR_TEXTURE_SIZE, STAR_TEXTURE_SIZE)
             guiGraphics.setColor(1.0f, 1.0f, 1.0f, 1.0f)
+            textX += MISSIONS_STAR_SIZE + MISSIONS_STAR_GAP
         }
         drawMissionString(guiGraphics, missionDescription(entry.event), textX, y, color, alpha)
     }
@@ -893,14 +941,17 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
 
     private fun slotKey(slot: RewardSlot): String = "${slot.passId}:${slot.tier.xp}"
 
+    private fun missionEntryKey(passId: String, entry: BattlepassMissionEntry): String = "$passId:${entry.key}"
+
         private val REWARD_CONTAINER_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/battlepass_container.png")
         private val REWARD_CLAIMABLE_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/battlepass-claimable.png.png")
         private val REWARD_LOCKED_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/battlepass-locked.png")
         private val LOCKED_OVERLAY_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/locked.png")
-        private val CLAIMED_OVERLAY_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/check.png")
+        private val CLAIMED_OVERLAY_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/accept.png")
         private val MARKER_ARROW_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/right_arrow.png")
         private val MISSIONS_BOOK_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/bp_book.png")
         private val STAR_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/star.png")
+        private val CHECK_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/accept.png")
         private val SLOT_SIZE = 52
         private val PROMINENT_SLOT_SIZE = 65
         private val SLOT_GAP = 12
@@ -930,14 +981,23 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
         private val MISSIONS_TITLE_COLOR = 0x773A2F
         private val MISSIONS_TITLE_SCALE = 1.0f
         private val MISSIONS_FILTER_X = 122
+        private val MISSIONS_FILTER_RIGHT_X = 178
+        private val MISSIONS_FILTER_RIGHT_PADDING = 12
         private val MISSIONS_FILTER_Y = 13
         private val MISSIONS_FILTER_WIDTH = 39
-        private val MISSIONS_FILTER_HEIGHT = 14
+        private val MISSIONS_FILTER_HEIGHT = 18
+        private val MISSIONS_FILTER_PADDING = 3
+        private val MISSIONS_FILTER_IDLE_ALPHA = 0.5f
+        private val MISSIONS_FILTER_PRESS_SCALE = 0.08f
+        private val MISSIONS_FILTER_UNDERLINE_OFFSET = 1
+        private val MISSIONS_FILTER_UNDERLINE_GAP = 3
+        private val MISSIONS_FILTER_DOT_WIDTH = 1
+        private val MISSIONS_FILTER_DOT_GAP = 4
         private val MISSIONS_FILTER_FILL = 0x66C69A62
         private val MISSIONS_FILTER_HOVER_FILL = 0x88D3AA72.toInt()
         private val MISSIONS_FILTER_BORDER = 0xAA7A5131.toInt()
         private val MISSIONS_FILTER_HOVER_BORDER = 0xFF7A5131.toInt()
-        private val MISSIONS_FILTER_TEXT = 0x4A2819
+        private val MISSIONS_FILTER_TEXT = 0x773A2F
         private val MISSIONS_CONTAINER_X = 18
         private val MISSIONS_CONTAINER_Y = 34
         private val MISSIONS_CONTAINER_RIGHT = 178
@@ -974,6 +1034,7 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
         private val MISSIONS_SCROLLBAR_TRACK = 0x44321F18
         private val MISSIONS_SCROLLBAR_THUMB = 0xAA7A5131.toInt()
         private val MISSIONS_SCROLL_STEP = 18.0f
+        private val MISSIONS_ROW_PRESS_SCALE = 0.035f
         private val ITEM_STRIP_HEIGHT = 76
         private val ITEM_STRIP_GAP = 10
         private val FOOTER_HEIGHT = 46

@@ -47,10 +47,10 @@ object BattlepassTrackedMissions {
             .take(MAX_TRACKED)
     }
 
-    fun sync(passes: List<BattlepassPassDefinition>) {
+    fun sync(passes: List<BattlepassPassDefinition>, removeCompleted: Boolean = false) {
         if (!loaded) load()
         val validEntries = passes.flatMap { pass -> activeEntries(pass).map { entry -> pass to entry } }
-            .filterNot { (pass, entry) -> isCompleted(pass.id, entry.key) }
+            .filterNot { (pass, entry) -> removeCompleted && isCompleted(pass.id, entry.key) }
         val validKeys = validEntries.map { (pass, entry) -> storageKey(pass.id, entry.key) }.toSet()
         var changed = tracked.removeIf { key -> key !in validKeys }
 
