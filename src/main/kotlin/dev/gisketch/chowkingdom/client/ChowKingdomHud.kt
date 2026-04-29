@@ -13,14 +13,17 @@ import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.components.PlayerFaceRenderer
 import net.minecraft.client.gui.screens.ChatScreen
+import net.minecraft.client.resources.sounds.SimpleSoundInstance
 import net.minecraft.resources.ResourceLocation
+import net.minecraft.sounds.SoundEvents
 import net.minecraft.util.Mth
 import net.neoforged.bus.api.IEventBus
 import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent
 import org.lwjgl.glfw.GLFW
 
 object ChowKingdomHud {
-    private data class HudMission(val entry: BattlepassMissionEntry, val progress: Int, val title: String, val completed: Boolean)
+    private data class HudMission(val passId: String, val entry: BattlepassMissionEntry, val progress: Int, val title: String, val completed: Boolean)
+    private data class ActiveCompletionToast(val title: String, val missionName: String, val startedAt: Long)
 
     private val LAYER_ID: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "player_hud")
     private val AVATAR_BORDER_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/avatar-border.png")
@@ -31,7 +34,9 @@ object ChowKingdomHud {
     private val MARKER_QUEST_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/marker_quest.png")
     private val CHECK_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/accept.png")
     private val COINS_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/coins.png")
+    private val TOAST_BUTTON_SPRITE: ResourceLocation = ResourceLocation.withDefaultNamespace("widget/button")
     private var detailProgress = 0.0f
+    private val activeCompletionToasts: MutableList<ActiveCompletionToast> = mutableListOf()
 
     fun register(modBus: IEventBus) {
         modBus.addListener(::registerGuiLayers)
@@ -45,6 +50,7 @@ object ChowKingdomHud {
         val minecraft = Minecraft.getInstance()
         val player = minecraft.player ?: return
         if (minecraft.options.hideGui || (minecraft.screen != null && minecraft.screen !is ChatScreen)) return
+        queueCompletionToasts(minecraft)
 
         val name = player.gameProfile.name
         val avatarX = HUD_PADDING
@@ -65,18 +71,20 @@ object ChowKingdomHud {
         val passes = BattlepassClientState.passes().ifEmpty { BattlepassPassRegistry.all().toList() }
         val trackedMissions = BattlepassTrackedMissions.trackedMissions(passes)
         val headerOffset = textX - trackedX
-        val sharedWidth = sharedRowWidth(minecraft, name, trackedMissions, headerOffset)
+        val selfId = BattlepassClientState.selfId() ?: player.uuid
+        val sharedWidth = sharedRowWidth(minecraft, name, trackedMissions, headerOffset, selfId)
         val headerWidth = (sharedWidth - headerOffset).coerceAtLeast(TRACKED_MIN_WIDTH)
         renderNamePill(guiGraphics, minecraft, textX, nameY, name, headerWidth)
         renderCoinPill(guiGraphics, minecraft, textX, coinY, "100K", headerWidth)
         renderTrackedMissions(guiGraphics, minecraft, trackedX, trackedY, trackedMissions, missionPillWidth(sharedWidth))
+        renderCompletionToasts(guiGraphics, minecraft)
     }
 
-    private fun sharedRowWidth(minecraft: Minecraft, name: String, missions: List<BattlepassTrackedMissions.TrackedMission>, headerOffset: Int): Int {
+    private fun sharedRowWidth(minecraft: Minecraft, name: String, missions: List<BattlepassTrackedMissions.TrackedMission>, headerOffset: Int, playerId: java.util.UUID): Int {
         val maxTextWidth = ((TRACKED_MAX_WIDTH - TRACKED_TEXT_PADDING * 2) / TRACKED_TEXT_SCALE).toInt()
         val nameWidth = headerOffset + pillWidthFor(minecraft, trimToWidth(minecraft, name, maxTextWidth))
         val coinWidth = headerOffset + HEADER_ICON_SIZE + HEADER_ICON_GAP + pillWidthFor(minecraft, "100K")
-        val missionWidth = missions.maxOfOrNull { mission -> TRACKED_MARKER_SIZE + TRACKED_MARKER_GAP + pillWidthFor(minecraft, trimToWidth(minecraft, missionDescription(mission.entry.event), maxTextWidth)) } ?: TRACKED_MIN_WIDTH
+        val missionWidth = missions.maxOfOrNull { mission -> TRACKED_MARKER_SIZE + TRACKED_MARKER_GAP + pillWidthFor(minecraft, trimToWidth(minecraft, missionDescription(mission.pass.id, mission.entry, playerId), maxTextWidth)) } ?: TRACKED_MIN_WIDTH
         return maxOf(nameWidth, coinWidth, missionWidth).coerceIn(TRACKED_MIN_WIDTH, TRACKED_MAX_WIDTH)
     }
 
@@ -100,13 +108,14 @@ object ChowKingdomHud {
     private fun renderTrackedMissions(guiGraphics: GuiGraphics, minecraft: Minecraft, x: Int, y: Int, missions: List<BattlepassTrackedMissions.TrackedMission>, pillWidth: Int) {
         val playerId = BattlepassClientState.selfId() ?: minecraft.player?.uuid ?: return
         val maxTextWidth = ((pillWidth - TRACKED_TEXT_PADDING * 2) / TRACKED_TEXT_SCALE).toInt()
-        val hudMissions = missions.map { mission ->
+        val hudMissions = missions.mapNotNull { mission ->
             val event = mission.entry.event
             val progress = BattlepassClientState.missionProgress(playerId, mission.pass.id, mission.entry.key)
                 ?: BattlepassClientState.missionProgress(playerId, mission.pass.id, event.event)
                 ?: event.progress
             val completed = BattlepassClientState.isMissionCompleted(playerId, mission.pass.id, mission.entry.key)
-            HudMission(mission.entry, progress, trimToWidth(minecraft, missionDescription(event), maxTextWidth), completed)
+            if (completed) return@mapNotNull null
+            HudMission(mission.pass.id, mission.entry, progress, trimToWidth(minecraft, missionDescription(mission.pass.id, mission.entry, playerId), maxTextWidth), completed)
         }
 
         hudMissions.forEachIndexed { index, mission ->
@@ -185,7 +194,13 @@ object ChowKingdomHud {
         else -> 0
     }
 
-    private fun missionDescription(event: BattlepassXpEventDefinition): String = event.eventDesc.ifBlank { event.event }
+    private fun missionDescription(passId: String, entry: BattlepassMissionEntry, playerId: java.util.UUID): String {
+        val event = entry.event
+        val progress = BattlepassClientState.missionProgress(playerId, passId, entry.key)
+            ?: BattlepassClientState.missionProgress(playerId, passId, event.event)
+            ?: event.progress
+        return BattlepassMissionService.missionDescription(event, progress)
+    }
 
     private fun pillWidthFor(minecraft: Minecraft, text: String): Int = ((minecraft.font.width(text) * TRACKED_TEXT_SCALE).toInt() + TRACKED_TEXT_PADDING * 2).coerceIn(TRACKED_MIN_WIDTH, TRACKED_MAX_WIDTH)
 
@@ -196,6 +211,76 @@ object ChowKingdomHud {
     }
 
     private fun colorWithAlpha(color: Int, alpha: Float): Int = ((alpha.coerceIn(0.0f, 1.0f) * 255).toInt() shl 24) or (color and 0x00FFFFFF)
+
+    private fun queueCompletionToasts(minecraft: Minecraft) {
+        BattlepassClientState.drainMissionCompletionNotifications().forEach { notification ->
+            activeCompletionToasts += ActiveCompletionToast(completionTitle(notification.scope), notification.title, System.currentTimeMillis())
+            minecraft.soundManager.play(SimpleSoundInstance.forUI(SoundEvents.PLAYER_LEVELUP, 1.18f, 0.65f))
+        }
+    }
+
+    private fun renderCompletionToasts(guiGraphics: GuiGraphics, minecraft: Minecraft) {
+        val now = System.currentTimeMillis()
+        activeCompletionToasts.removeIf { toast -> now - toast.startedAt >= TOAST_DURATION_MS }
+        activeCompletionToasts.take(TOAST_MAX_VISIBLE).forEachIndexed { index, toast ->
+            val age = now - toast.startedAt
+            val appear = easeOutBack((age / TOAST_ENTER_MS.toFloat()).coerceIn(0.0f, 1.0f))
+            val exit = ((age - (TOAST_DURATION_MS - TOAST_EXIT_MS)) / TOAST_EXIT_MS.toFloat()).coerceIn(0.0f, 1.0f)
+            val exitScale = 1.0f - easeInOut(exit)
+            val scale = Mth.lerp(appear, TOAST_START_SCALE, 1.0f) * exitScale
+            val alpha = (appear * exitScale).coerceIn(0.0f, 1.0f)
+            if (alpha <= 0.01f) return@forEachIndexed
+
+            val toastWidth = toastWidth(minecraft, toast)
+            val x = (minecraft.window.guiScaledWidth - toastWidth) / 2
+            val y = TOAST_TOP + index * (TOAST_HEIGHT + TOAST_GAP)
+            val pose = guiGraphics.pose()
+            pose.pushPose()
+            pose.translate(x + toastWidth / 2.0f, y + TOAST_HEIGHT / 2.0f, 0.0f)
+            pose.scale(scale, scale, 1.0f)
+            pose.translate(-(x + toastWidth / 2.0f), -(y + TOAST_HEIGHT / 2.0f), 0.0f)
+            renderVanillaButtonBackground(guiGraphics, x, y, toastWidth, alpha)
+            drawScaledToastText(guiGraphics, minecraft, toast.title, x + TOAST_TEXT_X, y + TOAST_TITLE_Y, TOAST_TITLE_SCALE, TOAST_TITLE_COLOR, alpha)
+            drawScaledToastText(guiGraphics, minecraft, toast.missionName, x + TOAST_TEXT_X, y + TOAST_NAME_Y, TOAST_NAME_SCALE, TOAST_NAME_COLOR, alpha)
+            pose.popPose()
+        }
+    }
+
+    private fun toastWidth(minecraft: Minecraft, toast: ActiveCompletionToast): Int {
+        val titleWidth = (minecraft.font.width(toast.title) * TOAST_TITLE_SCALE).toInt() + TOAST_TEXT_X * 2
+        val missionWidth = (minecraft.font.width(toast.missionName) * TOAST_NAME_SCALE).toInt() + TOAST_TEXT_X * 2
+        return maxOf(TOAST_MIN_WIDTH, titleWidth, missionWidth).coerceAtMost(minecraft.window.guiScaledWidth - TOAST_SCREEN_PADDING * 2)
+    }
+
+    private fun renderVanillaButtonBackground(guiGraphics: GuiGraphics, x: Int, y: Int, width: Int, alpha: Float) {
+        RenderSystem.enableBlend()
+        RenderSystem.defaultBlendFunc()
+        guiGraphics.setColor(1.0f, 1.0f, 1.0f, alpha)
+        guiGraphics.blitSprite(TOAST_BUTTON_SPRITE, x, y, width, TOAST_HEIGHT)
+        guiGraphics.setColor(1.0f, 1.0f, 1.0f, 1.0f)
+    }
+
+    private fun drawScaledToastText(guiGraphics: GuiGraphics, minecraft: Minecraft, text: String, x: Int, y: Int, scale: Float, color: Int, alpha: Float) {
+        val pose = guiGraphics.pose()
+        pose.pushPose()
+        pose.translate(x.toFloat(), y.toFloat(), 0.0f)
+        pose.scale(scale, scale, 1.0f)
+        guiGraphics.drawString(minecraft.font, text, 0, 0, colorWithAlpha(color, alpha), false)
+        pose.popPose()
+    }
+
+    private fun easeOutBack(progress: Float): Float {
+        val shifted = progress - 1.0f
+        return 1.0f + TOAST_BACK_OVERSHOOT * shifted * shifted * shifted + (TOAST_BACK_OVERSHOOT - 1.0f) * shifted * shifted
+    }
+
+    private fun easeInOut(progress: Float): Float = progress * progress * (3.0f - 2.0f * progress)
+
+    private fun completionTitle(scope: BattlepassMissionScope): String = when (scope) {
+        BattlepassMissionScope.DAILY -> "Daily Mission Completed"
+        BattlepassMissionScope.WEEKLY -> "Weekly Mission Completed"
+        BattlepassMissionScope.PERMANENT -> "Mission Completed"
+    }
 
     private fun trimToWidth(minecraft: Minecraft, text: String, width: Int): String {
         if (minecraft.font.width(text) <= width) return text
@@ -237,4 +322,22 @@ object ChowKingdomHud {
     private const val MARKER_TEXTURE_SIZE = 16
     private const val TRACKED_TITLE_COLOR = 0xFFFFFFFF.toInt()
     private const val TRACKED_TEXT_COLOR = 0xFFFFFFFF.toInt()
+    private const val TOAST_MIN_WIDTH = 160
+    private const val TOAST_SCREEN_PADDING = 10
+    private const val TOAST_HEIGHT = 44
+    private const val TOAST_TOP = 10
+    private const val TOAST_GAP = 4
+    private const val TOAST_MAX_VISIBLE = 2
+    private const val TOAST_TEXT_X = 10
+    private const val TOAST_TITLE_Y = 8
+    private const val TOAST_NAME_Y = 21
+    private const val TOAST_TITLE_SCALE = 0.7f
+    private const val TOAST_NAME_SCALE = 1.15f
+    private const val TOAST_DURATION_MS = 5000L
+    private const val TOAST_ENTER_MS = 420L
+    private const val TOAST_EXIT_MS = 360L
+    private const val TOAST_START_SCALE = 0.72f
+    private const val TOAST_BACK_OVERSHOOT = 1.55f
+    private const val TOAST_TITLE_COLOR = 0xFFFFE7AA.toInt()
+    private const val TOAST_NAME_COLOR = 0xFFFFFFFF.toInt()
 }

@@ -42,12 +42,17 @@ object BattlepassNetwork {
         server.playerList.players.forEach(::syncTo)
     }
 
+    fun notifyMissionCompletion(player: ServerPlayer, passId: String, missionKey: String, title: String, scope: BattlepassMissionScope, kind: String) {
+        PacketDistributor.sendToPlayer(player, BattlepassMissionCompletionNotificationPayload(passId, missionKey, title, scope.id, kind))
+    }
+
     private fun registerPayloads(event: RegisterPayloadHandlersEvent) {
         val registrar = event.registrar("1")
         registrar.playToServer(BattlepassSyncRequestPayload.TYPE, BattlepassSyncRequestPayload.STREAM_CODEC, ::handleSyncRequest)
         registrar.playToServer(BattlepassClaimRequestPayload.TYPE, BattlepassClaimRequestPayload.STREAM_CODEC, ::handleClaimRequest)
         registrar.playToServer(BattlepassClaimAllRequestPayload.TYPE, BattlepassClaimAllRequestPayload.STREAM_CODEC, ::handleClaimAllRequest)
         registrar.playToClient(BattlepassSyncPayload.TYPE, BattlepassSyncPayload.STREAM_CODEC, ::handleSync)
+        registrar.playToClient(BattlepassMissionCompletionNotificationPayload.TYPE, BattlepassMissionCompletionNotificationPayload.STREAM_CODEC, ::handleMissionCompletionNotification)
     }
 
     private fun onPlayerLoggedIn(event: PlayerEvent.PlayerLoggedInEvent) {
@@ -77,6 +82,11 @@ object BattlepassNetwork {
 
     private fun handleSync(payload: BattlepassSyncPayload, context: IPayloadContext) {
         BattlepassClientState.apply(payload)
+    }
+
+    private fun handleMissionCompletionNotification(payload: BattlepassMissionCompletionNotificationPayload, context: IPayloadContext) {
+        val scope = BattlepassMissionScope.entries.firstOrNull { scope -> scope.id == payload.scopeId } ?: BattlepassMissionScope.PERMANENT
+        BattlepassClientState.enqueueMissionCompletionNotification(payload.passId, payload.missionKey, payload.title, scope, payload.kind)
     }
 
     private fun syncTo(player: ServerPlayer) {
@@ -178,6 +188,37 @@ data class BattlepassSyncPayload(
                     keys.forEach { key -> buffer.writeUtf(key, MAX_STRING_LENGTH) }
                 }
                 buffer.writeUUID(value.selfId)
+            }
+        }
+    }
+}
+
+data class BattlepassMissionCompletionNotificationPayload(
+    val passId: String,
+    val missionKey: String,
+    val title: String,
+    val scopeId: String,
+    val kind: String,
+) : CustomPacketPayload {
+    override fun type(): CustomPacketPayload.Type<BattlepassMissionCompletionNotificationPayload> = TYPE
+
+    companion object {
+        val TYPE: CustomPacketPayload.Type<BattlepassMissionCompletionNotificationPayload> = CustomPacketPayload.Type(ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "battlepass/mission_completion_notification"))
+        val STREAM_CODEC: StreamCodec<RegistryFriendlyByteBuf, BattlepassMissionCompletionNotificationPayload> = object : StreamCodec<RegistryFriendlyByteBuf, BattlepassMissionCompletionNotificationPayload> {
+            override fun decode(buffer: RegistryFriendlyByteBuf): BattlepassMissionCompletionNotificationPayload = BattlepassMissionCompletionNotificationPayload(
+                buffer.readUtf(MAX_STRING_LENGTH),
+                buffer.readUtf(MAX_STRING_LENGTH),
+                buffer.readUtf(MAX_STRING_LENGTH),
+                buffer.readUtf(MAX_STRING_LENGTH),
+                buffer.readUtf(MAX_STRING_LENGTH),
+            )
+
+            override fun encode(buffer: RegistryFriendlyByteBuf, value: BattlepassMissionCompletionNotificationPayload) {
+                buffer.writeUtf(value.passId, MAX_STRING_LENGTH)
+                buffer.writeUtf(value.missionKey, MAX_STRING_LENGTH)
+                buffer.writeUtf(value.title, MAX_STRING_LENGTH)
+                buffer.writeUtf(value.scopeId, MAX_STRING_LENGTH)
+                buffer.writeUtf(value.kind, MAX_STRING_LENGTH)
             }
         }
     }

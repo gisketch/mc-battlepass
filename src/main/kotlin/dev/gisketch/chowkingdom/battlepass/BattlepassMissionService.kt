@@ -41,6 +41,20 @@ object BattlepassMissionService {
 
     fun progressiveGoal(event: BattlepassXpEventDefinition): Int = event.progressGoals.lastOrNull() ?: event.xpCap.takeIf { cap -> cap > 0 } ?: event.progress.coerceAtLeast(1)
 
+    fun displayGoal(event: BattlepassXpEventDefinition, progress: Int): Int? = when {
+        isCappedRepeating(event) -> event.xpCap
+        isProgressive(event) -> event.progressGoals.firstOrNull { goal -> progress < goal } ?: progressiveGoal(event)
+        else -> null
+    }
+
+    fun missionDescription(event: BattlepassXpEventDefinition, progress: Int): String {
+        val description = event.eventDesc.ifBlank { event.event }
+        val goal = displayGoal(event, progress) ?: return description
+        return description
+            .replace("{goal}", goal.toString())
+            .replace("{progress}", progress.toString())
+    }
+
     fun isProgressive(event: BattlepassXpEventDefinition): Boolean = event.type.equals("progressive", ignoreCase = true)
 
     fun isCappedRepeating(event: BattlepassXpEventDefinition): Boolean = !isProgressive(event) && event.xpCap > 0

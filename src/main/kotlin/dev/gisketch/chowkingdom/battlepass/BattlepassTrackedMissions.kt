@@ -13,7 +13,7 @@ import kotlin.io.path.exists
 object BattlepassTrackedMissions {
     data class TrackedMission(val pass: BattlepassPassDefinition, val entry: BattlepassMissionEntry)
 
-    private const val MAX_TRACKED = 5
+    private const val MAX_TRACKED = 7
     private val gson = GsonBuilder().setPrettyPrinting().create()
     private var loaded = false
     private var tracked: MutableList<String> = mutableListOf()

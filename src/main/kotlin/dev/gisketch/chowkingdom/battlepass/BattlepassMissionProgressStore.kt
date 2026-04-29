@@ -2,7 +2,6 @@ package dev.gisketch.chowkingdom.battlepass
 
 import com.google.gson.GsonBuilder
 import dev.gisketch.chowkingdom.ChowKingdomMod
-import net.minecraft.network.chat.Component
 import net.minecraft.server.level.ServerPlayer
 import java.nio.file.Files
 import java.nio.file.Path
@@ -242,7 +241,11 @@ object BattlepassMissionProgressStore {
                 val xp = event.progressXp.getOrNull(index) ?: event.xp
                 if (xp > 0) {
                     BattlepassXpStore.addXp(player, pass.id, xp)
-                    player.displayClientMessage(Component.literal("${event.eventDesc.ifBlank { event.event }} +$xp XP"), true)
+                }
+                if (entry.scope == BattlepassMissionScope.PERMANENT && BattlepassMissionService.isProgressive(event)) {
+                    val finalGoal = BattlepassMissionService.progressiveGoal(event)
+                    val title = "${event.eventDesc.ifBlank { event.event }.replace("{goal}", goal.toString()).replace("{progress}", goal.toString())} $goal/$finalGoal"
+                    BattlepassNetwork.notifyMissionCompletion(player, pass.id, entry.key, title, entry.scope, "goal:$goal")
                 }
             }
         }
