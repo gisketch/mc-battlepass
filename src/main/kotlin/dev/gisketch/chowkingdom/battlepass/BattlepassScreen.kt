@@ -65,6 +65,8 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
 
     private data class SelectionMissionBook(val rect: Rect, val scope: BattlepassMissionScope, val maxScroll: Float)
 
+    private data class SelectionRewardTooltip(val pass: BattlepassPassDefinition, val tier: BattlepassProgressionDefinition, val reward: BattlepassRewardDefinition, val stack: ItemStack, val currentXp: Int)
+
     private data class ClaimAnimation(val stack: ItemStack, val startX: Float, val startY: Float, val endX: Float, val endY: Float, val startedAt: Long)
 
     private var selectedPassId: String? = null
@@ -339,34 +341,61 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
         val cardWidth = ((width - CONTENT_PADDING * 2 - gapTotal) / passes.size.coerceAtLeast(1)).coerceIn(SELECTION_PASS_CARD_MIN_WIDTH, SELECTION_PASS_CARD_MAX_WIDTH)
         val totalWidth = cardWidth * passes.size + gapTotal
         val cardY = y + font.lineHeight + SELECTION_PASS_TITLE_GAP
+        val cardHeight = (height - cardY - SELECTION_PASS_BOTTOM_PADDING).coerceAtLeast(SELECTION_PASS_CARD_HEIGHT)
         var x = (width - totalWidth) / 2
         val currentPlayerId = currentPlayerId()
+        var hoveredReward: SelectionRewardTooltip? = null
         passRects = passes.map { pass ->
-            val rect = Rect(x, cardY, cardWidth, SELECTION_PASS_CARD_HEIGHT)
+            val rect = Rect(x, cardY, cardWidth, cardHeight)
             val hovered = rect.contains(mouseX.toDouble(), mouseY.toDouble())
-            val selected = pass.id == selectedPass.id
-            renderSelectionPassCard(guiGraphics, pass, rect, currentPlayerId?.let { playerId -> xpFor(playerId, pass.id) } ?: 0)
+            val currentXp = currentPlayerId?.let { playerId -> xpFor(playerId, pass.id) } ?: 0
+            renderSelectionPassCard(guiGraphics, pass, rect, hovered)
             if (hovered) renderSelectionReticle(guiGraphics, rect)
+            if (hovered) hoveredReward = selectionRewardTooltip(pass, currentXp)
             x += cardWidth + SELECTION_PASS_CARD_GAP
             rect to pass
         }
+        hoveredReward?.let { tooltip -> renderSelectionRewardTooltip(guiGraphics, tooltip, mouseX, mouseY) }
     }
 
-    private fun renderSelectionPassCard(guiGraphics: GuiGraphics, pass: BattlepassPassDefinition, rect: Rect, currentXp: Int) {
-        renderSelectionPassTitle(guiGraphics, pass, rect.x + SELECTION_PASS_CARD_PADDING, rect.y + SELECTION_PASS_CARD_PADDING, rect.width - SELECTION_PASS_CARD_PADDING * 2, rect.height - SELECTION_PASS_CARD_PADDING * 2)
+    private fun renderSelectionPassCard(guiGraphics: GuiGraphics, pass: BattlepassPassDefinition, rect: Rect, hovered: Boolean) {
+        val titlePadding = SELECTION_PASS_CARD_PADDING + SELECTION_PASS_TITLE_RETICLE_PADDING
+        val pose = guiGraphics.pose()
+        pose.pushPose()
+        if (hovered) {
+            pose.translate(rect.x + rect.width / 2.0f, rect.y + rect.height / 2.0f, 0.0f)
+            pose.scale(SELECTION_PASS_TITLE_HOVER_SCALE, SELECTION_PASS_TITLE_HOVER_SCALE, 1.0f)
+            pose.translate(-(rect.x + rect.width / 2.0f), -(rect.y + rect.height / 2.0f), 0.0f)
+        }
+        renderSelectionPassTitle(guiGraphics, pass, rect.x + titlePadding, rect.y + titlePadding, rect.width - titlePadding * 2, rect.height - titlePadding * 2)
+        pose.popPose()
+    }
+
+    private fun selectionRewardTooltip(pass: BattlepassPassDefinition, currentXp: Int): SelectionRewardTooltip? {
         val tier = pass.progression.sortedBy { progression -> progression.xp }
             .firstOrNull { progression -> currentXp < progression.xp || currentPlayerId()?.let { playerId -> isClaimed(playerId, pass.id, progression.xp) } != true }
         val reward = tier?.rewards?.firstOrNull()
-        val labelY = rect.y + rect.height + SELECTION_PASS_REWARD_GAP
-        guiGraphics.drawString(font, "Next Reward:", rect.x + SELECTION_PASS_CARD_PADDING, labelY, SELECTION_PASS_TEXT_COLOR, false)
-        if (tier != null && reward != null) {
-            val slotRect = Rect(rect.x + rect.width - SELECTION_PASS_CARD_PADDING - SELECTION_PASS_REWARD_SIZE, labelY - 6, SELECTION_PASS_REWARD_SIZE, SELECTION_PASS_REWARD_SIZE)
-            val previousXp = pass.progression.sortedBy { progression -> progression.xp }.takeWhile { progression -> progression.xp < tier.xp }.lastOrNull()?.xp ?: 0
-            val claimed = currentPlayerId()?.let { playerId -> isClaimed(playerId, pass.id, tier.xp) } == true
-            val unlocked = currentXp >= tier.xp
-            val slot = RewardSlot(slotRect, pass.id, tier, reward, rewardStack(reward), false, claimed, unlocked, unlocked && !claimed, !claimed && currentXp >= previousXp && !unlocked, previousXp, emptyList())
-            renderRewardContainer(guiGraphics, slot, REWARD_CONTAINER_TEXTURE, slotRect.width, 0, CONTAINER_TEXTURE_SOURCE_SIZE, currentXp)
-            renderRewardItem(guiGraphics, slot)
+        return if (tier != null && reward != null) SelectionRewardTooltip(pass, tier, reward, rewardStack(reward), currentXp) else null
+    }
+
+    private fun renderSelectionRewardTooltip(guiGraphics: GuiGraphics, tooltip: SelectionRewardTooltip, mouseX: Int, mouseY: Int) {
+        val itemName = tooltip.stack.hoverName.string
+        val quantity = if (tooltip.reward.quantity > 1) " x${tooltip.reward.quantity}" else ""
+        val status = if (tooltip.currentXp >= tooltip.tier.xp) "Ready to claim" else "${tooltip.tier.xp - tooltip.currentXp} XP needed"
+        val lines = listOf("Next Reward", "${itemName}$quantity", "${tooltip.pass.displayName} ${tooltip.tier.xp} XP", status)
+        val tooltipWidth = (lines.maxOf { line -> font.width(line) } + TOOLTIP_PADDING * 2 + SELECTION_TOOLTIP_ITEM_SIZE + SELECTION_TOOLTIP_ITEM_GAP).coerceAtLeast(SELECTION_TOOLTIP_MIN_WIDTH)
+        val tooltipHeight = TOOLTIP_PADDING * 2 + maxOf(SELECTION_TOOLTIP_ITEM_SIZE, lines.size * TOOLTIP_LINE_HEIGHT)
+        val x = (mouseX + TOOLTIP_MOUSE_GAP).coerceAtMost(width - tooltipWidth - TOOLTIP_SCREEN_GAP).coerceAtLeast(TOOLTIP_SCREEN_GAP)
+        val y = (mouseY + TOOLTIP_MOUSE_GAP).coerceAtMost(height - tooltipHeight - TOOLTIP_SCREEN_GAP).coerceAtLeast(TOOLTIP_SCREEN_GAP)
+        renderNineSlice(guiGraphics, TOOLTIP_BACKGROUND_TEXTURE, x, y, tooltipWidth, tooltipHeight, TOOLTIP_BACKGROUND_ALPHA)
+
+        guiGraphics.renderItem(tooltip.stack, x + TOOLTIP_PADDING, y + (tooltipHeight - BASE_ITEM_RENDER_SIZE) / 2)
+        guiGraphics.renderItemDecorations(font, tooltip.stack, x + TOOLTIP_PADDING, y + (tooltipHeight - BASE_ITEM_RENDER_SIZE) / 2, if (tooltip.reward.quantity > 1) tooltip.reward.quantity.toString() else null)
+        var textY = y + TOOLTIP_PADDING
+        val textX = x + TOOLTIP_PADDING + SELECTION_TOOLTIP_ITEM_SIZE + SELECTION_TOOLTIP_ITEM_GAP
+        lines.forEachIndexed { index, line ->
+            guiGraphics.drawString(font, line, textX, textY, if (index == 0) TOOLTIP_PRIMARY_TEXT else TOOLTIP_SECONDARY_TEXT, index == 0)
+            textY += TOOLTIP_LINE_HEIGHT
         }
     }
 
@@ -418,7 +447,7 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
         val contentBottom = hotbar.y - CONTENT_BOTTOM_GAP
         autoCenterCurrentReward(selectedPass, currentXp, hotbar)
         renderMissionsBook(guiGraphics, selectedPass, panel.x + CONTENT_PADDING, contentTop, contentBottom, mouseX, mouseY)
-        renderPlayerPreview(guiGraphics, contentTop, contentBottom, currentXp)
+        renderPlayerPreview(guiGraphics, selectedPass, contentTop, contentBottom, currentXp)
         renderRewardHotbar(guiGraphics, hotbar, selectedPass, currentXp, mouseX, mouseY)
         renderClaimAllButton(guiGraphics, mouseX, mouseY)
         renderClaimAnimations(guiGraphics)
@@ -648,7 +677,7 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
 
     private fun colorWithAlpha(color: Int, alpha: Float): Int = ((alpha.coerceIn(0.0f, 1.0f) * 255).toInt() shl 24) or (color and 0x00FFFFFF)
 
-    private fun renderPlayerPreview(guiGraphics: GuiGraphics, contentTop: Int, contentBottom: Int, currentXp: Int) {
+    private fun renderPlayerPreview(guiGraphics: GuiGraphics, pass: BattlepassPassDefinition, contentTop: Int, contentBottom: Int, currentXp: Int) {
         val player = Minecraft.getInstance().player ?: return
         val previewHeight = (contentBottom - contentTop).coerceAtLeast(PLAYER_PREVIEW_MIN_HEIGHT)
         val previewWidth = (previewHeight * PLAYER_PREVIEW_ASPECT_NUMERATOR / PLAYER_PREVIEW_ASPECT_DENOMINATOR).coerceIn(PLAYER_PREVIEW_MIN_WIDTH, PLAYER_PREVIEW_MAX_WIDTH)
@@ -656,8 +685,6 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
         val x1 = (width - PLAYER_PREVIEW_RIGHT_PADDING - previewWidth).coerceAtLeast(28)
         val y1 = contentTop
         playerPreviewRect = Rect(x1, y1, previewWidth, previewHeight)
-        val xpText = "BP XP $currentXp"
-        guiGraphics.drawString(font, xpText, x1 + (previewWidth - font.width(xpText)) / 2, (y1 - PLAYER_PREVIEW_XP_GAP).coerceAtLeast(HEADER_MIN_TEXT_Y), 0x8DEBFF, true)
         InventoryScreen.renderEntityInInventoryFollowsAngle(
             guiGraphics,
             x1,
@@ -670,6 +697,27 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
             PLAYER_PREVIEW_ANGLE_Y,
             player,
         )
+        renderPlayerXpProgress(guiGraphics, pass, currentXp, x1, y1 + PLAYER_XP_PILL_Y_OFFSET, previewWidth)
+    }
+
+    private fun renderPlayerXpProgress(guiGraphics: GuiGraphics, pass: BattlepassPassDefinition, currentXp: Int, x: Int, y: Int, width: Int) {
+        val tiers = pass.progression.sortedBy { tier -> tier.xp }
+        val nextTier = tiers.firstOrNull { tier -> currentXp < tier.xp }
+        val previousTierXp = tiers.lastOrNull { tier -> tier.xp <= currentXp }?.xp ?: 0
+        val targetXp = nextTier?.xp ?: tiers.lastOrNull()?.xp ?: currentXp
+        val remainingXp = (targetXp - currentXp).coerceAtLeast(0)
+        val span = (targetXp - previousTierXp).coerceAtLeast(1)
+        val progress = if (nextTier == null) 1.0f else ((currentXp - previousTierXp).toFloat() / span).coerceIn(0.0f, 1.0f)
+        val fillWidth = (width * progress).toInt().coerceIn(0, width)
+        val text = if (nextTier == null) "Max XP $currentXp" else "$remainingXp XP to $targetXp"
+
+        renderNineSlice(guiGraphics, TOOLTIP_BACKGROUND_TEXTURE, x, y, width, PLAYER_XP_PILL_HEIGHT, 1.0f)
+        if (fillWidth > 0) {
+            guiGraphics.enableScissor(x, y, x + fillWidth, y + PLAYER_XP_PILL_HEIGHT)
+            renderNineSlice(guiGraphics, GREEN_BORDER_MASK_TEXTURE, x, y, width, PLAYER_XP_PILL_HEIGHT, 1.0f)
+            guiGraphics.disableScissor()
+        }
+        guiGraphics.drawString(font, text, x + (width - font.width(text)) / 2, y + (PLAYER_XP_PILL_HEIGHT - font.lineHeight) / 2, 0xFFFFFFFF.toInt(), true)
     }
 
     private fun startClaimAnimations(slots: List<RewardSlot>) {
@@ -1294,6 +1342,7 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
         private val MISSIONS_BOOK_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/bp_book.png")
         private val PASS_TITLE_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/pass_title.png")
         private val TOOLTIP_BACKGROUND_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/hud-container.png")
+        private val GREEN_BORDER_MASK_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/green-border-mask.png")
         private val CORNER_RETICLE_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/corner_reticle.png")
         private val STAR_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/star.png")
         private val CHECK_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/accept.png")
@@ -1330,16 +1379,19 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
         private val SELECTION_PASS_BUTTON_IDLE_ALPHA = 0.55f
         private val SELECTION_PASS_SEPARATOR = " | "
         private val SELECTION_PASS_CARD_MIN_WIDTH = 132
-        private val SELECTION_PASS_CARD_MAX_WIDTH = 210
+        private val SELECTION_PASS_CARD_MAX_WIDTH = 320
         private val SELECTION_PASS_CARD_HEIGHT = 54
+        private val SELECTION_PASS_BOTTOM_PADDING = 14
         private val SELECTION_PASS_CARD_GAP = 16
         private val SELECTION_PASS_CARD_PADDING = 8
+        private val SELECTION_PASS_TITLE_HOVER_SCALE = 1.06f
         private val SELECTION_PASS_TITLE_HEIGHT = 26
         private val SELECTION_PASS_TITLE_GAP = 5
         private val SELECTION_PASS_REWARD_GAP = 9
         private val SELECTION_PASS_REWARD_SIZE = 34
-        private val SELECTION_RETICLE_SIZE = 32
+        private val SELECTION_RETICLE_SIZE = 16
         private val SELECTION_RETICLE_SOURCE_SIZE = 32
+        private val SELECTION_PASS_TITLE_RETICLE_PADDING = 8
         private val CONTENT_PADDING = 28
         private val CONTENT_TOP_GAP = 12
         private val CONTENT_BOTTOM_GAP = 12
@@ -1453,7 +1505,11 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
         private val PLAYER_PREVIEW_Y_OFFSET = 0.0625f
         private val PLAYER_PREVIEW_ANGLE_X = 0.15f
         private val PLAYER_PREVIEW_ANGLE_Y = 0.0f
-        private val PLAYER_PREVIEW_XP_GAP = 14
+        private val PLAYER_XP_PILL_HEIGHT = 18
+        private val PLAYER_XP_PILL_Y_OFFSET = 16
+        private val SELECTION_TOOLTIP_MIN_WIDTH = 148
+        private val SELECTION_TOOLTIP_ITEM_SIZE = 16
+        private val SELECTION_TOOLTIP_ITEM_GAP = 8
         private val CLAIM_ALL_WIDTH = 124
         private val BACK_BUTTON_WIDTH = 92
         private val BUTTON_HEIGHT = 20

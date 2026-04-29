@@ -2,6 +2,7 @@ package dev.gisketch.chowkingdom.battlepass
 
 import com.google.gson.GsonBuilder
 import dev.gisketch.chowkingdom.ChowKingdomMod
+import net.minecraft.network.chat.Component
 import net.minecraft.server.level.ServerPlayer
 import java.nio.file.Files
 import java.nio.file.Path
@@ -219,7 +220,11 @@ object BattlepassMissionProgressStore {
         if (awardedXp > 0) BattlepassXpStore.addXp(player, pass.id, awardedXp)
         val next = (previous + awardedXp).coerceAtMost(event.xpCap)
         passProgress[storageKey] = next
-        return next >= event.xpCap
+        val completed = next >= event.xpCap
+        if (completed && previous < event.xpCap) {
+            broadcastMissionCompletion(player, entry, BattlepassMissionService.missionDescription(event, next))
+        }
+        return completed
     }
 
     private fun recordProgressive(player: ServerPlayer, pass: BattlepassPassDefinition, entry: BattlepassMissionEntry, amount: Int): Boolean {
@@ -245,7 +250,10 @@ object BattlepassMissionProgressStore {
                 if (entry.scope == BattlepassMissionScope.PERMANENT && BattlepassMissionService.isProgressive(event)) {
                     val finalGoal = BattlepassMissionService.progressiveGoal(event)
                     val title = "${event.eventDesc.ifBlank { event.event }.replace("{goal}", goal.toString()).replace("{progress}", goal.toString())} $goal/$finalGoal"
+                    broadcastMissionCompletion(player, entry, title)
                     BattlepassNetwork.notifyMissionCompletion(player, pass.id, entry.key, title, entry.scope, "goal:$goal")
+                } else {
+                    broadcastMissionCompletion(player, entry, event.eventDesc.ifBlank { event.event }.replace("{goal}", goal.toString()).replace("{progress}", goal.toString()))
                 }
             }
         }
@@ -255,6 +263,19 @@ object BattlepassMissionProgressStore {
 
     private fun activeEntries(pass: BattlepassPassDefinition): List<BattlepassMissionEntry> =
         BattlepassMissionService.permanentEntries(pass) + activeRotatingEntries(pass, BattlepassMissionScope.DAILY, pass.dailyEvents) + activeRotatingEntries(pass, BattlepassMissionScope.WEEKLY, pass.weeklyEvents)
+
+    private fun broadcastMissionCompletion(player: ServerPlayer, entry: BattlepassMissionEntry, title: String) {
+        val message = Component.literal("[Avatar] ")
+            .append(player.name.copy())
+            .append(Component.literal(" completed ${missionTypeLabel(entry.scope)}: $title"))
+        player.server.playerList.broadcastSystemMessage(message, false)
+    }
+
+    private fun missionTypeLabel(scope: BattlepassMissionScope): String = when (scope) {
+        BattlepassMissionScope.DAILY -> "Daily Mission"
+        BattlepassMissionScope.WEEKLY -> "Weekly Mission"
+        BattlepassMissionScope.PERMANENT -> "Chowkingdom Mission"
+    }
 
     private fun activeRotatingEntries(pass: BattlepassPassDefinition, scope: BattlepassMissionScope, definition: BattlepassRotatingMissionDefinition): List<BattlepassMissionEntry> {
         val entries = BattlepassMissionService.rotatingEntries(scope, definition.events)
