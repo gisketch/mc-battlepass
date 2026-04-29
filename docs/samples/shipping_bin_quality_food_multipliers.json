@@ -1,0 +1,8 @@
+{
+  "quality_food": {
+    "enabled": true,
+    "iron_quality": 1.1,
+    "gold_quality": 1.25,
+    "diamond_quality": 1.5
+  }
+}

@@ -9,6 +9,7 @@ import dev.gisketch.chowkingdom.battlepass.BattlepassMissionService
 import dev.gisketch.chowkingdom.battlepass.BattlepassPassRegistry
 import dev.gisketch.chowkingdom.battlepass.BattlepassTrackedMissions
 import dev.gisketch.chowkingdom.battlepass.BattlepassXpEventDefinition
+import dev.gisketch.chowkingdom.shipping.ShippingBinClientState
 import dev.gisketch.chowkingdom.wallets.ChowcoinClientState
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
@@ -21,10 +22,12 @@ import net.minecraft.util.Mth
 import net.neoforged.bus.api.IEventBus
 import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent
 import org.lwjgl.glfw.GLFW
+import java.util.Locale
 
 object ChowKingdomHud {
     private data class HudMission(val passId: String, val entry: BattlepassMissionEntry, val progress: Int, val title: String, val completed: Boolean)
     private data class ActiveCompletionToast(val title: String, val missionName: String, val startedAt: Long)
+    private data class ActiveShippingSaleToast(val itemCount: Int, val amount: Long, val startedAt: Long)
 
     private val LAYER_ID: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "player_hud")
     private val AVATAR_BORDER_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/avatar-border.png")
@@ -38,6 +41,7 @@ object ChowKingdomHud {
     private val TOAST_BUTTON_SPRITE: ResourceLocation = ResourceLocation.withDefaultNamespace("widget/button")
     private var detailProgress = 0.0f
     private val activeCompletionToasts: MutableList<ActiveCompletionToast> = mutableListOf()
+    private val activeShippingSaleToasts: MutableList<ActiveShippingSaleToast> = mutableListOf()
 
     fun register(modBus: IEventBus) {
         modBus.addListener(::registerGuiLayers)
@@ -52,6 +56,7 @@ object ChowKingdomHud {
         val player = minecraft.player ?: return
         if (minecraft.options.hideGui || (minecraft.screen != null && minecraft.screen !is ChatScreen)) return
         queueCompletionToasts(minecraft)
+        queueShippingSaleToasts(minecraft)
 
         val name = player.gameProfile.name
         val avatarX = HUD_PADDING
@@ -79,6 +84,7 @@ object ChowKingdomHud {
         renderNamePill(guiGraphics, minecraft, textX, nameY, name, headerWidth)
         renderCoinPill(guiGraphics, minecraft, textX, coinY, chowcoinText, headerWidth)
         renderTrackedMissions(guiGraphics, minecraft, trackedX, trackedY, trackedMissions, missionPillWidth(sharedWidth))
+        renderShippingSaleToasts(guiGraphics, minecraft)
         renderCompletionToasts(guiGraphics, minecraft)
     }
 
@@ -206,12 +212,7 @@ object ChowKingdomHud {
 
     private fun pillWidthFor(minecraft: Minecraft, text: String): Int = ((minecraft.font.width(text) * TRACKED_TEXT_SCALE).toInt() + TRACKED_TEXT_PADDING * 2).coerceIn(TRACKED_MIN_WIDTH, TRACKED_MAX_WIDTH)
 
-    private fun formatChowcoins(amount: Long): String = when {
-        amount >= 1_000_000_000L -> "${amount / 1_000_000_000L}B"
-        amount >= 1_000_000L -> "${amount / 1_000_000L}M"
-        amount >= 1_000L -> "${amount / 1_000L}K"
-        else -> amount.toString()
-    }
+    private fun formatChowcoins(amount: Long): String = String.format(Locale.US, "%,d", amount)
 
     private fun missionMask(scope: BattlepassMissionScope): ResourceLocation = when (scope) {
         BattlepassMissionScope.DAILY -> GREEN_BORDER_MASK_TEXTURE
@@ -225,6 +226,42 @@ object ChowKingdomHud {
         BattlepassClientState.drainMissionCompletionNotifications().forEach { notification ->
             activeCompletionToasts += ActiveCompletionToast(completionTitle(notification.scope), notification.title, System.currentTimeMillis())
             minecraft.soundManager.play(SimpleSoundInstance.forUI(SoundEvents.PLAYER_LEVELUP, 1.18f, 0.65f))
+        }
+    }
+
+    private fun queueShippingSaleToasts(minecraft: Minecraft) {
+        ShippingBinClientState.drainSaleNotifications().forEach { notification ->
+            activeShippingSaleToasts += ActiveShippingSaleToast(notification.itemCount, notification.amount, System.currentTimeMillis())
+            minecraft.soundManager.play(SimpleSoundInstance.forUI(SoundEvents.ITEM_PICKUP, 1.35f, 0.75f))
+            minecraft.soundManager.play(SimpleSoundInstance.forUI(SoundEvents.PLAYER_LEVELUP, 1.45f, 0.35f))
+        }
+    }
+
+    private fun renderShippingSaleToasts(guiGraphics: GuiGraphics, minecraft: Minecraft) {
+        val now = System.currentTimeMillis()
+        activeShippingSaleToasts.removeIf { toast -> now - toast.startedAt >= TOAST_DURATION_MS }
+        activeShippingSaleToasts.take(1).forEach { toast ->
+            val age = now - toast.startedAt
+            val appear = easeOutBack((age / TOAST_ENTER_MS.toFloat()).coerceIn(0.0f, 1.0f))
+            val exit = ((age - (TOAST_DURATION_MS - TOAST_EXIT_MS)) / TOAST_EXIT_MS.toFloat()).coerceIn(0.0f, 1.0f)
+            val exitScale = 1.0f - easeInOut(exit)
+            val scale = Mth.lerp(appear, TOAST_START_SCALE, 1.0f) * exitScale
+            val alpha = (appear * exitScale).coerceIn(0.0f, 1.0f)
+            if (alpha <= 0.01f) return@forEach
+
+            val toastWidth = shippingToastWidth(minecraft, toast)
+            val x = (minecraft.window.guiScaledWidth - toastWidth) / 2
+            val y = TOAST_TOP
+            val pose = guiGraphics.pose()
+            pose.pushPose()
+            pose.translate(x + toastWidth / 2.0f, y + TOAST_HEIGHT / 2.0f, 0.0f)
+            pose.scale(scale, scale, 1.0f)
+            pose.translate(-(x + toastWidth / 2.0f), -(y + TOAST_HEIGHT / 2.0f), 0.0f)
+            renderVanillaButtonBackground(guiGraphics, x, y, toastWidth, alpha)
+            drawScaledToastText(guiGraphics, minecraft, "Shipping Bin", x + TOAST_TEXT_X, y + TOAST_TITLE_Y, TOAST_TITLE_SCALE, TOAST_TITLE_COLOR, alpha)
+            renderIcon(guiGraphics, COINS_TEXTURE, x + TOAST_TEXT_X, y + TOAST_NAME_Y - 2, TOAST_COIN_SIZE, HEADER_ICON_TEXTURE_SIZE, alpha)
+            drawShippingSaleLine(guiGraphics, minecraft, toast, x + TOAST_TEXT_X + TOAST_COIN_SIZE + TOAST_COIN_GAP, y + TOAST_NAME_Y, alpha)
+            pose.popPose()
         }
     }
 
@@ -242,7 +279,7 @@ object ChowKingdomHud {
 
             val toastWidth = toastWidth(minecraft, toast)
             val x = (minecraft.window.guiScaledWidth - toastWidth) / 2
-            val y = TOAST_TOP + index * (TOAST_HEIGHT + TOAST_GAP)
+            val y = TOAST_TOP + activeShippingSaleToasts.size.coerceAtMost(1) * (TOAST_HEIGHT + TOAST_GAP) + index * (TOAST_HEIGHT + TOAST_GAP)
             val pose = guiGraphics.pose()
             pose.pushPose()
             pose.translate(x + toastWidth / 2.0f, y + TOAST_HEIGHT / 2.0f, 0.0f)
@@ -259,6 +296,26 @@ object ChowKingdomHud {
         val titleWidth = (minecraft.font.width(toast.title) * TOAST_TITLE_SCALE).toInt() + TOAST_TEXT_X * 2
         val missionWidth = (minecraft.font.width(toast.missionName) * TOAST_NAME_SCALE).toInt() + TOAST_TEXT_X * 2
         return maxOf(TOAST_MIN_WIDTH, titleWidth, missionWidth).coerceAtMost(minecraft.window.guiScaledWidth - TOAST_SCREEN_PADDING * 2)
+    }
+
+    private fun shippingToastWidth(minecraft: Minecraft, toast: ActiveShippingSaleToast): Int {
+        val titleWidth = (minecraft.font.width("Shipping Bin") * TOAST_TITLE_SCALE).toInt() + TOAST_TEXT_X * 2
+        val lineWidth = minecraft.font.width("Sold ${toast.itemCount} items for ${formatChowcoins(toast.amount)} chowcoins") + TOAST_TEXT_X * 2 + TOAST_COIN_SIZE + TOAST_COIN_GAP
+        return maxOf(TOAST_MIN_WIDTH, titleWidth, lineWidth).coerceAtMost(minecraft.window.guiScaledWidth - TOAST_SCREEN_PADDING * 2)
+    }
+
+    private fun drawShippingSaleLine(guiGraphics: GuiGraphics, minecraft: Minecraft, toast: ActiveShippingSaleToast, x: Int, y: Int, alpha: Float) {
+        var cursor = x
+        listOf(
+            "Sold " to TOAST_NAME_COLOR,
+            toast.itemCount.toString() to TOAST_HIGHLIGHT_COLOR,
+            " items for " to TOAST_NAME_COLOR,
+            formatChowcoins(toast.amount) to TOAST_HIGHLIGHT_COLOR,
+            " chowcoins" to TOAST_NAME_COLOR,
+        ).forEach { (text, color) ->
+            guiGraphics.drawString(minecraft.font, text, cursor, y, colorWithAlpha(color, alpha), false)
+            cursor += minecraft.font.width(text)
+        }
     }
 
     private fun renderVanillaButtonBackground(guiGraphics: GuiGraphics, x: Int, y: Int, width: Int, alpha: Float) {
@@ -338,6 +395,8 @@ object ChowKingdomHud {
     private const val TOAST_GAP = 4
     private const val TOAST_MAX_VISIBLE = 2
     private const val TOAST_TEXT_X = 10
+    private const val TOAST_COIN_SIZE = 12
+    private const val TOAST_COIN_GAP = 5
     private const val TOAST_TITLE_Y = 8
     private const val TOAST_NAME_Y = 21
     private const val TOAST_TITLE_SCALE = 0.7f
@@ -349,4 +408,5 @@ object ChowKingdomHud {
     private const val TOAST_BACK_OVERSHOOT = 1.55f
     private const val TOAST_TITLE_COLOR = 0xFFFFE7AA.toInt()
     private const val TOAST_NAME_COLOR = 0xFFFFFFFF.toInt()
+    private const val TOAST_HIGHLIGHT_COLOR = 0xFFFFD35C.toInt()
 }

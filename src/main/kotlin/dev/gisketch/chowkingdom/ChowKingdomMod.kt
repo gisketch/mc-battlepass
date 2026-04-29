@@ -11,7 +11,9 @@ import dev.gisketch.chowkingdom.battlepass.BattlepassWorldData
 import dev.gisketch.chowkingdom.battlepass.BattlepassXpStore
 import dev.gisketch.chowkingdom.battlepass.CobblemonBattlepassIntegration
 import dev.gisketch.chowkingdom.client.ChowKingdomHud
+import dev.gisketch.chowkingdom.shipping.ShippingBinClient
 import dev.gisketch.chowkingdom.profiles.ProfilesFeature
+import dev.gisketch.chowkingdom.shipping.ShippingBinFeature
 import dev.gisketch.chowkingdom.shops.ShopsFeature
 import dev.gisketch.chowkingdom.wallets.WalletsFeature
 import net.neoforged.api.distmarker.Dist
@@ -34,11 +36,13 @@ class ChowKingdomMod(modBus: IEventBus, container: ModContainer) {
         CobblemonBattlepassIntegration.register()
         BattlepassCommands.register()
         WalletsFeature.register(modBus)
+        ShippingBinFeature.register(modBus)
         ShopsFeature.register()
         ProfilesFeature.register()
         if (FMLEnvironment.dist == Dist.CLIENT) {
             BattlepassClient.register(modBus)
             ChowKingdomHud.register(modBus)
+            ShippingBinClient.register(modBus)
         }
     }
 

@@ -62,6 +62,16 @@ object ChowcoinStore {
         return total
     }
 
+    fun add(playerId: UUID, amount: Long): Long {
+        if (!loaded) load()
+        if (amount <= 0L) return get(playerId)
+        val key = playerId.toString()
+        val total = balances.getOrDefault(key, 0L) + amount
+        balances[key] = total
+        save()
+        return total
+    }
+
     fun set(player: ServerPlayer, amount: Long): Long {
         if (!loaded) load()
         val total = amount.coerceAtLeast(0L)
