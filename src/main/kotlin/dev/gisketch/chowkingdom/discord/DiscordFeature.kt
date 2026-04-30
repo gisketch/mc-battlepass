@@ -1,5 +1,6 @@
 package dev.gisketch.chowkingdom.discord
 
+import dev.gisketch.chowkingdom.ChatGlyphs
 import net.minecraft.ChatFormatting
 import net.minecraft.network.chat.Component
 import net.minecraft.server.level.ServerPlayer
@@ -82,7 +83,7 @@ object DiscordFeature {
     private fun sendDiscordLinkReminder(player: ServerPlayer) {
         if (DiscordAccountLinkStore.linkFor(player) != null) return
         player.sendSystemMessage(
-            Component.literal("[Chow Kingdom] ").withStyle(ChatFormatting.GOLD)
+            ChatGlyphs.chowKingdomPrefix()
                 .append(Component.literal("Link your Discord to Minecraft.").withStyle(ChatFormatting.AQUA)),
         )
         player.sendSystemMessage(

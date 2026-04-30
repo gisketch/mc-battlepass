@@ -19,6 +19,8 @@ import dev.gisketch.chowkingdom.shipping.ShippingBinClient
 import dev.gisketch.chowkingdom.profiles.ProfilesFeature
 import dev.gisketch.chowkingdom.shipping.ShippingBinFeature
 import dev.gisketch.chowkingdom.shops.ShopsFeature
+import dev.gisketch.chowkingdom.trading.TradingClient
+import dev.gisketch.chowkingdom.trading.TradingFeature
 import dev.gisketch.chowkingdom.wallets.WalletsFeature
 import net.neoforged.api.distmarker.Dist
 import net.neoforged.bus.api.IEventBus
@@ -45,12 +47,14 @@ class ChowKingdomMod(modBus: IEventBus, container: ModContainer) {
         ShippingBinFeature.register(modBus)
         ShopsFeature.register()
         ProfilesFeature.register(modBus)
+        TradingFeature.register(modBus)
         DiscordFeature.register()
         if (FMLEnvironment.dist == Dist.CLIENT) {
             BattlepassClient.register(modBus)
             ChowKingdomHud.register(modBus)
             DiscordScreenshotClient.register(modBus)
             ShippingBinClient.register(modBus)
+            TradingClient.register(modBus)
         }
     }
 

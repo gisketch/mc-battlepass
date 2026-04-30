@@ -1,6 +1,7 @@
 package dev.gisketch.chowkingdom.battlepass
 
 import com.google.gson.GsonBuilder
+import dev.gisketch.chowkingdom.ChatGlyphs
 import dev.gisketch.chowkingdom.ChowKingdomMod
 import dev.gisketch.chowkingdom.discord.DiscordRelay
 import net.minecraft.ChatFormatting
@@ -279,7 +280,7 @@ object BattlepassMissionProgressStore {
         BattlepassMissionService.permanentEntries(pass) + activeRotatingEntries(pass, BattlepassMissionScope.DAILY, pass.dailyEvents) + activeRotatingEntries(pass, BattlepassMissionScope.WEEKLY, pass.weeklyEvents)
 
     private fun broadcastMissionCompletion(player: ServerPlayer, pass: BattlepassPassDefinition, entry: BattlepassMissionEntry, title: String) {
-        val message = Component.literal("[Chow Kingdom] ").withStyle(ChatFormatting.GOLD)
+        val message = ChatGlyphs.chowKingdomPrefix()
             .append(Component.literal(player.gameProfile.name).withStyle(ChatFormatting.YELLOW))
             .append(Component.literal(" completed ").withStyle(ChatFormatting.GRAY))
             .append(Component.literal(missionTypeLabel(entry.scope)).withStyle(ChatFormatting.AQUA))

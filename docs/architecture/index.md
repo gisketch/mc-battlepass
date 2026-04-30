@@ -15,6 +15,7 @@
 - `shipping/`: shipping-bin block/item, private inventories, pricing config, payout, client overlay.
 - `profiles/`: nickname commands, store, client config/state, network sync, mixin-backed name display.
 - `discord/`: webhook relay, inbound bot bridge, account links, screenshot upload, avatar support.
+- `trading/`: player trade requests, trade menu/session state, glow cues, chowcoin trade offers, debug solo trade.
 - `shops/`: feature placeholder.
 - `client/`: HUD rendering.
 - `src/main/java/.../mixin/`: renderer/profile/keyboard mixins.
@@ -22,6 +23,7 @@
 ## State Ownership
 
 - Server owns XP, claims, mission progress, chowcoins, shipping inventories, nicknames, and Discord account links.
+- Server owns active trade sessions; trade state is not persisted.
 - Client caches synced snapshots and UI-only preferences.
 - Gameplay state persists under `<world>/data/gisketchs_chowkingdom_mod/`.
 - Admin-editable definitions and local preferences live under `config/gisketchs_chowkingdom_mod/`.

@@ -2,6 +2,7 @@ package dev.gisketch.chowkingdom.discord
 
 import com.google.gson.GsonBuilder
 import com.google.gson.annotations.SerializedName
+import dev.gisketch.chowkingdom.ChatGlyphs
 import dev.gisketch.chowkingdom.ChowKingdomMod
 import net.neoforged.fml.loading.FMLPaths
 import java.nio.file.Files
@@ -83,7 +84,7 @@ class DiscordInboundConfig(
     @SerializedName("bot_token") var botToken: String = "",
     @SerializedName("channel_id") var channelId: String = "",
     @SerializedName("poll_interval_seconds") var pollIntervalSeconds: Int = 3,
-    @SerializedName("message_format") var messageFormat: String = "\uE100 {author}: {message}",
+    @SerializedName("message_format") var messageFormat: String = ChatGlyphs.defaultDiscordMessageFormat(),
     @SerializedName("bot_presence_enabled") var botPresenceEnabled: Boolean = true,
     @SerializedName("bot_presence_interval_seconds") var botPresenceIntervalSeconds: Int = 60,
     @SerializedName("bot_presence_status") var botPresenceStatus: String = "online",
@@ -96,7 +97,7 @@ class DiscordInboundConfig(
         botToken = botToken.trim()
         channelId = channelId.trim()
         pollIntervalSeconds = pollIntervalSeconds.coerceAtLeast(2)
-        messageFormat = messageFormat.trim().ifBlank { "\uE100 {author}: {message}" }
+        messageFormat = ChatGlyphs.normalizeDiscordMessageFormat(messageFormat)
         botPresenceIntervalSeconds = botPresenceIntervalSeconds.coerceAtLeast(15)
         botPresenceStatus = botPresenceStatus.trim().lowercase().ifBlank { "online" }
         if (botPresenceStatus !in setOf("online", "idle", "dnd", "invisible")) botPresenceStatus = "online"

@@ -43,7 +43,7 @@ Default config is generated disabled:
     "bot_token": "",
     "channel_id": "",
     "poll_interval_seconds": 3,
-    "message_format": "\ue100 {author}: {message}",
+    "message_format": "\ue100  {author}: {message}",
     "bot_presence_enabled": true,
     "bot_presence_interval_seconds": 60,
     "bot_presence_status": "online",
@@ -184,7 +184,7 @@ Enable `Message Content Intent` for the bot in the Discord Developer Portal, oth
   "bot_token": "YOUR_BOT_TOKEN",
   "channel_id": "123456789012345678",
   "poll_interval_seconds": 3,
-  "message_format": "\ue100 {author}: {message}",
+  "message_format": "\ue100  {author}: {message}",
   "bot_presence_enabled": true,
   "bot_presence_interval_seconds": 60,
   "bot_presence_status": "online",
@@ -193,7 +193,7 @@ Enable `Message Content Intent` for the bot in the Discord Developer Portal, oth
 }
 ```
 
-`\ue100` is mapped to `assets/gisketchs_chowkingdom_mod/textures/gui/fonts/discord.png` through the packaged font provider, so it renders as the Discord icon in Minecraft chat.
+`\ue100` is mapped to `assets/gisketchs_chowkingdom_mod/textures/gui/fonts/discord.png` through the packaged font provider, so it renders as the Discord icon in Minecraft chat. `\ue101` is mapped to `assets/gisketchs_chowkingdom_mod/textures/gui/icons/chat_bubble_orange.png` and is used for Chow Kingdom broadcast prefixes.
 
 When `bot_presence_enabled=true`, the bot updates its Discord presence through the Gateway every `bot_presence_interval_seconds`. The default presence renders like `3/20 players - 20.00 TPS - Spring, Day 1` when Serene Seasons is installed, or omits the season part when it is not.
 
