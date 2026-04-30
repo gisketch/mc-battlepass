@@ -66,10 +66,36 @@ Good vanilla quest ideas:
 Implemented now:
 
 - `cobblemon:pokedex_scanned`: absolute scanned species count, best as progressive.
+- `cobblemon:scan_<generation>_pokemon`: absolute scanned species count for one generation, best as a permanent progressive mission.
+- `cobblemon:catch_<generation>_pokemon`: absolute caught species count for one generation, best as a permanent progressive mission.
 - `cobblemon:pokemon_caught`: +1 per captured Pokemon.
 - `cobblemon:pokemon_sent_out`: +1 per sent-out Pokemon.
 - `cobblemon:pokemon_friendship_updated`: +1 per friendship update.
 - `cobblemon:pokemon_friendship_maxed`: +1 when friendship reaches max, also refreshed from party/PC.
+
+Generation scan/catch events are driven from Cobblemon Pokedex records, so duplicate catches do not inflate them. Supported `<generation>` values and all-Pokemon goals:
+
+| Generation | Scan event | Catch event | Goal |
+|---|---|---|---:|
+| Kanto | `cobblemon:scan_kanto_pokemon` | `cobblemon:catch_kanto_pokemon` | 151 |
+| Johto | `cobblemon:scan_johto_pokemon` | `cobblemon:catch_johto_pokemon` | 100 |
+| Hoenn | `cobblemon:scan_hoenn_pokemon` | `cobblemon:catch_hoenn_pokemon` | 135 |
+| Sinnoh | `cobblemon:scan_sinnoh_pokemon` | `cobblemon:catch_sinnoh_pokemon` | 107 |
+| Unova | `cobblemon:scan_unova_pokemon` | `cobblemon:catch_unova_pokemon` | 156 |
+| Kalos | `cobblemon:scan_kalos_pokemon` | `cobblemon:catch_kalos_pokemon` | 72 |
+| Alola | `cobblemon:scan_alola_pokemon` | `cobblemon:catch_alola_pokemon` | 88 |
+| Galar | `cobblemon:scan_galar_pokemon` | `cobblemon:catch_galar_pokemon` | 96 |
+| Paldea | `cobblemon:scan_paldea_pokemon` | `cobblemon:catch_paldea_pokemon` | 120 |
+
+Permanent config examples:
+
+```json
+{ "id": "permanent_catch_kanto_pokemon", "event": "cobblemon:catch_kanto_pokemon", "type": "progressive", "event_desc": "Catch All Kanto Pokemon", "progress": 0, "progress_goals": [151], "progress_xp": [2400] }
+```
+
+```json
+{ "id": "permanent_scan_kalos_pokemon", "event": "cobblemon:scan_kalos_pokemon", "type": "progressive", "event_desc": "Scan All Kalos Pokemon", "progress": 0, "progress_goals": [72], "progress_xp": [700] }
+```
 
 Generated type aliases:
 
@@ -113,6 +139,7 @@ Good Cobblemon quest ideas:
 - Send out 25 starter Pokemon.
 - Max friendship with 3 Pokemon.
 - Scan 100 Pokedex entries.
+- Scan or catch all Pokemon from a generation as a permanent mission.
 - Catch 1 mythical Pokemon.
 - Catch a specific species with `filters.species`.
 

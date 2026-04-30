@@ -111,6 +111,168 @@ object BattlepassPassRegistry {
               "progress_xp": [300, 400, 800]
             },
             {
+              "id": "permanent_scan_kanto_pokemon",
+              "event": "cobblemon:scan_kanto_pokemon",
+              "type": "progressive",
+              "event_desc": "Scan All Kanto Pokemon",
+              "progress": 0,
+              "progress_goals": [151],
+              "progress_xp": [1200]
+            },
+            {
+              "id": "permanent_catch_kanto_pokemon",
+              "event": "cobblemon:catch_kanto_pokemon",
+              "type": "progressive",
+              "event_desc": "Catch All Kanto Pokemon",
+              "progress": 0,
+              "progress_goals": [151],
+              "progress_xp": [2400]
+            },
+            {
+              "id": "permanent_scan_johto_pokemon",
+              "event": "cobblemon:scan_johto_pokemon",
+              "type": "progressive",
+              "event_desc": "Scan All Johto Pokemon",
+              "progress": 0,
+              "progress_goals": [100],
+              "progress_xp": [800]
+            },
+            {
+              "id": "permanent_catch_johto_pokemon",
+              "event": "cobblemon:catch_johto_pokemon",
+              "type": "progressive",
+              "event_desc": "Catch All Johto Pokemon",
+              "progress": 0,
+              "progress_goals": [100],
+              "progress_xp": [1600]
+            },
+            {
+              "id": "permanent_scan_hoenn_pokemon",
+              "event": "cobblemon:scan_hoenn_pokemon",
+              "type": "progressive",
+              "event_desc": "Scan All Hoenn Pokemon",
+              "progress": 0,
+              "progress_goals": [135],
+              "progress_xp": [1000]
+            },
+            {
+              "id": "permanent_catch_hoenn_pokemon",
+              "event": "cobblemon:catch_hoenn_pokemon",
+              "type": "progressive",
+              "event_desc": "Catch All Hoenn Pokemon",
+              "progress": 0,
+              "progress_goals": [135],
+              "progress_xp": [2000]
+            },
+            {
+              "id": "permanent_scan_sinnoh_pokemon",
+              "event": "cobblemon:scan_sinnoh_pokemon",
+              "type": "progressive",
+              "event_desc": "Scan All Sinnoh Pokemon",
+              "progress": 0,
+              "progress_goals": [107],
+              "progress_xp": [900]
+            },
+            {
+              "id": "permanent_catch_sinnoh_pokemon",
+              "event": "cobblemon:catch_sinnoh_pokemon",
+              "type": "progressive",
+              "event_desc": "Catch All Sinnoh Pokemon",
+              "progress": 0,
+              "progress_goals": [107],
+              "progress_xp": [1800]
+            },
+            {
+              "id": "permanent_scan_unova_pokemon",
+              "event": "cobblemon:scan_unova_pokemon",
+              "type": "progressive",
+              "event_desc": "Scan All Unova Pokemon",
+              "progress": 0,
+              "progress_goals": [156],
+              "progress_xp": [1200]
+            },
+            {
+              "id": "permanent_catch_unova_pokemon",
+              "event": "cobblemon:catch_unova_pokemon",
+              "type": "progressive",
+              "event_desc": "Catch All Unova Pokemon",
+              "progress": 0,
+              "progress_goals": [156],
+              "progress_xp": [2400]
+            },
+            {
+              "id": "permanent_scan_kalos_pokemon",
+              "event": "cobblemon:scan_kalos_pokemon",
+              "type": "progressive",
+              "event_desc": "Scan All Kalos Pokemon",
+              "progress": 0,
+              "progress_goals": [72],
+              "progress_xp": [700]
+            },
+            {
+              "id": "permanent_catch_kalos_pokemon",
+              "event": "cobblemon:catch_kalos_pokemon",
+              "type": "progressive",
+              "event_desc": "Catch All Kalos Pokemon",
+              "progress": 0,
+              "progress_goals": [72],
+              "progress_xp": [1400]
+            },
+            {
+              "id": "permanent_scan_alola_pokemon",
+              "event": "cobblemon:scan_alola_pokemon",
+              "type": "progressive",
+              "event_desc": "Scan All Alola Pokemon",
+              "progress": 0,
+              "progress_goals": [88],
+              "progress_xp": [800]
+            },
+            {
+              "id": "permanent_catch_alola_pokemon",
+              "event": "cobblemon:catch_alola_pokemon",
+              "type": "progressive",
+              "event_desc": "Catch All Alola Pokemon",
+              "progress": 0,
+              "progress_goals": [88],
+              "progress_xp": [1600]
+            },
+            {
+              "id": "permanent_scan_galar_pokemon",
+              "event": "cobblemon:scan_galar_pokemon",
+              "type": "progressive",
+              "event_desc": "Scan All Galar Pokemon",
+              "progress": 0,
+              "progress_goals": [96],
+              "progress_xp": [850]
+            },
+            {
+              "id": "permanent_catch_galar_pokemon",
+              "event": "cobblemon:catch_galar_pokemon",
+              "type": "progressive",
+              "event_desc": "Catch All Galar Pokemon",
+              "progress": 0,
+              "progress_goals": [96],
+              "progress_xp": [1700]
+            },
+            {
+              "id": "permanent_scan_paldea_pokemon",
+              "event": "cobblemon:scan_paldea_pokemon",
+              "type": "progressive",
+              "event_desc": "Scan All Paldea Pokemon",
+              "progress": 0,
+              "progress_goals": [120],
+              "progress_xp": [1000]
+            },
+            {
+              "id": "permanent_catch_paldea_pokemon",
+              "event": "cobblemon:catch_paldea_pokemon",
+              "type": "progressive",
+              "event_desc": "Catch All Paldea Pokemon",
+              "progress": 0,
+              "progress_goals": [120],
+              "progress_xp": [2000]
+            },
+            {
               "id": "permanent_monster_slayer",
               "event": "minecraft:monster_killed",
               "type": "progressive",

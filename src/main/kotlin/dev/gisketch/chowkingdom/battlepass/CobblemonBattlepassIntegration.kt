@@ -1,6 +1,7 @@
 package dev.gisketch.chowkingdom.battlepass
 
 import dev.gisketch.chowkingdom.ChowKingdomMod
+import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerPlayer
 import net.neoforged.neoforge.server.ServerLifecycleHooks
 import java.util.UUID
@@ -56,6 +57,7 @@ object CobblemonBattlepassIntegration {
         val player = event.javaClass.getMethod("getPlayer").invoke(event) as? ServerPlayer ?: return
         val pokemon = event.javaClass.getMethod("getPokemon").invoke(event)
         recordPokemonEvent(player, "cobblemon:pokemon_caught", pokemon)
+        syncPokedexProgress(player)
     }
 
     private fun handlePokemonSentOut(event: Any) {
@@ -111,8 +113,14 @@ object CobblemonBattlepassIntegration {
     }
 
     private fun setPokedexProgress(player: ServerPlayer, manager: Any): Boolean {
-        val scannedCount = countRegisteredSpecies(manager)
-        return BattlepassMissionProgressStore.setEventProgress(player, "cobblemon:pokedex_scanned", scannedCount)
+        val records = registeredSpeciesRecords(manager)
+        var changed = BattlepassMissionProgressStore.setEventProgress(player, "cobblemon:pokedex_scanned", records.count { record -> record.seen })
+        POKEMON_GENERATIONS.forEach { generation ->
+            val generationRecords = records.filter { record -> record.nationalDexNumber?.let { dexNumber -> dexNumber in generation.range } == true }
+            changed = BattlepassMissionProgressStore.setEventProgress(player, "cobblemon:scan_${generation.id}_pokemon", generationRecords.count { record -> record.seen }) or changed
+            changed = BattlepassMissionProgressStore.setEventProgress(player, "cobblemon:catch_${generation.id}_pokemon", generationRecords.count { record -> record.caught }) or changed
+        }
+        return changed
     }
 
     private fun playerPokedexManager(player: ServerPlayer): Any? = runCatching {
@@ -130,14 +138,28 @@ object CobblemonBattlepassIntegration {
         }.getOrDefault(emptyList())
     }
 
-    private fun countRegisteredSpecies(manager: Any): Int {
-        val records = manager.javaClass.getMethod("getSpeciesRecords").invoke(manager) as? Map<*, *> ?: return 0
-        return records.values.count { record -> record != null && knowledgeOrdinal(record) >= POKEDEX_SEEN_ORDINAL }
+    private fun registeredSpeciesRecords(manager: Any): List<PokedexSpeciesRecordProgress> {
+        val records = runCatching { manager.javaClass.getMethod("getSpeciesRecords").invoke(manager) as? Map<*, *> }.getOrNull() ?: return emptyList()
+        return records.mapNotNull { (key, value) ->
+            val record = value ?: return@mapNotNull null
+            val dexNumber = nationalDexNumber(record) ?: nationalDexNumber(key ?: record)
+            val knowledge = knowledge(record)
+            PokedexSpeciesRecordProgress(
+                nationalDexNumber = dexNumber,
+                seen = knowledge.seen,
+                caught = knowledge.caught,
+            )
+        }
     }
 
-    private fun knowledgeOrdinal(record: Any): Int {
-        val knowledge = record.javaClass.getMethod("getKnowledge").invoke(record) as? Enum<*> ?: return 0
-        return knowledge.ordinal
+    private fun knowledge(record: Any): PokedexKnowledgeProgress {
+        val knowledge = record.javaClass.getMethod("getKnowledge").invoke(record) as? Enum<*> ?: return PokedexKnowledgeProgress(seen = false, caught = false)
+        val name = knowledge.name.lowercase(Locale.ROOT)
+        val caught = knowledge.ordinal >= POKEDEX_CAUGHT_ORDINAL || name in POKEDEX_CAUGHT_NAMES
+        return PokedexKnowledgeProgress(
+            seen = caught || knowledge.ordinal >= POKEDEX_SEEN_ORDINAL || name in POKEDEX_SEEN_NAMES,
+            caught = caught,
+        )
     }
 
     private fun pokemonFacts(pokemon: Any, friendship: Int?): BattlepassPokemonMissionFacts {
@@ -179,10 +201,71 @@ object CobblemonBattlepassIntegration {
         value.javaClass.getMethod("getName").invoke(value).toString().normalizedToken()
     }.getOrElse { value.toString().normalizedToken() }
 
+    private fun nationalDexNumber(value: Any): Int? {
+        val methodNames = listOf("getNationalPokedexNumber", "getNationalDexNumber", "getPokedexNumber", "getDexNumber")
+        methodNames.forEach { methodName ->
+            val direct = runCatching { value.javaClass.getMethod(methodName).invoke(value) as? Number }.getOrNull()?.toInt()
+            if (direct != null && direct > 0) return direct
+        }
+        val species = runCatching { value.javaClass.getMethod("getSpecies").invoke(value) }.getOrNull()
+        if (species != null && species !== value) return nationalDexNumber(species)
+        val speciesId = speciesIdentifier(value) ?: return null
+        val speciesDefinition = cobblemonSpecies(speciesId) ?: return null
+        if (speciesDefinition !== value) return nationalDexNumber(speciesDefinition)
+        return null
+    }
+
+    private fun speciesIdentifier(value: Any, depth: Int = 0): String? {
+        if (depth > 3) return null
+        if (value is CharSequence) return value.toString().normalizedSpeciesId()
+        val methodNames = listOf("getResourceIdentifier", "getSpeciesId", "getSpeciesIdentifier", "getIdentifier", "getId", "getSpecies")
+        methodNames.forEach { methodName ->
+            val nested = runCatching { value.javaClass.getMethod(methodName).invoke(value) }.getOrNull()
+            if (nested != null && nested !== value) return speciesIdentifier(nested, depth + 1)
+        }
+        return value.toString().normalizedSpeciesId()
+    }
+
+    private fun cobblemonSpecies(speciesId: String): Any? = runCatching {
+        val speciesClass = Class.forName("com.cobblemon.mod.common.api.pokemon.PokemonSpecies")
+        val instance = speciesClass.getField("INSTANCE").get(null)
+        val id = ResourceLocation.parse(speciesId)
+        val name = speciesId.substringAfter(':')
+        speciesClass.methods
+            .firstOrNull { method -> method.name == "getByIdentifier" && method.parameterTypes.size == 1 && method.parameterTypes[0].isAssignableFrom(ResourceLocation::class.java) }
+            ?.invoke(instance, id)
+            ?: speciesClass.methods
+                .firstOrNull { method -> method.name == "getByName" && method.parameterTypes.contentEquals(arrayOf(String::class.java)) }
+                ?.invoke(instance, name)
+    }.getOrNull()
+
     private fun String.normalizedToken(): String = substringAfter(':').lowercase(Locale.ROOT).replace(' ', '_')
 
+    private fun String.normalizedSpeciesId(): String? {
+        val normalized = trim().lowercase(Locale.ROOT)
+        if (!normalized.matches(Regex("[a-z0-9_.-]+:[a-z0-9_/.-]+"))) return null
+        return normalized
+    }
+
     private const val POKEDEX_SEEN_ORDINAL = 1
+    private const val POKEDEX_CAUGHT_ORDINAL = 2
     private const val MAX_FRIENDSHIP = 255
+    private val POKEDEX_SEEN_NAMES = setOf("seen", "encountered")
+    private val POKEDEX_CAUGHT_NAMES = setOf("caught", "captured", "owned")
+    private data class PokedexSpeciesRecordProgress(val nationalDexNumber: Int?, val seen: Boolean, val caught: Boolean)
+    private data class PokedexKnowledgeProgress(val seen: Boolean, val caught: Boolean)
+    private data class PokemonGeneration(val id: String, val range: IntRange)
+    private val POKEMON_GENERATIONS = listOf(
+        PokemonGeneration("kanto", 1..151),
+        PokemonGeneration("johto", 152..251),
+        PokemonGeneration("hoenn", 252..386),
+        PokemonGeneration("sinnoh", 387..493),
+        PokemonGeneration("unova", 494..649),
+        PokemonGeneration("kalos", 650..721),
+        PokemonGeneration("alola", 722..809),
+        PokemonGeneration("galar", 810..905),
+        PokemonGeneration("paldea", 906..1025),
+    )
     private val STARTER_SPECIES = setOf(
         "bulbasaur", "charmander", "squirtle", "chikorita", "cyndaquil", "totodile",
         "treecko", "torchic", "mudkip", "turtwig", "chimchar", "piplup",
