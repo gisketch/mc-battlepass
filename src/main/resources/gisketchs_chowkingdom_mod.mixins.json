@@ -8,6 +8,7 @@
   ],
   "client": [
     "EntityRendererMixin",
+    "KeyboardHandlerMixin",
     "LivingEntityRendererMixin"
   ],
   "injectors": {

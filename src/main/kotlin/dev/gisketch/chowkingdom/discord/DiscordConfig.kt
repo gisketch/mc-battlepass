@@ -54,7 +54,7 @@ class DiscordWebhookConfig(
     @SerializedName("relay_join_leave") var relayJoinLeave: Boolean = false,
     @SerializedName("relay_deaths") var relayDeaths: Boolean = true,
     @SerializedName("relay_battlepass_completions") var relayBattlepassCompletions: Boolean = true,
-    @SerializedName("relay_status") var relayStatus: Boolean = true,
+    @SerializedName("relay_status") var relayStatus: Boolean = false,
     @SerializedName("status_interval_seconds") var statusIntervalSeconds: Int = 300,
     @SerializedName("discord_to_minecraft") var discordToMinecraft: DiscordInboundConfig = DiscordInboundConfig(),
     var formatting: DiscordFormattingConfig = DiscordFormattingConfig(),

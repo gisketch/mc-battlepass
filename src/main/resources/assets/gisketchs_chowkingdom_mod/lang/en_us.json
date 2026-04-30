@@ -1,7 +1,11 @@
 {
   "key.category.gisketchs_chowkingdom_mod": "Chow Kingdom",
   "key.gisketchs_chowkingdom_mod.battlepass.open": "Open Battlepass",
+  "key.gisketchs_chowkingdom_mod.discord_screenshot.send": "Send Screenshot to Discord",
   "block.gisketchs_chowkingdom_mod.shipping_bin": "Shipping Bin",
+  "message.gisketchs_chowkingdom_mod.discord_screenshot.sent": "Screenshot sent to Discord.",
+  "message.gisketchs_chowkingdom_mod.discord_screenshot.failed": "Failed to send screenshot to Discord: %s",
+  "message.gisketchs_chowkingdom_mod.discord_screenshot.capture_failed": "Failed to capture screenshot for Discord.",
   "screen.gisketchs_chowkingdom_mod.battlepass": "Battlepass",
   "ui.gisketchs_chowkingdom_mod.back": "Back",
   "ui.gisketchs_chowkingdom_mod.battlepass.empty": "No passes loaded",

@@ -2,6 +2,8 @@
 
 Discord integration relays server-side multiplayer events to one Discord webhook.
 
+Client screenshots use their own webhook config and can be sent with the screenshot key.
+
 ## Config
 
 Config file:
@@ -33,7 +35,7 @@ Default config is generated disabled:
   "relay_join_leave": false,
   "relay_deaths": true,
   "relay_battlepass_completions": true,
-  "relay_status": true,
+  "relay_status": false,
   "status_interval_seconds": 300,
   "discord_to_minecraft": {
     "enabled": false,
@@ -70,6 +72,40 @@ Default config is generated disabled:
 
 Set `enabled` to `true` and paste a Discord webhook URL into `webhook_url`.
 
+## Screenshot Webhook
+
+Screenshot config file:
+
+```text
+config/gisketchs_chowkingdom_mod/discord/screenshot.json
+```
+
+Default config:
+
+```json
+{
+  "enabled": true,
+  "webhook_url": "",
+  "webhook_username": "Chow Kingdom Screenshots",
+  "avatar_url": "",
+  "hide_gui": true,
+  "keep_local_copy": true,
+  "message": "Screenshot from {player}{mention}"
+}
+```
+
+Paste a Discord webhook URL into `webhook_url`. The keybind `Send Screenshot to Discord` defaults to `F2`. When `webhook_url` is blank or `enabled=false`, vanilla F2 screenshot behavior is left alone. When configured, Chow Kingdom intercepts that key, hides HUD/screen rendering for the capture frame when `hide_gui=true`, saves the PNG locally, and uploads it to the screenshot webhook.
+
+Screenshot message tokens:
+
+```text
+{player}      markdown-escaped local player name
+{player_raw}  raw local player name
+{mention}     linked Discord user mention, or blank
+```
+
+`{player}` uses the current nickname when one is enabled. If the Minecraft account is linked to Discord, `{mention}` becomes a real `<@user>` mention and the webhook `allowed_mentions` field is restricted to that linked user.
+
 ## Current Behavior
 
 - Player chat relays through the webhook using the player's Minecraft name and avatar URL when `player_chat_identity` is enabled.
@@ -83,8 +119,8 @@ Set `enabled` to `true` and paste a Discord webhook URL into `webhook_url`.
 - Join, leave, and death relay use Discord embeds with configurable titles, descriptions, and colors.
 - Battlepass mission completions use Discord embeds with player avatar author icons.
 - Player chat remains normal webhook content so dynamic username/avatar still behaves like chat.
-- Server status posts every `status_interval_seconds` with online count and smoothed TPS.
-- Join/leave and server status always use the configured `webhook_username` and `avatar_url`, such as `Chow Kingdom`.
+- Bot presence updates show online count and smoothed TPS without posting status messages into the Discord channel.
+- Join/leave posts use the configured `webhook_username` and `avatar_url`, such as `Chow Kingdom`.
 - Join/leave relay exists but defaults off; enable `relay_join_leave` if wanted.
 - Webhook sends async so chat/tick thread does not wait for Discord.
 - Offline-mode servers usually cannot use Mojang skin UUID services correctly, so `minecraft_avatar_url_template` may show Steve. Use Quick Skin server-side plus the built-in avatar server for offline-mode player avatars.
@@ -163,7 +199,7 @@ When `bot_presence_enabled=true`, the bot updates its Discord presence through t
 
 ### Account linking
 
-Players can link their Minecraft account to their Discord account so Discord-to-Minecraft chat renders their Minecraft username instead of their Discord display name.
+Players can link their Minecraft account to their Discord account so Discord-to-Minecraft chat renders their Minecraft username instead of their Discord display name. Linked author components keep `/tell <originalName>` metadata while displaying the nickname, so Chat Heads can resolve the correct Minecraft skin for nickname-authored Discord messages.
 
 1. In Minecraft, run `/ck discord link`.
 2. Copy the generated `CK-######` code.

@@ -15,7 +15,6 @@ import net.neoforged.neoforge.event.tick.ServerTickEvent
 object DiscordFeature {
     private var lastTickNanos = 0L
     private var smoothedTps = 20.0
-    private var nextStatusMillis = 0L
 
     fun register() {
         DiscordConfig.load()
@@ -66,15 +65,6 @@ object DiscordFeature {
     private fun onServerTick(event: ServerTickEvent.Post) {
         updateTps()
         DiscordInboundBridge.tick(event.server, smoothedTps)
-        val config = DiscordConfig.current()
-        if (!config.enabled || !config.relayStatus) return
-
-        val nowMillis = System.currentTimeMillis()
-        if (nextStatusMillis == 0L) nextStatusMillis = nowMillis + config.statusIntervalSeconds * 1000L
-        if (nowMillis < nextStatusMillis) return
-
-        nextStatusMillis = nowMillis + config.statusIntervalSeconds * 1000L
-        DiscordRelay.status(event.server, smoothedTps)
     }
 
     private fun updateTps() {

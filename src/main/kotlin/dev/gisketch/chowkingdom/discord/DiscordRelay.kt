@@ -12,11 +12,12 @@ object DiscordRelay {
         if (!config.enabled || !config.relayChat) return
 
         val values = playerValues(player) + mapOf("message" to DiscordText.cleanContent(rawMessage))
+        val content = DiscordText.applyTemplate(config.formatting.chatMessage, values)
         if (config.playerChatIdentity) {
             val displayName = NicknameStore.displayName(player)
             DiscordWebhookClient.send(
                 DiscordWebhookMessage(
-                    content = DiscordText.applyTemplate(config.formatting.chatMessage, values),
+                    content = content,
                     username = displayName,
                     avatarUrl = DiscordQuickSkinSupport.avatarUrl(player, config),
                 ),

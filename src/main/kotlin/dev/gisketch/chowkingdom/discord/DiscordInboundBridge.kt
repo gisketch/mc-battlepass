@@ -4,8 +4,12 @@ import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import dev.gisketch.chowkingdom.ChowKingdomMod
+import dev.gisketch.chowkingdom.profiles.NicknameStore
+import net.minecraft.network.chat.ClickEvent
 import net.minecraft.network.chat.Component
+import net.minecraft.network.chat.MutableComponent
 import net.minecraft.server.MinecraftServer
+import net.minecraft.server.level.ServerPlayer
 import net.neoforged.fml.ModList
 import java.math.BigInteger
 import java.net.URI
@@ -15,6 +19,7 @@ import java.net.http.HttpResponse
 import java.net.http.WebSocket
 import java.time.Duration
 import java.util.Locale
+import java.util.UUID
 import java.util.concurrent.CompletionStage
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledFuture
@@ -267,18 +272,41 @@ object DiscordInboundBridge {
 
     private fun broadcast(server: MinecraftServer, config: DiscordInboundConfig, message: InboundMessage) {
         server.execute {
-            val author = DiscordAccountLinkStore.minecraftNameForDiscord(message.authorId) ?: message.author
-            val content = DiscordText.applyTemplate(
-                config.messageFormat,
-                mapOf(
-                    "author" to author,
-                    "discord_author" to message.author,
-                    "discord_id" to message.authorId,
-                    "message" to DiscordText.cleanContent(message.content),
-                ),
-            )
-            server.playerList.broadcastSystemMessage(Component.literal(content), false)
+            val link = DiscordAccountLinkStore.linkForDiscord(message.authorId)
+            val linkedPlayer = link?.minecraftUuid
+                ?.let { playerId -> runCatching { UUID.fromString(playerId) }.getOrNull() }
+                ?.let(server.playerList::getPlayer)
+            val author = link?.minecraftName ?: message.author
+            server.playerList.broadcastSystemMessage(inboundMessageComponent(config, message, author, linkedPlayer), false)
         }
+    }
+
+    private fun inboundMessageComponent(config: DiscordInboundConfig, message: InboundMessage, author: String, linkedPlayer: ServerPlayer?): Component {
+        val values = mapOf(
+            "discord_author" to message.author,
+            "discord_id" to message.authorId,
+            "message" to DiscordText.cleanContent(message.content),
+        )
+        val output = Component.empty()
+        var cursor = 0
+        TEMPLATE_TOKEN.findAll(config.messageFormat).forEach { match ->
+            if (match.range.first > cursor) output.append(Component.literal(config.messageFormat.substring(cursor, match.range.first)))
+            when (match.groupValues[1]) {
+                "author" -> output.append(authorComponent(author, linkedPlayer))
+                "message" -> output.append(Component.literal(values[match.groupValues[1]].orEmpty()).withStyle { style -> style.withColor(CHAT_MESSAGE_COLOR) })
+                else -> output.append(Component.literal(values[match.groupValues[1]].orEmpty()))
+            }
+            cursor = match.range.last + 1
+        }
+        if (cursor < config.messageFormat.length) output.append(Component.literal(config.messageFormat.substring(cursor)))
+        return output
+    }
+
+    private fun authorComponent(author: String, linkedPlayer: ServerPlayer?): MutableComponent {
+        val component = Component.literal(author).withStyle { style -> style.withBold(true) }
+        if (linkedPlayer == null) return component
+        val originalName = NicknameStore.originalName(linkedPlayer)
+        return component.withStyle { style -> style.withClickEvent(ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/tell $originalName ")) }
     }
 
     private fun handleLinkCommand(config: DiscordInboundConfig, message: InboundMessage): Boolean {
@@ -463,6 +491,8 @@ object DiscordInboundBridge {
     private const val DISCORD_ACTIVITY_CUSTOM = 4
     private const val DISCORD_ACTIVITY_TEXT_LIMIT = 128
     private val LINK_COMMAND = Regex("(?i)!link\\s+([a-z0-9-]{4,32})")
+    private val TEMPLATE_TOKEN = Regex("\\{(author|discord_author|discord_id|message)\\}")
+    private const val CHAT_MESSAGE_COLOR = 0xD7D9E0
 }
 
 private object DiscordSeasonStatus {

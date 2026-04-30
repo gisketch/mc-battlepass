@@ -10,6 +10,7 @@ import net.neoforged.bus.api.SubscribeEvent
 import net.neoforged.fml.loading.FMLEnvironment
 import net.neoforged.neoforge.common.NeoForge
 import net.neoforged.neoforge.event.RegisterCommandsEvent
+import net.neoforged.neoforge.event.ServerChatEvent
 import net.neoforged.neoforge.event.entity.player.PlayerEvent
 
 object ProfilesFeature {
@@ -68,8 +69,8 @@ object ProfilesFeature {
 
     @SubscribeEvent
     fun onNameFormat(event: PlayerEvent.NameFormat) {
-        val nickname = NicknameStore.nicknameFor(event.entity.uuid) ?: return
-        event.displayname = Component.literal(nickname)
+        val displayName = NicknameStore.nicknameFor(event.entity.uuid)?.let(Component::literal) ?: event.username.copy()
+        event.displayname = displayName.withStyle { style -> style.withBold(true) }
     }
 
     @SubscribeEvent
@@ -77,4 +78,11 @@ object ProfilesFeature {
         val nickname = NicknameStore.nicknameFor(event.entity.uuid) ?: return
         event.displayName = Component.literal(nickname)
     }
+
+    @SubscribeEvent
+    fun onServerChat(event: ServerChatEvent) {
+        event.message = Component.literal(event.rawText).withStyle { style -> style.withColor(CHAT_MESSAGE_COLOR) }
+    }
+
+    private const val CHAT_MESSAGE_COLOR = 0xD7D9E0
 }

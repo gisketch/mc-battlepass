@@ -94,6 +94,16 @@ object DiscordAccountLinkStore {
         return linksByMinecraftId[player.stringUUID]
     }
 
+    fun linkForMinecraftId(minecraftUuid: String): DiscordAccountLink? {
+        ensureLoaded()
+        return linksByMinecraftId[minecraftUuid]
+    }
+
+    fun linkForDiscord(discordId: String): DiscordAccountLink? {
+        ensureLoaded()
+        return linksByDiscordId[discordId]
+    }
+
     fun minecraftNameForDiscord(discordId: String): String? {
         ensureLoaded()
         return linksByDiscordId[discordId]?.minecraftName
