@@ -73,6 +73,8 @@ data class TradeStatePayload(
     val otherId: UUID,
     val selfName: String,
     val otherName: String,
+    val selfBalance: Long,
+    val otherBalance: Long,
     val selfChowcoins: Long,
     val otherChowcoins: Long,
     val selfReady: Boolean,
@@ -94,6 +96,8 @@ data class TradeStatePayload(
                 buffer.readUtf(32),
                 buffer.readVarLong(),
                 buffer.readVarLong(),
+                buffer.readVarLong(),
+                buffer.readVarLong(),
                 buffer.readBoolean(),
                 buffer.readBoolean(),
                 buffer.readBoolean(),
@@ -107,6 +111,8 @@ data class TradeStatePayload(
                 buffer.writeUUID(value.otherId)
                 buffer.writeUtf(value.selfName, 32)
                 buffer.writeUtf(value.otherName, 32)
+                buffer.writeVarLong(value.selfBalance)
+                buffer.writeVarLong(value.otherBalance)
                 buffer.writeVarLong(value.selfChowcoins)
                 buffer.writeVarLong(value.otherChowcoins)
                 buffer.writeBoolean(value.selfReady)

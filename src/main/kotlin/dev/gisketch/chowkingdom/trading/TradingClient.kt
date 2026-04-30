@@ -1,21 +1,26 @@
 package dev.gisketch.chowkingdom.trading
 
+import com.mojang.blaze3d.systems.RenderSystem
+import dev.gisketch.chowkingdom.ChowKingdomMod
 import dev.gisketch.chowkingdom.wallets.ChowcoinClientState
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.components.Button
+import net.minecraft.client.gui.components.EditBox
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen
+import net.minecraft.client.gui.screens.inventory.InventoryScreen
 import net.minecraft.client.renderer.RenderType
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.entity.Entity
+import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.player.Inventory
 import net.neoforged.bus.api.IEventBus
 import net.neoforged.neoforge.client.event.ClientTickEvent
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent
 import net.neoforged.neoforge.common.NeoForge
-import java.util.UUID
 import java.util.Locale
+import java.util.UUID
 
 object TradingClient {
     private val glowTargets: MutableMap<UUID, Boolean> = linkedMapOf()
@@ -66,28 +71,35 @@ object TradingClient {
 
 class TradingScreen(menu: TradingMenu, inventory: Inventory, title: Component) : AbstractContainerScreen<TradingMenu>(menu, inventory, title) {
     private var readyButton: Button? = null
+    private var coinInput: EditBox? = null
+    private var lastCoinInputValue: String? = null
 
     init {
         imageWidth = TradingMenu.IMAGE_WIDTH
         imageHeight = TradingMenu.IMAGE_HEIGHT
-        titleLabelX = 8
+        titleLabelX = TradingMenu.LEFT_X + 8
         titleLabelY = 6
         inventoryLabelY = 72
     }
 
     override fun init() {
         super.init()
-        val buttonY = topPos + 174
-        addRenderableWidget(Button.builder(Component.literal("+1k")) { adjustCoins(1_000) }.bounds(leftPos + 8, buttonY, 38, 20).build())
-        addRenderableWidget(Button.builder(Component.literal("+10k")) { adjustCoins(10_000) }.bounds(leftPos + 50, buttonY, 42, 20).build())
-        addRenderableWidget(Button.builder(Component.literal("Max")) { setCoins(ChowcoinClientState.balance()) }.bounds(leftPos + 96, buttonY, 38, 20).build())
-        addRenderableWidget(Button.builder(Component.literal("Clear")) { setCoins(0) }.bounds(leftPos + 138, buttonY, 42, 20).build())
-        readyButton = addRenderableWidget(Button.builder(Component.literal("Ready")) { readyOrConfirm() }.bounds(leftPos + 194, buttonY, 92, 20).build())
-        addRenderableWidget(Button.builder(Component.literal("Cancel")) { TradingNetwork.sendAction(menu.sessionId, TradeAction.CANCEL) }.bounds(leftPos + 292, buttonY, 64, 20).build())
+        val centerX = leftPos + imageWidth / 2
+        val readyY = topPos + 174
+        val coinY = readyY + 26
+        readyButton = addRenderableWidget(Button.builder(Component.literal("Ready")) { readyOrConfirm() }.bounds(centerX - 54, readyY, 108, 20).build())
+        coinInput = addRenderableWidget(EditBox(font, centerX - 38, coinY, 92, 20, Component.literal("Chowcoins")).also { input ->
+            input.setFilter { value -> value.isEmpty() || value.all(Char::isDigit) }
+            input.setMaxLength(15)
+            input.setResponder(::onCoinInputChanged)
+        })
+        addRenderableWidget(Button.builder(Component.literal("Cancel")) { TradingNetwork.sendAction(menu.sessionId, TradeAction.CANCEL) }.bounds(centerX - 42, coinY + 26, 84, 20).build())
+        syncCoinInputFromState()
     }
 
     override fun render(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) {
         updateReadyButton()
+        syncCoinInputFromState()
         super.render(guiGraphics, mouseX, mouseY, partialTick)
         dimOtherInventory(guiGraphics)
         renderTooltip(guiGraphics, mouseX, mouseY)
@@ -96,16 +108,18 @@ class TradingScreen(menu: TradingMenu, inventory: Inventory, title: Component) :
     override fun renderBg(guiGraphics: GuiGraphics, partialTick: Float, mouseX: Int, mouseY: Int) {
         renderChest(guiGraphics, leftPos + TradingMenu.LEFT_X, topPos)
         renderChest(guiGraphics, leftPos + TradingMenu.RIGHT_X, topPos)
+        renderPaperDoll(guiGraphics, leftPos, topPos - 10, minecraft?.player, mouseX, mouseY)
+        renderPaperDoll(guiGraphics, leftPos + TradingMenu.RIGHT_PAPER_DOLL_X, topPos - 10, otherPlayer(), mouseX, mouseY)
+        renderProjectedBalances(guiGraphics)
+        renderCoinInputIcon(guiGraphics)
     }
 
     override fun renderLabels(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
         val state = TradingClientState.get(menu.sessionId)
-        guiGraphics.drawString(font, menu.selfName, 8, 6, 0x404040, false)
-        guiGraphics.drawString(font, menu.otherName, TradingMenu.RIGHT_X + 8, 6, 0x404040, false)
-        guiGraphics.drawString(font, "Offer: ${format(state?.selfChowcoins ?: 0L)} chowcoins", 8, 62, 0xE0A12A, false)
-        guiGraphics.drawString(font, "Offer: ${format(state?.otherChowcoins ?: 0L)} chowcoins", TradingMenu.RIGHT_X + 8, 62, 0xE0A12A, false)
-        guiGraphics.drawString(font, statusText(state, self = true), 8, 158, 0x404040, false)
-        guiGraphics.drawString(font, statusText(state, self = false), TradingMenu.RIGHT_X + 8, 158, 0x404040, false)
+        renderReadyState(guiGraphics, TradingMenu.LEFT_X + 8, 6, state, self = true)
+        renderReadyState(guiGraphics, TradingMenu.RIGHT_X + TradingMenu.PANEL_WIDTH - 86, 6, state, self = false)
+        renderCoinRow(guiGraphics, TradingMenu.LEFT_X + 8, -19, state?.selfChowcoins ?: 0L)
+        renderCoinRow(guiGraphics, TradingMenu.RIGHT_X + 8, -19, state?.otherChowcoins ?: 0L)
     }
 
     override fun removed() {
@@ -135,6 +149,7 @@ class TradingScreen(menu: TradingMenu, inventory: Inventory, title: Component) :
         }
         readyButton?.message = Component.literal(label)
         readyButton?.active = state?.selfConfirmed != true
+        coinInput?.active = true
     }
 
     private fun readyOrConfirm() {
@@ -143,13 +158,15 @@ class TradingScreen(menu: TradingMenu, inventory: Inventory, title: Component) :
         else TradingNetwork.sendAction(menu.sessionId, TradeAction.READY)
     }
 
-    private fun adjustCoins(delta: Long) {
-        val current = TradingClientState.get(menu.sessionId)?.selfChowcoins ?: 0L
-        setCoins((current + delta).coerceAtMost(ChowcoinClientState.balance()))
-    }
-
     private fun setCoins(amount: Long) {
         TradingNetwork.sendAction(menu.sessionId, TradeAction.SET_CHOWCOINS, amount.coerceAtLeast(0L))
+    }
+
+    private fun renderReadyState(guiGraphics: GuiGraphics, x: Int, y: Int, state: TradeStatePayload?, self: Boolean) {
+        val text = statusText(state, self)
+        val icon = if (isReadyOrConfirmed(state, self)) READY_TEXTURE else NOT_READY_TEXTURE
+        renderIcon(guiGraphics, icon, x, y - 3, STATUS_ICON_SIZE, STATUS_ICON_TEXTURE_SIZE)
+        guiGraphics.drawString(font, text, x + STATUS_ICON_SIZE + 4, y, 0x404040, false)
     }
 
     private fun statusText(state: TradeStatePayload?, self: Boolean): String {
@@ -158,13 +175,108 @@ class TradingScreen(menu: TradingMenu, inventory: Inventory, title: Component) :
         return when {
             confirmed == true -> "Confirmed"
             ready == true -> "Ready"
-            else -> "Not ready"
+            else -> "Not Ready"
         }
+    }
+
+    private fun isReadyOrConfirmed(state: TradeStatePayload?, self: Boolean): Boolean =
+        if (self) state?.selfReady == true || state?.selfConfirmed == true else state?.otherReady == true || state?.otherConfirmed == true
+
+    private fun renderCoinRow(guiGraphics: GuiGraphics, x: Int, y: Int, amount: Long) {
+        renderIcon(guiGraphics, COINS_TEXTURE, x, y, COIN_ICON_SIZE, COIN_ICON_TEXTURE_SIZE)
+        guiGraphics.drawString(font, format(amount), x + COIN_ICON_SIZE + 6, y + 4, 0xE0A12A, false)
+    }
+
+    private fun renderPaperDoll(guiGraphics: GuiGraphics, x: Int, y: Int, entity: LivingEntity?, mouseX: Int, mouseY: Int) {
+        val tagWidth = TradingMenu.PAPER_DOLL_WIDTH
+        if (entity != null) {
+            InventoryScreen.renderEntityInInventoryFollowsMouse(
+                guiGraphics,
+                x + 4,
+                y,
+                x + tagWidth - 4,
+                y + 174,
+                46,
+                0.0f,
+                mouseX.toFloat(),
+                mouseY.toFloat(),
+                entity,
+            )
+        } else {
+            guiGraphics.drawCenteredString(font, "No preview", x + tagWidth / 2, y + 76, 0x777777)
+        }
+    }
+
+    private fun renderProjectedBalances(guiGraphics: GuiGraphics) {
+        val state = TradingClientState.get(menu.sessionId)
+        val selfBalance = state?.selfBalance ?: ChowcoinClientState.balance()
+        val otherBalance = state?.otherBalance ?: 0L
+        renderProjectedBalance(guiGraphics, 0, 162, selfBalance, state?.selfChowcoins ?: 0L, state?.otherChowcoins ?: 0L)
+        renderProjectedBalance(guiGraphics, TradingMenu.RIGHT_PAPER_DOLL_X, 162, otherBalance, state?.otherChowcoins ?: 0L, state?.selfChowcoins ?: 0L)
+    }
+
+    private fun renderProjectedBalance(guiGraphics: GuiGraphics, x: Int, y: Int, balance: Long, outgoing: Long, incoming: Long) {
+        val projected = balance - outgoing + incoming
+        val delta = incoming - outgoing
+        val iconX = leftPos + x + 10
+        val iconY = topPos + y
+        renderIcon(guiGraphics, COINS_TEXTURE, iconX, iconY, COIN_ICON_SIZE, COIN_ICON_TEXTURE_SIZE)
+        val amountX = iconX + COIN_ICON_SIZE + 5
+        guiGraphics.drawString(font, format(projected), amountX, iconY + 4, 0xE0A12A, false)
+        if (delta != 0L) {
+            val deltaText = if (delta > 0) "(+${format(delta)})" else "(-${format(-delta)})"
+            val pose = guiGraphics.pose()
+            pose.pushPose()
+            pose.translate((amountX + font.width(format(projected)) + 5).toFloat(), (iconY + 6).toFloat(), 0.0f)
+            pose.scale(0.75f, 0.75f, 1.0f)
+            guiGraphics.drawString(font, deltaText, 0, 0, 0xFF8A8A8A.toInt(), false)
+            pose.popPose()
+        }
+    }
+
+    private fun renderCoinInputIcon(guiGraphics: GuiGraphics) {
+        val input = coinInput ?: return
+        renderIcon(guiGraphics, COINS_TEXTURE, input.x - COIN_ICON_SIZE - 6, input.y + 2, COIN_ICON_SIZE, COIN_ICON_TEXTURE_SIZE)
+    }
+
+    private fun syncCoinInputFromState() {
+        val input = coinInput ?: return
+        if (input.isFocused) return
+        val value = (TradingClientState.get(menu.sessionId)?.selfChowcoins ?: 0L).toString()
+        if (input.value == value) return
+        lastCoinInputValue = value
+        input.setValue(value)
+    }
+
+    private fun onCoinInputChanged(value: String) {
+        if (value == lastCoinInputValue) return
+        lastCoinInputValue = value
+        val amount = value.toLongOrNull()?.coerceAtMost(ChowcoinClientState.balance()) ?: 0L
+        setCoins(amount)
+    }
+
+    private fun otherPlayer(): LivingEntity? {
+        val state = TradingClientState.get(menu.sessionId) ?: return null
+        if (state.debug) return null
+        return minecraft?.level?.players()?.firstOrNull { player -> player.uuid == state.otherId }
+    }
+
+    private fun renderIcon(guiGraphics: GuiGraphics, texture: ResourceLocation, x: Int, y: Int, size: Int, textureSize: Int) {
+        RenderSystem.enableBlend()
+        RenderSystem.defaultBlendFunc()
+        guiGraphics.blit(texture, x, y, size, size, 0.0f, 0.0f, textureSize, textureSize, textureSize, textureSize)
     }
 
     private fun format(amount: Long): String = String.format(Locale.US, "%,d", amount)
 
     companion object {
         private val CONTAINER_BACKGROUND: ResourceLocation = ResourceLocation.withDefaultNamespace("textures/gui/container/generic_54.png")
+        private val COINS_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/coins.png")
+        private val READY_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/friend_add.png")
+        private val NOT_READY_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/friend_remove.png")
+        private const val STATUS_ICON_SIZE = 14
+        private const val STATUS_ICON_TEXTURE_SIZE = 16
+        private const val COIN_ICON_SIZE = 16
+        private const val COIN_ICON_TEXTURE_SIZE = 16
     }
 }

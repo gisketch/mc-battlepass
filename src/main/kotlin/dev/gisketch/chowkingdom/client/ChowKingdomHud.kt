@@ -55,7 +55,7 @@ object ChowKingdomHud {
     private fun render(guiGraphics: GuiGraphics) {
         val minecraft = Minecraft.getInstance()
         val player = minecraft.player ?: return
-        if (minecraft.options.hideGui || (minecraft.screen != null && minecraft.screen !is ChatScreen)) return
+        if (minecraft.options.hideGui || minecraft.gui.debugOverlay.showDebugScreen() || (minecraft.screen != null && minecraft.screen !is ChatScreen)) return
         queueCompletionToasts(minecraft)
         queueShippingSaleToasts(minecraft)
 

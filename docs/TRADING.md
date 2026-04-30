@@ -12,11 +12,13 @@ Player trading is server-owned and temporary. No trade state is persisted.
 
 ## UI
 
-The trade screen renders two chest-style panels side by side.
+The trade screen renders two chest-style panels side by side with paperdoll identity cards outside them.
 
-- Left panel: your 27 offer slots and your inventory.
-- Right panel: other player offer slots and a dimmed locked preview of their inventory.
-- Chowcoins can be offered with the bottom controls.
+- Left paperdoll/panel: your nickname-aware name tag, player preview, 27 offer slots, and inventory.
+- Right paperdoll/panel: other player's nickname-aware name tag, player preview when visible, 27 offer slots, and a dimmed locked inventory preview.
+- Panel headers show ready state with friend add/remove icons instead of player names.
+- Chowcoins render with the shared `coins.png` icon and formatted amount.
+- Type in the inline chowcoin input to update the offered amount.
 - Both players click Ready. Once both are ready, both click Confirm to commit.
 - Any item or chowcoin change resets readiness.
 

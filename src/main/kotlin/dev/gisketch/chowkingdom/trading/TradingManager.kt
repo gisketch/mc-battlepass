@@ -1,6 +1,7 @@
 package dev.gisketch.chowkingdom.trading
 
 import com.mojang.brigadier.context.CommandContext
+import dev.gisketch.chowkingdom.ChatGlyphs
 import dev.gisketch.chowkingdom.wallets.ChowcoinNetwork
 import dev.gisketch.chowkingdom.wallets.ChowcoinStore
 import net.minecraft.ChatFormatting
@@ -8,6 +9,8 @@ import net.minecraft.commands.CommandSourceStack
 import net.minecraft.commands.Commands
 import net.minecraft.network.chat.Component
 import net.minecraft.server.level.ServerPlayer
+import net.minecraft.sounds.SoundEvents
+import net.minecraft.sounds.SoundSource
 import net.minecraft.world.InteractionHand
 import net.minecraft.world.InteractionResult
 import net.minecraft.world.MenuProvider
@@ -212,11 +215,7 @@ object TradingManager {
             if (secondCoins > 0L) ChowcoinStore.add(first, secondCoins)
             first.sendSystemMessage(Component.literal("Debug trade completed; your offer was returned.").withStyle(ChatFormatting.YELLOW))
         }
-        cleanup(session)
-        first.closeContainer()
-        second?.closeContainer()
-        first.sendSystemMessage(Component.literal("Trade completed.").withStyle(ChatFormatting.GREEN))
-        second?.sendSystemMessage(Component.literal("Trade completed.").withStyle(ChatFormatting.GREEN))
+        finishCompletedTrade(session)
         ChowcoinNetwork.syncTo(first)
         second?.let(ChowcoinNetwork::syncTo)
     }
@@ -288,12 +287,35 @@ object TradingManager {
     private fun onServerTick(event: ServerTickEvent.Post) {
         expireRequests(event.server.tickCount)
         sessions.values.toList().forEach { session ->
+            if (session.completed) return@forEach
             val first = player(session.firstId) ?: return@forEach cancel(session, "Trade cancelled: ${session.firstName} left.")
             val second = if (session.debug) null else player(session.secondId) ?: return@forEach cancel(session, "Trade cancelled: ${session.secondName} left.")
             if (second != null && (first.level() != second.level() || first.distanceToSqr(second) > MAX_DISTANCE_SQR)) {
                 cancel(session, "Trade cancelled: players moved too far apart.")
             }
         }
+    }
+
+    private fun finishCompletedTrade(session: TradingSession) {
+        val first = player(session.firstId)
+        val second = if (session.debug) null else player(session.secondId)
+        cleanup(session)
+        first?.closeContainer()
+        second?.closeContainer()
+        val message = ChatGlyphs.chowKingdomPrefix().append(Component.literal("Trade completed!").withStyle(ChatFormatting.GREEN))
+        first?.let { player ->
+            playCompletionSounds(player)
+            player.sendSystemMessage(message)
+        }
+        second?.let { player ->
+            playCompletionSounds(player)
+            player.sendSystemMessage(message)
+        }
+    }
+
+    private fun playCompletionSounds(player: ServerPlayer) {
+        player.playNotifySound(SoundEvents.EXPERIENCE_ORB_PICKUP, SoundSource.PLAYERS, 0.7f, 1.35f)
+        player.playNotifySound(SoundEvents.PLAYER_LEVELUP, SoundSource.PLAYERS, 0.45f, 1.65f)
     }
 
     private fun expireRequests(tick: Int) {
@@ -360,6 +382,8 @@ object TradingManager {
             otherId,
             session.name(viewerId),
             session.name(otherId),
+            balanceFor(session, viewerId),
+            balanceFor(session, otherId),
             session.chowcoins[viewerId] ?: 0L,
             session.chowcoins[otherId] ?: 0L,
             session.ready.contains(viewerId),
@@ -375,6 +399,12 @@ object TradingManager {
 
     private fun player(id: UUID): ServerPlayer? =
         net.neoforged.neoforge.server.ServerLifecycleHooks.getCurrentServer()?.playerList?.getPlayer(id)
+
+    private fun balanceFor(session: TradingSession, playerId: UUID): Long {
+        if (session.debug && playerId == session.secondId) return session.chowcoins[playerId] ?: 0L
+        return player(playerId)?.let(ChowcoinStore::get) ?: 0L
+    }
+
 }
 
 enum class TradeAction(val id: Int) {

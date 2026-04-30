@@ -37,7 +37,7 @@ class TradingMenu private constructor(
         }
     }
 
-    override fun stillValid(player: Player): Boolean = session?.let { !it.completed && it.menus[player.uuid] === this } ?: true
+    override fun stillValid(player: Player): Boolean = session?.let { it.menus[player.uuid] === this } ?: true
 
     override fun slotsChanged(container: Container) {
         super.slotsChanged(container)
@@ -110,13 +110,16 @@ class TradingMenu private constructor(
         const val OFFER_SIZE = 27
         const val PANEL_WIDTH = 176
         const val PANEL_GAP = 12
-        const val LEFT_X = 0
-        const val RIGHT_X = PANEL_WIDTH + PANEL_GAP
+        const val PAPER_DOLL_WIDTH = 92
+        const val SIDE_GAP = 16
+        const val LEFT_X = PAPER_DOLL_WIDTH + SIDE_GAP
+        const val RIGHT_X = LEFT_X + PANEL_WIDTH + PANEL_GAP
+        const val RIGHT_PAPER_DOLL_X = RIGHT_X + PANEL_WIDTH + SIDE_GAP
         const val OFFER_Y = 18
         const val INVENTORY_Y = 84
         const val HOTBAR_Y = 142
-        const val IMAGE_WIDTH = PANEL_WIDTH * 2 + PANEL_GAP
-        const val IMAGE_HEIGHT = 204
+        const val IMAGE_WIDTH = PANEL_WIDTH * 2 + PANEL_GAP + PAPER_DOLL_WIDTH * 2 + SIDE_GAP * 2
+        const val IMAGE_HEIGHT = 242
         const val OWN_OFFER_START = 0
         const val OTHER_OFFER_START = 27
         const val PLAYER_INV_START = 54
