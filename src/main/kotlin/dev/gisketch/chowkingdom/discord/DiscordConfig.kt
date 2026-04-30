@@ -56,6 +56,7 @@ class DiscordWebhookConfig(
     @SerializedName("relay_battlepass_completions") var relayBattlepassCompletions: Boolean = true,
     @SerializedName("relay_status") var relayStatus: Boolean = true,
     @SerializedName("status_interval_seconds") var statusIntervalSeconds: Int = 300,
+    @SerializedName("discord_to_minecraft") var discordToMinecraft: DiscordInboundConfig = DiscordInboundConfig(),
     var formatting: DiscordFormattingConfig = DiscordFormattingConfig(),
 ) {
     fun normalized(): DiscordWebhookConfig = apply {
@@ -70,8 +71,38 @@ class DiscordWebhookConfig(
         minecraftAvatarUrlTemplate = minecraftAvatarUrlTemplate.trim().ifBlank { "https://mc-heads.net/avatar/{uuid}/128" }
         quickSkinAvatarUrlTemplate = quickSkinAvatarUrlTemplate.trim()
         quickSkinAvatarServer.normalize()
+        discordToMinecraft.normalize()
         formatting.normalize()
         statusIntervalSeconds = statusIntervalSeconds.coerceAtLeast(30)
+    }
+}
+
+class DiscordInboundConfig(
+    var enabled: Boolean = false,
+    var mode: String = "gateway",
+    @SerializedName("bot_token") var botToken: String = "",
+    @SerializedName("channel_id") var channelId: String = "",
+    @SerializedName("poll_interval_seconds") var pollIntervalSeconds: Int = 3,
+    @SerializedName("message_format") var messageFormat: String = "\uE100 {author}: {message}",
+    @SerializedName("bot_presence_enabled") var botPresenceEnabled: Boolean = true,
+    @SerializedName("bot_presence_interval_seconds") var botPresenceIntervalSeconds: Int = 60,
+    @SerializedName("bot_presence_status") var botPresenceStatus: String = "online",
+    @SerializedName("bot_presence_activity_type") var botPresenceActivityType: String = "watching",
+    @SerializedName("bot_presence_format") var botPresenceFormat: String = "{online}/{max} players - {tps} TPS{season_status}",
+) {
+    fun normalize(): DiscordInboundConfig = apply {
+        mode = mode.trim().lowercase().ifBlank { "gateway" }
+        if (mode !in setOf("gateway", "polling")) mode = "gateway"
+        botToken = botToken.trim()
+        channelId = channelId.trim()
+        pollIntervalSeconds = pollIntervalSeconds.coerceAtLeast(2)
+        messageFormat = messageFormat.trim().ifBlank { "\uE100 {author}: {message}" }
+        botPresenceIntervalSeconds = botPresenceIntervalSeconds.coerceAtLeast(15)
+        botPresenceStatus = botPresenceStatus.trim().lowercase().ifBlank { "online" }
+        if (botPresenceStatus !in setOf("online", "idle", "dnd", "invisible")) botPresenceStatus = "online"
+        botPresenceActivityType = botPresenceActivityType.trim().lowercase().ifBlank { "watching" }
+        if (botPresenceActivityType !in setOf("playing", "watching", "listening", "competing", "custom")) botPresenceActivityType = "watching"
+        botPresenceFormat = botPresenceFormat.trim().ifBlank { "{online}/{max} players - {tps} TPS{season_status}" }
     }
 }
 

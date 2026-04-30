@@ -35,6 +35,19 @@ Default config is generated disabled:
   "relay_battlepass_completions": true,
   "relay_status": true,
   "status_interval_seconds": 300,
+  "discord_to_minecraft": {
+    "enabled": false,
+    "mode": "gateway",
+    "bot_token": "",
+    "channel_id": "",
+    "poll_interval_seconds": 3,
+    "message_format": "\ue100 {author}: {message}",
+    "bot_presence_enabled": true,
+    "bot_presence_interval_seconds": 60,
+    "bot_presence_status": "online",
+    "bot_presence_activity_type": "watching",
+    "bot_presence_format": "{online}/{max} players - {tps} TPS{season_status}"
+  },
   "formatting": {
     "chat_message": "{message}",
     "chat_fallback_message": "**{player}**: {message}",
@@ -92,6 +105,11 @@ Formatting template tokens:
 {online}        online player count
 {max}           max player count
 {tps}           smoothed TPS
+{author}        Discord message author for inbound chat
+{discord_author} raw Discord display name for inbound chat
+{discord_id}     Discord author id for inbound chat
+{season}        Serene Seasons season and day, when available
+{season_status} Serene Seasons status prefixed with ` - `, or blank
 ```
 
 Colors use hex strings like `#57F287` or `#ED4245`.
@@ -103,11 +121,68 @@ Admin diagnostics:
 ```text
 /chowkingdom discord avatar <player>
 /chowkingdom discord avatar-server
+/chowkingdom discord inbound
+/chowkingdom discord link
+/chowkingdom discord linked
+/chowkingdom discord unlink
+/chowkingdom discord unlink <player>
 /chowkingdom discord debug-avatar on
 /chowkingdom discord debug-avatar off
+/chowkingdom discord reload
 ```
 
 The avatar command prints whether Quick Skin server classes exist, whether a `skin_id` was found, whether texture bytes are available, and which avatar URL Discord will receive.
+
+`/chowkingdom discord reload` reloads `webhook.json` without restarting the server. It also restarts the avatar HTTP server if bind host or port changed, and resets Discord-to-Minecraft polling state.
+
+## Discord to Minecraft
+
+Webhook URLs cannot read Discord messages. For Discord-to-Minecraft chat, create a Discord bot, add it to the server, give it channel read/message history permission, then configure:
+
+Enable `Message Content Intent` for the bot in the Discord Developer Portal, otherwise Discord sends message events without readable text.
+
+```json
+"discord_to_minecraft": {
+  "enabled": true,
+  "mode": "gateway",
+  "bot_token": "YOUR_BOT_TOKEN",
+  "channel_id": "123456789012345678",
+  "poll_interval_seconds": 3,
+  "message_format": "\ue100 {author}: {message}",
+  "bot_presence_enabled": true,
+  "bot_presence_interval_seconds": 60,
+  "bot_presence_status": "online",
+  "bot_presence_activity_type": "watching",
+  "bot_presence_format": "{online}/{max} players - {tps} TPS{season_status}"
+}
+```
+
+`\ue100` is mapped to `assets/gisketchs_chowkingdom_mod/textures/gui/fonts/discord.png` through the packaged font provider, so it renders as the Discord icon in Minecraft chat.
+
+When `bot_presence_enabled=true`, the bot updates its Discord presence through the Gateway every `bot_presence_interval_seconds`. The default presence renders like `3/20 players - 20.00 TPS - Spring, Day 1` when Serene Seasons is installed, or omits the season part when it is not.
+
+### Account linking
+
+Players can link their Minecraft account to their Discord account so Discord-to-Minecraft chat renders their Minecraft username instead of their Discord display name.
+
+1. In Minecraft, run `/ck discord link`.
+2. Copy the generated `CK-######` code.
+3. In the bridged Discord channel, send `!link CK-######` within 10 minutes.
+
+After linking, inbound Discord chat uses `{author}` as the linked Minecraft name. Use `{discord_author}` in `message_format` if you want the raw Discord display name instead. Players can check their link with `/ck discord linked` and remove it with `/ck discord unlink`. Operators can remove a player's link with `/ck discord unlink <player>`.
+
+Links are stored in world data at `data/gisketchs_chowkingdom_mod/discord/account_links.json`, not in the general config.
+
+Default `gateway` mode uses Discord Gateway WebSocket events, matching bridge mods such as Mc2Discord. The Minecraft server opens the bot connection on server start and closes it on server stop. It identifies with `GUILDS`, `GUILD_MESSAGES`, and `MESSAGE_CONTENT` intents, so Discord messages appear in Minecraft near-instantly. `polling` mode is kept as fallback; first poll only records the latest message, so old Discord history is not broadcast into Minecraft. Both modes skip bot/webhook messages to avoid echo loops.
+
+After editing config, run:
+
+```text
+/chowkingdom discord reload
+/chowkingdom discord inbound
+```
+
+If `last_channel_check=http 403`, the bot is online but cannot read that channel. Give the bot `View Channel` and `Read Message History` for the configured channel, or reinvite it with proper permissions. If `last_status` never reaches `gateway message received`, check that the bot is invited to the server, can view the channel, and `Message Content Intent` is enabled. If messages arrive but content is blank, Message Content Intent is the usual cause.
 
 ## Local Port Check
 
@@ -236,9 +311,10 @@ Then set:
 ## Notes
 
 - Keep `webhook_url` secret; anyone with the URL can post to that channel.
+- Keep `discord_to_minecraft.bot_token` secret; anyone with the token can control that bot.
 - Discord webhook avatars must be public `http` or `https` URLs. If using the built-in Quick Skin avatar server, expose its port through a reverse proxy or port forward, then set `public_base_url` to the public address.
 - URL templates support `{uuid}`, `{uuid_no_dash}`, `{name}`, and `{skin_id}`.
-- Basic one-way relay only for now. Discord-to-Minecraft chat is not implemented yet.
+- Discord-to-Minecraft chat requires a bot token and channel id; webhook URL alone is send-only.
 - TPS is estimated from server tick interval and clamped to 20 TPS.
 
 Example Quick Skin avatar server config:

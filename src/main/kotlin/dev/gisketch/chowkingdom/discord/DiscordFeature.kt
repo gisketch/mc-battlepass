@@ -1,10 +1,14 @@
 package dev.gisketch.chowkingdom.discord
 
+import net.minecraft.ChatFormatting
+import net.minecraft.network.chat.Component
 import net.minecraft.server.level.ServerPlayer
 import net.neoforged.neoforge.common.NeoForge
 import net.neoforged.neoforge.event.ServerChatEvent
 import net.neoforged.neoforge.event.entity.living.LivingDeathEvent
 import net.neoforged.neoforge.event.entity.player.PlayerEvent
+import net.neoforged.neoforge.event.server.ServerStartedEvent
+import net.neoforged.neoforge.event.server.ServerStoppingEvent
 import net.neoforged.neoforge.event.tick.ServerTickEvent
 
 object DiscordFeature {
@@ -20,7 +24,20 @@ object DiscordFeature {
         NeoForge.EVENT_BUS.addListener(::onPlayerLoggedIn)
         NeoForge.EVENT_BUS.addListener(::onPlayerLoggedOut)
         NeoForge.EVENT_BUS.addListener(::onLivingDeath)
+        NeoForge.EVENT_BUS.addListener(::onServerStarted)
+        NeoForge.EVENT_BUS.addListener(::onServerStopping)
         NeoForge.EVENT_BUS.addListener(::onServerTick)
+    }
+
+    private fun onServerStarted(event: ServerStartedEvent) {
+        val config = DiscordConfig.current()
+        DiscordQuickSkinAvatarServer.reload(config)
+        DiscordInboundBridge.checkChannel(config.discordToMinecraft)
+        DiscordInboundBridge.tick(event.server, smoothedTps)
+    }
+
+    private fun onServerStopping(event: ServerStoppingEvent) {
+        DiscordInboundBridge.reset()
     }
 
     private fun onServerChat(event: ServerChatEvent) {
@@ -29,6 +46,8 @@ object DiscordFeature {
 
     private fun onPlayerLoggedIn(event: PlayerEvent.PlayerLoggedInEvent) {
         val player = event.entity as? ServerPlayer ?: return
+        DiscordAccountLinkStore.refreshMinecraftName(player)
+        sendDiscordLinkReminder(player)
         DiscordRelay.join(player)
     }
 
@@ -45,6 +64,7 @@ object DiscordFeature {
 
     private fun onServerTick(event: ServerTickEvent.Post) {
         updateTps()
+        DiscordInboundBridge.tick(event.server, smoothedTps)
         val config = DiscordConfig.current()
         if (!config.enabled || !config.relayStatus) return
 
@@ -66,6 +86,21 @@ object DiscordFeature {
             }
         }
         lastTickNanos = now
+    }
+
+    private fun sendDiscordLinkReminder(player: ServerPlayer) {
+        if (DiscordAccountLinkStore.linkFor(player) != null) return
+        player.sendSystemMessage(
+            Component.literal("[Chow Kingdom] ").withStyle(ChatFormatting.GOLD)
+                .append(Component.literal("Link your Discord to Minecraft.").withStyle(ChatFormatting.AQUA)),
+        )
+        player.sendSystemMessage(
+            Component.literal("Run ").withStyle(ChatFormatting.GRAY)
+                .append(Component.literal("/ck discord link").withStyle(ChatFormatting.YELLOW))
+                .append(Component.literal(", then send ").withStyle(ChatFormatting.GRAY))
+                .append(Component.literal("!link CODE").withStyle(ChatFormatting.YELLOW))
+                .append(Component.literal(" in the Discord bridge channel.").withStyle(ChatFormatting.GRAY)),
+        )
     }
 
 }

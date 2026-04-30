@@ -3,6 +3,7 @@ package dev.gisketch.chowkingdom.battlepass
 import com.google.gson.GsonBuilder
 import dev.gisketch.chowkingdom.ChowKingdomMod
 import dev.gisketch.chowkingdom.discord.DiscordRelay
+import net.minecraft.ChatFormatting
 import net.minecraft.network.chat.Component
 import net.minecraft.server.level.ServerPlayer
 import java.nio.file.Files
@@ -278,8 +279,12 @@ object BattlepassMissionProgressStore {
         BattlepassMissionService.permanentEntries(pass) + activeRotatingEntries(pass, BattlepassMissionScope.DAILY, pass.dailyEvents) + activeRotatingEntries(pass, BattlepassMissionScope.WEEKLY, pass.weeklyEvents)
 
     private fun broadcastMissionCompletion(player: ServerPlayer, pass: BattlepassPassDefinition, entry: BattlepassMissionEntry, title: String) {
-        val message = player.name.copy()
-            .append(Component.literal(" completed ${missionTypeLabel(entry.scope)}: $title"))
+        val message = Component.literal("[Chow Kingdom] ").withStyle(ChatFormatting.GOLD)
+            .append(Component.literal(player.gameProfile.name).withStyle(ChatFormatting.YELLOW))
+            .append(Component.literal(" completed ").withStyle(ChatFormatting.GRAY))
+            .append(Component.literal(missionTypeLabel(entry.scope)).withStyle(ChatFormatting.AQUA))
+            .append(Component.literal(": ").withStyle(ChatFormatting.GRAY))
+            .append(Component.literal(title).withStyle(ChatFormatting.WHITE))
         player.server.playerList.broadcastSystemMessage(message, false)
         DiscordRelay.battlepassMissionCompleted(player, pass.displayName.ifBlank { pass.id }, missionTypeLabel(entry.scope), title, BattlepassXpStore.getXp(player, pass.id))
     }

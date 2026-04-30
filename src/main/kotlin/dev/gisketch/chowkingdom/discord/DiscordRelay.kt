@@ -27,21 +27,21 @@ object DiscordRelay {
     fun join(player: ServerPlayer) {
         val config = DiscordConfig.current()
         if (!config.enabled || !config.relayJoinLeave) return
-        DiscordWebhookClient.send(embedMessage(config.formatting.joinTitle, config.formatting.joinDescription, config.formatting.joinColor, playerValues(player) + serverValues(player.server)))
+        DiscordWebhookClient.send(playerEmbedMessage(player, config.formatting.joinTitle, config.formatting.joinDescription, config.formatting.joinColor, playerValues(player) + serverValues(player.server)))
     }
 
     fun leave(player: ServerPlayer, onlineAfterLogout: Int) {
         val config = DiscordConfig.current()
         if (!config.enabled || !config.relayJoinLeave) return
         val values = playerValues(player) + mapOf("online" to onlineAfterLogout.toString(), "max" to player.server.maxPlayers.toString())
-        DiscordWebhookClient.send(embedMessage(config.formatting.leaveTitle, config.formatting.leaveDescription, config.formatting.leaveColor, values))
+        DiscordWebhookClient.send(playerEmbedMessage(player, config.formatting.leaveTitle, config.formatting.leaveDescription, config.formatting.leaveColor, values))
     }
 
     fun death(player: ServerPlayer, deathMessage: String) {
         val config = DiscordConfig.current()
         if (!config.enabled || !config.relayDeaths) return
         val values = playerValues(player) + serverValues(player.server) + mapOf("death_message" to DiscordText.cleanContent(deathMessage))
-        DiscordWebhookClient.send(embedMessage(config.formatting.deathTitle, config.formatting.deathDescription, config.formatting.deathColor, values))
+        DiscordWebhookClient.send(playerEmbedMessage(player, config.formatting.deathTitle, config.formatting.deathDescription, config.formatting.deathColor, values))
     }
 
     fun status(server: MinecraftServer, tps: Double) {
@@ -82,6 +82,18 @@ object DiscordRelay {
                 title = DiscordText.applyTemplate(title, values),
                 description = DiscordText.applyTemplate(description, values),
                 color = DiscordText.parseColor(color),
+            ),
+        ),
+    )
+
+    private fun playerEmbedMessage(player: ServerPlayer, title: String, description: String, color: String, values: Map<String, String>): DiscordWebhookMessage = DiscordWebhookMessage(
+        embeds = listOf(
+            DiscordEmbed(
+                title = DiscordText.applyTemplate(title, values),
+                description = DiscordText.applyTemplate(description, values),
+                color = DiscordText.parseColor(color),
+                authorName = player.gameProfile.name,
+                authorIconUrl = DiscordQuickSkinSupport.avatarUrl(player, DiscordConfig.current()),
             ),
         ),
     )

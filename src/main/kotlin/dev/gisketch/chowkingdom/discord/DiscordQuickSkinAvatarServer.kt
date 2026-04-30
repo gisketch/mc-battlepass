@@ -11,6 +11,19 @@ import java.util.concurrent.Executors
 
 object DiscordQuickSkinAvatarServer {
     private var server: HttpServer? = null
+    private var bindKey: String = ""
+
+    fun reload(config: DiscordWebhookConfig) {
+        val serverConfig = config.quickSkinAvatarServer
+        val nextBindKey = "${serverConfig.bindHost}:${serverConfig.port}"
+        if (!config.enabled || !serverConfig.enabled) {
+            stop()
+            return
+        }
+        if (server != null && bindKey == nextBindKey) return
+        stop()
+        start(config)
+    }
 
     fun start(config: DiscordWebhookConfig) {
         val serverConfig = config.quickSkinAvatarServer
@@ -29,7 +42,14 @@ object DiscordQuickSkinAvatarServer {
         }
         startedServer.start()
         server = startedServer
+        bindKey = "${serverConfig.bindHost}:${serverConfig.port}"
         ChowKingdomMod.LOGGER.info("Started Quick Skin avatar server on {}:{}", serverConfig.bindHost, serverConfig.port)
+    }
+
+    private fun stop() {
+        server?.stop(0)
+        server = null
+        bindKey = ""
     }
 
     fun diagnostics(config: DiscordWebhookConfig): List<String> {
@@ -39,6 +59,7 @@ object DiscordQuickSkinAvatarServer {
             "Discord Quick Skin avatar server",
             "enabled=${serverConfig.enabled}",
             "running=${server != null}",
+            "bind=$bindKey",
             "local_base_url=http://$localHost:${serverConfig.port}",
             "public_base_url=${serverConfig.publicBaseUrl.ifBlank { "missing" }}",
             "cloudflare_command=cloudflared tunnel --url http://127.0.0.1:${serverConfig.port}",
