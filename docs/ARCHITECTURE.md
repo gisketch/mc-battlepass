@@ -45,6 +45,10 @@ src/main/kotlin/dev/gisketch/chowkingdom/
     ShopsFeature.kt
   profiles/
     ProfilesFeature.kt
+  discord/
+    DiscordFeature.kt
+    DiscordConfig.kt
+    DiscordWebhookClient.kt
   client/
     ChowKingdomHud.kt
 ```
@@ -112,7 +116,15 @@ config/gisketchs_chowkingdom_mod/
   battlepass/tracked_missions.json
   battlepass/notified_missions.json
   shipping_bin/prices.json
+  discord/webhook.json
 ```
+
+## Discord
+
+- `DiscordFeature` registers server chat, optional join/leave, and server tick status hooks.
+- `DiscordConfig` loads `config/gisketchs_chowkingdom_mod/discord/webhook.json` and generates a disabled default.
+- `DiscordWebhookClient` sends async JSON webhook payloads with mentions disabled.
+- Status messages include online player count and smoothed TPS.
 
 Stores use GSON, lazy `load()`, coercion for numeric data, and temp-file replacement on save.
 

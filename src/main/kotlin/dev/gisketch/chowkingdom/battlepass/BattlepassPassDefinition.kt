@@ -35,6 +35,8 @@ class BattlepassXpEventDefinition {
     @SerializedName("xp_cap")
     var xpCap: Int = 0
     var filters: MutableMap<String, String> = mutableMapOf()
+    @SerializedName("rotation_group")
+    var rotationGroup: String = ""
 }
 
 class BattlepassRotatingMissionDefinition {

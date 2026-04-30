@@ -10,6 +10,7 @@ import com.mojang.brigadier.suggestion.SuggestionsBuilder
 import net.minecraft.commands.CommandSourceStack
 import net.minecraft.commands.Commands
 import net.minecraft.commands.arguments.EntityArgument
+import net.minecraft.commands.arguments.ResourceLocationArgument
 import net.minecraft.network.chat.Component
 import net.neoforged.neoforge.common.NeoForge
 import net.neoforged.neoforge.event.RegisterCommandsEvent
@@ -17,6 +18,8 @@ import java.util.concurrent.CompletableFuture
 
 object BattlepassCommands {
     private val unknownPass = SimpleCommandExceptionType(Component.literal("Unknown battlepass pass"))
+    private val noDailyPass = SimpleCommandExceptionType(Component.literal("No loaded pass can accept a daily mission"))
+    private val noMilestone = SimpleCommandExceptionType(Component.literal("No active incomplete milestone found"))
 
     fun register() {
         NeoForge.EVENT_BUS.addListener(::onRegisterCommands)
@@ -49,6 +52,23 @@ object BattlepassCommands {
                         .then(Commands.argument("targets", EntityArgument.players()).executes(::completeMission)),
                 ),
         )
+        .then(
+            Commands.literal("daily")
+                .requires { source -> source.hasPermission(2) }
+                .then(
+                    Commands.literal("replace")
+                        .then(
+                            Commands.argument("quest_event", ResourceLocationArgument.id())
+                                .suggests(::suggestHookEvents)
+                                .then(Commands.argument("qty", StringArgumentType.greedyString()).executes(::replaceDailyMission)),
+                        ),
+                ),
+        )
+            .then(
+                Commands.literal("milestone")
+                .requires { source -> source.hasPermission(2) }
+                .then(Commands.literal("complete").executes(::completeRandomMilestone)),
+            )
         .then(
             Commands.literal("claim")
                 .then(
@@ -116,11 +136,41 @@ object BattlepassCommands {
         return completed
     }
 
+    private fun completeRandomMilestone(context: CommandContext<CommandSourceStack>): Int {
+        val player = context.source.playerOrException
+        val missionKey = BattlepassMissionProgressStore.activeIncompleteMilestoneKeys(player.uuid).shuffled().firstOrNull() ?: throw noMilestone.create()
+        val completed = BattlepassMissionProgressStore.completeMission(player, missionKey)
+        BattlepassNetwork.syncAllPlayers()
+        context.source.sendSuccess({ Component.literal("Completed test milestone $missionKey for ${player.name.string}.") }, true)
+        return if (completed) 1 else 0
+    }
+
     private fun suggestMissions(context: CommandContext<CommandSourceStack>, builder: SuggestionsBuilder): CompletableFuture<Suggestions> {
         BattlepassMissionProgressStore.activeMissionKeys()
             .filter { key -> key.startsWith(builder.remaining, ignoreCase = true) }
             .forEach(builder::suggest)
         return builder.buildFuture()
+    }
+
+    private fun suggestHookEvents(context: CommandContext<CommandSourceStack>, builder: SuggestionsBuilder): CompletableFuture<Suggestions> {
+        BattlepassAvailableMissionEvents.ids()
+            .filter { eventId -> eventId.startsWith(builder.remaining, ignoreCase = true) }
+            .forEach(builder::suggest)
+        return builder.buildFuture()
+    }
+
+    private fun replaceDailyMission(context: CommandContext<CommandSourceStack>): Int {
+        val eventId = ResourceLocationArgument.getId(context, "quest_event").toString()
+        val goals = StringArgumentType.getString(context, "qty")
+            .split(',')
+            .mapNotNull { raw -> raw.trim().toIntOrNull()?.takeIf { value -> value > 0 } }
+        if (goals.isEmpty()) throw SimpleCommandExceptionType(Component.literal("qty must be positive numbers, e.g. 10 or 10,25,50")).create()
+
+        val pass = BattlepassPassRegistry.replaceFirstDailyEvent(eventId, goals) ?: throw noDailyPass.create()
+        BattlepassMissionProgressStore.reset(BattlepassMissionScope.DAILY)
+        BattlepassNetwork.syncAllPlayers()
+        context.source.sendSuccess({ Component.literal("Replaced first daily mission in ${pass.displayName} with $eventId goals ${goals.joinToString(",")}") }, true)
+        return goals.last()
     }
 
     private fun addXp(context: CommandContext<CommandSourceStack>): Int {

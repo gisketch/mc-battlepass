@@ -4,6 +4,17 @@ Use this when curating pass JSON under `config/gisketchs_chowkingdom_mod/battlep
 
 ## Event Shapes
 
+For quick in-game testing, replace the first daily mission in the first loaded pass:
+
+```text
+/battlepass daily replace farmersdelight:cutting_board_used 10
+/battlepass daily replace gisketchs_chowkingdom_mod:shipping_bin_value_sold 5000,25000,50000
+/battlepass milestone complete
+```
+
+`quest_event` has autocomplete for implemented hooks. `qty` accepts one number or comma-separated progressive goals.
+`/battlepass milestone complete` is admin-only and completes a random active incomplete progressive mission for the command player, useful for testing completion broadcasts.
+
 Repeating event:
 
 ```json
@@ -17,6 +28,14 @@ Progressive event:
 ```
 
 Progressive events work in permanent, daily, and weekly pools. Daily/weekly progressive missions reset by their rotating period.
+
+Daily/weekly randomization chooses one mission per rotation family before filling a pool. For example, all `cobblemon:catch_*` variants share one catch family, so one weekly roll cannot become five catch-type missions. Auto families cover Cobblemon catch, send-out, max-friendship, friendship, and befriend variants; Quality Food harvest/cook/eat variants; shipping-bin quality-food variants; shipping value missions; and Farmer's Delight cutting-board missions.
+
+Use `rotation_group` to force custom grouping:
+
+```json
+{ "id": "weekly_catch_fire_type", "event": "cobblemon:catch_fire_type", "rotation_group": "cobblemon:catch_pokemon", "type": "progressive", "progress_goals": [10], "progress_xp": [250] }
+```
 
 ## Vanilla Events
 
@@ -101,8 +120,16 @@ Good Cobblemon quest ideas:
 
 Implemented now, optional dependency safe:
 
-- `quality_food:quality_crop_harvested`: +quality item count dropped from max-age crops or `quality_food:quality_blocks`.
-- `quality_food:quality_food_cooked`: +quality result count from furnace smelting and Farmer's Delight-style cooking/crafting outputs.
+- `quality_food:iron_quality_crop_harvested`: +iron quality item count dropped from max-age crops or `quality_food:quality_blocks`.
+- `quality_food:gold_quality_crop_harvested`: +gold quality item count dropped from max-age crops or `quality_food:quality_blocks`.
+- `quality_food:diamond_quality_crop_harvested`: +diamond quality item count dropped from max-age crops or `quality_food:quality_blocks`.
+- `quality_food:iron_quality_food_cooked`: +iron quality result count from furnace smelting and Farmer's Delight-style cooking/crafting outputs.
+- `quality_food:gold_quality_food_cooked`: +gold quality result count from furnace smelting and Farmer's Delight-style cooking/crafting outputs.
+- `quality_food:diamond_quality_food_cooked`: +diamond quality result count from furnace smelting and Farmer's Delight-style cooking/crafting outputs.
+- `quality_food:iron_quality_food_eaten`: +1 when a player finishes eating an iron quality food.
+- `quality_food:gold_quality_food_eaten`: +1 when a player finishes eating a gold quality food.
+- `quality_food:diamond_quality_food_eaten`: +1 when a player finishes eating a diamond quality food.
+- `quality_food:quality_crop_harvested`, `quality_food:quality_food_cooked`, and `quality_food:quality_food_eaten`: base compatibility signals, not used by default pass pools.
 - `minecraft:quality_food_smelted`: alias for quality smelting results.
 - `farmersdelight:quality_food_cooked`: alias for Farmer's Delight-style quality cooking results.
 
@@ -125,8 +152,8 @@ Examples:
 
 Good Quality Food quest ideas:
 
-- Harvest 64 quality crops.
-- Cook 10 quality foods.
+- Harvest 64 iron/gold/diamond quality crops.
+- Cook 10 iron/gold/diamond quality foods.
 - Cook 5 diamond-quality meals.
 - Harvest 32 quality Cobblemon berries.
 - Ship 128 quality crops through the shipping bin.
@@ -135,40 +162,40 @@ Good Quality Food quest ideas:
 
 Implemented now:
 
-- `gisketchs_chowkingdom_mod:shipping_bin_quality_food_sold`: +quality item count sold.
 - `gisketchs_chowkingdom_mod:shipping_bin_iron_quality_food_sold`: +iron quality item count sold.
 - `gisketchs_chowkingdom_mod:shipping_bin_gold_quality_food_sold`: +gold quality item count sold.
 - `gisketchs_chowkingdom_mod:shipping_bin_diamond_quality_food_sold`: +diamond quality item count sold.
 - `gisketchs_chowkingdom_mod:shipping_bin_value_sold`: +total chowcoin value sold.
 - `gisketchs_chowkingdom_mod:shipping_bin_quality_food_value_sold`: +chowcoin value from quality items only.
+- `gisketchs_chowkingdom_mod:shipping_bin_quality_food_sold`: base compatibility signal, not used by default pass pools.
 
 Good shipping quest ideas:
 
 - Ship 5,000 chowcoins worth today.
 - Ship 50,000 chowcoins worth this week.
-- Ship 16 quality foods today.
 - Ship 8 iron quality foods today.
 - Ship 8 gold quality foods today.
 - Ship 4 diamond quality foods today.
 - Ship 128 quality foods this week.
 - Ship 25,000 chowcoins worth of quality items.
 
-## Farmer's Delight Ideas
+## Farmer's Delight Events
 
-Currently emitted through Quality Food compatibility:
+Implemented now through no-hard-dependency hooks:
 
 - `farmersdelight:quality_food_cooked`: quality result from Farmer's Delight-style cooking/crafting output.
 - `quality_food:quality_food_cooked` with `filters.item.namespace = farmersdelight`.
+- `farmersdelight:cutting_board_used`: +1 when a cutting board interaction produces nearby item output.
+- `farmersdelight:cutting_board_outputs`: +result stack count from nearby cutting board output.
+- `farmersdelight:knife_used`: +1 when a cutting board output happens after using an item whose id contains `knife`.
+- `farmersdelight:cooking_pot_meal_cooked`: +result stack count when a Farmer's Delight/cooking-style result is taken.
+- `farmersdelight:feast_served`: +1 when a player right-clicks a Farmer's Delight feast-like block.
+- `farmersdelight:wild_crop_harvested`: +1 when a Farmer's Delight block with `wild` in its id is broken.
+- `farmersdelight:meal_eaten`: +1 when a player finishes eating a Farmer's Delight food item.
 
-Best next event hooks to add:
+Possible future refinements:
 
-- `farmersdelight:cutting_board_used`: +1 whenever a player processes an item on a cutting board.
-- `farmersdelight:cutting_board_outputs`: +output item count from cutting board recipes.
-- `farmersdelight:knife_used`: +1 when a knife is the cutting board tool.
-- `farmersdelight:cooking_pot_meal_cooked`: +meal count when taking cooking pot result.
 - `farmersdelight:stove_cooked`: +food count from stove/cooking pot flow.
-- `farmersdelight:feast_served`: +servings taken from feast blocks.
-- `farmersdelight:wild_crop_harvested`: +wild crop count.
 - `farmersdelight:comfort_food_eaten`: +1 when player eats food granting comfort.
 - `farmersdelight:nourishment_food_eaten`: +1 when player eats food granting nourishment.
 

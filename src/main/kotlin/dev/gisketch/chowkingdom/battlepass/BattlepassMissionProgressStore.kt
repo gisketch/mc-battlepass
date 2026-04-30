@@ -2,10 +2,12 @@ package dev.gisketch.chowkingdom.battlepass
 
 import com.google.gson.GsonBuilder
 import dev.gisketch.chowkingdom.ChowKingdomMod
+import dev.gisketch.chowkingdom.discord.DiscordRelay
 import net.minecraft.network.chat.Component
 import net.minecraft.server.level.ServerPlayer
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.Locale
 import java.util.UUID
 import kotlin.io.path.bufferedReader
 import kotlin.io.path.bufferedWriter
@@ -83,6 +85,17 @@ object BattlepassMissionProgressStore {
     fun activeMissionKeys(): List<String> {
         if (!loaded) load()
         return BattlepassPassRegistry.all().flatMap(::activeMissionKeys).distinct()
+    }
+
+    fun activeIncompleteMilestoneKeys(playerId: UUID): List<String> {
+        if (!loaded) load()
+        return BattlepassPassRegistry.all()
+            .flatMap { pass ->
+                activeEntries(pass)
+                    .filter { entry -> BattlepassMissionService.isProgressive(entry.event) && !isCompleted(playerId, pass, entry) }
+                    .map { entry -> entry.key }
+            }
+            .distinct()
     }
 
     fun reset(scope: BattlepassMissionScope): Int {
@@ -222,7 +235,7 @@ object BattlepassMissionProgressStore {
         passProgress[storageKey] = next
         val completed = next >= event.xpCap
         if (completed && previous < event.xpCap) {
-            broadcastMissionCompletion(player, entry, BattlepassMissionService.missionDescription(event, next))
+            broadcastMissionCompletion(player, pass, entry, BattlepassMissionService.missionDescription(event, next))
         }
         return completed
     }
@@ -250,10 +263,10 @@ object BattlepassMissionProgressStore {
                 if (entry.scope == BattlepassMissionScope.PERMANENT && BattlepassMissionService.isProgressive(event)) {
                     val finalGoal = BattlepassMissionService.progressiveGoal(event)
                     val title = "${event.eventDesc.ifBlank { event.event }.replace("{goal}", goal.toString()).replace("{progress}", goal.toString())} $goal/$finalGoal"
-                    broadcastMissionCompletion(player, entry, title)
+                    broadcastMissionCompletion(player, pass, entry, title)
                     BattlepassNetwork.notifyMissionCompletion(player, pass.id, entry.key, title, entry.scope, "goal:$goal")
                 } else {
-                    broadcastMissionCompletion(player, entry, event.eventDesc.ifBlank { event.event }.replace("{goal}", goal.toString()).replace("{progress}", goal.toString()))
+                    broadcastMissionCompletion(player, pass, entry, event.eventDesc.ifBlank { event.event }.replace("{goal}", goal.toString()).replace("{progress}", goal.toString()))
                 }
             }
         }
@@ -264,11 +277,11 @@ object BattlepassMissionProgressStore {
     private fun activeEntries(pass: BattlepassPassDefinition): List<BattlepassMissionEntry> =
         BattlepassMissionService.permanentEntries(pass) + activeRotatingEntries(pass, BattlepassMissionScope.DAILY, pass.dailyEvents) + activeRotatingEntries(pass, BattlepassMissionScope.WEEKLY, pass.weeklyEvents)
 
-    private fun broadcastMissionCompletion(player: ServerPlayer, entry: BattlepassMissionEntry, title: String) {
-        val message = Component.literal("[Avatar] ")
-            .append(player.name.copy())
+    private fun broadcastMissionCompletion(player: ServerPlayer, pass: BattlepassPassDefinition, entry: BattlepassMissionEntry, title: String) {
+        val message = player.name.copy()
             .append(Component.literal(" completed ${missionTypeLabel(entry.scope)}: $title"))
         player.server.playerList.broadcastSystemMessage(message, false)
+        DiscordRelay.battlepassMissionCompleted(player, pass.displayName.ifBlank { pass.id }, missionTypeLabel(entry.scope), title, BattlepassXpStore.getXp(player, pass.id))
     }
 
     private fun missionTypeLabel(scope: BattlepassMissionScope): String = when (scope) {
@@ -284,23 +297,77 @@ object BattlepassMissionProgressStore {
         val periodKey = BattlepassMissionService.periodKey(scope, definition)
         val passRotations = rotations.getOrPut(pass.id) { linkedMapOf() }
         val current = passRotations[scope.id]
-        val validKeys = entries.map { entry -> entry.key }.toSet()
+        val entriesByKey = entries.associateBy { entry -> entry.key }
+        val validKeys = entriesByKey.keys
         val count = definition.count.coerceIn(1, entries.size)
 
-        if (current == null || current.periodKey != periodKey || current.activeKeys.any { key -> key !in validKeys } || current.activeKeys.size != count) {
-            val usageCounts = current?.usageCounts?.filterKeys { key -> key in validKeys }?.toMutableMap() ?: linkedMapOf()
-            val activeKeys = entries
-                .sortedWith(compareBy<BattlepassMissionEntry> { entry -> usageCounts[entry.key] ?: 0 }.thenBy { entry -> "$periodKey:${entry.key}".hashCode() })
-                .take(count)
-                .map { entry -> entry.key }
-                .toMutableList()
-            activeKeys.forEach { key -> usageCounts[key] = (usageCounts[key] ?: 0) + 1 }
+        if (current == null || current.periodKey != periodKey || current.activeKeys.any { key -> key !in validKeys } || current.activeKeys.size != count || hasDuplicateRotationFamilies(current.activeKeys, entriesByKey)) {
+            val usageCounts = current?.usageCounts?.filterKeys { key -> key in validKeys || key.startsWith("group:") }?.toMutableMap() ?: linkedMapOf()
+            val activeKeys = selectRotatingKeys(entries, count, periodKey, usageCounts)
+            activeKeys.forEach { key ->
+                usageCounts[key] = (usageCounts[key] ?: 0) + 1
+                entriesByKey[key]?.let { entry ->
+                    val familyKey = usageKey(rotationFamily(entry))
+                    usageCounts[familyKey] = (usageCounts[familyKey] ?: 0) + 1
+                }
+            }
             passRotations[scope.id] = StoredRotation(periodKey, activeKeys, usageCounts)
         }
 
         val activeKeys = passRotations[scope.id]?.activeKeys?.toSet().orEmpty()
         return entries.filter { entry -> entry.key in activeKeys }
     }
+
+    private fun selectRotatingKeys(entries: List<BattlepassMissionEntry>, count: Int, periodKey: String, usageCounts: MutableMap<String, Int>): MutableList<String> {
+        val families = entries.groupBy(::rotationFamily).toList()
+        val selected = families
+            .sortedWith(compareBy<Pair<String, List<BattlepassMissionEntry>>> { (family, _) -> usageCounts[usageKey(family)] ?: 0 }.thenBy { (family, _) -> "$periodKey:$family".hashCode() })
+            .take(count)
+            .map { (_, familyEntries) -> chooseFamilyEntry(familyEntries, periodKey, usageCounts) }
+            .toMutableList()
+
+        if (selected.size < count) {
+            val selectedKeys = selected.map { entry -> entry.key }.toSet()
+            entries
+                .filter { entry -> entry.key !in selectedKeys }
+                .sortedWith(compareBy<BattlepassMissionEntry> { entry -> usageCounts[entry.key] ?: 0 }.thenBy { entry -> "$periodKey:${entry.key}".hashCode() })
+                .take(count - selected.size)
+                .forEach(selected::add)
+        }
+
+        return selected.map { entry -> entry.key }.toMutableList()
+    }
+
+    private fun chooseFamilyEntry(entries: List<BattlepassMissionEntry>, periodKey: String, usageCounts: Map<String, Int>): BattlepassMissionEntry =
+        entries.sortedWith(compareBy<BattlepassMissionEntry> { entry -> usageCounts[entry.key] ?: 0 }.thenBy { entry -> "$periodKey:${entry.key}".hashCode() }).first()
+
+    private fun hasDuplicateRotationFamilies(activeKeys: List<String>, entriesByKey: Map<String, BattlepassMissionEntry>): Boolean {
+        val families = activeKeys.mapNotNull { key -> entriesByKey[key]?.let(::rotationFamily) }
+        return families.size != families.toSet().size
+    }
+
+    private fun rotationFamily(entry: BattlepassMissionEntry): String {
+        val configured = entry.event.rotationGroup.trim().lowercase(Locale.ROOT)
+        if (configured.isNotBlank()) return configured
+
+        val eventId = entry.event.event.trim().lowercase(Locale.ROOT)
+        val namespace = eventId.substringBefore(':', "")
+        val path = eventId.substringAfter(':', eventId)
+        return when {
+            namespace == "cobblemon" && path.startsWith("catch_") -> "cobblemon:catch_pokemon"
+            namespace == "cobblemon" && (path.startsWith("max_friendship_") || path.contains("friendship") || path.contains("befriend")) -> "cobblemon:max_friendship_pokemon"
+            namespace == "cobblemon" && path.startsWith("send_out_") -> "cobblemon:send_out_pokemon"
+            namespace == "quality_food" && path.endsWith("quality_crop_harvested") -> "quality_food:quality_crop_harvested"
+            path.endsWith("quality_food_cooked") || path.endsWith("quality_food_smelted") -> "quality_food:quality_food_cooked"
+            namespace == "quality_food" && path.endsWith("quality_food_eaten") -> "quality_food:quality_food_eaten"
+            namespace == "gisketchs_chowkingdom_mod" && path.startsWith("shipping_bin_") && path.endsWith("value_sold") -> "gisketchs_chowkingdom_mod:shipping_bin_value_sold"
+            namespace == "gisketchs_chowkingdom_mod" && path.startsWith("shipping_bin_") && path.contains("quality_food") && path.endsWith("sold") -> "gisketchs_chowkingdom_mod:shipping_bin_quality_food_sold"
+            namespace == "farmersdelight" && path.contains("cutting_board") -> "farmersdelight:cutting_board"
+            else -> eventId.ifBlank { entry.key }
+        }
+    }
+
+    private fun usageKey(family: String): String = "group:$family"
 
     private fun isCompleted(playerId: UUID, pass: BattlepassPassDefinition, entry: BattlepassMissionEntry): Boolean {
         if (entry.scope == BattlepassMissionScope.PERMANENT) return false

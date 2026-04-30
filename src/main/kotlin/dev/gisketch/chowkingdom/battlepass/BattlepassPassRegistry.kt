@@ -40,6 +40,23 @@ object BattlepassPassRegistry {
 
     fun knownIds(): String = passes.keys.joinToString(", ").ifBlank { "none" }
 
+    fun replaceFirstDailyEvent(eventId: String, goals: List<Int>): BattlepassPassDefinition? {
+      val pass = passes.values.firstOrNull { pass -> pass.dailyEvents.events.isNotEmpty() } ?: passes.values.firstOrNull() ?: return null
+      val normalizedEventId = eventId.trim()
+      val safeId = normalizedEventId.lowercase(Locale.ROOT).replace(Regex("[^a-z0-9_]+"), "_").trim('_')
+      val event = BattlepassXpEventDefinition().apply {
+        id = "daily_test_$safeId"
+        event = normalizedEventId
+        type = "progressive"
+        eventDesc = BattlepassAvailableMissionEvents.description(normalizedEventId)
+        progress = 0
+        progressGoals = goals.toMutableList()
+        progressXp = goals.map { 100 }.toMutableList()
+      }
+      if (pass.dailyEvents.events.isEmpty()) pass.dailyEvents.events.add(event) else pass.dailyEvents.events[0] = event
+      return pass
+    }
+
     private fun loadPass(path: Path) {
         try {
             val pass = path.bufferedReader().use { reader -> gson.fromJson(reader, BattlepassPassDefinition::class.java) }
@@ -112,13 +129,31 @@ object BattlepassPassRegistry {
               "progress_xp": [250, 500, 900]
             },
             {
-              "id": "permanent_quality_crop_keeper",
-              "event": "quality_food:quality_crop_harvested",
+              "id": "permanent_iron_quality_crop_keeper",
+              "event": "quality_food:iron_quality_crop_harvested",
               "type": "progressive",
-              "event_desc": "Harvest {goal} Quality Crops",
+              "event_desc": "Harvest {goal} Iron Quality Crops",
               "progress": 0,
               "progress_goals": [32, 128, 256],
               "progress_xp": [300, 600, 1000]
+            },
+            {
+              "id": "permanent_gold_quality_crop_keeper",
+              "event": "quality_food:gold_quality_crop_harvested",
+              "type": "progressive",
+              "event_desc": "Harvest {goal} Gold Quality Crops",
+              "progress": 0,
+              "progress_goals": [24, 96, 192],
+              "progress_xp": [350, 700, 1100]
+            },
+            {
+              "id": "permanent_diamond_quality_crop_keeper",
+              "event": "quality_food:diamond_quality_crop_harvested",
+              "type": "progressive",
+              "event_desc": "Harvest {goal} Diamond Quality Crops",
+              "progress": 0,
+              "progress_goals": [12, 48, 96],
+              "progress_xp": [400, 800, 1200]
             },
             {
               "id": "permanent_shipping_value",
@@ -179,31 +214,85 @@ object BattlepassPassRegistry {
                 "xp_cap": 50
               },
               {
-                "id": "daily_harvest_quality_crops",
-                "event": "quality_food:quality_crop_harvested",
+                "id": "daily_harvest_iron_quality_crops",
+                "event": "quality_food:iron_quality_crop_harvested",
                 "type": "progressive",
-                "event_desc": "Harvest {goal} Quality Crops",
+                "event_desc": "Harvest {goal} Iron Quality Crops",
                 "progress": 0,
                 "progress_goals": [10],
                 "progress_xp": [80]
               },
               {
-                "id": "daily_cook_quality_food",
-                "event": "quality_food:quality_food_cooked",
+                "id": "daily_harvest_gold_quality_crops",
+                "event": "quality_food:gold_quality_crop_harvested",
                 "type": "progressive",
-                "event_desc": "Cook {goal} Quality Foods",
+                "event_desc": "Harvest {goal} Gold Quality Crops",
                 "progress": 0,
-                "progress_goals": [10],
-                "progress_xp": [80]
-              },
-              {
-                "id": "daily_ship_quality_food",
-                "event": "gisketchs_chowkingdom_mod:shipping_bin_quality_food_sold",
-                "type": "progressive",
-                "event_desc": "Ship {goal} Quality Foods",
-                "progress": 0,
-                "progress_goals": [16],
+                "progress_goals": [8],
                 "progress_xp": [100]
+              },
+              {
+                "id": "daily_harvest_diamond_quality_crops",
+                "event": "quality_food:diamond_quality_crop_harvested",
+                "type": "progressive",
+                "event_desc": "Harvest {goal} Diamond Quality Crops",
+                "progress": 0,
+                "progress_goals": [4],
+                "progress_xp": [120]
+              },
+              {
+                "id": "daily_cook_iron_quality_food",
+                "event": "quality_food:iron_quality_food_cooked",
+                "type": "progressive",
+                "event_desc": "Cook {goal} Iron Quality Foods",
+                "progress": 0,
+                "progress_goals": [10],
+                "progress_xp": [80]
+              },
+              {
+                "id": "daily_cook_gold_quality_food",
+                "event": "quality_food:gold_quality_food_cooked",
+                "type": "progressive",
+                "event_desc": "Cook {goal} Gold Quality Foods",
+                "progress": 0,
+                "progress_goals": [8],
+                "progress_xp": [100]
+              },
+              {
+                "id": "daily_cook_diamond_quality_food",
+                "event": "quality_food:diamond_quality_food_cooked",
+                "type": "progressive",
+                "event_desc": "Cook {goal} Diamond Quality Foods",
+                "progress": 0,
+                "progress_goals": [4],
+                "progress_xp": [120]
+              },
+              {
+                "id": "daily_eat_iron_quality_food",
+                "event": "quality_food:iron_quality_food_eaten",
+                "type": "progressive",
+                "event_desc": "Eat {goal} Iron Quality Foods",
+                "progress": 0,
+                "progress_goals": [8],
+                "progress_xp": [80]
+              },
+              {
+                "id": "daily_eat_gold_quality_food",
+                "event": "quality_food:gold_quality_food_eaten",
+                "type": "progressive",
+                "event_desc": "Eat {goal} Gold Quality Foods",
+                "progress": 0,
+                "progress_goals": [6],
+                "progress_xp": [100]
+              },
+              {
+                "id": "daily_eat_diamond_quality_food",
+                "event": "quality_food:diamond_quality_food_eaten",
+                "type": "progressive",
+                "event_desc": "Eat {goal} Diamond Quality Foods",
+                "progress": 0,
+                "progress_goals": [3],
+                "progress_xp": [120]
               },
               {
                 "id": "daily_ship_iron_quality_food",
@@ -306,13 +395,27 @@ object BattlepassPassRegistry {
             "reset_minute": 0,
             "reset_on_day": "Sunday",
             "events": [
-              { "id": "weekly_harvest_quality_crops", "event": "quality_food:quality_crop_harvested", "type": "progressive", "event_desc": "Harvest {goal} Quality Crops", "progress": 0, "progress_goals": [64], "progress_xp": [250] },
-              { "id": "weekly_cook_quality_food", "event": "quality_food:quality_food_cooked", "type": "progressive", "event_desc": "Cook {goal} Quality Foods", "progress": 0, "progress_goals": [64], "progress_xp": [250] },
-              { "id": "weekly_ship_quality_food", "event": "gisketchs_chowkingdom_mod:shipping_bin_quality_food_sold", "type": "progressive", "event_desc": "Ship {goal} Quality Foods", "progress": 0, "progress_goals": [128], "progress_xp": [300] },
+              { "id": "weekly_harvest_iron_quality_crops", "event": "quality_food:iron_quality_crop_harvested", "type": "progressive", "event_desc": "Harvest {goal} Iron Quality Crops", "progress": 0, "progress_goals": [64], "progress_xp": [250] },
+              { "id": "weekly_harvest_gold_quality_crops", "event": "quality_food:gold_quality_crop_harvested", "type": "progressive", "event_desc": "Harvest {goal} Gold Quality Crops", "progress": 0, "progress_goals": [48], "progress_xp": [300] },
+              { "id": "weekly_harvest_diamond_quality_crops", "event": "quality_food:diamond_quality_crop_harvested", "type": "progressive", "event_desc": "Harvest {goal} Diamond Quality Crops", "progress": 0, "progress_goals": [24], "progress_xp": [350] },
+              { "id": "weekly_cook_iron_quality_food", "event": "quality_food:iron_quality_food_cooked", "type": "progressive", "event_desc": "Cook {goal} Iron Quality Foods", "progress": 0, "progress_goals": [64], "progress_xp": [250] },
+              { "id": "weekly_cook_gold_quality_food", "event": "quality_food:gold_quality_food_cooked", "type": "progressive", "event_desc": "Cook {goal} Gold Quality Foods", "progress": 0, "progress_goals": [48], "progress_xp": [300] },
+              { "id": "weekly_cook_diamond_quality_food", "event": "quality_food:diamond_quality_food_cooked", "type": "progressive", "event_desc": "Cook {goal} Diamond Quality Foods", "progress": 0, "progress_goals": [24], "progress_xp": [350] },
               { "id": "weekly_ship_iron_quality_food", "event": "gisketchs_chowkingdom_mod:shipping_bin_iron_quality_food_sold", "type": "progressive", "event_desc": "Ship {goal} Iron Quality Foods", "progress": 0, "progress_goals": [32], "progress_xp": [250] },
               { "id": "weekly_ship_gold_quality_food", "event": "gisketchs_chowkingdom_mod:shipping_bin_gold_quality_food_sold", "type": "progressive", "event_desc": "Ship {goal} Gold Quality Foods", "progress": 0, "progress_goals": [32], "progress_xp": [300] },
               { "id": "weekly_ship_diamond_quality_food", "event": "gisketchs_chowkingdom_mod:shipping_bin_diamond_quality_food_sold", "type": "progressive", "event_desc": "Ship {goal} Diamond Quality Foods", "progress": 0, "progress_goals": [16], "progress_xp": [350] },
               { "id": "weekly_ship_value", "event": "gisketchs_chowkingdom_mod:shipping_bin_value_sold", "type": "progressive", "event_desc": "Ship {goal} Chowcoins Worth", "progress": 0, "progress_goals": [50000], "progress_xp": [350] },
+              { "id": "weekly_eat_iron_quality_food", "event": "quality_food:iron_quality_food_eaten", "type": "progressive", "event_desc": "Eat {goal} Iron Quality Foods", "progress": 0, "progress_goals": [32], "progress_xp": [250] },
+              { "id": "weekly_eat_gold_quality_food", "event": "quality_food:gold_quality_food_eaten", "type": "progressive", "event_desc": "Eat {goal} Gold Quality Foods", "progress": 0, "progress_goals": [24], "progress_xp": [300] },
+              { "id": "weekly_eat_diamond_quality_food", "event": "quality_food:diamond_quality_food_eaten", "type": "progressive", "event_desc": "Eat {goal} Diamond Quality Foods", "progress": 0, "progress_goals": [12], "progress_xp": [350] },
+              { "id": "weekly_hunt_mobs", "event": "minecraft:monster_killed", "type": "progressive", "event_desc": "Defeat {goal} Monsters", "progress": 0, "progress_goals": [100], "progress_xp": [250] },
+              { "id": "weekly_harvest_crops", "event": "minecraft:crop_harvested", "type": "progressive", "event_desc": "Harvest {goal} Crops", "progress": 0, "progress_goals": [512], "progress_xp": [250] },
+              { "id": "weekly_travel_blocks", "event": "minecraft:blocks_traveled", "type": "progressive", "event_desc": "Travel {goal} Blocks", "progress": 0, "progress_goals": [10000], "progress_xp": [250] },
+              { "id": "weekly_breed_animals", "event": "minecraft:animal_bred", "type": "progressive", "event_desc": "Breed {goal} Animals", "progress": 0, "progress_goals": [25], "progress_xp": [250] },
+              { "id": "weekly_trade_villagers", "event": "minecraft:villager_traded", "type": "progressive", "event_desc": "Trade with Villagers {goal} Times", "progress": 0, "progress_goals": [30], "progress_xp": [250] },
+              { "id": "weekly_go_fishing", "event": "minecraft:fish_caught", "type": "progressive", "event_desc": "Catch {goal} Fish", "progress": 0, "progress_goals": [25], "progress_xp": [250] },
+              { "id": "weekly_cutting_board", "event": "farmersdelight:cutting_board_used", "type": "progressive", "event_desc": "Use a Cutting Board {goal} Times", "progress": 0, "progress_goals": [25], "progress_xp": [250] },
+              { "id": "weekly_cooking_pot_meals", "event": "farmersdelight:cooking_pot_meal_cooked", "type": "progressive", "event_desc": "Cook {goal} Cooking Pot Meals", "progress": 0, "progress_goals": [25], "progress_xp": [250] },
               { "id": "weekly_catch_normal_type", "event": "cobblemon:catch_normal_type", "type": "progressive", "event_desc": "Catch {goal} Normal Pokemon", "progress": 0, "progress_goals": [10], "progress_xp": [250] },
               { "id": "weekly_catch_fire_type", "event": "cobblemon:catch_fire_type", "type": "progressive", "event_desc": "Catch {goal} Fire Pokemon", "progress": 0, "progress_goals": [10], "progress_xp": [250] },
               { "id": "weekly_catch_water_type", "event": "cobblemon:catch_water_type", "type": "progressive", "event_desc": "Catch {goal} Water Pokemon", "progress": 0, "progress_goals": [10], "progress_xp": [250] },

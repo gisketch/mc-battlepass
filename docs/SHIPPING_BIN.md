@@ -84,6 +84,14 @@ These entries are `required: false`, so the pack is safe when Cobblemon or Quali
 - `gisketchs_chowkingdom_mod:shipping_bin_value_sold`: increments by total chowcoin value sold through the shipping bin.
 - `gisketchs_chowkingdom_mod:shipping_bin_quality_food_value_sold`: increments by chowcoin value from quality items only.
 
+Testing command:
+
+```text
+/battlepass daily replace gisketchs_chowkingdom_mod:shipping_bin_gold_quality_food_sold 8
+```
+
+This command is admin-only because it is registered behind permission level `2`.
+
 ## Quality Food Test Items
 
 Use these commands with Quality Food installed to get wheat with each tier:

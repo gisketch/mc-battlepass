@@ -165,6 +165,17 @@ Rules:
 - Hover tooltips append a `coins.png <amount>` custom tooltip row for items priced by config.
 - Quality Food compatibility is optional and reads the `quality_food:quality` data component by registry/reflection.
 
+## Discord Webhook
+
+Discord config lives in `config/gisketchs_chowkingdom_mod/discord/webhook.json`.
+
+- Default is disabled and blank webhook URL.
+- Chat relay uses `ServerChatEvent`.
+- Chat relay can use the Minecraft player's name and head avatar per message.
+- Quick Skin avatar support is optional and uses reflected `ServerPlayerAppearanceRepository` / `ServerTextureCache` data. The built-in avatar server crops the skin head to PNG, but admins still need a public base URL for Discord to fetch it.
+- Status relay uses `ServerTickEvent.Post` and reports online count plus smoothed TPS.
+- Webhook sends must be async; do not block server chat or tick thread.
+
 Chowcoin reward examples:
 
 ```json

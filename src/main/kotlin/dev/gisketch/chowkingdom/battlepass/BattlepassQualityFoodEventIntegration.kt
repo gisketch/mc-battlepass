@@ -6,6 +6,7 @@ import net.minecraft.world.entity.item.ItemEntity
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.block.CropBlock
 import net.neoforged.neoforge.common.NeoForge
+import net.neoforged.neoforge.event.entity.living.LivingEntityUseItemEvent
 import net.neoforged.neoforge.event.entity.player.PlayerEvent
 import net.neoforged.neoforge.event.level.BlockDropsEvent
 import java.util.Locale
@@ -15,6 +16,7 @@ object BattlepassQualityFoodEventIntegration {
         NeoForge.EVENT_BUS.addListener(::onBlockDrops)
         NeoForge.EVENT_BUS.addListener(::onItemSmelted)
         NeoForge.EVENT_BUS.addListener(::onItemCrafted)
+        NeoForge.EVENT_BUS.addListener(::onItemUseFinish)
     }
 
     private fun onBlockDrops(event: BlockDropsEvent) {
@@ -34,6 +36,20 @@ object BattlepassQualityFoodEventIntegration {
         recordQualityFood(player, listOf(event.crafting), QUALITY_FOOD_COOKED, setOf("farmersdelight:quality_food_cooked"))
     }
 
+    private fun onItemUseFinish(event: LivingEntityUseItemEvent.Finish) {
+        val player = event.entity as? ServerPlayer ?: return
+        val stack = event.item
+        val level = QualityFoodSupport.qualityLevel(stack)
+        if (level <= 0 || stack.getFoodProperties(player) == null) return
+        val aliases = when (level) {
+            1 -> setOf("quality_food:iron_quality_food_eaten")
+            2 -> setOf("quality_food:gold_quality_food_eaten")
+            3 -> setOf("quality_food:diamond_quality_food_eaten")
+            else -> emptySet()
+        }
+        recordQualityFood(player, listOf(stack.copyWithCount(1)), QUALITY_FOOD_EATEN, aliases)
+    }
+
     private fun isCropHarvest(event: BlockDropsEvent): Boolean {
         val crop = event.state.block as? CropBlock
         return crop?.isMaxAge(event.state) == true || QualityFoodSupport.isQualityBlock(event.state)
@@ -48,11 +64,28 @@ object BattlepassQualityFoodEventIntegration {
     private fun recordQualityFood(player: ServerPlayer, stacks: List<ItemStack>, eventId: String, aliases: Set<String> = emptySet()) {
         var changed = false
         stacks.filter(QualityFoodSupport::hasQuality).forEach { stack ->
-            changed = BattlepassMissionEventBank.record(player, eventId, stack.count, QualityFoodSupport.itemAttributes(stack), aliases) || changed
+            val tierAliases = aliases + tierAliases(eventId, QualityFoodSupport.qualityLevel(stack))
+            changed = BattlepassMissionEventBank.record(player, eventId, stack.count, QualityFoodSupport.itemAttributes(stack), tierAliases) || changed
         }
         if (changed) BattlepassNetwork.syncAllPlayers()
     }
 
+    private fun tierAliases(eventId: String, level: Int): Set<String> {
+        val tier = when (level) {
+            1 -> "iron"
+            2 -> "gold"
+            3 -> "diamond"
+            else -> return emptySet()
+        }
+        return when (eventId) {
+            QUALITY_CROP_HARVESTED -> setOf("quality_food:${tier}_quality_crop_harvested")
+            QUALITY_FOOD_COOKED -> setOf("quality_food:${tier}_quality_food_cooked")
+            QUALITY_FOOD_EATEN -> setOf("quality_food:${tier}_quality_food_eaten")
+            else -> emptySet()
+        }
+    }
+
     const val QUALITY_CROP_HARVESTED = "quality_food:quality_crop_harvested"
     const val QUALITY_FOOD_COOKED = "quality_food:quality_food_cooked"
+    const val QUALITY_FOOD_EATEN = "quality_food:quality_food_eaten"
 }
