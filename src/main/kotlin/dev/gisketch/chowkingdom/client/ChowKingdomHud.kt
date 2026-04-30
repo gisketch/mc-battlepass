@@ -9,6 +9,7 @@ import dev.gisketch.chowkingdom.battlepass.BattlepassMissionService
 import dev.gisketch.chowkingdom.battlepass.BattlepassPassRegistry
 import dev.gisketch.chowkingdom.battlepass.BattlepassTrackedMissions
 import dev.gisketch.chowkingdom.battlepass.BattlepassXpEventDefinition
+import dev.gisketch.chowkingdom.profiles.NicknameStore
 import dev.gisketch.chowkingdom.shipping.ShippingBinClientState
 import dev.gisketch.chowkingdom.wallets.ChowcoinClientState
 import net.minecraft.client.Minecraft
@@ -58,7 +59,7 @@ object ChowKingdomHud {
         queueCompletionToasts(minecraft)
         queueShippingSaleToasts(minecraft)
 
-        val name = player.gameProfile.name
+        val name = NicknameStore.nicknameFor(player.uuid) ?: player.gameProfile.name
         val avatarX = HUD_PADDING
         val avatarY = HUD_PADDING
         val textX = avatarX + BORDER_SIZE + NAME_GAP

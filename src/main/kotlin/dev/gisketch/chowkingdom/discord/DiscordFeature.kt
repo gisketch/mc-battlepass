@@ -3,6 +3,7 @@ package dev.gisketch.chowkingdom.discord
 import net.minecraft.ChatFormatting
 import net.minecraft.network.chat.Component
 import net.minecraft.server.level.ServerPlayer
+import dev.gisketch.chowkingdom.profiles.NicknameStore
 import net.neoforged.neoforge.common.NeoForge
 import net.neoforged.neoforge.event.ServerChatEvent
 import net.neoforged.neoforge.event.entity.living.LivingDeathEvent
@@ -46,7 +47,7 @@ object DiscordFeature {
 
     private fun onPlayerLoggedIn(event: PlayerEvent.PlayerLoggedInEvent) {
         val player = event.entity as? ServerPlayer ?: return
-        DiscordAccountLinkStore.refreshMinecraftName(player)
+        DiscordAccountLinkStore.refreshMinecraftName(player, NicknameStore.displayName(player))
         sendDiscordLinkReminder(player)
         DiscordRelay.join(player)
     }

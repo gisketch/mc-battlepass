@@ -1,5 +1,6 @@
 package dev.gisketch.chowkingdom.discord
 
+import dev.gisketch.chowkingdom.profiles.NicknameStore
 import net.minecraft.server.MinecraftServer
 import net.minecraft.server.level.ServerPlayer
 import java.util.Locale
@@ -12,10 +13,11 @@ object DiscordRelay {
 
         val values = playerValues(player) + mapOf("message" to DiscordText.cleanContent(rawMessage))
         if (config.playerChatIdentity) {
+            val displayName = NicknameStore.displayName(player)
             DiscordWebhookClient.send(
                 DiscordWebhookMessage(
                     content = DiscordText.applyTemplate(config.formatting.chatMessage, values),
-                    username = player.gameProfile.name,
+                    username = displayName,
                     avatarUrl = DiscordQuickSkinSupport.avatarUrl(player, config),
                 ),
             )
@@ -68,7 +70,7 @@ object DiscordRelay {
                         title = DiscordText.applyTemplate(config.formatting.battlepassTitle, values),
                         description = DiscordText.applyTemplate(config.formatting.battlepassDescription, values),
                         color = DiscordText.parseColor(config.formatting.battlepassColor),
-                        authorName = player.gameProfile.name,
+                        authorName = NicknameStore.displayName(player),
                         authorIconUrl = DiscordQuickSkinSupport.avatarUrl(player, config),
                     ),
                 ),
@@ -92,17 +94,20 @@ object DiscordRelay {
                 title = DiscordText.applyTemplate(title, values),
                 description = DiscordText.applyTemplate(description, values),
                 color = DiscordText.parseColor(color),
-                authorName = player.gameProfile.name,
+                authorName = NicknameStore.displayName(player),
                 authorIconUrl = DiscordQuickSkinSupport.avatarUrl(player, DiscordConfig.current()),
             ),
         ),
     )
 
-    private fun playerValues(player: ServerPlayer): Map<String, String> = mapOf(
-        "player" to DiscordText.escapeMarkdown(player.gameProfile.name),
-        "player_raw" to player.gameProfile.name,
-        "uuid" to player.uuid.toString(),
-    )
+    private fun playerValues(player: ServerPlayer): Map<String, String> {
+        val displayName = NicknameStore.displayName(player)
+        return mapOf(
+            "player" to DiscordText.escapeMarkdown(displayName),
+            "player_raw" to displayName,
+            "uuid" to player.uuid.toString(),
+        )
+    }
 
     private fun serverValues(server: MinecraftServer): Map<String, String> = mapOf(
         "online" to server.playerList.playerCount.toString(),

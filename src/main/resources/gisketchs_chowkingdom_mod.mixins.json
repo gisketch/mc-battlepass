@@ -1,0 +1,16 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "dev.gisketch.chowkingdom.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "GameProfileMixin"
+  ],
+  "client": [
+    "EntityRendererMixin",
+    "LivingEntityRendererMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

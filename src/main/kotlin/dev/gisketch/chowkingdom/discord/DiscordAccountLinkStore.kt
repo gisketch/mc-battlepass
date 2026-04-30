@@ -50,10 +50,14 @@ object DiscordAccountLinkStore {
     }
 
     fun createPending(player: ServerPlayer): PendingDiscordAccountLink {
+        return createPending(player, player.gameProfile.name)
+    }
+
+    fun createPending(player: ServerPlayer, minecraftName: String): PendingDiscordAccountLink {
         ensureLoaded()
         pruneExpired()
         pendingByCode.entries.removeIf { (_, pending) -> pending.minecraftUuid == player.stringUUID }
-        val pending = PendingDiscordAccountLink(generateCode(), player.stringUUID, player.gameProfile.name, System.currentTimeMillis() + LINK_CODE_TTL_MILLIS)
+        val pending = PendingDiscordAccountLink(generateCode(), player.stringUUID, minecraftName, System.currentTimeMillis() + LINK_CODE_TTL_MILLIS)
         pendingByCode[pending.code] = pending
         save()
         return pending
@@ -96,10 +100,14 @@ object DiscordAccountLinkStore {
     }
 
     fun refreshMinecraftName(player: ServerPlayer) {
+        refreshMinecraftName(player, player.gameProfile.name)
+    }
+
+    fun refreshMinecraftName(player: ServerPlayer, minecraftName: String) {
         ensureLoaded()
         val link = linksByMinecraftId[player.stringUUID] ?: return
-        if (link.minecraftName == player.gameProfile.name) return
-        val updated = link.copy(minecraftName = player.gameProfile.name)
+        if (link.minecraftName == minecraftName) return
+        val updated = link.copy(minecraftName = minecraftName)
         putLink(updated)
         save()
     }

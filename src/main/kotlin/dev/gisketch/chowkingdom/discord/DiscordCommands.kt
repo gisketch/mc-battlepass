@@ -2,6 +2,7 @@ package dev.gisketch.chowkingdom.discord
 
 import com.mojang.brigadier.arguments.StringArgumentType
 import com.mojang.brigadier.builder.LiteralArgumentBuilder.literal
+import dev.gisketch.chowkingdom.profiles.NicknameStore
 import net.minecraft.commands.CommandSourceStack
 import net.minecraft.commands.Commands.argument
 import net.minecraft.commands.arguments.EntityArgument
@@ -28,7 +29,7 @@ object DiscordCommands {
                     literal<CommandSourceStack>("link")
                         .executes { context ->
                             val player = context.source.playerOrException
-                            val pending = DiscordAccountLinkStore.createPending(player)
+                            val pending = DiscordAccountLinkStore.createPending(player, NicknameStore.displayName(player))
                             context.source.sendSuccess({ Component.literal("Discord link code: ${pending.code}. In Discord, send !link ${pending.code} within 10 minutes.") }, false)
                             1
                         }
@@ -65,9 +66,9 @@ object DiscordCommands {
                                     val player = EntityArgument.getPlayer(context, "player")
                                     val link = DiscordAccountLinkStore.unlink(player)
                                     if (link == null) {
-                                        context.source.sendSuccess({ Component.literal("${player.gameProfile.name} has no Discord account linked.") }, false)
+                                        context.source.sendSuccess({ Component.literal("${NicknameStore.displayName(player)} has no Discord account linked.") }, false)
                                     } else {
-                                        context.source.sendSuccess({ Component.literal("Unlinked ${player.gameProfile.name} from Discord ${link.discordName}.") }, true)
+                                        context.source.sendSuccess({ Component.literal("Unlinked ${NicknameStore.displayName(player)} from Discord ${link.discordName}.") }, true)
                                     }
                                     1
                                 }

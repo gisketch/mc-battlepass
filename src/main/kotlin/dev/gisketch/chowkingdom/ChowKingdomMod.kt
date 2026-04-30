@@ -43,7 +43,7 @@ class ChowKingdomMod(modBus: IEventBus, container: ModContainer) {
         WalletsFeature.register(modBus)
         ShippingBinFeature.register(modBus)
         ShopsFeature.register()
-        ProfilesFeature.register()
+        ProfilesFeature.register(modBus)
         DiscordFeature.register()
         if (FMLEnvironment.dist == Dist.CLIENT) {
             BattlepassClient.register(modBus)

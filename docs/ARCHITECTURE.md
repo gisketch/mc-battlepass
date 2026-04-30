@@ -45,6 +45,8 @@ src/main/kotlin/dev/gisketch/chowkingdom/
     ShopsFeature.kt
   profiles/
     ProfilesFeature.kt
+    NicknameStore.kt
+    NicknameClientConfig.kt
   discord/
     DiscordFeature.kt
     DiscordConfig.kt
@@ -96,6 +98,17 @@ Mission scopes:
 - Optional Quality Food compatibility reads `quality_food:quality` data components and applies configured tier multipliers.
 - Packaged datapack tags extend Quality Food material/quality-block tags for Cobblemon berries, apricorns, and crop tags when those mods are present.
 
+## Profiles / Nicknames
+
+- `ProfilesFeature` registers `/nickname <name>`, `/nickname clear`, and operator-only `/nickname list`/`/nickname lists`.
+- `NicknameStore` persists UUID-keyed nicknames in world data and refreshes player-info packets after changes.
+- `NicknameNetwork` syncs online UUID-to-nickname state to clients so HUD/name rendering updates without reconnecting.
+- Nicknames are restricted to Minecraft-compatible names: 1-16 letters, numbers, or underscores.
+- `GameProfileMixin` routes `GameProfile#getName()` through `NicknameStore`, so other mods reading game profile names see the nickname when present.
+- `ProfilesFeature` uses NeoForge name-format and tab-list events for nickname display, leaving vanilla player chat packets intact for mods like Chat Heads.
+- Nickname changes refresh linked Discord account names, and Discord relay templates/webhook author names use nickname display names while avatar lookup still uses the real profile/UUID.
+- `NicknameConfig` writes `config/gisketchs_chowkingdom_mod/profiles/client.json`; `enableNickname` and `showOwnNameTag` default to `true` and own nametag rendering is handled by renderer mixins.
+
 ## Persistence
 
 Use world data for gameplay state:
@@ -106,6 +119,7 @@ Use world data for gameplay state:
   battlepass/mission_progress.json
   wallets/chowcoins.json
   shipping_bin/bins.json
+  profiles/nicknames.json
 ```
 
 Use config for definitions and client-local preferences:
@@ -117,6 +131,7 @@ config/gisketchs_chowkingdom_mod/
   battlepass/notified_missions.json
   shipping_bin/prices.json
   discord/webhook.json
+  profiles/client.json
 ```
 
 ## Discord
