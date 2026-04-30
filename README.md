@@ -1,79 +1,45 @@
-# gisketch's Chow Kingdom Mod
+# mc-battlepass
 
-Barebones NeoForge 1.21.1 Kotlin mod shell for Chow Kingdom systems.
+NeoForge `1.21.1` Kotlin mod for Chow Kingdom systems: battlepass, wallets, shipping bin, profiles, Discord relay, and future shops.
 
-## What is included
+Retrofitted to Sonata harness on 2026-04-30.
 
-- Minecraft `1.21.1`
-- NeoForge `21.1.228`
-- Kotlin JVM `2.3.0`
-- Kotlin For Forge NeoForge `5.11.0`
-- Java toolchain `21`
-- Gradle Kotlin DSL
-- Battlepass feature keybind (`B` by default)
-- Full-screen battlepass overlay with blurred game background
-- Data-driven pass definitions in `config/gisketchs_chowkingdom_mod/battlepass/passes/*.json`
-- `/chowkingdom battlepass` commands for pass reload/list, claiming, and manual XP grants
-- Package scaffold ready for future wallets, shops, and profiles features
+## Quick Start
 
-## Pass data
+1. Read [AGENTS.md](AGENTS.md).
+2. Read [docs/index.md](docs/index.md).
+3. Use [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for current codebase map.
+4. Use [docs/MODULE_GUIDE.md](docs/MODULE_GUIDE.md) before adding modules.
+5. Run checks from [docs/quality.md](docs/quality.md) before handoff.
 
-Pass files are loaded from the game config folder. On first launch, the mod creates example `cobblemon.json` and `combat.json` files.
+## Project Shape
 
-```json
-{
-	"id": "cobblemon",
-	"displayName": "Cobblemon Pass",
-	"description": "Progress from Cobblemon captures and battles.",
-	"categories": ["cobblemon", "season_1"],
-	"xpEvents": [
-		{ "event": "cobblemon:pokemon_captured", "xp": 10 },
-		{ "event": "cobblemon:pokemon_defeated", "xp": 5 }
-	],
-	"progression": [
-		{
-			"xp": 100,
-			"rewards": [
-				{ "type": "item", "item": "minecraft:diamond", "quantity": 1 }
-			]
-		}
-	]
-}
-```
+- Kind: existing project
+- Stack: Gradle Kotlin DSL, Kotlin/JVM, Java 21, NeoForge Minecraft mod
+- Package manager: Gradle wrapper
+- First milestone: Normalize existing project into Sonata harness with real source/docs inventory
 
-## Commands
+## Key Docs
 
-```mcfunction
-/chowkingdom battlepass list
-/chowkingdom battlepass reload
-/chowkingdom battlepass claim <pass> <tierXp>
-/chowkingdom battlepass xp add <pass> <amount> <targets>
-/ck battlepass <pass> xp <amount> <targets>
-```
+- [Battlepass Events](docs/PASS_EVENTS.md)
+- [Shipping Bin](docs/SHIPPING_BIN.md)
+- [Discord Integration](docs/DISCORD.md)
+- [Module Guide](docs/MODULE_GUIDE.md)
 
-## TODO
+## Build
 
-- Wallets: add currency storage and transfer commands.
-- Shops: add data-driven shop definitions and purchase flow.
-- Profiles: add player profile data and UI shell.
-- Battlepass UI: pass selection/detail layout, reward claiming states, and stronger locked-item presentation.
-- Events: add more built-in Minecraft event adapters and pack-defined custom event hooks.
-- Multiplayer: sync server-owned pass XP to the client UI instead of only reading local preview data.
-
-## Build and run
-
-```bash
-./gradlew build
-./scripts/run-client.sh
-./gradlew runServer
-```
-
-Windows PowerShell:
+Windows:
 
 ```powershell
 .\gradlew.bat build
-.\scripts\run-client.ps1
-.\gradlew.bat runServer
 ```
 
-First Gradle run downloads Minecraft, NeoForge, mappings, and dependencies.
+Unix-like shells:
+
+```bash
+./gradlew build
+```
+
+## Principle
+
+Terse chat. Explicit repo memory. Checks over vibes.
