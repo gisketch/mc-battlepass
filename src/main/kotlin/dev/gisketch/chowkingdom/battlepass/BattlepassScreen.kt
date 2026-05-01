@@ -2,12 +2,16 @@ package dev.gisketch.chowkingdom.battlepass
 
 import com.mojang.blaze3d.systems.RenderSystem
 import dev.gisketch.chowkingdom.ChowKingdomMod
+import dev.gisketch.chowkingdom.discord.DiscordQuickSkinSupport
+import com.mojang.blaze3d.platform.NativeImage
 import net.minecraft.ChatFormatting
 import net.minecraft.Util
+import com.mojang.math.Axis
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.components.Button
 import net.minecraft.client.gui.components.PlayerFaceRenderer
+import net.minecraft.client.renderer.texture.DynamicTexture
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.gui.screens.inventory.InventoryScreen
 import net.minecraft.client.resources.sounds.SimpleSoundInstance
@@ -20,6 +24,7 @@ import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 import java.util.UUID
+import java.io.ByteArrayInputStream
 
 class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.MOD_ID}.battlepass")) {
     private enum class ViewMode { PASS_SELECTION, PASS_DETAIL }
@@ -78,6 +83,7 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
     private var renderAlpha = 1.0f
     private val hoverAnimations = mutableMapOf<String, Float>()
     private val pressAnimations = mutableMapOf<String, Long>()
+    private val quickSkinAvatarTextures = mutableMapOf<UUID, ResourceLocation?>()
     private var autoScrollKey: String? = null
     private var missionFilter = MissionFilter.ALL
     private var missionFilterRects: List<Pair<Rect, MissionFilter>> = emptyList()
@@ -93,6 +99,7 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
     override fun init() {
         BattlepassNetwork.requestSync()
         BattlepassPassRegistry.reload()
+        quickSkinAvatarTextures.clear()
         selectedPassId = selectedPassId ?: passes().firstOrNull()?.id
         backButton = addRenderableWidget(
             Button.builder(Component.translatable("ui.${ChowKingdomMod.MOD_ID}.back")) {
@@ -491,16 +498,17 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
         }
         drawCkdmShadowedText(guiGraphics, slot.tierNumber.toString(), slot.rect.x + REWARD_TIER_PADDING, slot.rect.y + REWARD_TIER_PADDING, TEXT_PRIMARY)
         if (!slot.unlocked) {
-            renderLockedOverlay(guiGraphics, slot.rect)
+            renderLockedOverlay(guiGraphics, slot.rect, lockShakeDegrees(rewardInteractionKey(slot)))
         }
     }
 
-    private fun renderLockedOverlay(guiGraphics: GuiGraphics, rect: Rect) {
+    private fun renderLockedOverlay(guiGraphics: GuiGraphics, rect: Rect, rotationDegrees: Float) {
         guiGraphics.flush()
         RenderSystem.disableDepthTest()
         guiGraphics.pose().pushPose()
-        guiGraphics.pose().translate(0.0f, 0.0f, LOCK_OVERLAY_Z)
-        renderTexture(guiGraphics, LOCKED_TEXTURE, Rect(rect.x + (rect.width - LOCKED_ICON_SIZE) / 2, rect.y + (rect.height - LOCKED_ICON_SIZE) / 2, LOCKED_ICON_SIZE, LOCKED_ICON_SIZE), LOCKED_TEXTURE_SIZE, LOCKED_TEXTURE_SIZE)
+        guiGraphics.pose().translate((rect.x + rect.width / 2.0f), (rect.y + rect.height / 2.0f), LOCK_OVERLAY_Z)
+        if (rotationDegrees != 0.0f) guiGraphics.pose().mulPose(Axis.ZP.rotationDegrees(rotationDegrees))
+        renderTexture(guiGraphics, LOCKED_TEXTURE, Rect(-LOCKED_ICON_SIZE / 2, -LOCKED_ICON_SIZE / 2, LOCKED_ICON_SIZE, LOCKED_ICON_SIZE), LOCKED_TEXTURE_SIZE, LOCKED_TEXTURE_SIZE)
         guiGraphics.pose().popPose()
         guiGraphics.flush()
         RenderSystem.enableDepthTest()
@@ -548,7 +556,8 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
                 else -> BUTTON_DISABLED_FILL
             }
             val text = if (active) "Claim All ($claimAllClaimableCount)" else "Claim All"
-            guiGraphics.fill(claimAllRect.x, claimAllRect.y, claimAllRect.x + claimAllRect.width, claimAllRect.y + claimAllRect.height, colorWithRenderAlpha(fill))
+            renderNineSlice(guiGraphics, CLAIM_BUTTON_TEXTURE, claimAllRect, CLAIM_BUTTON_TEXTURE_SIZE, CLAIM_BUTTON_CORNER_SIZE, CLAIM_BUTTON_DESTINATION_CORNER_SIZE)
+            if (!active || hovered) guiGraphics.fill(claimAllRect.x, claimAllRect.y, claimAllRect.x + claimAllRect.width, claimAllRect.y + claimAllRect.height, colorWithRenderAlpha(fill))
             guiGraphics.drawString(font, text, claimAllRect.x + (claimAllRect.width - font.width(text)) / 2, claimAllRect.y + 6, colorWithRenderAlpha(if (active) TEXT_PRIMARY else TEXT_MUTED), false)
         }
     }
@@ -629,6 +638,14 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
         return linear * linear
     }
 
+    private fun lockShakeDegrees(key: String): Float {
+        val startedAtMs = pressAnimations[key] ?: return 0.0f
+        val elapsed = (Util.getMillis() - startedAtMs).toFloat()
+        if (elapsed >= LOCK_SHAKE_DURATION_MS) return 0.0f
+        val fade = 1.0f - (elapsed / LOCK_SHAKE_DURATION_MS).coerceIn(0.0f, 1.0f)
+        return Mth.sin(elapsed / LOCK_SHAKE_DURATION_MS * LOCK_SHAKE_WAVES * Math.PI.toFloat() * 2.0f) * LOCK_SHAKE_DEGREES * fade
+    }
+
     private fun registerPress(key: String) {
         pressAnimations[key] = Util.getMillis()
     }
@@ -651,6 +668,30 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
         RenderSystem.defaultBlendFunc()
         guiGraphics.blit(texture, rect.x, rect.y, rect.width, rect.height, 0.0f, 0.0f, textureWidth, textureHeight, textureWidth, textureHeight)
         RenderSystem.disableBlend()
+    }
+
+    private fun renderNineSlice(guiGraphics: GuiGraphics, texture: ResourceLocation, rect: Rect, textureSize: Int, sourceCorner: Int, destinationCorner: Int = sourceCorner) {
+        val edge = textureSize - sourceCorner
+        val middle = textureSize - sourceCorner * 2
+        val innerWidth = (rect.width - destinationCorner * 2).coerceAtLeast(0)
+        val innerHeight = (rect.height - destinationCorner * 2).coerceAtLeast(0)
+        RenderSystem.enableBlend()
+        RenderSystem.defaultBlendFunc()
+        blitRegion(guiGraphics, texture, Rect(rect.x, rect.y, destinationCorner, destinationCorner), 0, 0, sourceCorner, sourceCorner, textureSize)
+        blitRegion(guiGraphics, texture, Rect(rect.x + destinationCorner, rect.y, innerWidth, destinationCorner), sourceCorner, 0, middle, sourceCorner, textureSize)
+        blitRegion(guiGraphics, texture, Rect(rect.x + rect.width - destinationCorner, rect.y, destinationCorner, destinationCorner), edge, 0, sourceCorner, sourceCorner, textureSize)
+        blitRegion(guiGraphics, texture, Rect(rect.x, rect.y + destinationCorner, destinationCorner, innerHeight), 0, sourceCorner, sourceCorner, middle, textureSize)
+        blitRegion(guiGraphics, texture, Rect(rect.x + destinationCorner, rect.y + destinationCorner, innerWidth, innerHeight), sourceCorner, sourceCorner, middle, middle, textureSize)
+        blitRegion(guiGraphics, texture, Rect(rect.x + rect.width - destinationCorner, rect.y + destinationCorner, destinationCorner, innerHeight), edge, sourceCorner, sourceCorner, middle, textureSize)
+        blitRegion(guiGraphics, texture, Rect(rect.x, rect.y + rect.height - destinationCorner, destinationCorner, destinationCorner), 0, edge, sourceCorner, sourceCorner, textureSize)
+        blitRegion(guiGraphics, texture, Rect(rect.x + destinationCorner, rect.y + rect.height - destinationCorner, innerWidth, destinationCorner), sourceCorner, edge, middle, sourceCorner, textureSize)
+        blitRegion(guiGraphics, texture, Rect(rect.x + rect.width - destinationCorner, rect.y + rect.height - destinationCorner, destinationCorner, destinationCorner), edge, edge, sourceCorner, sourceCorner, textureSize)
+        RenderSystem.disableBlend()
+    }
+
+    private fun blitRegion(guiGraphics: GuiGraphics, texture: ResourceLocation, rect: Rect, sourceX: Int, sourceY: Int, sourceWidth: Int, sourceHeight: Int, textureSize: Int) {
+        if (rect.width <= 0 || rect.height <= 0) return
+        guiGraphics.blit(texture, rect.x, rect.y, rect.width, rect.height, sourceX.toFloat(), sourceY.toFloat(), sourceWidth, sourceHeight, textureSize, textureSize)
     }
 
     private fun renderPassTitleTexture(guiGraphics: GuiGraphics, pass: BattlepassPassDefinition, bounds: Rect): Boolean {
@@ -682,13 +723,21 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
     private fun ckdmText(text: String, fontId: ResourceLocation = CKDM_BOLD_FONT): Component = Component.literal(text.uppercase()).withStyle { style -> style.withFont(fontId) }
 
     private fun renderHoveredBattlepassTooltip(guiGraphics: GuiGraphics, currentXp: Int, mouseX: Int, mouseY: Int) {
-        rewardSlots.firstOrNull { slot -> slot.rect.contains(mouseX.toDouble(), mouseY.toDouble()) }?.let { slot ->
-            renderRewardTooltip(guiGraphics, slot, currentXp, mouseX, mouseY)
-            return
+        val rewardSlot = rewardSlots.firstOrNull { slot -> slot.rect.contains(mouseX.toDouble(), mouseY.toDouble()) }
+        val missionSlot = missionSlots.firstOrNull { slot -> missionsRect.contains(mouseX.toDouble(), mouseY.toDouble()) && slot.rect.contains(mouseX.toDouble(), mouseY.toDouble()) }
+        if (rewardSlot == null && missionSlot == null) return
+        guiGraphics.flush()
+        RenderSystem.disableDepthTest()
+        guiGraphics.pose().pushPose()
+        guiGraphics.pose().translate(0.0f, 0.0f, TOOLTIP_Z)
+        if (rewardSlot != null) {
+            renderRewardTooltip(guiGraphics, rewardSlot, currentXp, mouseX, mouseY)
+        } else if (missionSlot != null) {
+            renderMissionTooltip(guiGraphics, missionSlot, mouseX, mouseY)
         }
-        missionSlots.firstOrNull { slot -> missionsRect.contains(mouseX.toDouble(), mouseY.toDouble()) && slot.rect.contains(mouseX.toDouble(), mouseY.toDouble()) }?.let { slot ->
-            renderMissionTooltip(guiGraphics, slot, mouseX, mouseY)
-        }
+        guiGraphics.pose().popPose()
+        guiGraphics.flush()
+        RenderSystem.enableDepthTest()
     }
 
     private fun renderMissionTooltip(guiGraphics: GuiGraphics, slot: MissionSlot, mouseX: Int, mouseY: Int) {
@@ -698,23 +747,27 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
         val completedPlayers = completedPlayersFor(slot)
         val title = missionTypeLabel(slot.entry.scope)
         val width = listOf(
-            ckdmWidth(title) + TOOLTIP_TEXT_GAP + ckdmWidth(progressText, CKDM_BOLD_SMALL_FONT),
-            ckdmWidth("COMPLETED"),
-            if (completedPlayers.isEmpty()) ckdmWidth("NONE", CKDM_BOLD_SMALL_FONT) else completedPlayers.size.coerceAtMost(TOOLTIP_MAX_AVATARS) * (TOOLTIP_AVATAR_SIZE + TOOLTIP_AVATAR_GAP),
+            ckdmWidth(title),
+            ckdmWidth(progressText, CKDM_BOLD_SMALL_FONT),
+            completedPlayers.size.coerceAtMost(TOOLTIP_MAX_AVATARS) * (TOOLTIP_AVATAR_SIZE + TOOLTIP_AVATAR_GAP),
         ).maxOrNull().orEmptyWidth() + TOOLTIP_PADDING * 2
-        val height = TOOLTIP_PADDING * 2 + TOOLTIP_LINE_HEIGHT * 2 + TOOLTIP_AVATAR_SIZE + 6
+        val avatarHeight = if (completedPlayers.isEmpty()) 0 else TOOLTIP_SECTION_GAP + TOOLTIP_AVATAR_SIZE
+        val height = TOOLTIP_PADDING * 2 + TOOLTIP_HEADER_CONTENT_GAP + avatarHeight
         val origin = tooltipOrigin(mouseX, mouseY, width, height)
+        var textY = origin.y + TOOLTIP_PADDING
         drawTooltipPanel(guiGraphics, origin, width, height)
-        drawCkdmShadowedText(guiGraphics, title, origin.x + TOOLTIP_PADDING, origin.y + TOOLTIP_PADDING, TEXT_PRIMARY)
-        drawCkdmText(guiGraphics, progressText, origin.x + TOOLTIP_PADDING + ckdmWidth(title) + TOOLTIP_TEXT_GAP, origin.y + TOOLTIP_PADDING + 1, TOOLTIP_GOLD, CKDM_BOLD_SMALL_FONT)
-        drawCkdmShadowedText(guiGraphics, "COMPLETED", origin.x + TOOLTIP_PADDING, origin.y + TOOLTIP_PADDING + TOOLTIP_LINE_HEIGHT, TEXT_PRIMARY)
-        renderCompletedPlayerAvatars(guiGraphics, completedPlayers, origin.x + TOOLTIP_PADDING, origin.y + TOOLTIP_PADDING + TOOLTIP_LINE_HEIGHT * 2 + 2)
+        drawCkdmShadowedText(guiGraphics, title, origin.x + TOOLTIP_PADDING, textY, TEXT_PRIMARY)
+        textY += TOOLTIP_HEADER_CONTENT_GAP
+        drawCkdmText(guiGraphics, progressText, origin.x + TOOLTIP_PADDING, textY, TOOLTIP_GOLD, CKDM_BOLD_SMALL_FONT)
+        textY += TOOLTIP_SECTION_GAP
+        renderCompletedPlayerAvatars(guiGraphics, completedPlayers, origin.x + TOOLTIP_PADDING, textY)
     }
 
     private fun renderRewardTooltip(guiGraphics: GuiGraphics, slot: RewardSlot, currentXp: Int, mouseX: Int, mouseY: Int) {
         val remaining = (slot.tier.xp - currentXp).coerceAtLeast(0)
+        val claimedPlayers = if (slot.claimed) claimedPlayersFor(slot) else emptyList()
         val title = when {
-            slot.claimed -> "CLAIMED!"
+            slot.claimed -> "CLAIMED"
             else -> "${compactQuantity(slot.reward.quantity)} ${rewardName(slot.reward, slot.stack)}"
         }
         val detail = when {
@@ -722,24 +775,29 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
             slot.unlocked -> "CLICK TO CLAIM"
             else -> "$remaining XP NEEDED"
         }
-        val width = (listOf(ckdmWidth(title), ckdmWidth(detail, CKDM_BOLD_SMALL_FONT)).maxOrNull().orEmptyWidth() + TOOLTIP_PADDING * 2).coerceAtLeast(96)
-        val height = TOOLTIP_PADDING * 2 + TOOLTIP_LINE_HEIGHT + if (detail.isBlank()) 0 else TOOLTIP_LINE_HEIGHT
+        val avatarWidth = claimedPlayers.size.coerceAtMost(TOOLTIP_MAX_AVATARS) * (TOOLTIP_AVATAR_SIZE + TOOLTIP_AVATAR_GAP)
+        val width = listOf(ckdmWidth(title), ckdmWidth(detail, CKDM_BOLD_SMALL_FONT), avatarWidth).maxOrNull().orEmptyWidth() + TOOLTIP_PADDING * 2
+        val avatarHeight = if (claimedPlayers.isEmpty()) 0 else TOOLTIP_SECTION_GAP + TOOLTIP_AVATAR_SIZE
+        val height = TOOLTIP_PADDING * 2 + TOOLTIP_LINE_HEIGHT + if (detail.isBlank()) 0 else TOOLTIP_LINE_HEIGHT + avatarHeight
         val origin = tooltipOrigin(mouseX, mouseY, width, height)
         drawTooltipPanel(guiGraphics, origin, width, height)
         drawCkdmShadowedText(guiGraphics, title, origin.x + TOOLTIP_PADDING, origin.y + TOOLTIP_PADDING, TEXT_PRIMARY)
         if (detail.isNotBlank()) drawCkdmText(guiGraphics, detail, origin.x + TOOLTIP_PADDING, origin.y + TOOLTIP_PADDING + TOOLTIP_LINE_HEIGHT, TOOLTIP_GOLD, CKDM_BOLD_SMALL_FONT)
+        if (claimedPlayers.isNotEmpty()) renderCompletedPlayerAvatars(guiGraphics, claimedPlayers, origin.x + TOOLTIP_PADDING, origin.y + TOOLTIP_PADDING + TOOLTIP_LINE_HEIGHT + TOOLTIP_SECTION_GAP)
     }
 
     private fun renderCompletedPlayerAvatars(guiGraphics: GuiGraphics, players: List<BattlepassClientState.PlayerProgress>, x: Int, y: Int) {
         if (players.isEmpty()) {
-            drawCkdmText(guiGraphics, "NONE", x, y + 2, TEXT_MUTED, CKDM_BOLD_SMALL_FONT)
             return
         }
         val connection = Minecraft.getInstance().connection
         players.take(TOOLTIP_MAX_AVATARS).forEachIndexed { index, player ->
             val avatarX = x + index * (TOOLTIP_AVATAR_SIZE + TOOLTIP_AVATAR_GAP)
+            val quickSkinTexture = quickSkinAvatarTexture(player.uuid)
             val skin = connection?.getPlayerInfo(player.uuid)?.skin
-            if (skin != null) {
+            if (quickSkinTexture != null) {
+                renderTexture(guiGraphics, quickSkinTexture, Rect(avatarX, y, TOOLTIP_AVATAR_SIZE, TOOLTIP_AVATAR_SIZE), QUICKSKIN_HEAD_TEXTURE_SIZE, QUICKSKIN_HEAD_TEXTURE_SIZE)
+            } else if (skin != null) {
                 PlayerFaceRenderer.draw(guiGraphics, skin, avatarX, y, TOOLTIP_AVATAR_SIZE)
             } else {
                 guiGraphics.fill(avatarX, y, avatarX + TOOLTIP_AVATAR_SIZE, y + TOOLTIP_AVATAR_SIZE, colorWithRenderAlpha(TOOLTIP_AVATAR_FALLBACK_FILL))
@@ -748,18 +806,29 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
         }
     }
 
+    private fun quickSkinAvatarTexture(playerId: UUID): ResourceLocation? {
+        if (quickSkinAvatarTextures.containsKey(playerId)) return quickSkinAvatarTextures[playerId]
+        val texture = runCatching {
+            val bytes = DiscordQuickSkinSupport.quickSkinHeadPng(playerId) ?: return@runCatching null
+            val image = NativeImage.read(ByteArrayInputStream(bytes))
+            val id = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "quickskin/battlepass_avatar/${playerId.toString().replace("-", "_")}")
+            Minecraft.getInstance().textureManager.register(id, DynamicTexture(image))
+            id
+        }.getOrNull()
+        quickSkinAvatarTextures[playerId] = texture
+        return texture
+    }
+
     private fun completedPlayersFor(slot: MissionSlot): List<BattlepassClientState.PlayerProgress> = BattlepassClientState.players()
         .filter { player -> player.completedMissionKeysByPass[slot.passId]?.contains(slot.entry.key) == true }
 
+    private fun claimedPlayersFor(slot: RewardSlot): List<BattlepassClientState.PlayerProgress> = BattlepassClientState.players()
+        .filter { player -> player.claimedByPass[slot.passId]?.contains(slot.tier.xp) == true }
+
     private fun drawTooltipPanel(guiGraphics: GuiGraphics, origin: Rect, width: Int, height: Int) {
-        guiGraphics.pose().pushPose()
-        guiGraphics.pose().translate(0.0f, 0.0f, TOOLTIP_Z)
-        guiGraphics.fill(origin.x, origin.y, origin.x + width, origin.y + height, colorWithRenderAlpha(TOOLTIP_FILL))
-        guiGraphics.fill(origin.x, origin.y, origin.x + width, origin.y + 1, colorWithRenderAlpha(TOOLTIP_BORDER))
-        guiGraphics.fill(origin.x, origin.y + height - 1, origin.x + width, origin.y + height, colorWithRenderAlpha(TOOLTIP_BORDER))
-        guiGraphics.fill(origin.x, origin.y, origin.x + 1, origin.y + height, colorWithRenderAlpha(TOOLTIP_BORDER))
-        guiGraphics.fill(origin.x + width - 1, origin.y, origin.x + width, origin.y + height, colorWithRenderAlpha(TOOLTIP_BORDER))
-        guiGraphics.pose().popPose()
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, TOOLTIP_BACKGROUND_ALPHA)
+        renderNineSlice(guiGraphics, TOOLTIP_CONTAINER_TEXTURE, Rect(origin.x, origin.y, width, height), TOOLTIP_CONTAINER_TEXTURE_SIZE, TOOLTIP_CONTAINER_CORNER_SIZE)
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, renderAlpha)
     }
 
     private fun tooltipOrigin(mouseX: Int, mouseY: Int, width: Int, height: Int): Rect {
@@ -946,6 +1015,8 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
     private val REWARD_BOX_CLAIMED_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/box_green_highlight.png")
     private val REWARD_BOX_LOCKED_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/box_locked.png")
     private val LOCKED_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/locked.png")
+    private val CLAIM_BUTTON_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_btn_green.png")
+    private val TOOLTIP_CONTAINER_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_container.png")
     private val CKDM_BOLD_FONT = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "ckdm_bold")
     private val CKDM_BOLD_LARGE_FONT = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "ckdm_bold_large")
     private val CKDM_BOLD_SMALL_FONT = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "ckdm_bold_small")
@@ -969,6 +1040,9 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
     private val HOVER_LIFT_OFFSET = 4
     private val PRESS_DOWN_OFFSET = 7
     private val PRESS_ANIMATION_DURATION_MS = 150.0f
+    private val LOCK_SHAKE_DURATION_MS = 260.0f
+    private val LOCK_SHAKE_WAVES = 3.0f
+    private val LOCK_SHAKE_DEGREES = 9.0f
     private val ENTRANCE_SLIDE_DOWN_OFFSET = -10
     private val REWARD_SLIDE_OFFSET = 18
     private val BUTTON_SLIDE_OFFSET = 18
@@ -977,12 +1051,15 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
     private val REWARD_BOX_TEXTURE_SIZE = 512
     private val LOCKED_TEXTURE_SIZE = 16
     private val LOCKED_ICON_SIZE = 40
+    private val CLAIM_BUTTON_TEXTURE_SIZE = 8
+    private val CLAIM_BUTTON_CORNER_SIZE = 2
+    private val CLAIM_BUTTON_DESTINATION_CORNER_SIZE = 4
+    private val TOOLTIP_CONTAINER_TEXTURE_SIZE = 32
+    private val TOOLTIP_CONTAINER_CORNER_SIZE = 10
     private val REWARD_HOVER_TINT = 0x44FFFFFF
     private val BUTTON_FILL = 0xCC232A34.toInt()
     private val BUTTON_HOVER_FILL = 0xDD303946.toInt()
     private val BUTTON_DISABLED_FILL = 0x6630353D
-    private val TOOLTIP_FILL = 0xE611141A.toInt()
-    private val TOOLTIP_BORDER = 0xAAFFFFFF.toInt()
     private val TOOLTIP_GOLD = 0xFFFFC857.toInt()
     private val TOOLTIP_AVATAR_FALLBACK_FILL = 0xFF3A414C.toInt()
     private val LOCKED_ITEM_ALPHA = 0.5f
@@ -1030,14 +1107,17 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
     private val BUTTON_HEIGHT = 20
     private val BACK_BUTTON_WIDTH = 92
     private val CLAIM_ALL_WIDTH = 124
-    private val TOOLTIP_PADDING = 8
+    private val TOOLTIP_PADDING = 14
     private val TOOLTIP_LINE_HEIGHT = 13
-    private val TOOLTIP_TEXT_GAP = 8
+    private val TOOLTIP_HEADER_CONTENT_GAP = 11
+    private val TOOLTIP_SECTION_GAP = 20
     private val TOOLTIP_MOUSE_OFFSET = 12
     private val TOOLTIP_AVATAR_SIZE = 16
     private val TOOLTIP_AVATAR_GAP = 4
     private val TOOLTIP_MAX_AVATARS = 6
     private val TOOLTIP_Z = 450.0f
+    private val TOOLTIP_BACKGROUND_ALPHA = 0.75f
+    private val QUICKSKIN_HEAD_TEXTURE_SIZE = 128
     private val SCROLL_LERP = 0.35f
     private val CLAIM_SOUND_PITCH = 1.2f
     private val CLAIM_SOUND_VOLUME = 0.7f
