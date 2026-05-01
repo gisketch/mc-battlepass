@@ -35,6 +35,13 @@ Replace battlepass screen custom texture UI with barebones vanilla-style rectang
 - `./gradlew.bat build --console=plain` passed after CKDM font path fix, integer item scaling, and high-z lock overlay.
 - Fresh `./gradlew.bat runClient --console=plain` log had no CKDM font loader failure after the path fix.
 - `./gradlew.bat build --console=plain` passed after CKDM native-size tuning and PNG alpha blending fix.
+- `./gradlew.bat build --console=plain` passed after removing panel backgrounds, claimed OK text, adding shadowed CKDM titles, and reward tier numbers.
+- `./gradlew.bat build --console=plain` passed after adding CKDM size variants, Cozy Pass title texture rendering, text mission tabs, smaller quantities, and locked item greying.
+- `./gradlew.bat build --console=plain` passed after switching locked reward containers to `box_locked.png`.
+- `./gradlew.bat build --console=plain` passed after changing locked item sprites to 50% opacity, lowering content below the pass title, reducing the mission heading font, and increasing CKDM shadow offset.
+- `./gradlew.bat build --console=plain` passed after adding padded, delayed mouse parallax to the background.
+- `./gradlew.bat build --console=plain` passed after removing the reward-strip scrollbar and adding reusable staged entrance animations.
+- `./gradlew.bat build --console=plain` passed after grouping reward slot animation across box/item/lock/tier/quantity and hiding held items for the paperdoll render.
 
 ## Decision Log
 
@@ -45,6 +52,8 @@ Replace battlepass screen custom texture UI with barebones vanilla-style rectang
 - Keep TTF provider `file` paths relative to `assets/<namespace>/font`; Minecraft prepends `font/` during load.
 - Use a 9px CKDM TTF provider size to match native GUI text height instead of oversized title glyphs.
 - Enable default alpha blending for custom GUI texture blits so translucent PNG pixels remain translucent.
+- Keep reward boxes as the only framed reward background; panel, mission row, filter, and player-preview fills are removed.
+- CKDM font sizes are currently 14px for `MISSIONS`, 9px for title/tier/tab text, and 7px for reward quantities.
 
 ## Progress Log
 
@@ -56,3 +65,10 @@ Replace battlepass screen custom texture UI with barebones vanilla-style rectang
 - 2026-05-02: Fixed CKDM font square rendering by correcting the TTF provider path, scaled reward items to fit slots with 16px padding, and rendered lock overlays above item depth. Build passed.
 - 2026-05-02: Hardened locked overlay rendering by flushing item buffers and disabling depth test while drawing the lock. Fresh client log confirmed CKDM no longer fails to load.
 - 2026-05-02: Tuned CKDM font provider size down to native GUI height and enabled blending for Battlepass PNG textures. Build passed.
+- 2026-05-02: Removed remaining panel/list/player fills, removed claimed OK marker, shadowed title text, removed PLAYER title, kept MISSIONS shadowed, and added top-left reward tier numbers. Build passed.
+- 2026-05-02: Swapped pass detail title to configured title texture, removed header XP text, converted mission filter into text tabs, added CKDM large/small font metadata, shrank reward quantities, and greyed locked item sprites. Build passed.
+- 2026-05-02: Added `box_locked.png` as the reward box texture for locked slots. Build passed.
+- 2026-05-02: Replaced locked item grey overlay with 50% item alpha, moved content down from the pass title, reduced `MISSIONS` to 14px CKDM, and changed CKDM shadow offset to 2px. Build passed.
+- 2026-05-02: Added subtle background parallax: 18px overscan padding, 6px max offset, and 0.045 lerp for heavy delayed movement. Build passed.
+- 2026-05-02: Added `EntranceStyle` animation helper for reusable fade/slide/scale timing, staggered header/buttons/missions/rewards/footer, and removed the Battlepass reward scrollbar. Build passed.
+- 2026-05-02: Changed reward entrance animation to offset the slot rect so all reward parts animate together, and temporarily clears/restores main/offhand items around paperdoll render. Build passed.
