@@ -42,6 +42,11 @@ Replace battlepass screen custom texture UI with barebones vanilla-style rectang
 - `./gradlew.bat build --console=plain` passed after adding padded, delayed mouse parallax to the background.
 - `./gradlew.bat build --console=plain` passed after removing the reward-strip scrollbar and adding reusable staged entrance animations.
 - `./gradlew.bat build --console=plain` passed after grouping reward slot animation across box/item/lock/tier/quantity and hiding held items for the paperdoll render.
+- `./gradlew.bat build --console=plain` passed after adding transform scale to reward item sprites and hiding the mission scrollbar.
+- `./gradlew.bat build --console=plain` passed after forcing reward item fade with a matching box-region mask and replacing Claim All with a fadeable custom button render.
+- `./gradlew.bat build --console=plain` passed after removing the reward item fade mask, sequencing box slide before item bounce scale, and culling offscreen rewards.
+- `./gradlew.bat build --console=plain` passed after adding reusable hover/press interaction offsets for reward slots and mission filters, plus mission-row restaggering on filter switch.
+- `./gradlew.bat build --console=plain` passed after replacing Battlepass reward/mission vanilla tooltips with custom CKDM tooltip panels and completed-player avatar rows.
 
 ## Decision Log
 
@@ -72,3 +77,8 @@ Replace battlepass screen custom texture UI with barebones vanilla-style rectang
 - 2026-05-02: Added subtle background parallax: 18px overscan padding, 6px max offset, and 0.045 lerp for heavy delayed movement. Build passed.
 - 2026-05-02: Added `EntranceStyle` animation helper for reusable fade/slide/scale timing, staggered header/buttons/missions/rewards/footer, and removed the Battlepass reward scrollbar. Build passed.
 - 2026-05-02: Changed reward entrance animation to offset the slot rect so all reward parts animate together, and temporarily clears/restores main/offhand items around paperdoll render. Build passed.
+- 2026-05-02: Added item-sprite entrance scale because block-style item models may not visibly honor shader alpha like flat generated items do, and removed the mission scrollbar render. Build passed.
+- 2026-05-02: Added an inverse-alpha box texture mask over reward item bounds so all item sprites visually fade regardless of item renderer alpha behavior. Claim All is now custom-rendered so its fill/text fade under the shared entrance helper. Build passed.
+- 2026-05-02: Removed the reward item fade mask. Reward boxes now slide/fade first; foreground item sprites start at scale 0 and bounce to final size after the box completes. Reward rendering now skips offscreen slots. Build passed.
+- 2026-05-02: Added key-based hover and press animation state. Reward slots and mission filter tabs lift on hover and press down on click. Mission rows restart their stagger timeline when filters change. Build passed.
+- 2026-05-02: Added custom Battlepass tooltip rendering for missions and rewards. Mission tooltips show shadowed CKDM mission type, gold small progress text, completed status, and online player faces or `NONE`. Reward tooltips show `CLAIMED!`, item/quantity, and XP-needed text by state. Build passed.
