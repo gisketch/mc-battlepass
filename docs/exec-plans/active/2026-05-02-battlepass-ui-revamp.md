@@ -31,6 +31,12 @@ Replace battlepass screen custom texture UI with barebones vanilla-style rectang
 - Verified the second pass keeps no `pose.scale` text paths and uses only the requested GUI textures in `BattlepassScreen.kt`.
 - `./gradlew.bat build --console=plain` passed after full-screen texture background and reward box update.
 - `./gradlew.bat build --console=plain` passed after doubling reward boxes and center lock overlay.
+- `./gradlew.bat build --console=plain` passed after mission row 5:1 layout rewrite.
+- `./gradlew.bat build --console=plain` passed after mission row spacing tweak: smaller icon, 30% 9-slice bg opacity, and wider X padding.
+- `./gradlew.bat build --console=plain` passed after mission XP text switched to progressive reward XP, mission panel width was capped, and quest icons were mapped by event id.
+- `./gradlew.bat build --console=plain` passed after switching scan quest icon to `cobblemon:pokedex_red`, making mission rows 6.5:1, adding 80% hover bg opacity, and adding hover/click/locked-item SFX.
+- `./gradlew.bat build --console=plain` passed after hiding the mission completed-by column when no players have completed the mission.
+- `./gradlew.bat build --console=plain` passed after moving Back and Claim All to green 9-slice button rendering with the 10x10 hover sprite compensated by a 1px outward render rect.
 - `./gradlew.bat build --console=plain` passed after CKDM Bold font registration and reward box text cleanup.
 - `./gradlew.bat build --console=plain` passed after CKDM font path fix, integer item scaling, and high-z lock overlay.
 - Fresh `./gradlew.bat runClient --console=plain` log had no CKDM font loader failure after the path fix.
@@ -55,6 +61,13 @@ Replace battlepass screen custom texture UI with barebones vanilla-style rectang
 - `./gradlew.bat build --console=plain` passed after increasing the mission tooltip gap between progress content and the Completed header.
 - `./gradlew.bat build --console=plain` passed after increasing tooltip padding to 14px and drawing the tooltip 9-slice background at 75% opacity.
 - `./gradlew.bat build --console=plain` passed after removing `COMPLETED`/`NONE` text rows and adding claimed-player heads to claimed reward tooltips.
+- `./gradlew.bat build --console=plain` passed after making tooltip avatar heads wrap as content and adding uniform mission-list scroll padding.
+- `./gradlew.bat build --console=plain` passed after adding yellow claimable reward boxes and a floating shadowed CKDM `CLAIM` prompt.
+- `./gradlew.bat build --console=plain` passed after adding periodic claimable item sprite shake and reward-to-paperdoll flyout animations on claim.
+- `./gradlew.bat build --console=plain` passed after adding local self avatar fallback for tooltip avatar rows and increasing mission list vertical padding.
+- `./gradlew.bat build --console=plain` passed after fixing mission tooltip bottom padding math and moving the whole claimable reward slot with its CLAIM label.
+- `./gradlew.bat build --console=plain` passed after moving avatar footer rows inside tooltip height with a dedicated footer gap.
+- `./gradlew.bat build --console=plain` passed after fixing claimed reward tooltip height to include avatar rows when detail text is blank.
 
 ## Decision Log
 
@@ -74,6 +87,12 @@ Replace battlepass screen custom texture UI with barebones vanilla-style rectang
 - 2026-05-02: Replaced battlepass screen with barebones rectangle UI. Removed custom GUI texture rendering and float-scaled text paths. Build passed.
 - 2026-05-02: Reintroduced only requested UI assets: full-screen `ui_bg.png`, reward `box.png`, claimed `box_green_highlight.png`, and native 16px `locked.png` overlay. Build passed.
 - 2026-05-02: Doubled reward box sizes and centered a 32px lock overlay above item sprites. Build passed.
+- 2026-05-02: Rebuilt mission rows as 5:1 9-slice cards with 3 columns: grass placeholder icon, CKDM detail stack, and right-aligned completed-player heads. Removed mission progress bars. Build passed.
+- 2026-05-02: Mission row icon now caps below the details stack height, row 9-slice background draws at 30% opacity, and row X padding increased by 12px. Build passed.
+- 2026-05-02: Mission rows now show progressive `progress_xp` instead of `+0`, use event-based item icons, and cap mission column width so the paperdoll takes remaining space. Icon mapping added to `docs/PASS_EVENTS.md`. Build passed.
+- 2026-05-02: Scan quests now use `cobblemon:pokedex_red`, mission rows use 6.5:1 sizing with 80% 9-slice opacity on hover, and UI SFX trigger on hover, normal click, and locked reward click. Build passed.
+- 2026-05-02: Mission completed-by text now renders only when at least one player has completed that mission. Build passed.
+- 2026-05-02: Back and Claim All buttons now use `9slice_btn_green.png`; hover swaps to `9slice_btn_green_hover.png` with 3px source corners and a 1px outward render expansion so the extra border does not resize or squeeze the button. Build passed.
 - 2026-05-02: Moved `ckdm-bold.ttf` into mod font resources, added font metadata, applied CKDM Bold to battlepass titles and reward quantities, removed tier/XP text from reward boxes, enlarged topmost lock overlay. Build passed.
 - 2026-05-02: Fixed CKDM font square rendering by correcting the TTF provider path, scaled reward items to fit slots with 16px padding, and rendered lock overlays above item depth. Build passed.
 - 2026-05-02: Hardened locked overlay rendering by flushing item buffers and disabling depth test while drawing the lock. Fresh client log confirmed CKDM no longer fails to load.
@@ -98,3 +117,10 @@ Replace battlepass screen custom texture UI with barebones vanilla-style rectang
 - 2026-05-02: Increased mission tooltip section gap from 14px to 20px so progress and `COMPLETED` read as separate groups. Build passed.
 - 2026-05-02: Increased tooltip padding to 14px relative to the 10px 9-slice corners and set tooltip container texture alpha to 75% while keeping text fully opaque. Build passed.
 - 2026-05-02: Mission tooltips now show completed-player heads directly when present and nothing when none. Claimed reward tooltips show `CLAIMED` plus heads of all synced players, including self, who claimed the tier. Build passed.
+- 2026-05-02: Tooltip avatar heads now use a 12px wrapped layout that expands tooltip height like text content. Mission list scroll content now has matching 8px top and bottom padding. Build passed.
+- 2026-05-02: Claimable rewards now use `box_yellow_highlight.png`, render a small shadowed CKDM `CLAIM` label above the slot, and animate the label with a subtle sine float. Build passed.
+- 2026-05-02: Claimable reward item sprites now shake every 3 seconds for attention. Claim and Claim All enqueue duplicate item flyouts that arc from visible reward slots to the paperdoll target with stagger for multiple items. Build passed.
+- 2026-05-02: Added local-player avatar fallback when synced player progress does not include self for completed/claimed tooltip rows. Mission list vertical padding increased from 8px to 12px. Build passed.
+- 2026-05-02: Mission tooltip height now includes small progress text height so bottom padding matches top padding. Claimable reward float now offsets the whole slot plus label; `CLAIM` uses a new 8px CKDM font and sits 14px above the box. Build passed.
+- 2026-05-02: Avatar rows now use an 8px footer gap instead of the larger section gap, and tooltip height includes that footer row so claimed reward and mission avatars stay inside the 9-slice panel. Build passed.
+- 2026-05-02: Fixed claimed reward tooltip height expression so blank detail text no longer drops avatar footer height. Build passed.
