@@ -4,6 +4,7 @@ import dev.gisketch.chowkingdom.ChatGlyphs
 import net.minecraft.ChatFormatting
 import net.minecraft.network.chat.Component
 import net.minecraft.server.MinecraftServer
+import net.minecraft.server.level.ServerLevel
 import net.minecraft.server.level.ServerPlayer
 import net.minecraft.sounds.SoundEvents
 import net.minecraft.sounds.SoundSource
@@ -12,11 +13,16 @@ import net.minecraft.world.InteractionResult
 import net.minecraft.world.damagesource.DamageSource
 import net.minecraft.world.effect.MobEffectInstance
 import net.minecraft.world.effect.MobEffects
+import net.minecraft.world.entity.Entity
+import net.minecraft.world.entity.EntityType
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.Pose
+import net.minecraft.world.entity.decoration.ArmorStand
 import net.minecraft.world.scores.PlayerTeam
 import net.minecraft.world.scores.Team
+import net.minecraft.world.phys.Vec3
 import net.neoforged.bus.api.EventPriority
+import net.neoforged.bus.api.IEventBus
 import net.neoforged.neoforge.common.NeoForge
 import net.neoforged.neoforge.event.RegisterCommandsEvent
 import net.neoforged.neoforge.event.entity.item.ItemTossEvent
@@ -29,21 +35,28 @@ import net.neoforged.neoforge.event.level.BlockEvent
 import net.neoforged.neoforge.event.server.ServerStartedEvent
 import net.neoforged.neoforge.event.tick.PlayerTickEvent
 import net.neoforged.neoforge.event.tick.ServerTickEvent
+import java.util.Locale
 import java.util.UUID
 
 object ReviveFeature {
     private const val REVIVE_TEAM_NAME = "ck_revive_red"
+    private const val REVIVE_DUMMY_TAG = "ck_revive_dummy"
+    private const val REVIVE_DUMMY_NAME = "Incapacitated Test Dummy"
     private const val TICKS_PER_SECOND = 20
     private const val LOCK_EFFECT_TICKS = 40
     private const val LOCKED_MOVE_TOLERANCE_SQR = 0.35 * 0.35
     private val incapacitated: MutableMap<UUID, IncapacitatedPlayer> = linkedMapOf()
     private val reviveSessionsByReviver: MutableMap<UUID, ReviveSession> = linkedMapOf()
     private val reviveSessionsByTarget: MutableMap<UUID, UUID> = linkedMapOf()
+    private val dummySessionsByReviver: MutableMap<UUID, DummyReviveSession> = linkedMapOf()
+    private val dummySessionsByDummy: MutableMap<UUID, UUID> = linkedMapOf()
+    private val reviveDummies: MutableMap<UUID, ReviveDummy> = linkedMapOf()
     private val finishingDeaths: MutableSet<UUID> = linkedSetOf()
 
-    fun register() {
+    fun register(modBus: IEventBus) {
         ReviveConfig.load()
         ReviveStore.load()
+        ReviveNetwork.register(modBus)
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, ::onLivingDeath)
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, ::onIncomingDamage)
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, ::onEntityInteractSpecific)
@@ -69,7 +82,7 @@ object ReviveFeature {
 
     fun isIncapacitated(playerId: UUID): Boolean = incapacitated.containsKey(playerId)
 
-    fun isActionLocked(playerId: UUID): Boolean = isIncapacitated(playerId) || reviveSessionsByReviver.containsKey(playerId)
+    fun isActionLocked(playerId: UUID): Boolean = reviveSessionsByReviver.containsKey(playerId) || dummySessionsByReviver.containsKey(playerId)
 
     fun forceRevive(player: ServerPlayer, reviverName: String = "an operator"): Boolean {
         val state = incapacitated[player.uuid] ?: return false
@@ -94,6 +107,47 @@ object ReviveFeature {
         val state = incapacitated[player.uuid] ?: return false
         failRevive(player, state)
         return true
+    }
+
+    fun giveUp(player: ServerPlayer): Boolean {
+        val state = incapacitated[player.uuid] ?: return false
+        failRevive(player, state)
+        return true
+    }
+
+    fun spawnDebugDummy(player: ServerPlayer): UUID {
+        val level = player.level() as ServerLevel
+        val look = player.lookAngle
+        val dummy = EntityType.ARMOR_STAND.create(level) ?: ArmorStand(level, player.x, player.y, player.z)
+        dummy.setPos(player.x + look.x * 2.0, player.y, player.z + look.z * 2.0)
+        dummy.yRot = player.yRot + 180.0f
+        dummy.setCustomName(Component.literal(REVIVE_DUMMY_NAME).withStyle(ChatFormatting.RED))
+        dummy.isCustomNameVisible = true
+        dummy.setNoGravity(true)
+        dummy.setInvulnerable(true)
+        dummy.setShowArms(true)
+        dummy.setGlowingTag(true)
+        dummy.addTag(REVIVE_DUMMY_TAG)
+        level.addFreshEntity(dummy)
+        val team = ensureReviveTeam(player.server)
+        player.server.scoreboard.addPlayerToTeam(dummy.scoreboardName, team)
+        reviveDummies[dummy.uuid] = ReviveDummy(dummy.uuid, dummy.scoreboardName)
+        return dummy.uuid
+    }
+
+    fun clearDebugDummies(server: MinecraftServer): Int {
+        val count = reviveDummies.values.count { dummy -> removeDebugDummy(server, dummy, announce = false) }
+        dummySessionsByReviver.values.toList().forEach { cancelDummyRevive(it, "Dummy revive cancelled.") }
+        reviveDummies.clear()
+        val team = server.scoreboard.getPlayerTeam(REVIVE_TEAM_NAME)
+        server.allLevels.forEach { level ->
+            level.getEntities(EntityType.ARMOR_STAND) { entity -> entity.tags.contains(REVIVE_DUMMY_TAG) }
+                .forEach { entity ->
+                    if (team != null && team.players.contains(entity.scoreboardName)) server.scoreboard.removePlayerFromTeam(entity.scoreboardName, team)
+                    entity.discard()
+                }
+        }
+        return count
     }
 
     fun status(player: ServerPlayer): Component {
@@ -142,31 +196,46 @@ object ReviveFeature {
     }
 
     private fun onEntityInteractSpecific(event: PlayerInteractEvent.EntityInteractSpecific) {
-        handlePlayerEntityInteract(event.entity as? ServerPlayer ?: return, event.target as? ServerPlayer, event.hand) {
+        handlePlayerEntityInteract(event.entity as? ServerPlayer ?: return, event.target, event.hand) {
             event.isCanceled = true
             event.cancellationResult = InteractionResult.SUCCESS
         }
     }
 
     private fun onEntityInteract(event: PlayerInteractEvent.EntityInteract) {
-        handlePlayerEntityInteract(event.entity as? ServerPlayer ?: return, event.target as? ServerPlayer, event.hand) {
+        handlePlayerEntityInteract(event.entity as? ServerPlayer ?: return, event.target, event.hand) {
             event.isCanceled = true
             event.cancellationResult = InteractionResult.SUCCESS
         }
     }
 
-    private fun handlePlayerEntityInteract(player: ServerPlayer, target: ServerPlayer?, hand: InteractionHand, cancel: () -> Unit) {
+    private fun handlePlayerEntityInteract(player: ServerPlayer, target: Entity?, hand: InteractionHand, cancel: () -> Unit) {
         if (player.level().isClientSide || hand != InteractionHand.MAIN_HAND) return
-        val activeSession = reviveSessionsByReviver[player.uuid]
-        if (activeSession != null) {
+        if (hasActiveRevive(player.uuid)) {
             cancel()
-            cancelRevive(activeSession, "Revive cancelled.")
+            cancelActiveRevive(player.uuid, "Revive cancelled.")
             return
         }
-        if (target == null || !incapacitated.containsKey(target.uuid)) return
+        if (incapacitated.containsKey(player.uuid)) {
+            cancel()
+            return
+        }
+        if (target == null) return
+        val dummy = target as? ArmorStand
+        if (dummy != null && isReviveDummy(dummy)) {
+            cancel()
+            if (incapacitated.containsKey(player.uuid)) {
+                player.displayClientMessage(Component.literal("You cannot revive while incapacitated."), true)
+                return
+            }
+            startDummyRevive(player, dummy)
+            return
+        }
+        val targetPlayer = target as? ServerPlayer ?: return
+        if (!incapacitated.containsKey(targetPlayer.uuid)) return
         cancel()
-        val state = incapacitated[target.uuid] ?: return
-        if (player.uuid == target.uuid) {
+        val state = incapacitated[targetPlayer.uuid] ?: return
+        if (player.uuid == targetPlayer.uuid) {
             player.displayClientMessage(Component.literal("Use /revive debug self-revive to test this in singleplayer."), true)
             return
         }
@@ -174,49 +243,49 @@ object ReviveFeature {
             player.displayClientMessage(Component.literal("You cannot revive while incapacitated."), true)
             return
         }
-        startRevive(player, target, state, debugSelfRevive = false)
+        startRevive(player, targetPlayer, state, debugSelfRevive = false)
     }
 
     private fun onRightClickBlock(event: PlayerInteractEvent.RightClickBlock) {
         val player = event.entity as? ServerPlayer ?: return
-        if (!isActionLocked(player.uuid)) return
+        if (!isActionBlocked(player.uuid)) return
         event.isCanceled = true
         event.cancellationResult = InteractionResult.SUCCESS
-        reviveSessionsByReviver[player.uuid]?.let { cancelRevive(it, "Revive cancelled.") }
+        if (isActionLocked(player.uuid)) cancelActiveRevive(player.uuid, "Revive cancelled.")
     }
 
     private fun onRightClickItem(event: PlayerInteractEvent.RightClickItem) {
         val player = event.entity as? ServerPlayer ?: return
-        if (!isActionLocked(player.uuid)) return
+        if (!isActionBlocked(player.uuid)) return
         event.isCanceled = true
         event.cancellationResult = InteractionResult.SUCCESS
-        reviveSessionsByReviver[player.uuid]?.let { cancelRevive(it, "Revive cancelled.") }
+        if (isActionLocked(player.uuid)) cancelActiveRevive(player.uuid, "Revive cancelled.")
     }
 
     private fun onLeftClickBlock(event: PlayerInteractEvent.LeftClickBlock) {
         val player = event.entity as? ServerPlayer ?: return
-        if (!isActionLocked(player.uuid)) return
+        if (!isActionBlocked(player.uuid)) return
         event.isCanceled = true
     }
 
     private fun onAttackEntity(event: AttackEntityEvent) {
         val player = event.entity as? ServerPlayer ?: return
-        if (isActionLocked(player.uuid)) event.isCanceled = true
+        if (isActionBlocked(player.uuid)) event.isCanceled = true
     }
 
     private fun onBlockBreak(event: BlockEvent.BreakEvent) {
         val player = event.player as? ServerPlayer ?: return
-        if (isActionLocked(player.uuid)) event.isCanceled = true
+        if (isActionBlocked(player.uuid)) event.isCanceled = true
     }
 
     private fun onBlockPlace(event: BlockEvent.EntityPlaceEvent) {
         val player = event.entity as? ServerPlayer ?: return
-        if (isActionLocked(player.uuid)) event.isCanceled = true
+        if (isActionBlocked(player.uuid)) event.isCanceled = true
     }
 
     private fun onItemToss(event: ItemTossEvent) {
         val player = event.player as? ServerPlayer ?: return
-        if (!isActionLocked(player.uuid)) return
+        if (!isActionBlocked(player.uuid)) return
         player.inventory.placeItemBackInInventory(event.entity.item.copy())
         event.entity.item.count = 0
         event.isCanceled = true
@@ -227,7 +296,6 @@ object ReviveFeature {
         if (player.level().isClientSide) return
         incapacitated[player.uuid]?.let { state ->
             stabilizeIncapacitated(player)
-            lockPlayerAtAnchor(player, state.anchor)
         }
         reviveSessionsByReviver[player.uuid]?.let { session ->
             lockReviver(player, session)
@@ -250,27 +318,39 @@ object ReviveFeature {
             }
             if (tick >= session.completeAtTick) {
                 completeRevive(target, state, reviver.gameProfile.name)
-            } else {
-                val seconds = ((session.completeAtTick - tick).coerceAtLeast(0) + TICKS_PER_SECOND - 1) / TICKS_PER_SECOND
-                reviver.displayClientMessage(Component.literal("Reviving ${target.gameProfile.name}: ${seconds}s"), true)
+            }
+        }
+        dummySessionsByReviver.values.toList().forEach { session ->
+            val reviver = event.server.playerList.getPlayer(session.reviverId) ?: return@forEach cancelDummyRevive(session, "Dummy revive cancelled: reviver left.")
+            val dummy = dummyEntity(event.server, session.dummyId) ?: return@forEach cancelDummyRevive(session, "Dummy revive cancelled: dummy disappeared.")
+            if (reviver.distanceToSqr(dummy) > maxReviveDistanceSqr()) {
+                cancelDummyRevive(session, "Dummy revive cancelled: too far away.")
+                return@forEach
+            }
+            if (tick >= session.completeAtTick) {
+                completeDummyRevive(reviver, dummy, session)
             }
         }
     }
 
     private fun onPlayerLoggedIn(event: PlayerEvent.PlayerLoggedInEvent) {
         val player = event.entity as? ServerPlayer ?: return
-        val state = incapacitated[player.uuid] ?: return
-        if (player.server.tickCount >= state.expiresAtTick) {
-            failRevive(player, state)
-        } else {
-            applyIncapacitatedVisual(player, state)
-            stabilizeIncapacitated(player)
+        incapacitated[player.uuid]?.let { state ->
+            if (player.server.tickCount >= state.expiresAtTick) {
+                failRevive(player, state)
+            } else {
+                applyIncapacitatedVisual(player, state)
+                stabilizeIncapacitated(player)
+                syncIncapacitatedClient(player, state)
+            }
         }
+        syncActiveReviveProgressTo(player)
     }
 
     private fun onPlayerLoggedOut(event: PlayerEvent.PlayerLoggedOutEvent) {
         val player = event.entity as? ServerPlayer ?: return
         reviveSessionsByReviver[player.uuid]?.let { cancelRevive(it, "Revive cancelled: reviver left.") }
+        dummySessionsByReviver[player.uuid]?.let { cancelDummyRevive(it, "Dummy revive cancelled: reviver left.") }
         reviveSessionsByTarget[player.uuid]?.let { reviveSessionsByReviver[it]?.let { session -> cancelRevive(session, "Revive cancelled: target left.") } }
     }
 
@@ -293,11 +373,13 @@ object ReviveFeature {
             scoreboardName,
         )
         incapacitated[player.uuid] = state
+        cancelActiveRevive(player.uuid, "Revive cancelled: reviver was downed.")
         cancelReviveForTarget(player.uuid, "Revive cancelled: target was downed again.")
         player.closeContainer()
         player.stopUsingItem()
         stabilizeIncapacitated(player)
         applyIncapacitatedVisual(player, state)
+        syncIncapacitatedClient(player, state)
         player.playNotifySound(SoundEvents.PLAYER_HURT, SoundSource.PLAYERS, 0.8f, 0.6f)
         player.server.playerList.broadcastSystemMessage(
             ChatGlyphs.chowKingdomPrefix()
@@ -308,7 +390,7 @@ object ReviveFeature {
     }
 
     private fun startRevive(reviver: ServerPlayer, target: ServerPlayer, state: IncapacitatedPlayer, debugSelfRevive: Boolean) {
-        if (reviveSessionsByReviver.containsKey(reviver.uuid)) return
+        if (hasActiveRevive(reviver.uuid)) return
         if (reviveSessionsByTarget.containsKey(target.uuid)) {
             reviver.displayClientMessage(Component.literal("${target.gameProfile.name} is already being revived."), true)
             return
@@ -327,6 +409,29 @@ object ReviveFeature {
         reviver.sendSystemMessage(Component.literal("Reviving ${target.gameProfile.name}. Right-click again to cancel.").withStyle(ChatFormatting.YELLOW))
         if (reviver.uuid != target.uuid) target.sendSystemMessage(Component.literal("${reviver.gameProfile.name} is reviving you.").withStyle(ChatFormatting.GREEN))
         state.lastReviverName = reviver.gameProfile.name
+        syncReviveProgress(target, session)
+    }
+
+    private fun startDummyRevive(reviver: ServerPlayer, dummy: ArmorStand) {
+        if (hasActiveRevive(reviver.uuid)) return
+        if (dummySessionsByDummy.containsKey(dummy.uuid)) {
+            reviver.displayClientMessage(Component.literal("That dummy is already being revived."), true)
+            return
+        }
+        if (reviver.distanceToSqr(dummy) > maxReviveDistanceSqr()) {
+            reviver.displayClientMessage(Component.literal("Move closer to revive the dummy."), true)
+            return
+        }
+        reviveDummies.putIfAbsent(dummy.uuid, ReviveDummy(dummy.uuid, dummy.scoreboardName))
+        val ticks = ReviveConfig.current().reviveSeconds * TICKS_PER_SECOND
+        val session = DummyReviveSession(reviver.uuid, dummy.uuid, reviver.server.tickCount, reviver.server.tickCount + ticks, PlayerAnchor(reviver.x, reviver.y, reviver.z))
+        dummySessionsByReviver[reviver.uuid] = session
+        dummySessionsByDummy[dummy.uuid] = reviver.uuid
+        reviver.closeContainer()
+        reviver.stopUsingItem()
+        lockReviver(reviver, session)
+        reviver.sendSystemMessage(Component.literal("Reviving test dummy. Right-click again to cancel.").withStyle(ChatFormatting.YELLOW))
+        syncDummyReviveProgress(reviver.server, dummy, session)
     }
 
     private fun completeRevive(target: ServerPlayer, state: IncapacitatedPlayer, reviverName: String) {
@@ -335,7 +440,11 @@ object ReviveFeature {
         clearIncapacitatedVisual(target, state)
         restoreMinimumVitals(target)
         target.setForcedPose(null)
+        target.setSwimming(false)
+        target.pose = Pose.STANDING
+        target.refreshDimensions()
         target.setShiftKeyDown(false)
+        target.isSprinting = false
         target.removeEffect(MobEffects.MOVEMENT_SLOWDOWN)
         target.removeEffect(MobEffects.DIG_SLOWDOWN)
         target.playNotifySound(SoundEvents.PLAYER_LEVELUP, SoundSource.PLAYERS, 0.7f, 1.4f)
@@ -351,7 +460,11 @@ object ReviveFeature {
         cancelReviveForTarget(player.uuid, null)
         clearIncapacitatedVisual(player, state)
         player.setForcedPose(null)
+        player.setSwimming(false)
+        player.pose = Pose.STANDING
+        player.refreshDimensions()
         player.setShiftKeyDown(false)
+        player.isSprinting = false
         finishingDeaths += player.uuid
         player.health = 1.0f
         val deathSource = FailedReviveDamageSource(state.source)
@@ -376,6 +489,7 @@ object ReviveFeature {
     private fun cancelRevive(session: ReviveSession, reason: String?) {
         reviveSessionsByReviver.remove(session.reviverId)
         reviveSessionsByTarget.remove(session.targetId)
+        clearReviveProgress(session)
         player(session.reviverId)?.let { reviver ->
             reviver.setForcedPose(null)
             reviver.setShiftKeyDown(false)
@@ -388,23 +502,59 @@ object ReviveFeature {
         }
     }
 
+    private fun cancelDummyRevive(session: DummyReviveSession, reason: String?) {
+        dummySessionsByReviver.remove(session.reviverId)
+        dummySessionsByDummy.remove(session.dummyId)
+        clearDummyReviveProgress(session)
+        player(session.reviverId)?.let { reviver ->
+            reviver.setForcedPose(null)
+            reviver.setShiftKeyDown(false)
+            reviver.removeEffect(MobEffects.MOVEMENT_SLOWDOWN)
+            reviver.removeEffect(MobEffects.DIG_SLOWDOWN)
+            reason?.let { reviver.sendSystemMessage(Component.literal(it).withStyle(ChatFormatting.YELLOW)) }
+        }
+    }
+
+    private fun completeDummyRevive(reviver: ServerPlayer, dummy: ArmorStand, session: DummyReviveSession) {
+        cancelDummyRevive(session, null)
+        reviveDummies.remove(dummy.uuid)
+        reviver.server.scoreboard.getPlayerTeam(REVIVE_TEAM_NAME)?.let { team ->
+            if (team.players.contains(dummy.scoreboardName)) reviver.server.scoreboard.removePlayerFromTeam(dummy.scoreboardName, team)
+        }
+        dummy.discard()
+        reviver.playNotifySound(SoundEvents.PLAYER_LEVELUP, SoundSource.PLAYERS, 0.7f, 1.4f)
+        reviver.sendSystemMessage(Component.literal("Revive dummy completed.").withStyle(ChatFormatting.GREEN))
+    }
+
     private fun stabilizeIncapacitated(player: ServerPlayer) {
         restoreMinimumVitals(player)
-        player.setDeltaMovement(0.0, 0.0, 0.0)
         player.fallDistance = 0.0f
-        player.stopUsingItem()
-        player.setForcedPose(Pose.CROUCHING)
-        player.setShiftKeyDown(true)
-        addLockEffects(player)
+        player.isSprinting = false
+        val movement = player.deltaMovement
+        if (movement.y > 0.0) player.deltaMovement = Vec3(movement.x, 0.0, movement.z)
+        player.setForcedPose(Pose.SWIMMING)
+        player.pose = Pose.SWIMMING
+        player.setSwimming(true)
+        player.refreshDimensions()
+        player.setShiftKeyDown(false)
+        addIncapacitatedEffects(player)
     }
 
     private fun lockReviver(player: ServerPlayer, session: ReviveSession) {
+        lockReviver(player, session.anchor)
+    }
+
+    private fun lockReviver(player: ServerPlayer, session: DummyReviveSession) {
+        lockReviver(player, session.anchor)
+    }
+
+    private fun lockReviver(player: ServerPlayer, anchor: PlayerAnchor) {
         player.setForcedPose(Pose.CROUCHING)
         player.setShiftKeyDown(true)
         player.stopUsingItem()
         player.setDeltaMovement(0.0, 0.0, 0.0)
-        addLockEffects(player)
-        lockPlayerAtAnchor(player, session.anchor)
+        addReviverLockEffects(player)
+        lockPlayerAtAnchor(player, anchor)
     }
 
     private fun lockPlayerAtAnchor(player: ServerPlayer, anchor: PlayerAnchor) {
@@ -416,7 +566,11 @@ object ReviveFeature {
         }
     }
 
-    private fun addLockEffects(player: ServerPlayer) {
+    private fun addIncapacitatedEffects(player: ServerPlayer) {
+        player.addEffect(MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, LOCK_EFFECT_TICKS, 7, false, false, false))
+    }
+
+    private fun addReviverLockEffects(player: ServerPlayer) {
         player.addEffect(MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, LOCK_EFFECT_TICKS, 10, false, false, false))
         player.addEffect(MobEffectInstance(MobEffects.DIG_SLOWDOWN, LOCK_EFFECT_TICKS, 10, false, false, false))
     }
@@ -439,7 +593,8 @@ object ReviveFeature {
     }
 
     private fun clearIncapacitatedVisual(player: ServerPlayer, state: IncapacitatedPlayer) {
-        player.setGlowingTag(state.previousGlowing)
+        ReviveNetwork.syncSelfState(player, active = false)
+        player.setGlowingTag(false)
         val scoreboard = player.server.scoreboard
         scoreboard.getPlayerTeam(REVIVE_TEAM_NAME)?.let { team ->
             if (team.players.contains(state.scoreboardName)) scoreboard.removePlayerFromTeam(state.scoreboardName, team)
@@ -463,13 +618,93 @@ object ReviveFeature {
         return team
     }
 
+    private fun syncIncapacitatedClient(player: ServerPlayer, state: IncapacitatedPlayer) {
+        ReviveNetwork.syncSelfState(player, active = true, title = incapacitatedTitle(player, state.source), expiresAtMs = expiresAtMillis(player.server, state.expiresAtTick))
+    }
+
+    private fun syncReviveProgress(target: ServerPlayer, session: ReviveSession) {
+        ReviveNetwork.syncProgress(target.server, session.reviverId, target.uuid, target.id, target.gameProfile.name, expiresAtMillis(target.server, session.completeAtTick), active = true)
+    }
+
+    private fun syncDummyReviveProgress(server: MinecraftServer, dummy: ArmorStand, session: DummyReviveSession) {
+        ReviveNetwork.syncProgress(server, session.reviverId, dummy.uuid, dummy.id, REVIVE_DUMMY_NAME, expiresAtMillis(server, session.completeAtTick), active = true)
+    }
+
+    private fun clearReviveProgress(session: ReviveSession) {
+        val server = currentServer() ?: return
+        ReviveNetwork.syncProgress(server, session.reviverId, session.targetId, -1, "", 0L, active = false)
+    }
+
+    private fun clearDummyReviveProgress(session: DummyReviveSession) {
+        val server = currentServer() ?: return
+        ReviveNetwork.syncProgress(server, session.reviverId, session.dummyId, -1, "", 0L, active = false)
+    }
+
+    private fun syncActiveReviveProgressTo(receiver: ServerPlayer) {
+        reviveSessionsByReviver.values.forEach { session ->
+            val target = receiver.server.playerList.getPlayer(session.targetId) ?: return@forEach
+            ReviveNetwork.syncProgressTo(receiver, session.reviverId, target.uuid, target.id, target.gameProfile.name, expiresAtMillis(receiver.server, session.completeAtTick), active = true)
+        }
+        dummySessionsByReviver.values.forEach { session ->
+            val dummy = dummyEntity(receiver.server, session.dummyId) ?: return@forEach
+            ReviveNetwork.syncProgressTo(receiver, session.reviverId, dummy.uuid, dummy.id, REVIVE_DUMMY_NAME, expiresAtMillis(receiver.server, session.completeAtTick), active = true)
+        }
+    }
+
+    private fun expiresAtMillis(server: MinecraftServer, expiresAtTick: Int): Long =
+        System.currentTimeMillis() + (expiresAtTick - server.tickCount).coerceAtLeast(0) * 50L
+
+    private fun incapacitatedTitle(player: ServerPlayer, source: DamageSource): String {
+        val cause = incapacitatedCauseName(player, source)
+        return if (cause == null) "YOU GOT KILLED" else "YOU GOT KILLED BY ${cause.uppercase(Locale.ROOT)}"
+    }
+
+    private fun incapacitatedCauseName(player: ServerPlayer, source: DamageSource): String? {
+        val entity = source.entity ?: source.directEntity
+        val entityName = entity?.displayName?.string?.trim()
+            ?.takeIf { it.isNotBlank() && entity.uuid != player.uuid }
+        if (entityName != null) return entityName
+        val msgId = source.getMsgId().replace('_', ' ').replace('.', ' ').trim()
+        return msgId.takeIf { it.isNotBlank() && !it.equals("generic", ignoreCase = true) }
+    }
+
     private fun maxReviveDistanceSqr(): Double {
         val distance = ReviveConfig.current().maxReviveDistance
         return distance * distance
     }
 
+    private fun hasActiveRevive(playerId: UUID): Boolean = reviveSessionsByReviver.containsKey(playerId) || dummySessionsByReviver.containsKey(playerId)
+
+    private fun isActionBlocked(playerId: UUID): Boolean = isIncapacitated(playerId) || isActionLocked(playerId)
+
+    private fun cancelActiveRevive(playerId: UUID, reason: String) {
+        reviveSessionsByReviver[playerId]?.let { cancelRevive(it, reason) }
+        dummySessionsByReviver[playerId]?.let { cancelDummyRevive(it, reason) }
+    }
+
+    private fun isReviveDummy(entity: ArmorStand): Boolean = entity.tags.contains(REVIVE_DUMMY_TAG) || reviveDummies.containsKey(entity.uuid)
+
+    private fun dummyEntity(server: MinecraftServer, dummyId: UUID): ArmorStand? =
+        server.allLevels.asSequence()
+            .mapNotNull { level -> level.getEntity(dummyId) as? ArmorStand }
+            .firstOrNull { dummy -> !dummy.isRemoved }
+
+    private fun removeDebugDummy(server: MinecraftServer, dummy: ReviveDummy, announce: Boolean): Boolean {
+        dummySessionsByDummy[dummy.dummyId]?.let { reviverId -> dummySessionsByReviver[reviverId]?.let { cancelDummyRevive(it, null) } }
+        server.scoreboard.getPlayerTeam(REVIVE_TEAM_NAME)?.let { team ->
+            if (team.players.contains(dummy.scoreboardName)) server.scoreboard.removePlayerFromTeam(dummy.scoreboardName, team)
+        }
+        val entity = dummyEntity(server, dummy.dummyId) ?: return false
+        entity.discard()
+        if (announce) server.playerList.broadcastSystemMessage(Component.literal("Revive dummy removed.").withStyle(ChatFormatting.GRAY), false)
+        return true
+    }
+
     private fun player(playerId: UUID): ServerPlayer? =
-        net.neoforged.neoforge.server.ServerLifecycleHooks.getCurrentServer()?.playerList?.getPlayer(playerId)
+        currentServer()?.playerList?.getPlayer(playerId)
+
+    private fun currentServer(): MinecraftServer? =
+        net.neoforged.neoforge.server.ServerLifecycleHooks.getCurrentServer()
 
     private data class IncapacitatedPlayer(
         val playerId: UUID,
@@ -493,6 +728,16 @@ object ReviveFeature {
         val anchor: PlayerAnchor,
         val debugSelfRevive: Boolean,
     )
+
+    private data class DummyReviveSession(
+        val reviverId: UUID,
+        val dummyId: UUID,
+        val startedTick: Int,
+        val completeAtTick: Int,
+        val anchor: PlayerAnchor,
+    )
+
+    private data class ReviveDummy(val dummyId: UUID, val scoreboardName: String)
 
     private data class PlayerAnchor(val x: Double, val y: Double, val z: Double)
 

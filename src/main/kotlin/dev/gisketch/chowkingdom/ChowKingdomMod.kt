@@ -15,6 +15,7 @@ import dev.gisketch.chowkingdom.battlepass.CobblemonBattlepassIntegration
 import dev.gisketch.chowkingdom.client.ChowKingdomHud
 import dev.gisketch.chowkingdom.discord.DiscordFeature
 import dev.gisketch.chowkingdom.discord.DiscordScreenshotClient
+import dev.gisketch.chowkingdom.revive.ReviveClient
 import dev.gisketch.chowkingdom.revive.ReviveFeature
 import dev.gisketch.chowkingdom.shipping.ShippingBinClient
 import dev.gisketch.chowkingdom.profiles.ProfilesFeature
@@ -48,7 +49,7 @@ class ChowKingdomMod(modBus: IEventBus, container: ModContainer) {
         ShippingBinFeature.register(modBus)
         ShopsFeature.register()
         ProfilesFeature.register(modBus)
-        ReviveFeature.register()
+        ReviveFeature.register(modBus)
         TradingFeature.register(modBus)
         DiscordFeature.register()
         if (FMLEnvironment.dist == Dist.CLIENT) {
@@ -56,6 +57,7 @@ class ChowKingdomMod(modBus: IEventBus, container: ModContainer) {
             ChowKingdomHud.register(modBus)
             DiscordScreenshotClient.register(modBus)
             ShippingBinClient.register(modBus)
+            ReviveClient.register(modBus)
             TradingClient.register(modBus)
         }
     }

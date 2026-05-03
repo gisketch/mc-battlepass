@@ -38,7 +38,12 @@ object ReviveCommands {
                         ),
                 )
                 .then(Commands.literal("self-revive").executes(::debugSelfRevive))
-                .then(Commands.literal("expire").then(Commands.argument("player", EntityArgument.player()).executes(::debugExpire))),
+                .then(Commands.literal("expire").then(Commands.argument("player", EntityArgument.player()).executes(::debugExpire)))
+                .then(
+                    Commands.literal("dummy")
+                        .then(Commands.literal("spawn").executes(::spawnDummy))
+                        .then(Commands.literal("clear").executes(::clearDummies)),
+                ),
         )
         .then(Commands.argument("player", EntityArgument.player()).executes(::forceRevive))
 
@@ -114,5 +119,18 @@ object ReviveCommands {
             context.source.sendFailure(Component.literal("${target.gameProfile.name} is not incapacitated."))
             0
         }
+    }
+
+    private fun spawnDummy(context: CommandContext<CommandSourceStack>): Int {
+        val player = context.source.playerOrException
+        ReviveFeature.spawnDebugDummy(player)
+        context.source.sendSuccess({ Component.literal("Spawned incapacitated revive dummy. Right-click it to test reviving another target.").withStyle(ChatFormatting.YELLOW) }, false)
+        return 1
+    }
+
+    private fun clearDummies(context: CommandContext<CommandSourceStack>): Int {
+        val count = ReviveFeature.clearDebugDummies(context.source.server)
+        context.source.sendSuccess({ Component.literal("Cleared $count revive dummy(s).").withStyle(ChatFormatting.GRAY) }, true)
+        return count.coerceAtLeast(1)
     }
 }
