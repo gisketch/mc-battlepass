@@ -73,6 +73,7 @@ object TradingManager {
     }
 
     private fun onEntityInteract(event: PlayerInteractEvent.EntityInteract) {
+        if (event.isCanceled) return
         if (event.hand != InteractionHand.MAIN_HAND) return
         val requester = event.entity as? ServerPlayer ?: return
         val target = event.target as? ServerPlayer ?: return

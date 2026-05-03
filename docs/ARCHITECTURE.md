@@ -51,6 +51,11 @@ src/main/kotlin/dev/gisketch/chowkingdom/
     DiscordFeature.kt
     DiscordConfig.kt
     DiscordWebhookClient.kt
+  revive/
+    ReviveFeature.kt
+    ReviveConfig.kt
+    ReviveStore.kt
+    ReviveCommands.kt
   client/
     ChowKingdomHud.kt
 ```
@@ -109,6 +114,16 @@ Mission scopes:
 - Nickname changes refresh linked Discord account names, and Discord relay templates/webhook author names use nickname display names while avatar lookup still uses the real profile/UUID.
 - `NicknameConfig` writes `config/gisketchs_chowkingdom_mod/profiles/client.json`; `enableNickname` and `showOwnNameTag` default to `true` and own nametag rendering is handled by renderer mixins.
 
+## Revive
+
+- `ReviveFeature` intercepts player death at high event priority and turns lethal damage into incapacitation.
+- Incapacitated players are held in transient server memory, stabilized at minimum vitals, red-glowed through a temporary scoreboard team, and action/movement constrained.
+- Other players right-click an incapacitated player to begin a timed revive; the reviver is crouch/action locked until completion or cancel.
+- Timeout death wraps the original damage source so the vanilla death message keeps its cause and appends revive-failure context.
+- `ReviveConfig` writes `config/gisketchs_chowkingdom_mod/revive/config.json`; all timer fields are seconds.
+- `ReviveStore` persists per-player incapacitation counts and last cause in world data.
+- `/revive` commands provide reload, force-revive, status, and singleplayer debug flows.
+
 ## Persistence
 
 Use world data for gameplay state:
@@ -120,6 +135,7 @@ Use world data for gameplay state:
   wallets/chowcoins.json
   shipping_bin/bins.json
   profiles/nicknames.json
+  revive/player_stats.json
 ```
 
 Use config for definitions and client-local preferences:
@@ -132,6 +148,7 @@ config/gisketchs_chowkingdom_mod/
   shipping_bin/prices.json
   discord/webhook.json
   profiles/client.json
+  revive/config.json
 ```
 
 ## Discord

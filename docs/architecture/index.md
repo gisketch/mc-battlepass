@@ -16,6 +16,7 @@
 - `profiles/`: nickname commands, store, client config/state, network sync, mixin-backed name display.
 - `discord/`: webhook relay, inbound bot bridge, account links, screenshot upload, avatar support.
 - `trading/`: player trade requests, trade menu/session state, glow cues, chowcoin trade offers, debug solo trade.
+- `revive/`: incapacitated-player state, revive timers, persisted incap counts, OP/debug commands.
 - `shops/`: feature placeholder.
 - `client/`: HUD rendering.
 - `src/main/java/.../mixin/`: renderer/profile/keyboard mixins.
@@ -23,7 +24,8 @@
 ## State Ownership
 
 - Server owns XP, claims, mission progress, chowcoins, shipping inventories, nicknames, and Discord account links.
-- Server owns active trade sessions; trade state is not persisted.
+- Server owns active trade sessions and active revive sessions; those transient states are not persisted.
+- Revive persists per-player incapacitation counts and last cause in world data.
 - Client caches synced snapshots and UI-only preferences.
 - Gameplay state persists under `<world>/data/gisketchs_chowkingdom_mod/`.
 - Admin-editable definitions and local preferences live under `config/gisketchs_chowkingdom_mod/`.
@@ -35,6 +37,7 @@
 - [config](../../config): repo-local config examples only; secrets stay out of git.
 - [docs/ARCHITECTURE.md](../ARCHITECTURE.md): deeper current codebase map.
 - [docs/MODULE_GUIDE.md](../MODULE_GUIDE.md): patterns for adding modules.
+- [docs/REVIVE.md](../REVIVE.md): revive system, config, and test commands.
 
 ## Boundary Rule
 

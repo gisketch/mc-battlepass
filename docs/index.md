@@ -16,6 +16,7 @@
 - [Discord Integration](DISCORD.md)
 - [Shipping Bin](SHIPPING_BIN.md)
 - [Trading](TRADING.md)
+- [Revive](REVIVE.md)
 - [Harness Workflow](HARNESS.md)
 
 ## Harness Context

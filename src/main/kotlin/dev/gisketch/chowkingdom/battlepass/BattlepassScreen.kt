@@ -349,7 +349,7 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
 
     private fun renderMissions(guiGraphics: GuiGraphics, pass: BattlepassPassDefinition, rect: Rect, mouseX: Int, mouseY: Int) {
         withEntrance(guiGraphics, EntranceStyle(MISSIONS_TITLE_ANIMATION_DELAY_MS, offsetY = ENTRANCE_SLIDE_DOWN_OFFSET)) {
-            drawCkdmShadowedText(guiGraphics, "MISSIONS", rect.x + 8, rect.y + 8, TEXT_PRIMARY, CKDM_BOLD_LARGE_FONT)
+            drawCkdmHighlightText(guiGraphics, "MISSIONS", rect.x + 8, rect.y + 8, CKDM_BOLD_LARGE_FONT)
         }
         withEntrance(guiGraphics, EntranceStyle(MISSION_FILTER_ANIMATION_DELAY_MS, offsetY = ENTRANCE_SLIDE_DOWN_OFFSET)) {
             renderMissionFilterTabs(guiGraphics, rect, mouseX, mouseY)
@@ -427,7 +427,7 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
         val completedColumnX = rect.x + rect.width - MISSION_ROW_PADDING - completedColumnWidth
         val detailsWidth = (completedColumnX - detailsX - MISSION_ROW_COLUMN_GAP).coerceAtLeast(40)
         var detailY = rect.y + (rect.height - detailStackHeight) / 2
-        drawCkdmShadowedText(guiGraphics, fitCkdmText(titlePrefix + missionDescription(passId, entry), detailsWidth), detailsX, detailY, if (completed) TEXT_MUTED else TEXT_PRIMARY)
+        drawQuestTitleText(guiGraphics, fitCkdmText(titlePrefix + missionDescription(passId, entry), detailsWidth), detailsX, detailY, if (completed) TEXT_MUTED else TEXT_PRIMARY)
         detailY += MISSION_ROW_HEADER_TEXT_HEIGHT + MISSION_ROW_TEXT_GAP
         drawCkdmText(guiGraphics, missionProgressText(entry, progress), detailsX, detailY, TEXT_MUTED, CKDM_BOLD_SMALL_FONT)
         detailY += MISSION_ROW_SUB_TEXT_HEIGHT + MISSION_ROW_TEXT_GAP
@@ -837,9 +837,35 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
     }
 
     private fun drawCkdmShadowedText(guiGraphics: GuiGraphics, text: String, x: Int, y: Int, color: Int, fontId: ResourceLocation = CKDM_BOLD_FONT) {
+        drawCkdmShadowedText(guiGraphics, text, x, y, color, CKDM_SHADOW_COLOR, CKDM_SHADOW_OFFSET, fontId)
+    }
+
+    private fun drawCkdmHighlightText(guiGraphics: GuiGraphics, text: String, x: Int, y: Int, fontId: ResourceLocation = CKDM_BOLD_FONT) {
+        drawCkdmShadowedText(guiGraphics, text, x, y, CKDM_HIGHLIGHT_TEXT_COLOR, CKDM_HIGHLIGHT_SHADOW_COLOR, CKDM_HIGHLIGHT_SHADOW_OFFSET, fontId)
+    }
+
+    private fun drawCkdmShadowedText(guiGraphics: GuiGraphics, text: String, x: Int, y: Int, color: Int, shadowColor: Int, shadowOffset: Int, fontId: ResourceLocation = CKDM_BOLD_FONT) {
         val component = ckdmText(text, fontId)
-        guiGraphics.drawString(font, component, x + CKDM_SHADOW_OFFSET, y + CKDM_SHADOW_OFFSET, colorWithRenderAlpha(CKDM_SHADOW_COLOR), false)
+        guiGraphics.drawString(font, component, x + shadowOffset, y + shadowOffset, colorWithRenderAlpha(shadowColor), false)
         guiGraphics.drawString(font, component, x, y, colorWithRenderAlpha(color), false)
+    }
+
+    private fun drawQuestTitleText(guiGraphics: GuiGraphics, text: String, x: Int, y: Int, color: Int) {
+        var cursorX = x
+        QUEST_TITLE_NUMBER_REGEX.findAll(text).fold(0) { index, match ->
+            val before = text.substring(index, match.range.first)
+            if (before.isNotEmpty()) {
+                drawCkdmShadowedText(guiGraphics, before, cursorX, y, color)
+                cursorX += ckdmWidth(before)
+            }
+            val number = match.value
+            drawCkdmHighlightText(guiGraphics, number, cursorX, y)
+            cursorX += ckdmWidth(number)
+            match.range.last + 1
+        }.let { index ->
+            val rest = text.substring(index)
+            if (rest.isNotEmpty()) drawCkdmShadowedText(guiGraphics, rest, cursorX, y, color)
+        }
     }
 
     private fun colorWithRenderAlpha(color: Int): Int {
@@ -1356,8 +1382,12 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
     private val PROGRESS_FILL = 0xFF72C66F.toInt()
     private val TEXT_PRIMARY = 0xFFFFFFFF.toInt()
     private val TEXT_MUTED = 0xFFB8C0CC.toInt()
+    private val CKDM_HIGHLIGHT_TEXT_COLOR = 0xFFFFD447.toInt()
+    private val CKDM_HIGHLIGHT_SHADOW_COLOR = 0xFFFF7A1A.toInt()
+    private val CKDM_HIGHLIGHT_SHADOW_OFFSET = 2
     private val CKDM_SHADOW_COLOR = 0xAA000000.toInt()
     private val CKDM_SHADOW_OFFSET = 2
+    private val QUEST_TITLE_NUMBER_REGEX = Regex("\\d+")
     private val SAFE_EDGE_PADDING = 8
     private val CONTENT_PADDING = 10
     private val PANEL_PADDING = 12
