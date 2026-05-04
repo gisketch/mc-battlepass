@@ -16,7 +16,9 @@ import net.minecraft.world.effect.MobEffects
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.EntityType
 import net.minecraft.world.entity.LivingEntity
+import net.minecraft.world.entity.Mob
 import net.minecraft.world.entity.Pose
+import net.minecraft.world.entity.ai.memory.MemoryModuleType
 import net.minecraft.world.entity.decoration.ArmorStand
 import net.minecraft.world.scores.PlayerTeam
 import net.minecraft.world.scores.Team
@@ -26,6 +28,8 @@ import net.neoforged.bus.api.IEventBus
 import net.neoforged.neoforge.common.NeoForge
 import net.neoforged.neoforge.event.RegisterCommandsEvent
 import net.neoforged.neoforge.event.entity.item.ItemTossEvent
+import net.neoforged.neoforge.event.entity.living.LivingChangeTargetEvent
+import net.neoforged.neoforge.event.entity.living.LivingDamageEvent
 import net.neoforged.neoforge.event.entity.living.LivingDeathEvent
 import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent
 import net.neoforged.neoforge.event.entity.player.AttackEntityEvent
@@ -46,6 +50,7 @@ object ReviveFeature {
     private const val TICKS_PER_SECOND = 20
     private const val LOCK_EFFECT_TICKS = 40
     private const val LOCKED_MOVE_TOLERANCE_SQR = 0.35 * 0.35
+    private const val AI_TARGET_CLEAR_RADIUS = 96.0
     private val incapacitated: MutableMap<UUID, IncapacitatedPlayer> = linkedMapOf()
     private val reviveSessionsByReviver: MutableMap<UUID, ReviveSession> = linkedMapOf()
     private val reviveSessionsByTarget: MutableMap<UUID, ReviveTargetSession> = linkedMapOf()
@@ -62,6 +67,8 @@ object ReviveFeature {
         ReviveNetwork.register(modBus)
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, ::onLivingDeath)
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, ::onIncomingDamage)
+        NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, ::onLivingDamagePre)
+        NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, ::onLivingChangeTarget)
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, ::onEntityInteractSpecific)
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, ::onEntityInteract)
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, ::onRightClickBlock)
@@ -205,6 +212,19 @@ object ReviveFeature {
         stabilizeIncapacitated(player)
     }
 
+    private fun onLivingDamagePre(event: LivingDamageEvent.Pre) {
+        val player = event.entity as? ServerPlayer ?: return
+        if (!incapacitated.containsKey(player.uuid) || finishingDeaths.contains(player.uuid)) return
+        event.newDamage = 0.0f
+        stabilizeIncapacitated(player)
+    }
+
+    private fun onLivingChangeTarget(event: LivingChangeTargetEvent) {
+        val target = event.newAboutToBeSetTarget as? ServerPlayer ?: return
+        if (!incapacitated.containsKey(target.uuid)) return
+        event.newAboutToBeSetTarget = null
+    }
+
     private fun onEntityInteractSpecific(event: PlayerInteractEvent.EntityInteractSpecific) {
         handlePlayerEntityInteract(event.entity as? ServerPlayer ?: return, event.target, event.hand) {
             event.isCanceled = true
@@ -318,6 +338,7 @@ object ReviveFeature {
             val player = event.server.playerList.getPlayer(state.playerId) ?: return@forEach
             if (tick >= state.expiresAtTick) failRevive(player, state)
         }
+        clearAiTargets(event.server)
         processPendingDebugRevivers(event.server, tick)
         reviveSessionsByReviver.values.toList().forEach { session ->
             val reviver = event.server.playerList.getPlayer(session.reviverId) ?: return@forEach cancelRevive(session, "Revive cancelled: reviver left.")
@@ -611,6 +632,23 @@ object ReviveFeature {
         player.foodData.setExhaustion(0.0f)
         player.remainingFireTicks = 0
         player.setTicksFrozen(0)
+    }
+
+    private fun clearAiTargets(server: MinecraftServer) {
+        incapacitated.keys.forEach { playerId ->
+            val player = server.playerList.getPlayer(playerId) ?: return@forEach
+            val level = player.level() as? ServerLevel ?: return@forEach
+            level.getEntitiesOfClass(Mob::class.java, player.boundingBox.inflate(AI_TARGET_CLEAR_RADIUS)) { mob -> isTargetingPlayer(mob, playerId) }
+                .forEach { mob -> clearMobTarget(mob, playerId) }
+        }
+    }
+
+    private fun isTargetingPlayer(mob: Mob, playerId: UUID): Boolean =
+        mob.target?.uuid == playerId || mob.brain.getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null)?.uuid == playerId
+
+    private fun clearMobTarget(mob: Mob, playerId: UUID) {
+        if (mob.target?.uuid == playerId) mob.target = null
+        if (mob.brain.getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null)?.uuid == playerId) mob.brain.eraseMemory(MemoryModuleType.ATTACK_TARGET)
     }
 
     private fun applyIncapacitatedVisual(player: ServerPlayer, state: IncapacitatedPlayer) {
