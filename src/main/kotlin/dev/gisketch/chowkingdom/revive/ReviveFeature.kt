@@ -3,6 +3,7 @@ package dev.gisketch.chowkingdom.revive
 import dev.gisketch.chowkingdom.ChatGlyphs
 import net.minecraft.ChatFormatting
 import net.minecraft.network.chat.Component
+import net.minecraft.network.protocol.game.ClientboundSetHealthPacket
 import net.minecraft.server.MinecraftServer
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.server.level.ServerPlayer
@@ -149,6 +150,7 @@ object ReviveFeature {
         player.foodData.setExhaustion(0.0f)
         player.remainingFireTicks = 0
         player.setTicksFrozen(0)
+        syncHealthNow(player)
         ReviveNetwork.syncSelfState(player, active = false)
         clearReviveProgress(player.uuid)
         return true
@@ -641,6 +643,11 @@ object ReviveFeature {
         player.foodData.setExhaustion(0.0f)
         player.remainingFireTicks = 0
         player.setTicksFrozen(0)
+        syncHealthNow(player)
+    }
+
+    private fun syncHealthNow(player: ServerPlayer) {
+        player.connection.send(ClientboundSetHealthPacket(player.health, player.foodData.foodLevel, player.foodData.saturationLevel))
     }
 
     private fun applyIncapacitatedVisual(player: ServerPlayer, state: IncapacitatedPlayer) {
