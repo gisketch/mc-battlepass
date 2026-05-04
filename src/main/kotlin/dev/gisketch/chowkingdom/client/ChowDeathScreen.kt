@@ -5,6 +5,7 @@ import dev.gisketch.chowkingdom.ChowKingdomMod
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.Font
 import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.screens.ChatScreen
 import net.minecraft.client.gui.screens.GenericMessageScreen
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.gui.screens.TitleScreen
@@ -52,6 +53,25 @@ class ChowDeathScreen(private val causeOfDeath: Component?, private val hardcore
             }
             else -> super.mouseClicked(mouseX, mouseY, button)
         }
+    }
+
+    override fun keyPressed(keyCode: Int, scanCode: Int, modifiers: Int): Boolean {
+        val options = minecraft?.options
+        return when {
+            options?.keyChat?.matches(keyCode, scanCode) == true -> {
+                openChat("")
+                true
+            }
+            options?.keyCommand?.matches(keyCode, scanCode) == true -> {
+                openChat("/")
+                true
+            }
+            else -> super.keyPressed(keyCode, scanCode, modifiers)
+        }
+    }
+
+    private fun openChat(initialText: String) {
+        minecraft?.setScreen(DeathChatScreen(causeOfDeath, hardcore, initialText))
     }
 
     private fun renderDeathText(guiGraphics: GuiGraphics) {
@@ -159,6 +179,23 @@ class ChowDeathScreen(private val causeOfDeath: Component?, private val hardcore
         return (alpha shl 24) or (color and 0x00FFFFFF)
     }
 
+    private class DeathChatScreen(private val causeOfDeath: Component?, private val hardcore: Boolean, initialText: String) : ChatScreen(initialText) {
+        override fun keyPressed(keyCode: Int, scanCode: Int, modifiers: Int): Boolean {
+            val handled = super.keyPressed(keyCode, scanCode, modifiers)
+            if (handled && minecraft?.screen == null && shouldReturnToDeathScreen()) minecraft?.setScreen(ChowDeathScreen(causeOfDeath, hardcore))
+            return handled
+        }
+
+        override fun onClose() {
+            if (shouldReturnToDeathScreen()) minecraft?.setScreen(ChowDeathScreen(causeOfDeath, hardcore)) else super.onClose()
+        }
+
+        private fun shouldReturnToDeathScreen(): Boolean {
+            val player = minecraft?.player ?: return false
+            return player.isDeadOrDying || player.health <= 0.0f
+        }
+    }
+
     private data class Rect(val x: Int, val y: Int, val width: Int, val height: Int) {
         val right: Int get() = x + width
         fun contains(pointX: Int, pointY: Int): Boolean = pointX >= x && pointX < x + width && pointY >= y && pointY < y + height
@@ -178,7 +215,7 @@ class ChowDeathScreen(private val causeOfDeath: Component?, private val hardcore
         const val CKDM_DARK_SHADOW = 0xCC050505.toInt()
         const val CKDM_GOLD_SHADOW = 0xCC7A2E00.toInt()
         const val CKDM_SHADOW_OFFSET = 2
-        const val DEATH_OVERLAY = 0x99000000.toInt()
+        const val DEATH_OVERLAY = 0xA6000000.toInt()
         const val BUTTON_TEXT_SHADOW = 0xAA101010.toInt()
         const val TEXT_MARGIN = 18
         const val CAUSE_TOP_GAP = 34
