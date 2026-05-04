@@ -19,6 +19,7 @@ import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.Mob
 import net.minecraft.world.entity.Pose
 import net.minecraft.world.entity.ai.memory.MemoryModuleType
+import net.minecraft.world.entity.ai.memory.MemoryStatus
 import net.minecraft.world.entity.decoration.ArmorStand
 import net.minecraft.world.scores.PlayerTeam
 import net.minecraft.world.scores.Team
@@ -644,11 +645,16 @@ object ReviveFeature {
     }
 
     private fun isTargetingPlayer(mob: Mob, playerId: UUID): Boolean =
-        mob.target?.uuid == playerId || mob.brain.getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null)?.uuid == playerId
+        mob.target?.uuid == playerId || mob.brainAttackTarget()?.uuid == playerId
 
     private fun clearMobTarget(mob: Mob, playerId: UUID) {
         if (mob.target?.uuid == playerId) mob.target = null
-        if (mob.brain.getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null)?.uuid == playerId) mob.brain.eraseMemory(MemoryModuleType.ATTACK_TARGET)
+        if (mob.brainAttackTarget()?.uuid == playerId) mob.brain.eraseMemory(MemoryModuleType.ATTACK_TARGET)
+    }
+
+    private fun Mob.brainAttackTarget(): LivingEntity? {
+        if (!brain.checkMemory(MemoryModuleType.ATTACK_TARGET, MemoryStatus.REGISTERED)) return null
+        return brain.getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null)
     }
 
     private fun applyIncapacitatedVisual(player: ServerPlayer, state: IncapacitatedPlayer) {
