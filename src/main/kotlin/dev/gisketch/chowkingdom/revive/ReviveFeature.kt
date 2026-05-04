@@ -3,7 +3,6 @@ package dev.gisketch.chowkingdom.revive
 import dev.gisketch.chowkingdom.ChatGlyphs
 import net.minecraft.ChatFormatting
 import net.minecraft.network.chat.Component
-import net.minecraft.network.protocol.game.ClientboundSetHealthPacket
 import net.minecraft.server.MinecraftServer
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.server.level.ServerPlayer
@@ -27,7 +26,6 @@ import net.neoforged.bus.api.IEventBus
 import net.neoforged.neoforge.common.NeoForge
 import net.neoforged.neoforge.event.RegisterCommandsEvent
 import net.neoforged.neoforge.event.entity.item.ItemTossEvent
-import net.neoforged.neoforge.event.entity.living.LivingDamageEvent
 import net.neoforged.neoforge.event.entity.living.LivingDeathEvent
 import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent
 import net.neoforged.neoforge.event.entity.player.AttackEntityEvent
@@ -64,7 +62,6 @@ object ReviveFeature {
         ReviveNetwork.register(modBus)
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, ::onLivingDeath)
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, ::onIncomingDamage)
-        NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, ::onLivingDamagePre)
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, ::onEntityInteractSpecific)
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, ::onEntityInteract)
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, ::onRightClickBlock)
@@ -125,36 +122,6 @@ object ReviveFeature {
     fun giveUp(player: ServerPlayer): Boolean {
         val state = incapacitated[player.uuid] ?: return false
         failRevive(player, state)
-        return true
-    }
-
-    fun recover(player: ServerPlayer): Boolean {
-        incapacitated.remove(player.uuid)?.let { clearIncapacitatedVisual(player, it) }
-        cancelReviveForTarget(player.uuid, null)
-        cancelActiveRevive(player.uuid, "Revive recovery cleared your active revive.")
-        finishingDeaths.remove(player.uuid)
-        pendingDebugRevivers.removeIf { it.targetId == player.uuid }
-        player.deathTime = 0
-        player.setForcedPose(null)
-        player.setSwimming(false)
-        player.pose = Pose.STANDING
-        player.refreshDimensions()
-        player.setShiftKeyDown(false)
-        player.isSprinting = false
-        player.fallDistance = 0.0f
-        player.setDeltaMovement(0.0, 0.0, 0.0)
-        player.removeEffect(MobEffects.MOVEMENT_SLOWDOWN)
-        player.removeEffect(MobEffects.DIG_SLOWDOWN)
-        player.removeAllEffects()
-        player.health = player.maxHealth.coerceAtLeast(1.0f)
-        player.foodData.setFoodLevel(20)
-        player.foodData.setSaturation(5.0f)
-        player.foodData.setExhaustion(0.0f)
-        player.remainingFireTicks = 0
-        player.setTicksFrozen(0)
-        syncHealthNow(player)
-        ReviveNetwork.syncSelfState(player, active = false)
-        clearReviveProgress(player.uuid)
         return true
     }
 
@@ -236,19 +203,6 @@ object ReviveFeature {
         event.isCanceled = true
         event.amount = 0.0f
         stabilizeIncapacitated(player)
-    }
-
-    private fun onLivingDamagePre(event: LivingDamageEvent.Pre) {
-        val player = event.entity as? ServerPlayer ?: return
-        if (finishingDeaths.contains(player.uuid)) return
-        if (incapacitated.containsKey(player.uuid)) {
-            event.newDamage = 0.0f
-            stabilizeIncapacitated(player)
-            return
-        }
-        if (event.newDamage < player.health) return
-        event.newDamage = 0.0f
-        beginIncapacitated(player, event.source)
     }
 
     private fun onEntityInteractSpecific(event: PlayerInteractEvent.EntityInteractSpecific) {
@@ -651,18 +605,12 @@ object ReviveFeature {
 
     private fun restoreMinimumVitals(player: ServerPlayer) {
         val config = ReviveConfig.current()
-        player.deathTime = 0
         player.health = config.revivedHealth.coerceAtMost(player.maxHealth).coerceAtLeast(1.0f)
         player.foodData.setFoodLevel(config.revivedFoodLevel)
         player.foodData.setSaturation(0.0f)
         player.foodData.setExhaustion(0.0f)
         player.remainingFireTicks = 0
         player.setTicksFrozen(0)
-        syncHealthNow(player)
-    }
-
-    private fun syncHealthNow(player: ServerPlayer) {
-        player.connection.send(ClientboundSetHealthPacket(player.health, player.foodData.foodLevel, player.foodData.saturationLevel))
     }
 
     private fun applyIncapacitatedVisual(player: ServerPlayer, state: IncapacitatedPlayer) {

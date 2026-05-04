@@ -24,8 +24,6 @@ class ChowDeathScreen(private val causeOfDeath: Component?, private val hardcore
     override fun tick() {
         super.tick()
         delayTicker++
-        minecraft?.player?.setDeltaMovement(0.0, 0.0, 0.0)
-        minecraft?.player?.isSprinting = false
     }
 
     override fun renderBackground(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) {

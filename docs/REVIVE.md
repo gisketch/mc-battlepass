@@ -56,10 +56,6 @@ Defaults:
 
 All time values are seconds in config.
 
-## Recovery
-
-Use `/revive recover` or `/revive recover <player>` if a player gets stuck between vanilla death and revive state. It clears revive state, resets pose/death animation, removes effects, and heals the target.
-
 ## World Data
 
 Path:
@@ -81,7 +77,6 @@ All revive commands require permission level `2`.
 ```text
 /revive <player>
 /revive reload
-/revive recover [player]
 /revive status [player]
 /revive debug down [player] [seconds]
 /revive debug self-revive

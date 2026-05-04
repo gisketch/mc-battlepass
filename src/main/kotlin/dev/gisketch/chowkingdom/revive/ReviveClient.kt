@@ -44,7 +44,6 @@ object ReviveClient {
             downedAnimationStartedAtMs = System.currentTimeMillis()
             giveUpSent = false
             previousButtonHover = false
-            stabilizeClientDeathState()
         }
         wasIncapacitated = active
     }
@@ -61,10 +60,7 @@ object ReviveClient {
             wasIncapacitated = false
             return
         }
-        if (ReviveClientState.selfState() != null) {
-            minecraft.player?.isSprinting = false
-            stabilizeClientDeathState()
-        }
+        if (ReviveClientState.selfState() != null) minecraft.player?.isSprinting = false
     }
 
     private fun onMovementInput(event: MovementInputUpdateEvent) {
@@ -346,12 +342,6 @@ object ReviveClient {
 
     private fun playHoverSound() {
         Minecraft.getInstance().soundManager.play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK.value(), HOVER_SOUND_PITCH, HOVER_SOUND_VOLUME))
-    }
-
-    private fun stabilizeClientDeathState() {
-        val player = Minecraft.getInstance().player ?: return
-        player.deathTime = 0
-        if (player.health <= 0.0f) player.health = 1.0f
     }
 
     private data class Rect(val x: Int, val y: Int, val width: Int, val height: Int) {
