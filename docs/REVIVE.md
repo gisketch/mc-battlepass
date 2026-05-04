@@ -26,8 +26,13 @@ Revive turns lethal player damage into an incapacitated state.
 - Revive UI text uses white CKDM bold styling.
 - The red overlay fades in under vanilla HUD layers, so it does not tint the HUD.
 - The kill title starts oversized, fades in, scales back quickly, then briefly shakes.
-- The `GIVE UP` button uses the green nine-slice button texture and asks the server to end the revive window early.
+- The `GIVE UP` button uses the red nine-slice button texture and asks the server to end the revive window early.
 - Open chat to get a cursor, then click `GIVE UP`; normal camera/movement stay active otherwise.
+
+## Death UI
+
+- The vanilla death screen is replaced with a CKDM-styled death screen.
+- It uses a dim black blurred background, a large death title/reason, and textured `RESPAWN` and `LEAVE GAME` buttons.
 
 ## Config
 

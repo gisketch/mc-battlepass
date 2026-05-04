@@ -12,6 +12,7 @@ import dev.gisketch.chowkingdom.battlepass.BattlepassVanillaEventIntegration
 import dev.gisketch.chowkingdom.battlepass.BattlepassWorldData
 import dev.gisketch.chowkingdom.battlepass.BattlepassXpStore
 import dev.gisketch.chowkingdom.battlepass.CobblemonBattlepassIntegration
+import dev.gisketch.chowkingdom.client.ChowDeathScreenClient
 import dev.gisketch.chowkingdom.client.ChowKingdomHud
 import dev.gisketch.chowkingdom.discord.DiscordFeature
 import dev.gisketch.chowkingdom.discord.DiscordScreenshotClient
@@ -54,6 +55,7 @@ class ChowKingdomMod(modBus: IEventBus, container: ModContainer) {
         DiscordFeature.register()
         if (FMLEnvironment.dist == Dist.CLIENT) {
             BattlepassClient.register(modBus)
+            ChowDeathScreenClient.register()
             ChowKingdomHud.register(modBus)
             DiscordScreenshotClient.register(modBus)
             ShippingBinClient.register(modBus)
