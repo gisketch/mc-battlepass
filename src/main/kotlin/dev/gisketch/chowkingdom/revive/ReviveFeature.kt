@@ -27,6 +27,7 @@ import net.neoforged.bus.api.IEventBus
 import net.neoforged.neoforge.common.NeoForge
 import net.neoforged.neoforge.event.RegisterCommandsEvent
 import net.neoforged.neoforge.event.entity.item.ItemTossEvent
+import net.neoforged.neoforge.event.entity.living.LivingDamageEvent
 import net.neoforged.neoforge.event.entity.living.LivingDeathEvent
 import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent
 import net.neoforged.neoforge.event.entity.player.AttackEntityEvent
@@ -63,6 +64,7 @@ object ReviveFeature {
         ReviveNetwork.register(modBus)
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, ::onLivingDeath)
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, ::onIncomingDamage)
+        NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, ::onLivingDamagePre)
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, ::onEntityInteractSpecific)
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, ::onEntityInteract)
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, ::onRightClickBlock)
@@ -234,6 +236,19 @@ object ReviveFeature {
         event.isCanceled = true
         event.amount = 0.0f
         stabilizeIncapacitated(player)
+    }
+
+    private fun onLivingDamagePre(event: LivingDamageEvent.Pre) {
+        val player = event.entity as? ServerPlayer ?: return
+        if (finishingDeaths.contains(player.uuid)) return
+        if (incapacitated.containsKey(player.uuid)) {
+            event.newDamage = 0.0f
+            stabilizeIncapacitated(player)
+            return
+        }
+        if (event.newDamage < player.health) return
+        event.newDamage = 0.0f
+        beginIncapacitated(player, event.source)
     }
 
     private fun onEntityInteractSpecific(event: PlayerInteractEvent.EntityInteractSpecific) {
