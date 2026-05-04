@@ -75,6 +75,7 @@ All revive commands require permission level `2`.
 /revive status [player]
 /revive debug down [player] [seconds]
 /revive debug self-revive
+/revive debug double-revive [player] [delaySeconds]
 /revive debug expire <player>
 /revive debug dummy spawn
 /revive debug dummy clear
@@ -92,12 +93,13 @@ Aliases:
 1. Run `/revive debug down`.
 2. Run `/revive status`.
 3. Run `/revive debug self-revive` to test revive timing, crouch lock, and restored minimum vitals.
-4. Run `/revive debug down 10` to use a short timeout.
-5. Run `/revive debug expire <player>` to test final death and appended revive-failure message.
-6. Run `/revive debug dummy spawn`, then right-click the red-glowing dummy to test reviving another target in singleplayer.
-7. Confirm the dummy revive shows the hotbar `REVIVING X.XX SECONDS` countdown.
-8. Right-click again during the dummy revive to test cancel.
-9. Run `/revive debug dummy clear` to remove test dummies.
+4. Run `/revive debug double-revive` to add a virtual helper after 1 second; repeat it to test more helper speed-ups.
+5. Run `/revive debug down 10` to use a short timeout.
+6. Run `/revive debug expire <player>` to test final death and appended revive-failure message.
+7. Run `/revive debug dummy spawn`, then right-click the red-glowing dummy to test reviving another target in singleplayer.
+8. Confirm the dummy revive shows the hotbar `REVIVING X.XX SECONDS` countdown.
+9. Right-click again during the dummy revive to test cancel.
+10. Run `/revive debug dummy clear` to remove test dummies.
 
 Normal multiplayer testing:
 

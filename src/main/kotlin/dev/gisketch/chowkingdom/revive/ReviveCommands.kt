@@ -38,6 +38,16 @@ object ReviveCommands {
                         ),
                 )
                 .then(Commands.literal("self-revive").executes(::debugSelfRevive))
+                .then(
+                    Commands.literal("double-revive")
+                        .executes(::debugDoubleReviveSelf)
+                        .then(Commands.argument("delaySeconds", IntegerArgumentType.integer(0)).executes(::debugDoubleReviveSelfAfter))
+                        .then(
+                            Commands.argument("player", EntityArgument.player())
+                                .executes(::debugDoubleRevive)
+                                .then(Commands.argument("delaySeconds", IntegerArgumentType.integer(0)).executes(::debugDoubleReviveAfter)),
+                        ),
+                )
                 .then(Commands.literal("expire").then(Commands.argument("player", EntityArgument.player()).executes(::debugExpire)))
                 .then(
                     Commands.literal("dummy")
@@ -106,6 +116,28 @@ object ReviveCommands {
             1
         } else {
             context.source.sendFailure(Component.literal("You must be incapacitated first. Use /revive debug down."))
+            0
+        }
+    }
+
+    private fun debugDoubleReviveSelf(context: CommandContext<CommandSourceStack>): Int =
+        debugDoubleRevive(context.source.playerOrException, context.source, 1)
+
+    private fun debugDoubleReviveSelfAfter(context: CommandContext<CommandSourceStack>): Int =
+        debugDoubleRevive(context.source.playerOrException, context.source, IntegerArgumentType.getInteger(context, "delaySeconds"))
+
+    private fun debugDoubleRevive(context: CommandContext<CommandSourceStack>): Int =
+        debugDoubleRevive(EntityArgument.getPlayer(context, "player"), context.source, 1)
+
+    private fun debugDoubleReviveAfter(context: CommandContext<CommandSourceStack>): Int =
+        debugDoubleRevive(EntityArgument.getPlayer(context, "player"), context.source, IntegerArgumentType.getInteger(context, "delaySeconds"))
+
+    private fun debugDoubleRevive(target: ServerPlayer, source: CommandSourceStack, delaySeconds: Int): Int {
+        return if (ReviveFeature.debugScheduleReviver(target, delaySeconds)) {
+            source.sendSuccess({ Component.literal("Scheduled debug reviver for ${target.gameProfile.name} in ${delaySeconds}s.").withStyle(ChatFormatting.YELLOW) }, false)
+            1
+        } else {
+            source.sendFailure(Component.literal("${target.gameProfile.name} needs an active revive first. Use /revive debug self-revive while incapacitated."))
             0
         }
     }

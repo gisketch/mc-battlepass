@@ -52,7 +52,9 @@ object ReviveFeature {
     private val dummySessionsByReviver: MutableMap<UUID, DummyReviveSession> = linkedMapOf()
     private val dummySessionsByDummy: MutableMap<UUID, UUID> = linkedMapOf()
     private val reviveDummies: MutableMap<UUID, ReviveDummy> = linkedMapOf()
+    private val pendingDebugRevivers: MutableList<PendingDebugReviver> = mutableListOf()
     private val finishingDeaths: MutableSet<UUID> = linkedSetOf()
+    private var debugReviverSequence = 1
 
     fun register(modBus: IEventBus) {
         ReviveConfig.load()
@@ -101,6 +103,13 @@ object ReviveFeature {
     fun debugSelfRevive(player: ServerPlayer): Boolean {
         val state = incapacitated[player.uuid] ?: return false
         startRevive(player, player, state, debugSelfRevive = true)
+        return true
+    }
+
+    fun debugScheduleReviver(target: ServerPlayer, delaySeconds: Int = 1): Boolean {
+        if (!incapacitated.containsKey(target.uuid) || !reviveSessionsByTarget.containsKey(target.uuid)) return false
+        val name = "Debug Reviver ${debugReviverSequence++}"
+        pendingDebugRevivers += PendingDebugReviver(target.uuid, target.server.tickCount + delaySeconds.coerceAtLeast(0) * TICKS_PER_SECOND, name)
         return true
     }
 
@@ -309,6 +318,7 @@ object ReviveFeature {
             val player = event.server.playerList.getPlayer(state.playerId) ?: return@forEach
             if (tick >= state.expiresAtTick) failRevive(player, state)
         }
+        processPendingDebugRevivers(event.server, tick)
         reviveSessionsByReviver.values.toList().forEach { session ->
             val reviver = event.server.playerList.getPlayer(session.reviverId) ?: return@forEach cancelRevive(session, "Revive cancelled: reviver left.")
             val target = event.server.playerList.getPlayer(session.targetId) ?: return@forEach cancelRevive(session, "Revive cancelled: target left.")
@@ -322,8 +332,7 @@ object ReviveFeature {
             if (!session.isComplete()) return@forEach
             val target = event.server.playerList.getPlayer(session.targetId) ?: return@forEach cancelReviveForTarget(session.targetId, "Revive cancelled: target left.")
             val state = incapacitated[target.uuid] ?: return@forEach cancelReviveForTarget(session.targetId, "Revive cancelled: target is no longer incapacitated.")
-            val revivers = session.reviverIds.mapNotNull { reviverId -> event.server.playerList.getPlayer(reviverId) }
-            completeRevive(target, state, revivers.map { it.uuid }, revivers.map { it.gameProfile.name })
+            completeRevive(target, state, session.reviverIds.toList(), reviverNames(event.server, session))
         }
         dummySessionsByReviver.values.toList().forEach { session ->
             val reviver = event.server.playerList.getPlayer(session.reviverId) ?: return@forEach cancelDummyRevive(session, "Dummy revive cancelled: reviver left.")
@@ -407,6 +416,7 @@ object ReviveFeature {
         if (targetSession.debugSelfRevive != debugSelfRevive) return
         updateReviveProgress(targetSession, tick)
         targetSession.reviverIds += reviver.uuid
+        targetSession.reviverNamesById[reviver.uuid] = reviver.gameProfile.name
         val session = ReviveSession(reviver.uuid, target.uuid, PlayerAnchor(reviver.x, reviver.y, reviver.z), debugSelfRevive)
         reviveSessionsByReviver[reviver.uuid] = session
         reviver.closeContainer()
@@ -498,8 +508,11 @@ object ReviveFeature {
         if (targetSession != null) {
             updateReviveProgress(targetSession, tick)
             targetSession.reviverIds.remove(session.reviverId)
-            if (targetSession.reviverIds.isEmpty()) {
+            targetSession.reviverNamesById.remove(session.reviverId)
+            val hasRealReviver = targetSession.reviverIds.any { reviveSessionsByReviver.containsKey(it) }
+            if (targetSession.reviverIds.isEmpty() || !hasRealReviver) {
                 reviveSessionsByTarget.remove(session.targetId)
+                pendingDebugRevivers.removeIf { it.targetId == session.targetId }
                 clearReviveProgress(session.targetId)
             } else {
                 player(session.targetId)?.let { target -> syncReviveProgress(target, targetSession) }
@@ -711,10 +724,27 @@ object ReviveFeature {
         return rate
     }
 
+    private fun processPendingDebugRevivers(server: MinecraftServer, tick: Int) {
+        val due = pendingDebugRevivers.filter { it.addAtTick <= tick }
+        if (due.isEmpty()) return
+        pendingDebugRevivers.removeAll(due.toSet())
+        due.forEach { pending ->
+            val target = server.playerList.getPlayer(pending.targetId) ?: return@forEach
+            val session = reviveSessionsByTarget[pending.targetId] ?: return@forEach
+            if (!incapacitated.containsKey(pending.targetId)) return@forEach
+            updateReviveProgress(session, tick)
+            val reviverId = UUID.randomUUID()
+            session.reviverIds += reviverId
+            session.reviverNamesById[reviverId] = pending.name
+            syncReviveProgress(target, session)
+            target.sendSystemMessage(Component.literal("${pending.name} joined the debug revive.").withStyle(ChatFormatting.YELLOW))
+        }
+    }
+
     private fun ReviveTargetSession.isComplete(): Boolean = progressTicks >= baseTicks
 
     private fun reviverNames(server: MinecraftServer, session: ReviveTargetSession): List<String> =
-        session.reviverIds.mapNotNull { reviverId -> server.playerList.getPlayer(reviverId)?.gameProfile?.name }
+        session.reviverIds.mapNotNull { reviverId -> session.reviverNamesById[reviverId] ?: server.playerList.getPlayer(reviverId)?.gameProfile?.name }
 
     private fun formatReviverNames(names: List<String>): String = when (names.size) {
         0 -> "someone"
@@ -787,7 +817,10 @@ object ReviveFeature {
         val debugSelfRevive: Boolean,
         var progressTicks: Double = 0.0,
         val reviverIds: MutableSet<UUID> = linkedSetOf(),
+        val reviverNamesById: MutableMap<UUID, String> = linkedMapOf(),
     )
+
+    private data class PendingDebugReviver(val targetId: UUID, val addAtTick: Int, val name: String)
 
     private data class DummyReviveSession(
         val reviverId: UUID,
