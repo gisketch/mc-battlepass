@@ -146,7 +146,7 @@ object ReviveClient {
         val seconds = ceil((((reviveProgress?.expiresAtMs ?: state.expiresAtMs) - System.currentTimeMillis()).coerceAtLeast(0L)) / 1000.0).toInt()
         val alpha = easeOutCubic(progress(elapsed, COUNTDOWN_DELAY_MS, STAGGER_FADE_MS))
         val slide = ((1.0f - alpha) * STAGGER_SLIDE).toInt()
-        val y = (height - HOTBAR_COUNTDOWN_TEXT_OFFSET + slide).coerceAtLeast(8)
+        val y = reviveCountdownY(height, slide)
         val segments = if (reviveProgress == null) countdownSegments(font, seconds, width - TITLE_MARGIN * 2, alpha) else revivedSoonSegments(font, seconds, width - TITLE_MARGIN * 2, alpha)
         drawCenteredSegments(guiGraphics, font, segments, width, y)
     }
@@ -164,7 +164,7 @@ object ReviveClient {
         val fallbackWidth = fallback?.let { minecraft.font.width(it) } ?: 0
         val contentWidth = minecraft.font.width(label) + if (headCount > 0) REVIVED_HEAD_TEXT_GAP + headsWidth else fallbackWidth
         var x = (width - contentWidth) / 2
-        val y = (height - HOTBAR_COUNTDOWN_TEXT_OFFSET).coerceAtLeast(8)
+        val y = reviveCountdownY(height, 0)
         drawCkdmShadowed(guiGraphics, minecraft.font, label, x, y, colorWithAlpha(CKDM_WHITE, alpha), colorWithAlpha(CKDM_DARK_SHADOW, alpha), CKDM_SHADOW_OFFSET)
         x += minecraft.font.width(label)
         if (headCount > 0) {
@@ -280,9 +280,12 @@ object ReviveClient {
     private fun giveUpButtonRect(width: Int, height: Int): Rect {
         val buttonWidth = GIVE_UP_BUTTON_WIDTH.coerceAtMost((width - 24).coerceAtLeast(72))
         val x = (width - buttonWidth) / 2
-        val y = (height - GIVE_UP_BUTTON_BOTTOM - GIVE_UP_BUTTON_HEIGHT).coerceAtLeast(height / 2 + 48)
+        val y = reviveCountdownY(height, 0) + GIVE_UP_BUTTON_TOP_GAP
         return Rect(x, y, buttonWidth, GIVE_UP_BUTTON_HEIGHT)
     }
+
+    private fun reviveCountdownY(height: Int, slide: Int): Int =
+        ((height * TITLE_Y_RATIO).toInt().coerceAtLeast(TITLE_MIN_Y) + TITLE_TO_COUNTDOWN_GAP + slide).coerceAtLeast(8)
 
     private fun scaledMouse(minecraft: Minecraft, width: Int, height: Int): Point {
         val x = (minecraft.mouseHandler.xpos() * width / minecraft.window.screenWidth).toInt()
@@ -369,14 +372,15 @@ object ReviveClient {
     internal const val CKDM_DARK_SHADOW = 0xCC240808.toInt()
     internal const val CKDM_GOLD_SHADOW = 0xCC7A2E00.toInt()
     internal const val CKDM_SHADOW_OFFSET = 2
-    private val GIVE_UP_BUTTON_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_btn_green.png")
-    private val GIVE_UP_BUTTON_HOVER_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_btn_green_hover.png")
+    private val GIVE_UP_BUTTON_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_btn_red.png")
+    private val GIVE_UP_BUTTON_HOVER_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_btn_red_hover.png")
     private const val RED_OVERLAY = 0x5AC80000
     private const val BUTTON_TEXT_SHADOW = 0xAA173A20.toInt()
     private const val TITLE_MARGIN = 18
     private const val TITLE_Y_RATIO = 0.22f
     private const val TITLE_MIN_Y = 34
     private const val TITLE_START_SCALE = 1.55f
+    private const val TITLE_TO_COUNTDOWN_GAP = 42
     private const val TITLE_FADE_DELAY_MS = 30L
     private const val TITLE_FADE_MS = 170L
     private const val TITLE_SCALE_MS = 360L
@@ -397,7 +401,7 @@ object ReviveClient {
     private const val REVIVED_HEAD_FALLBACK_FILL = 0xAA3C1E1E.toInt()
     private const val GIVE_UP_BUTTON_WIDTH = 128
     private const val GIVE_UP_BUTTON_HEIGHT = 24
-    private const val GIVE_UP_BUTTON_BOTTOM = 28
+    private const val GIVE_UP_BUTTON_TOP_GAP = 24
     private const val BUTTON_TEXTURE_SIZE = 8
     private const val BUTTON_CORNER_SIZE = 2
     private const val BUTTON_DESTINATION_CORNER_SIZE = 4
