@@ -24,6 +24,8 @@ class ChowDeathScreen(private val causeOfDeath: Component?, private val hardcore
     override fun tick() {
         super.tick()
         delayTicker++
+        minecraft?.player?.setDeltaMovement(0.0, 0.0, 0.0)
+        minecraft?.player?.isSprinting = false
     }
 
     override fun renderBackground(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) {
@@ -178,7 +180,7 @@ class ChowDeathScreen(private val causeOfDeath: Component?, private val hardcore
         const val CKDM_DARK_SHADOW = 0xCC050505.toInt()
         const val CKDM_GOLD_SHADOW = 0xCC7A2E00.toInt()
         const val CKDM_SHADOW_OFFSET = 2
-        const val DEATH_OVERLAY = 0xDD000000.toInt()
+        const val DEATH_OVERLAY = 0xF2000000.toInt()
         const val BUTTON_TEXT_SHADOW = 0xAA101010.toInt()
         const val TEXT_MARGIN = 18
         const val CAUSE_TOP_GAP = 34
