@@ -71,7 +71,7 @@ class ChowDeathScreen(private val causeOfDeath: Component?, private val hardcore
     }
 
     private fun openChat(initialText: String) {
-        minecraft?.setScreen(DeathChatScreen(causeOfDeath, hardcore, initialText))
+        minecraft?.pushGuiLayer(ChatScreen(initialText))
     }
 
     private fun renderDeathText(guiGraphics: GuiGraphics) {
@@ -177,23 +177,6 @@ class ChowDeathScreen(private val causeOfDeath: Component?, private val hardcore
     private fun colorWithAlpha(color: Int, alphaFactor: Float): Int {
         val alpha = (((color ushr 24) and 0xFF) * alphaFactor).toInt().coerceIn(0, 255)
         return (alpha shl 24) or (color and 0x00FFFFFF)
-    }
-
-    private class DeathChatScreen(private val causeOfDeath: Component?, private val hardcore: Boolean, initialText: String) : ChatScreen(initialText) {
-        override fun keyPressed(keyCode: Int, scanCode: Int, modifiers: Int): Boolean {
-            val handled = super.keyPressed(keyCode, scanCode, modifiers)
-            if (handled && minecraft?.screen == null && shouldReturnToDeathScreen()) minecraft?.setScreen(ChowDeathScreen(causeOfDeath, hardcore))
-            return handled
-        }
-
-        override fun onClose() {
-            if (shouldReturnToDeathScreen()) minecraft?.setScreen(ChowDeathScreen(causeOfDeath, hardcore)) else super.onClose()
-        }
-
-        private fun shouldReturnToDeathScreen(): Boolean {
-            val player = minecraft?.player ?: return false
-            return player.isDeadOrDying || player.health <= 0.0f
-        }
     }
 
     private data class Rect(val x: Int, val y: Int, val width: Int, val height: Int) {
