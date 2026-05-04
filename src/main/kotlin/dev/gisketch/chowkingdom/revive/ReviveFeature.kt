@@ -37,6 +37,7 @@ import net.neoforged.neoforge.event.tick.PlayerTickEvent
 import net.neoforged.neoforge.event.tick.ServerTickEvent
 import java.util.Locale
 import java.util.UUID
+import kotlin.math.ceil
 
 object ReviveFeature {
     private const val REVIVE_TEAM_NAME = "ck_revive_red"
@@ -47,7 +48,7 @@ object ReviveFeature {
     private const val LOCKED_MOVE_TOLERANCE_SQR = 0.35 * 0.35
     private val incapacitated: MutableMap<UUID, IncapacitatedPlayer> = linkedMapOf()
     private val reviveSessionsByReviver: MutableMap<UUID, ReviveSession> = linkedMapOf()
-    private val reviveSessionsByTarget: MutableMap<UUID, UUID> = linkedMapOf()
+    private val reviveSessionsByTarget: MutableMap<UUID, ReviveTargetSession> = linkedMapOf()
     private val dummySessionsByReviver: MutableMap<UUID, DummyReviveSession> = linkedMapOf()
     private val dummySessionsByDummy: MutableMap<UUID, UUID> = linkedMapOf()
     private val reviveDummies: MutableMap<UUID, ReviveDummy> = linkedMapOf()
@@ -86,7 +87,7 @@ object ReviveFeature {
 
     fun forceRevive(player: ServerPlayer, reviverName: String = "an operator"): Boolean {
         val state = incapacitated[player.uuid] ?: return false
-        completeRevive(player, state, reviverName)
+        completeRevive(player, state, emptyList(), listOf(reviverName))
         return true
     }
 
@@ -314,11 +315,15 @@ object ReviveFeature {
             val state = incapacitated[target.uuid] ?: return@forEach cancelRevive(session, "Revive cancelled: target is no longer incapacitated.")
             if (!session.debugSelfRevive && reviver.distanceToSqr(target) > maxReviveDistanceSqr()) {
                 cancelRevive(session, "Revive cancelled: too far away.")
-                return@forEach
             }
-            if (tick >= session.completeAtTick) {
-                completeRevive(target, state, reviver.gameProfile.name)
-            }
+        }
+        reviveSessionsByTarget.values.toList().forEach { session ->
+            updateReviveProgress(session, tick)
+            if (!session.isComplete()) return@forEach
+            val target = event.server.playerList.getPlayer(session.targetId) ?: return@forEach cancelReviveForTarget(session.targetId, "Revive cancelled: target left.")
+            val state = incapacitated[target.uuid] ?: return@forEach cancelReviveForTarget(session.targetId, "Revive cancelled: target is no longer incapacitated.")
+            val revivers = session.reviverIds.mapNotNull { reviverId -> event.server.playerList.getPlayer(reviverId) }
+            completeRevive(target, state, revivers.map { it.uuid }, revivers.map { it.gameProfile.name })
         }
         dummySessionsByReviver.values.toList().forEach { session ->
             val reviver = event.server.playerList.getPlayer(session.reviverId) ?: return@forEach cancelDummyRevive(session, "Dummy revive cancelled: reviver left.")
@@ -351,7 +356,7 @@ object ReviveFeature {
         val player = event.entity as? ServerPlayer ?: return
         reviveSessionsByReviver[player.uuid]?.let { cancelRevive(it, "Revive cancelled: reviver left.") }
         dummySessionsByReviver[player.uuid]?.let { cancelDummyRevive(it, "Dummy revive cancelled: reviver left.") }
-        reviveSessionsByTarget[player.uuid]?.let { reviveSessionsByReviver[it]?.let { session -> cancelRevive(session, "Revive cancelled: target left.") } }
+        reviveSessionsByTarget[player.uuid]?.let { cancelReviveForTarget(it.targetId, "Revive cancelled: target left.") }
     }
 
     private fun beginIncapacitated(player: ServerPlayer, source: DamageSource, overrideDurationTicks: Int? = null) {
@@ -391,25 +396,26 @@ object ReviveFeature {
 
     private fun startRevive(reviver: ServerPlayer, target: ServerPlayer, state: IncapacitatedPlayer, debugSelfRevive: Boolean) {
         if (hasActiveRevive(reviver.uuid)) return
-        if (reviveSessionsByTarget.containsKey(target.uuid)) {
-            reviver.displayClientMessage(Component.literal("${target.gameProfile.name} is already being revived."), true)
-            return
-        }
         if (!debugSelfRevive && reviver.distanceToSqr(target) > maxReviveDistanceSqr()) {
             reviver.displayClientMessage(Component.literal("Move closer to revive ${target.gameProfile.name}."), true)
             return
         }
-        val ticks = ReviveConfig.current().reviveSeconds * TICKS_PER_SECOND
-        val session = ReviveSession(reviver.uuid, target.uuid, reviver.server.tickCount, reviver.server.tickCount + ticks, PlayerAnchor(reviver.x, reviver.y, reviver.z), debugSelfRevive)
+        val tick = reviver.server.tickCount
+        val targetSession = reviveSessionsByTarget.getOrPut(target.uuid) {
+            ReviveTargetSession(target.uuid, target.gameProfile.name, target.id, tick, ReviveConfig.current().reviveSeconds * TICKS_PER_SECOND, tick, debugSelfRevive)
+        }
+        if (targetSession.debugSelfRevive != debugSelfRevive) return
+        updateReviveProgress(targetSession, tick)
+        targetSession.reviverIds += reviver.uuid
+        val session = ReviveSession(reviver.uuid, target.uuid, PlayerAnchor(reviver.x, reviver.y, reviver.z), debugSelfRevive)
         reviveSessionsByReviver[reviver.uuid] = session
-        reviveSessionsByTarget[target.uuid] = reviver.uuid
         reviver.closeContainer()
         reviver.stopUsingItem()
         lockReviver(reviver, session)
         reviver.sendSystemMessage(Component.literal("Reviving ${target.gameProfile.name}. Right-click again to cancel.").withStyle(ChatFormatting.YELLOW))
         if (reviver.uuid != target.uuid) target.sendSystemMessage(Component.literal("${reviver.gameProfile.name} is reviving you.").withStyle(ChatFormatting.GREEN))
         state.lastReviverName = reviver.gameProfile.name
-        syncReviveProgress(target, session)
+        syncReviveProgress(target, targetSession)
     }
 
     private fun startDummyRevive(reviver: ServerPlayer, dummy: ArmorStand) {
@@ -434,7 +440,7 @@ object ReviveFeature {
         syncDummyReviveProgress(reviver.server, dummy, session)
     }
 
-    private fun completeRevive(target: ServerPlayer, state: IncapacitatedPlayer, reviverName: String) {
+    private fun completeRevive(target: ServerPlayer, state: IncapacitatedPlayer, reviverIds: List<UUID>, reviverNames: List<String>) {
         cancelReviveForTarget(target.uuid, null)
         incapacitated.remove(target.uuid)
         clearIncapacitatedVisual(target, state)
@@ -448,9 +454,10 @@ object ReviveFeature {
         target.removeEffect(MobEffects.MOVEMENT_SLOWDOWN)
         target.removeEffect(MobEffects.DIG_SLOWDOWN)
         target.playNotifySound(SoundEvents.PLAYER_LEVELUP, SoundSource.PLAYERS, 0.7f, 1.4f)
+        ReviveNetwork.syncComplete(target, reviverIds, reviverNames)
         target.server.playerList.broadcastSystemMessage(
             ChatGlyphs.chowKingdomPrefix()
-                .append(Component.literal("${target.gameProfile.name} was revived by $reviverName.").withStyle(ChatFormatting.GREEN)),
+                .append(Component.literal("${target.gameProfile.name} was revived by ${formatReviverNames(reviverNames)}.").withStyle(ChatFormatting.GREEN)),
             false,
         )
     }
@@ -481,15 +488,23 @@ object ReviveFeature {
     }
 
     private fun cancelReviveForTarget(targetId: UUID, reason: String?) {
-        reviveSessionsByTarget[targetId]?.let { reviverId ->
-            reviveSessionsByReviver[reviverId]?.let { cancelRevive(it, reason) }
-        }
+        reviveSessionsByTarget[targetId]?.reviverIds?.toList()?.forEach { reviverId -> reviveSessionsByReviver[reviverId]?.let { cancelRevive(it, reason) } }
     }
 
     private fun cancelRevive(session: ReviveSession, reason: String?) {
         reviveSessionsByReviver.remove(session.reviverId)
-        reviveSessionsByTarget.remove(session.targetId)
-        clearReviveProgress(session)
+        val targetSession = reviveSessionsByTarget[session.targetId]
+        val tick = currentServer()?.tickCount ?: targetSession?.lastProgressTick ?: 0
+        if (targetSession != null) {
+            updateReviveProgress(targetSession, tick)
+            targetSession.reviverIds.remove(session.reviverId)
+            if (targetSession.reviverIds.isEmpty()) {
+                reviveSessionsByTarget.remove(session.targetId)
+                clearReviveProgress(session.targetId)
+            } else {
+                player(session.targetId)?.let { target -> syncReviveProgress(target, targetSession) }
+            }
+        }
         player(session.reviverId)?.let { reviver ->
             reviver.setForcedPose(null)
             reviver.setShiftKeyDown(false)
@@ -498,7 +513,7 @@ object ReviveFeature {
             reason?.let { reviver.sendSystemMessage(Component.literal(it).withStyle(ChatFormatting.YELLOW)) }
         }
         reason?.let { message ->
-            player(session.targetId)?.takeIf { it.uuid != session.reviverId }?.sendSystemMessage(Component.literal(message).withStyle(ChatFormatting.YELLOW))
+            if (!reviveSessionsByTarget.containsKey(session.targetId)) player(session.targetId)?.takeIf { it.uuid != session.reviverId }?.sendSystemMessage(Component.literal(message).withStyle(ChatFormatting.YELLOW))
         }
     }
 
@@ -622,32 +637,36 @@ object ReviveFeature {
         ReviveNetwork.syncSelfState(player, active = true, title = incapacitatedTitle(player, state.source), expiresAtMs = expiresAtMillis(player.server, state.expiresAtTick))
     }
 
-    private fun syncReviveProgress(target: ServerPlayer, session: ReviveSession) {
-        ReviveNetwork.syncProgress(target.server, session.reviverId, target.uuid, target.id, target.gameProfile.name, expiresAtMillis(target.server, session.completeAtTick), active = true)
+    private fun syncReviveProgress(target: ServerPlayer, session: ReviveTargetSession) {
+        val completeAtTick = target.server.tickCount + reviveRemainingTicks(session, target.server.tickCount)
+        ReviveNetwork.syncProgress(target.server, session.reviverIds.toList(), reviverNames(target.server, session), target.uuid, target.id, target.gameProfile.name, expiresAtMillis(target.server, completeAtTick), active = true)
     }
 
     private fun syncDummyReviveProgress(server: MinecraftServer, dummy: ArmorStand, session: DummyReviveSession) {
-        ReviveNetwork.syncProgress(server, session.reviverId, dummy.uuid, dummy.id, REVIVE_DUMMY_NAME, expiresAtMillis(server, session.completeAtTick), active = true)
+        val reviver = server.playerList.getPlayer(session.reviverId)
+        ReviveNetwork.syncProgress(server, listOf(session.reviverId), listOfNotNull(reviver?.gameProfile?.name), dummy.uuid, dummy.id, REVIVE_DUMMY_NAME, expiresAtMillis(server, session.completeAtTick), active = true)
     }
 
-    private fun clearReviveProgress(session: ReviveSession) {
+    private fun clearReviveProgress(targetId: UUID) {
         val server = currentServer() ?: return
-        ReviveNetwork.syncProgress(server, session.reviverId, session.targetId, -1, "", 0L, active = false)
+        ReviveNetwork.syncProgress(server, emptyList(), emptyList(), targetId, -1, "", 0L, active = false)
     }
 
     private fun clearDummyReviveProgress(session: DummyReviveSession) {
         val server = currentServer() ?: return
-        ReviveNetwork.syncProgress(server, session.reviverId, session.dummyId, -1, "", 0L, active = false)
+        ReviveNetwork.syncProgress(server, emptyList(), emptyList(), session.dummyId, -1, "", 0L, active = false)
     }
 
     private fun syncActiveReviveProgressTo(receiver: ServerPlayer) {
-        reviveSessionsByReviver.values.forEach { session ->
+        reviveSessionsByTarget.values.forEach { session ->
             val target = receiver.server.playerList.getPlayer(session.targetId) ?: return@forEach
-            ReviveNetwork.syncProgressTo(receiver, session.reviverId, target.uuid, target.id, target.gameProfile.name, expiresAtMillis(receiver.server, session.completeAtTick), active = true)
+            val completeAtTick = receiver.server.tickCount + reviveRemainingTicks(session, receiver.server.tickCount)
+            ReviveNetwork.syncProgressTo(receiver, session.reviverIds.toList(), reviverNames(receiver.server, session), target.uuid, target.id, target.gameProfile.name, expiresAtMillis(receiver.server, completeAtTick), active = true)
         }
         dummySessionsByReviver.values.forEach { session ->
             val dummy = dummyEntity(receiver.server, session.dummyId) ?: return@forEach
-            ReviveNetwork.syncProgressTo(receiver, session.reviverId, dummy.uuid, dummy.id, REVIVE_DUMMY_NAME, expiresAtMillis(receiver.server, session.completeAtTick), active = true)
+            val reviver = receiver.server.playerList.getPlayer(session.reviverId)
+            ReviveNetwork.syncProgressTo(receiver, listOf(session.reviverId), listOfNotNull(reviver?.gameProfile?.name), dummy.uuid, dummy.id, REVIVE_DUMMY_NAME, expiresAtMillis(receiver.server, session.completeAtTick), active = true)
         }
     }
 
@@ -671,6 +690,37 @@ object ReviveFeature {
     private fun maxReviveDistanceSqr(): Double {
         val distance = ReviveConfig.current().maxReviveDistance
         return distance * distance
+    }
+
+    private fun updateReviveProgress(session: ReviveTargetSession, tick: Int) {
+        val elapsed = (tick - session.lastProgressTick).coerceAtLeast(0)
+        if (elapsed > 0 && session.reviverIds.isNotEmpty()) session.progressTicks = (session.progressTicks + elapsed * reviveRate(session.reviverIds.size)).coerceAtMost(session.baseTicks.toDouble())
+        session.lastProgressTick = tick
+    }
+
+    private fun reviveRemainingTicks(session: ReviveTargetSession, tick: Int): Int {
+        if (session.reviverIds.isEmpty()) return 0
+        val elapsed = (tick - session.lastProgressTick).coerceAtLeast(0)
+        val progress = (session.progressTicks + elapsed * reviveRate(session.reviverIds.size)).coerceAtMost(session.baseTicks.toDouble())
+        return ceil((session.baseTicks - progress).coerceAtLeast(0.0) / reviveRate(session.reviverIds.size)).toInt()
+    }
+
+    private fun reviveRate(reviverCount: Int): Double {
+        var rate = 1.0
+        repeat((reviverCount - 1).coerceAtLeast(0)) { rate *= 2.0 }
+        return rate
+    }
+
+    private fun ReviveTargetSession.isComplete(): Boolean = progressTicks >= baseTicks
+
+    private fun reviverNames(server: MinecraftServer, session: ReviveTargetSession): List<String> =
+        session.reviverIds.mapNotNull { reviverId -> server.playerList.getPlayer(reviverId)?.gameProfile?.name }
+
+    private fun formatReviverNames(names: List<String>): String = when (names.size) {
+        0 -> "someone"
+        1 -> names.first()
+        2 -> names.joinToString(" and ")
+        else -> names.dropLast(1).joinToString(", ") + ", and " + names.last()
     }
 
     private fun hasActiveRevive(playerId: UUID): Boolean = reviveSessionsByReviver.containsKey(playerId) || dummySessionsByReviver.containsKey(playerId)
@@ -723,10 +773,20 @@ object ReviveFeature {
     private data class ReviveSession(
         val reviverId: UUID,
         val targetId: UUID,
-        val startedTick: Int,
-        val completeAtTick: Int,
         val anchor: PlayerAnchor,
         val debugSelfRevive: Boolean,
+    )
+
+    private data class ReviveTargetSession(
+        val targetId: UUID,
+        val targetName: String,
+        val targetEntityId: Int,
+        val startedTick: Int,
+        val baseTicks: Int,
+        var lastProgressTick: Int,
+        val debugSelfRevive: Boolean,
+        var progressTicks: Double = 0.0,
+        val reviverIds: MutableSet<UUID> = linkedSetOf(),
     )
 
     private data class DummyReviveSession(

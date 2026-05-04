@@ -10,6 +10,7 @@ Revive turns lethal player damage into an incapacitated state.
 - The incapacitated player sees a faint full red world overlay with the cause title and revive countdown while normal HUD and chat remain usable.
 - Another player right-clicks the incapacitated player to start reviving.
 - The reviver is crouch/action locked for `revive_seconds`.
+- Additional revivers can help the same target; each extra reviver doubles revive speed, halving the remaining revive time again.
 - Active revives render `REVIVING X.XX SECONDS` above the reviver hotbar for real targets and debug dummies.
 - Right-clicking again cancels the revive.
 - If the revive completes, the target returns to normal at configured minimum health and food.
@@ -20,6 +21,8 @@ Revive turns lethal player damage into an incapacitated state.
 
 - Title format: `YOU GOT KILLED BY <CAUSE>` when a cause entity/source is known, otherwise `YOU GOT KILLED`.
 - Countdown line: `REVIVE WINDOW CLOSES IN <seconds> SECONDS`.
+- While another player is reviving the target, the countdown line becomes `YOU'LL BE REVIVED IN <seconds> SECONDS`.
+- After revive completes, the same line briefly shows `YOU'VE BEEN REVIVED BY` with the reviver avatar heads.
 - Revive UI text uses white CKDM bold styling.
 - The red overlay fades in under vanilla HUD layers, so it does not tint the HUD.
 - The kill title starts oversized, fades in, scales back quickly, then briefly shakes.
@@ -100,5 +103,6 @@ Normal multiplayer testing:
 
 1. Down one player through damage.
 2. Have another player right-click them.
-3. Right-click again before the timer ends to verify cancel.
-4. Repeat and wait for completion to verify revive.
+3. Have more players right-click the same target to verify each helper halves the remaining revive time again.
+4. Right-click again before the timer ends to verify cancel.
+5. Repeat and wait for completion to verify revive and the revived-by avatar line.

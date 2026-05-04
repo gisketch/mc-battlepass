@@ -5,6 +5,7 @@ import dev.gisketch.chowkingdom.ChowKingdomMod
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.Font
 import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.components.PlayerFaceRenderer
 import net.minecraft.client.gui.screens.ChatScreen
 import net.minecraft.client.resources.sounds.SimpleSoundInstance
 import net.minecraft.network.chat.Component
@@ -19,6 +20,7 @@ import net.neoforged.neoforge.client.gui.VanillaGuiLayers
 import net.neoforged.neoforge.common.NeoForge
 import org.lwjgl.glfw.GLFW
 import java.util.Locale
+import java.util.UUID
 import kotlin.math.ceil
 import kotlin.math.sin
 
@@ -94,7 +96,8 @@ object ReviveClient {
         val width = minecraft.window.guiScaledWidth
         val height = minecraft.window.guiScaledHeight
         renderReviveProgressHud(guiGraphics, minecraft, player.uuid, width, height)
-        ReviveClientState.selfState()?.let { state -> renderIncapacitatedHud(guiGraphics, minecraft, state, width, height) }
+        ReviveClientState.selfState()?.let { state -> renderIncapacitatedHud(guiGraphics, minecraft, player.uuid, state, width, height) }
+        if (ReviveClientState.selfState() == null) ReviveClientState.completeNotice()?.let { notice -> renderRevivedNotice(guiGraphics, minecraft, notice, width, height) }
     }
 
     private fun renderReviveProgressHud(guiGraphics: GuiGraphics, minecraft: Minecraft, playerId: java.util.UUID, width: Int, height: Int) {
@@ -109,14 +112,14 @@ object ReviveClient {
         drawCenteredSegments(guiGraphics, minecraft.font, segments, width, y)
     }
 
-    private fun renderIncapacitatedHud(guiGraphics: GuiGraphics, minecraft: Minecraft, state: SelfReviveState, width: Int, height: Int) {
+    private fun renderIncapacitatedHud(guiGraphics: GuiGraphics, minecraft: Minecraft, playerId: UUID, state: SelfReviveState, width: Int, height: Int) {
         val elapsed = elapsedMs()
         val shake = shakeOffset(elapsed)
         val pose = guiGraphics.pose()
         pose.pushPose()
         pose.translate(shake.x, shake.y, 0.0f)
         renderTitle(guiGraphics, minecraft.font, state, width, height, elapsed)
-        renderCountdownLine(guiGraphics, minecraft.font, state, width, height, elapsed)
+        renderCountdownLine(guiGraphics, minecraft.font, playerId, state, width, height, elapsed)
         renderGiveUpButton(guiGraphics, minecraft, width, height)
         pose.popPose()
     }
@@ -138,12 +141,37 @@ object ReviveClient {
         pose.popPose()
     }
 
-    private fun renderCountdownLine(guiGraphics: GuiGraphics, font: Font, state: SelfReviveState, width: Int, height: Int, elapsed: Long) {
-        val seconds = ceil(((state.expiresAtMs - System.currentTimeMillis()).coerceAtLeast(0L)) / 1000.0).toInt()
+    private fun renderCountdownLine(guiGraphics: GuiGraphics, font: Font, playerId: UUID, state: SelfReviveState, width: Int, height: Int, elapsed: Long) {
+        val reviveProgress = ReviveClientState.progressForTarget(playerId)
+        val seconds = ceil((((reviveProgress?.expiresAtMs ?: state.expiresAtMs) - System.currentTimeMillis()).coerceAtLeast(0L)) / 1000.0).toInt()
         val alpha = easeOutCubic(progress(elapsed, COUNTDOWN_DELAY_MS, STAGGER_FADE_MS))
         val slide = ((1.0f - alpha) * STAGGER_SLIDE).toInt()
         val y = (height - HOTBAR_COUNTDOWN_TEXT_OFFSET + slide).coerceAtLeast(8)
-        drawCenteredSegments(guiGraphics, font, countdownSegments(font, seconds, width - TITLE_MARGIN * 2, alpha), width, y)
+        val segments = if (reviveProgress == null) countdownSegments(font, seconds, width - TITLE_MARGIN * 2, alpha) else revivedSoonSegments(font, seconds, width - TITLE_MARGIN * 2, alpha)
+        drawCenteredSegments(guiGraphics, font, segments, width, y)
+    }
+
+    private fun renderRevivedNotice(guiGraphics: GuiGraphics, minecraft: Minecraft, notice: ReviveCompleteNotice, width: Int, height: Int) {
+        val now = System.currentTimeMillis()
+        val fadeIn = easeOutCubic(((now - notice.startedAtMs).toFloat() / COMPLETE_NOTICE_FADE_MS).coerceIn(0.0f, 1.0f))
+        val fadeOut = (((notice.expiresAtMs - now).toFloat() / COMPLETE_NOTICE_FADE_MS).coerceIn(0.0f, 1.0f))
+        val alpha = fadeIn.coerceAtMost(fadeOut)
+        val label = ckdmText("YOU'VE BEEN REVIVED BY", CKDM_BOLD_FONT)
+        val names = notice.reviverNames.joinToString(", ").takeIf { it.isNotBlank() }
+        val fallback = if (notice.reviverIds.isEmpty() && names != null) ckdmText(" $names", CKDM_BOLD_FONT) else null
+        val headCount = notice.reviverIds.size
+        val headsWidth = if (headCount == 0) 0 else headCount * REVIVED_HEAD_SIZE + (headCount - 1) * REVIVED_HEAD_GAP
+        val fallbackWidth = fallback?.let { minecraft.font.width(it) } ?: 0
+        val contentWidth = minecraft.font.width(label) + if (headCount > 0) REVIVED_HEAD_TEXT_GAP + headsWidth else fallbackWidth
+        var x = (width - contentWidth) / 2
+        val y = (height - HOTBAR_COUNTDOWN_TEXT_OFFSET).coerceAtLeast(8)
+        drawCkdmShadowed(guiGraphics, minecraft.font, label, x, y, colorWithAlpha(CKDM_WHITE, alpha), colorWithAlpha(CKDM_DARK_SHADOW, alpha), CKDM_SHADOW_OFFSET)
+        x += minecraft.font.width(label)
+        if (headCount > 0) {
+            drawReviverHeads(guiGraphics, minecraft, notice, x + REVIVED_HEAD_TEXT_GAP, y - 3, alpha)
+        } else if (fallback != null) {
+            drawCkdmShadowed(guiGraphics, minecraft.font, fallback, x, y, colorWithAlpha(CKDM_GOLD, alpha), colorWithAlpha(CKDM_GOLD_SHADOW, alpha), CKDM_SHADOW_OFFSET)
+        }
     }
 
     private fun renderGiveUpButton(guiGraphics: GuiGraphics, minecraft: Minecraft, width: Int, height: Int) {
@@ -212,6 +240,36 @@ object ReviveClient {
             TextSegment(ckdmText(seconds.toString(), CKDM_BOLD_FONT), colorWithAlpha(CKDM_GOLD, alpha), colorWithAlpha(CKDM_GOLD_SHADOW, alpha)),
             TextSegment(ckdmText(suffix, CKDM_BOLD_FONT), colorWithAlpha(CKDM_WHITE, alpha), colorWithAlpha(CKDM_DARK_SHADOW, alpha)),
         )
+    }
+
+    private fun revivedSoonSegments(font: Font, seconds: Int, maxWidth: Int, alpha: Float): List<TextSegment> {
+        val prefix = "YOU'LL BE REVIVED IN "
+        val suffix = " SECONDS"
+        if (font.width(ckdmText(prefix + seconds + suffix, CKDM_BOLD_FONT)) > maxWidth) {
+            return listOf(TextSegment(ckdmText("$seconds SECONDS", CKDM_BOLD_FONT), colorWithAlpha(CKDM_GOLD, alpha), colorWithAlpha(CKDM_GOLD_SHADOW, alpha)))
+        }
+        return listOf(
+            TextSegment(ckdmText(prefix, CKDM_BOLD_FONT), colorWithAlpha(CKDM_WHITE, alpha), colorWithAlpha(CKDM_DARK_SHADOW, alpha)),
+            TextSegment(ckdmText(seconds.toString(), CKDM_BOLD_FONT), colorWithAlpha(CKDM_GOLD, alpha), colorWithAlpha(CKDM_GOLD_SHADOW, alpha)),
+            TextSegment(ckdmText(suffix, CKDM_BOLD_FONT), colorWithAlpha(CKDM_WHITE, alpha), colorWithAlpha(CKDM_DARK_SHADOW, alpha)),
+        )
+    }
+
+    private fun drawReviverHeads(guiGraphics: GuiGraphics, minecraft: Minecraft, notice: ReviveCompleteNotice, x: Int, y: Int, alpha: Float) {
+        val connection = minecraft.connection
+        notice.reviverIds.forEachIndexed { index, reviverId ->
+            val headX = x + index * (REVIVED_HEAD_SIZE + REVIVED_HEAD_GAP)
+            val skin = connection?.getPlayerInfo(reviverId)?.skin
+            if (skin != null) {
+                guiGraphics.setColor(1.0f, 1.0f, 1.0f, alpha)
+                PlayerFaceRenderer.draw(guiGraphics, skin, headX, y, REVIVED_HEAD_SIZE)
+                guiGraphics.setColor(1.0f, 1.0f, 1.0f, 1.0f)
+            } else {
+                guiGraphics.fill(headX, y, headX + REVIVED_HEAD_SIZE, y + REVIVED_HEAD_SIZE, colorWithAlpha(REVIVED_HEAD_FALLBACK_FILL, alpha))
+                val name = notice.reviverNames.getOrNull(index).orEmpty()
+                if (name.isNotBlank()) guiGraphics.drawString(minecraft.font, name.take(1).uppercase(Locale.ROOT), headX + 4, y + 3, colorWithAlpha(CKDM_WHITE, alpha), false)
+            }
+        }
     }
 
     internal fun colorWithAlpha(color: Int, alphaFactor: Float): Int {
@@ -332,6 +390,11 @@ object ReviveClient {
     private const val STAGGER_SLIDE = 8
     private const val HOTBAR_COUNTDOWN_TEXT_OFFSET = 78
     private const val HOTBAR_REVIVE_TEXT_OFFSET = 62
+    private const val COMPLETE_NOTICE_FADE_MS = 250L
+    private const val REVIVED_HEAD_SIZE = 14
+    private const val REVIVED_HEAD_GAP = 3
+    private const val REVIVED_HEAD_TEXT_GAP = 8
+    private const val REVIVED_HEAD_FALLBACK_FILL = 0xAA3C1E1E.toInt()
     private const val GIVE_UP_BUTTON_WIDTH = 128
     private const val GIVE_UP_BUTTON_HEIGHT = 24
     private const val GIVE_UP_BUTTON_BOTTOM = 28

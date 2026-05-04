@@ -15,6 +15,7 @@ import java.util.UUID
 
 private const val MAX_REVIVE_TEXT_LENGTH = 160
 private const val MAX_REVIVE_NAME_LENGTH = 64
+private const val MAX_REVIVER_COUNT = 16
 
 object ReviveNetwork {
     fun register(modBus: IEventBus) {
@@ -25,13 +26,17 @@ object ReviveNetwork {
         PacketDistributor.sendToPlayer(player, ReviveSelfStatePayload(active, title.take(MAX_REVIVE_TEXT_LENGTH), expiresAtMs))
     }
 
-    fun syncProgress(server: MinecraftServer, reviverId: UUID, targetId: UUID, targetEntityId: Int, targetName: String, expiresAtMs: Long, active: Boolean) {
-        val payload = ReviveProgressPayload(reviverId, targetId, targetEntityId, targetName.take(MAX_REVIVE_NAME_LENGTH), expiresAtMs, active)
+    fun syncProgress(server: MinecraftServer, reviverIds: List<UUID>, reviverNames: List<String>, targetId: UUID, targetEntityId: Int, targetName: String, expiresAtMs: Long, active: Boolean) {
+        val payload = ReviveProgressPayload(reviverIds.take(MAX_REVIVER_COUNT), reviverNames.take(MAX_REVIVER_COUNT).map { it.take(MAX_REVIVE_NAME_LENGTH) }, targetId, targetEntityId, targetName.take(MAX_REVIVE_NAME_LENGTH), expiresAtMs, active)
         server.playerList.players.forEach { player -> PacketDistributor.sendToPlayer(player, payload) }
     }
 
-    fun syncProgressTo(player: ServerPlayer, reviverId: UUID, targetId: UUID, targetEntityId: Int, targetName: String, expiresAtMs: Long, active: Boolean) {
-        PacketDistributor.sendToPlayer(player, ReviveProgressPayload(reviverId, targetId, targetEntityId, targetName.take(MAX_REVIVE_NAME_LENGTH), expiresAtMs, active))
+    fun syncProgressTo(player: ServerPlayer, reviverIds: List<UUID>, reviverNames: List<String>, targetId: UUID, targetEntityId: Int, targetName: String, expiresAtMs: Long, active: Boolean) {
+        PacketDistributor.sendToPlayer(player, ReviveProgressPayload(reviverIds.take(MAX_REVIVER_COUNT), reviverNames.take(MAX_REVIVER_COUNT).map { it.take(MAX_REVIVE_NAME_LENGTH) }, targetId, targetEntityId, targetName.take(MAX_REVIVE_NAME_LENGTH), expiresAtMs, active))
+    }
+
+    fun syncComplete(player: ServerPlayer, reviverIds: List<UUID>, reviverNames: List<String>) {
+        PacketDistributor.sendToPlayer(player, ReviveCompletePayload(reviverIds.take(MAX_REVIVER_COUNT), reviverNames.take(MAX_REVIVER_COUNT).map { it.take(MAX_REVIVE_NAME_LENGTH) }))
     }
 
     fun sendGiveUp() {
@@ -42,6 +47,7 @@ object ReviveNetwork {
         val registrar = event.registrar("1")
         registrar.playToClient(ReviveSelfStatePayload.TYPE, ReviveSelfStatePayload.STREAM_CODEC, ::handleSelfState)
         registrar.playToClient(ReviveProgressPayload.TYPE, ReviveProgressPayload.STREAM_CODEC, ::handleProgress)
+        registrar.playToClient(ReviveCompletePayload.TYPE, ReviveCompletePayload.STREAM_CODEC, ::handleComplete)
         registrar.playToServer(ReviveGiveUpPayload.TYPE, ReviveGiveUpPayload.STREAM_CODEC, ::handleGiveUp)
     }
 
@@ -51,6 +57,10 @@ object ReviveNetwork {
 
     private fun handleProgress(payload: ReviveProgressPayload, context: IPayloadContext) {
         ReviveClientState.applyProgress(payload)
+    }
+
+    private fun handleComplete(payload: ReviveCompletePayload, context: IPayloadContext) {
+        ReviveClientState.applyComplete(payload)
     }
 
     private fun handleGiveUp(payload: ReviveGiveUpPayload, context: IPayloadContext) {
@@ -77,22 +87,40 @@ data class ReviveSelfStatePayload(val active: Boolean, val title: String, val ex
     }
 }
 
-data class ReviveProgressPayload(val reviverId: UUID, val targetId: UUID, val targetEntityId: Int, val targetName: String, val expiresAtMs: Long, val active: Boolean) : CustomPacketPayload {
+data class ReviveProgressPayload(val reviverIds: List<UUID>, val reviverNames: List<String>, val targetId: UUID, val targetEntityId: Int, val targetName: String, val expiresAtMs: Long, val active: Boolean) : CustomPacketPayload {
     override fun type(): CustomPacketPayload.Type<ReviveProgressPayload> = TYPE
 
     companion object {
         val TYPE: CustomPacketPayload.Type<ReviveProgressPayload> = CustomPacketPayload.Type(ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "revive/progress"))
         val STREAM_CODEC: StreamCodec<RegistryFriendlyByteBuf, ReviveProgressPayload> = object : StreamCodec<RegistryFriendlyByteBuf, ReviveProgressPayload> {
             override fun decode(buffer: RegistryFriendlyByteBuf): ReviveProgressPayload =
-                ReviveProgressPayload(buffer.readUUID(), buffer.readUUID(), buffer.readVarInt(), buffer.readUtf(MAX_REVIVE_NAME_LENGTH), buffer.readVarLong(), buffer.readBoolean())
+                ReviveProgressPayload(readUuidList(buffer), readStringList(buffer), buffer.readUUID(), buffer.readVarInt(), buffer.readUtf(MAX_REVIVE_NAME_LENGTH), buffer.readVarLong(), buffer.readBoolean())
 
             override fun encode(buffer: RegistryFriendlyByteBuf, value: ReviveProgressPayload) {
-                buffer.writeUUID(value.reviverId)
+                writeUuidList(buffer, value.reviverIds)
+                writeStringList(buffer, value.reviverNames)
                 buffer.writeUUID(value.targetId)
                 buffer.writeVarInt(value.targetEntityId)
                 buffer.writeUtf(value.targetName.take(MAX_REVIVE_NAME_LENGTH), MAX_REVIVE_NAME_LENGTH)
                 buffer.writeVarLong(value.expiresAtMs)
                 buffer.writeBoolean(value.active)
+            }
+        }
+    }
+}
+
+data class ReviveCompletePayload(val reviverIds: List<UUID>, val reviverNames: List<String>) : CustomPacketPayload {
+    override fun type(): CustomPacketPayload.Type<ReviveCompletePayload> = TYPE
+
+    companion object {
+        val TYPE: CustomPacketPayload.Type<ReviveCompletePayload> = CustomPacketPayload.Type(ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "revive/complete"))
+        val STREAM_CODEC: StreamCodec<RegistryFriendlyByteBuf, ReviveCompletePayload> = object : StreamCodec<RegistryFriendlyByteBuf, ReviveCompletePayload> {
+            override fun decode(buffer: RegistryFriendlyByteBuf): ReviveCompletePayload =
+                ReviveCompletePayload(readUuidList(buffer), readStringList(buffer))
+
+            override fun encode(buffer: RegistryFriendlyByteBuf, value: ReviveCompletePayload) {
+                writeUuidList(buffer, value.reviverIds)
+                writeStringList(buffer, value.reviverNames)
             }
         }
     }
@@ -107,4 +135,22 @@ object ReviveGiveUpPayload : CustomPacketPayload {
 
         override fun encode(buffer: RegistryFriendlyByteBuf, value: ReviveGiveUpPayload) = Unit
     }
+}
+
+private fun readUuidList(buffer: RegistryFriendlyByteBuf): List<UUID> =
+    List(buffer.readVarInt().coerceIn(0, MAX_REVIVER_COUNT)) { buffer.readUUID() }
+
+private fun writeUuidList(buffer: RegistryFriendlyByteBuf, values: List<UUID>) {
+    val limited = values.take(MAX_REVIVER_COUNT)
+    buffer.writeVarInt(limited.size)
+    limited.forEach(buffer::writeUUID)
+}
+
+private fun readStringList(buffer: RegistryFriendlyByteBuf): List<String> =
+    List(buffer.readVarInt().coerceIn(0, MAX_REVIVER_COUNT)) { buffer.readUtf(MAX_REVIVE_NAME_LENGTH) }
+
+private fun writeStringList(buffer: RegistryFriendlyByteBuf, values: List<String>) {
+    val limited = values.take(MAX_REVIVER_COUNT)
+    buffer.writeVarInt(limited.size)
+    limited.forEach { value -> buffer.writeUtf(value.take(MAX_REVIVE_NAME_LENGTH), MAX_REVIVE_NAME_LENGTH) }
 }
