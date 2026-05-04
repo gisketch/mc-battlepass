@@ -171,12 +171,14 @@ object ReviveFeature {
     fun status(player: ServerPlayer): Component {
         val state = incapacitated[player.uuid]
         val count = ReviveStore.incapacitatedCount(player.uuid)
+        val revivedCount = ReviveStore.revivedCount(player.uuid)
+        val revivedOthersCount = ReviveStore.revivedOthersCount(player.uuid)
         val lastCause = ReviveStore.lastCause(player.uuid).ifBlank { "none" }
         return if (state == null) {
-            Component.literal("${player.gameProfile.name}: normal, incapacitated_count=$count, last_cause=$lastCause")
+            Component.literal("${player.gameProfile.name}: normal, incapacitated_count=$count, revived_count=$revivedCount, revived_others_count=$revivedOthersCount, last_cause=$lastCause")
         } else {
             val remaining = ((state.expiresAtTick - player.server.tickCount).coerceAtLeast(0) + TICKS_PER_SECOND - 1) / TICKS_PER_SECOND
-            Component.literal("${player.gameProfile.name}: incapacitated, ${remaining}s left, incapacitated_count=$count, cause=${state.causeText}")
+            Component.literal("${player.gameProfile.name}: incapacitated, ${remaining}s left, incapacitated_count=$count, revived_count=$revivedCount, revived_others_count=$revivedOthersCount, cause=${state.causeText}")
         }
     }
 
@@ -486,6 +488,7 @@ object ReviveFeature {
         target.removeEffect(MobEffects.MOVEMENT_SLOWDOWN)
         target.removeEffect(MobEffects.DIG_SLOWDOWN)
         target.playNotifySound(SoundEvents.PLAYER_LEVELUP, SoundSource.PLAYERS, 0.7f, 1.4f)
+        ReviveStore.recordRevived(target, reviverIds.mapNotNull { target.server.playerList.getPlayer(it) })
         ReviveNetwork.syncComplete(target, reviverIds, reviverNames)
         target.server.playerList.broadcastSystemMessage(
             ChatGlyphs.chowKingdomPrefix()

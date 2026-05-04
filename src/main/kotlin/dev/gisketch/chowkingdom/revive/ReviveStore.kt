@@ -40,9 +40,14 @@ object ReviveStore {
                 val data = file.bufferedReader().use { reader -> gson.fromJson(reader, StoredReviveData::class.java) }
                 data?.players?.forEach { (playerId, stats) ->
                     players[playerId] = StoredRevivePlayer(
+                        name = stats.name.orEmpty(),
                         incapacitatedCount = stats.incapacitatedCount.coerceAtLeast(0),
+                        revivedCount = stats.revivedCount.coerceAtLeast(0),
+                        revivedOthersCount = stats.revivedOthersCount.coerceAtLeast(0),
                         lastCause = stats.lastCause.orEmpty(),
                         lastIncapacitatedAt = stats.lastIncapacitatedAt.orEmpty(),
+                        revivedBy = sanitizeCounts(stats.revivedBy),
+                        revivedPlayers = sanitizeCounts(stats.revivedPlayers),
                     )
                 }
             } catch (exception: Exception) {
@@ -54,14 +59,30 @@ object ReviveStore {
 
     fun recordIncapacitated(player: ServerPlayer, cause: String): Int {
         if (!loaded) load()
-        val key = player.stringUUID
-        val stats = players[key] ?: StoredRevivePlayer()
+        val stats = statsFor(player)
+        stats.name = player.gameProfile.name
         stats.incapacitatedCount = (stats.incapacitatedCount + 1).coerceAtLeast(0)
         stats.lastCause = cause
         stats.lastIncapacitatedAt = Instant.now().toString()
-        players[key] = stats
         save()
         return stats.incapacitatedCount
+    }
+
+    fun recordRevived(target: ServerPlayer, revivers: List<ServerPlayer>) {
+        if (!loaded) load()
+        val targetStats = statsFor(target)
+        targetStats.name = target.gameProfile.name
+        targetStats.revivedCount = (targetStats.revivedCount + 1).coerceAtLeast(0)
+
+        revivers.distinctBy { it.uuid }.filter { it.uuid != target.uuid }.forEach { reviver ->
+            targetStats.revivedByMap().increment(reviver.stringUUID)
+            val reviverStats = statsFor(reviver)
+            reviverStats.name = reviver.gameProfile.name
+            reviverStats.revivedOthersCount = (reviverStats.revivedOthersCount + 1).coerceAtLeast(0)
+            reviverStats.revivedPlayersMap().increment(target.stringUUID)
+        }
+
+        save()
     }
 
     fun incapacitatedCount(playerId: UUID): Int {
@@ -73,6 +94,32 @@ object ReviveStore {
         if (!loaded) load()
         return players[playerId.toString()]?.lastCause.orEmpty()
     }
+
+    fun revivedCount(playerId: UUID): Int {
+        if (!loaded) load()
+        return players[playerId.toString()]?.revivedCount ?: 0
+    }
+
+    fun revivedOthersCount(playerId: UUID): Int {
+        if (!loaded) load()
+        return players[playerId.toString()]?.revivedOthersCount ?: 0
+    }
+
+    private fun statsFor(player: ServerPlayer): StoredRevivePlayer = players.getOrPut(player.stringUUID) { StoredRevivePlayer() }
+
+    private fun MutableMap<String, Int>.increment(key: String) {
+        this[key] = ((this[key] ?: 0) + 1).coerceAtLeast(0)
+    }
+
+    private fun StoredRevivePlayer.revivedByMap(): MutableMap<String, Int> = revivedBy ?: linkedMapOf<String, Int>().also { revivedBy = it }
+
+    private fun StoredRevivePlayer.revivedPlayersMap(): MutableMap<String, Int> = revivedPlayers ?: linkedMapOf<String, Int>().also { revivedPlayers = it }
+
+    private fun sanitizeCounts(values: Map<String, Int>?): MutableMap<String, Int> = values
+        ?.mapValues { (_, count) -> count.coerceAtLeast(0) }
+        ?.filterValues { count -> count > 0 }
+        ?.toMap(linkedMapOf())
+        ?: linkedMapOf()
 
     private fun save() {
         file.parent.createDirectories()
@@ -87,8 +134,13 @@ object ReviveStore {
     )
 
     private class StoredRevivePlayer(
+        @SerializedName("name") var name: String? = "",
         @SerializedName("incapacitated_count") var incapacitatedCount: Int = 0,
+        @SerializedName("revived_count") var revivedCount: Int = 0,
+        @SerializedName("revived_others_count") var revivedOthersCount: Int = 0,
         @SerializedName("last_cause") var lastCause: String = "",
         @SerializedName("last_incapacitated_at") var lastIncapacitatedAt: String = "",
+        @SerializedName("revived_by") var revivedBy: MutableMap<String, Int>? = linkedMapOf(),
+        @SerializedName("revived_players") var revivedPlayers: MutableMap<String, Int>? = linkedMapOf(),
     )
 }

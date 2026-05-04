@@ -67,9 +67,14 @@ Path:
 
 The store records:
 
+- `name`
 - `incapacitated_count`
+- `revived_count`
+- `revived_others_count`
 - `last_cause`
 - `last_incapacitated_at`
+- `revived_by`: map of reviver player UUID to successful revive count for this player
+- `revived_players`: map of target player UUID to successful revive count by this player
 
 ## Commands
 
