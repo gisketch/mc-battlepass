@@ -125,6 +125,35 @@ object ReviveFeature {
         return true
     }
 
+    fun recover(player: ServerPlayer): Boolean {
+        incapacitated.remove(player.uuid)?.let { clearIncapacitatedVisual(player, it) }
+        cancelReviveForTarget(player.uuid, null)
+        cancelActiveRevive(player.uuid, "Revive recovery cleared your active revive.")
+        finishingDeaths.remove(player.uuid)
+        pendingDebugRevivers.removeIf { it.targetId == player.uuid }
+        player.deathTime = 0
+        player.setForcedPose(null)
+        player.setSwimming(false)
+        player.pose = Pose.STANDING
+        player.refreshDimensions()
+        player.setShiftKeyDown(false)
+        player.isSprinting = false
+        player.fallDistance = 0.0f
+        player.setDeltaMovement(0.0, 0.0, 0.0)
+        player.removeEffect(MobEffects.MOVEMENT_SLOWDOWN)
+        player.removeEffect(MobEffects.DIG_SLOWDOWN)
+        player.removeAllEffects()
+        player.health = player.maxHealth.coerceAtLeast(1.0f)
+        player.foodData.setFoodLevel(20)
+        player.foodData.setSaturation(5.0f)
+        player.foodData.setExhaustion(0.0f)
+        player.remainingFireTicks = 0
+        player.setTicksFrozen(0)
+        ReviveNetwork.syncSelfState(player, active = false)
+        clearReviveProgress(player.uuid)
+        return true
+    }
+
     fun spawnDebugDummy(player: ServerPlayer): UUID {
         val level = player.level() as ServerLevel
         val look = player.lookAngle
@@ -605,6 +634,7 @@ object ReviveFeature {
 
     private fun restoreMinimumVitals(player: ServerPlayer) {
         val config = ReviveConfig.current()
+        player.deathTime = 0
         player.health = config.revivedHealth.coerceAtMost(player.maxHealth).coerceAtLeast(1.0f)
         player.foodData.setFoodLevel(config.revivedFoodLevel)
         player.foodData.setSaturation(0.0f)

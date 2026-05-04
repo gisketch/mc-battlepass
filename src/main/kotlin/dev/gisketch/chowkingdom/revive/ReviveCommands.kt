@@ -21,6 +21,11 @@ object ReviveCommands {
         .requires { source -> source.hasPermission(2) }
         .then(Commands.literal("reload").executes(::reload))
         .then(
+            Commands.literal("recover")
+                .executes(::recoverSelf)
+                .then(Commands.argument("player", EntityArgument.player()).executes(::recover)),
+        )
+        .then(
             Commands.literal("status")
                 .executes(::statusSelf)
                 .then(Commands.argument("player", EntityArgument.player()).executes(::status)),
@@ -72,6 +77,18 @@ object ReviveCommands {
             context.source.sendFailure(Component.literal("${target.gameProfile.name} is not incapacitated."))
             0
         }
+    }
+
+    private fun recoverSelf(context: CommandContext<CommandSourceStack>): Int =
+        recover(context.source.playerOrException, context.source)
+
+    private fun recover(context: CommandContext<CommandSourceStack>): Int =
+        recover(EntityArgument.getPlayer(context, "player"), context.source)
+
+    private fun recover(target: ServerPlayer, source: CommandSourceStack): Int {
+        ReviveFeature.recover(target)
+        source.sendSuccess({ Component.literal("Recovered ${target.gameProfile.name}: cleared revive state, reset pose, and healed.").withStyle(ChatFormatting.GREEN) }, true)
+        return 1
     }
 
     private fun statusSelf(context: CommandContext<CommandSourceStack>): Int {
