@@ -247,8 +247,10 @@ object ReviveFeature {
 
     private fun handlePlayerEntityInteract(player: ServerPlayer, target: Entity?, hand: InteractionHand, cancel: () -> Unit) {
         if (player.level().isClientSide || hand != InteractionHand.MAIN_HAND) return
+        if (target == null) return
         if (hasActiveRevive(player.uuid)) {
             cancel()
+            if (isDuplicateReviveInteract(player, target)) return
             cancelActiveRevive(player.uuid, "Revive cancelled.")
             return
         }
@@ -256,7 +258,6 @@ object ReviveFeature {
             cancel()
             return
         }
-        if (target == null) return
         val dummy = target as? ArmorStand
         if (dummy != null && isReviveDummy(dummy)) {
             cancel()
@@ -446,7 +447,7 @@ object ReviveFeature {
         updateReviveProgress(targetSession, tick)
         targetSession.reviverIds += reviver.uuid
         targetSession.reviverNamesById[reviver.uuid] = reviver.gameProfile.name
-        val session = ReviveSession(reviver.uuid, target.uuid, PlayerAnchor(reviver.x, reviver.y, reviver.z), debugSelfRevive)
+        val session = ReviveSession(reviver.uuid, target.uuid, PlayerAnchor(reviver.x, reviver.y, reviver.z), tick, debugSelfRevive)
         reviveSessionsByReviver[reviver.uuid] = session
         reviver.closeContainer()
         reviver.stopUsingItem()
@@ -836,6 +837,17 @@ object ReviveFeature {
 
     private fun isActionBlocked(playerId: UUID): Boolean = isIncapacitated(playerId) || isActionLocked(playerId)
 
+    private fun isDuplicateReviveInteract(player: ServerPlayer, target: Entity): Boolean {
+        val tick = player.server.tickCount
+        reviveSessionsByReviver[player.uuid]?.let { session ->
+            return session.targetId == target.uuid && session.startedTick == tick
+        }
+        dummySessionsByReviver[player.uuid]?.let { session ->
+            return session.dummyId == target.uuid && session.startedTick == tick
+        }
+        return false
+    }
+
     private fun cancelActiveRevive(playerId: UUID, reason: String) {
         reviveSessionsByReviver[playerId]?.let { cancelRevive(it, reason) }
         dummySessionsByReviver[playerId]?.let { cancelDummyRevive(it, reason) }
@@ -883,6 +895,7 @@ object ReviveFeature {
         val reviverId: UUID,
         val targetId: UUID,
         val anchor: PlayerAnchor,
+        val startedTick: Int,
         val debugSelfRevive: Boolean,
     )
 
