@@ -727,17 +727,17 @@ object ReviveFeature {
     }
 
     private fun syncIncapacitatedClient(player: ServerPlayer, state: IncapacitatedPlayer) {
-        ReviveNetwork.syncSelfState(player, active = true, title = incapacitatedTitle(player, state.source), expiresAtMs = expiresAtMillis(player.server, state.expiresAtTick))
+        ReviveNetwork.syncSelfState(player, active = true, title = incapacitatedTitle(player, state.source), remainingMs = remainingMillis(player.server, state.expiresAtTick))
     }
 
     private fun syncReviveProgress(target: ServerPlayer, session: ReviveTargetSession) {
         val completeAtTick = target.server.tickCount + reviveRemainingTicks(session, target.server.tickCount)
-        ReviveNetwork.syncProgress(target.server, session.reviverIds.toList(), reviverNames(target.server, session), target.uuid, target.id, target.gameProfile.name, expiresAtMillis(target.server, completeAtTick), active = true)
+        ReviveNetwork.syncProgress(target.server, session.reviverIds.toList(), reviverNames(target.server, session), target.uuid, target.id, target.gameProfile.name, remainingMillis(target.server, completeAtTick), active = true)
     }
 
     private fun syncDummyReviveProgress(server: MinecraftServer, dummy: ArmorStand, session: DummyReviveSession) {
         val reviver = server.playerList.getPlayer(session.reviverId)
-        ReviveNetwork.syncProgress(server, listOf(session.reviverId), listOfNotNull(reviver?.gameProfile?.name), dummy.uuid, dummy.id, REVIVE_DUMMY_NAME, expiresAtMillis(server, session.completeAtTick), active = true)
+        ReviveNetwork.syncProgress(server, listOf(session.reviverId), listOfNotNull(reviver?.gameProfile?.name), dummy.uuid, dummy.id, REVIVE_DUMMY_NAME, remainingMillis(server, session.completeAtTick), active = true)
     }
 
     private fun clearReviveProgress(targetId: UUID) {
@@ -754,17 +754,17 @@ object ReviveFeature {
         reviveSessionsByTarget.values.forEach { session ->
             val target = receiver.server.playerList.getPlayer(session.targetId) ?: return@forEach
             val completeAtTick = receiver.server.tickCount + reviveRemainingTicks(session, receiver.server.tickCount)
-            ReviveNetwork.syncProgressTo(receiver, session.reviverIds.toList(), reviverNames(receiver.server, session), target.uuid, target.id, target.gameProfile.name, expiresAtMillis(receiver.server, completeAtTick), active = true)
+            ReviveNetwork.syncProgressTo(receiver, session.reviverIds.toList(), reviverNames(receiver.server, session), target.uuid, target.id, target.gameProfile.name, remainingMillis(receiver.server, completeAtTick), active = true)
         }
         dummySessionsByReviver.values.forEach { session ->
             val dummy = dummyEntity(receiver.server, session.dummyId) ?: return@forEach
             val reviver = receiver.server.playerList.getPlayer(session.reviverId)
-            ReviveNetwork.syncProgressTo(receiver, listOf(session.reviverId), listOfNotNull(reviver?.gameProfile?.name), dummy.uuid, dummy.id, REVIVE_DUMMY_NAME, expiresAtMillis(receiver.server, session.completeAtTick), active = true)
+            ReviveNetwork.syncProgressTo(receiver, listOf(session.reviverId), listOfNotNull(reviver?.gameProfile?.name), dummy.uuid, dummy.id, REVIVE_DUMMY_NAME, remainingMillis(receiver.server, session.completeAtTick), active = true)
         }
     }
 
-    private fun expiresAtMillis(server: MinecraftServer, expiresAtTick: Int): Long =
-        System.currentTimeMillis() + (expiresAtTick - server.tickCount).coerceAtLeast(0) * 50L
+    private fun remainingMillis(server: MinecraftServer, expiresAtTick: Int): Long =
+        (expiresAtTick - server.tickCount).coerceAtLeast(0) * 50L
 
     private fun incapacitatedTitle(player: ServerPlayer, source: DamageSource): String {
         val cause = incapacitatedCauseName(player, source)

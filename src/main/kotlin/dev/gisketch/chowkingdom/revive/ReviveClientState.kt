@@ -8,7 +8,7 @@ object ReviveClientState {
     private var completeNotice: ReviveCompleteNotice? = null
 
     fun applySelf(payload: ReviveSelfStatePayload) {
-        selfState = if (payload.active) SelfReviveState(payload.title, payload.expiresAtMs) else null
+        selfState = if (payload.active) SelfReviveState(payload.title, deadlineFromRemaining(payload.remainingMs)) else null
         if (payload.active) completeNotice = null
         ReviveClient.onSelfStateChanged(payload.active)
     }
@@ -17,7 +17,7 @@ object ReviveClientState {
 
     fun applyProgress(payload: ReviveProgressPayload) {
         if (payload.active) {
-            progressByTarget[payload.targetId] = ReviveProgress(payload.reviverIds, payload.reviverNames, payload.targetId, payload.targetEntityId, payload.targetName, payload.expiresAtMs)
+            progressByTarget[payload.targetId] = ReviveProgress(payload.reviverIds, payload.reviverNames, payload.targetId, payload.targetEntityId, payload.targetName, deadlineFromRemaining(payload.remainingMs))
         } else {
             progressByTarget.remove(payload.targetId)
         }
@@ -61,6 +61,9 @@ object ReviveClientState {
         progressByTarget.remove(progress.targetId)
         return null
     }
+
+    private fun deadlineFromRemaining(remainingMs: Long): Long =
+        System.currentTimeMillis() + remainingMs.coerceAtLeast(0L)
 
     private const val EXPIRED_PROGRESS_GRACE_MS = 1500L
     private const val COMPLETE_NOTICE_MS = 5000L

@@ -22,17 +22,17 @@ object ReviveNetwork {
         modBus.addListener(::registerPayloads)
     }
 
-    fun syncSelfState(player: ServerPlayer, active: Boolean, title: String = "", expiresAtMs: Long = 0L) {
-        PacketDistributor.sendToPlayer(player, ReviveSelfStatePayload(active, title.take(MAX_REVIVE_TEXT_LENGTH), expiresAtMs))
+    fun syncSelfState(player: ServerPlayer, active: Boolean, title: String = "", remainingMs: Long = 0L) {
+        PacketDistributor.sendToPlayer(player, ReviveSelfStatePayload(active, title.take(MAX_REVIVE_TEXT_LENGTH), remainingMs))
     }
 
-    fun syncProgress(server: MinecraftServer, reviverIds: List<UUID>, reviverNames: List<String>, targetId: UUID, targetEntityId: Int, targetName: String, expiresAtMs: Long, active: Boolean) {
-        val payload = ReviveProgressPayload(reviverIds.take(MAX_REVIVER_COUNT), reviverNames.take(MAX_REVIVER_COUNT).map { it.take(MAX_REVIVE_NAME_LENGTH) }, targetId, targetEntityId, targetName.take(MAX_REVIVE_NAME_LENGTH), expiresAtMs, active)
+    fun syncProgress(server: MinecraftServer, reviverIds: List<UUID>, reviverNames: List<String>, targetId: UUID, targetEntityId: Int, targetName: String, remainingMs: Long, active: Boolean) {
+        val payload = ReviveProgressPayload(reviverIds.take(MAX_REVIVER_COUNT), reviverNames.take(MAX_REVIVER_COUNT).map { it.take(MAX_REVIVE_NAME_LENGTH) }, targetId, targetEntityId, targetName.take(MAX_REVIVE_NAME_LENGTH), remainingMs, active)
         server.playerList.players.forEach { player -> PacketDistributor.sendToPlayer(player, payload) }
     }
 
-    fun syncProgressTo(player: ServerPlayer, reviverIds: List<UUID>, reviverNames: List<String>, targetId: UUID, targetEntityId: Int, targetName: String, expiresAtMs: Long, active: Boolean) {
-        PacketDistributor.sendToPlayer(player, ReviveProgressPayload(reviverIds.take(MAX_REVIVER_COUNT), reviverNames.take(MAX_REVIVER_COUNT).map { it.take(MAX_REVIVE_NAME_LENGTH) }, targetId, targetEntityId, targetName.take(MAX_REVIVE_NAME_LENGTH), expiresAtMs, active))
+    fun syncProgressTo(player: ServerPlayer, reviverIds: List<UUID>, reviverNames: List<String>, targetId: UUID, targetEntityId: Int, targetName: String, remainingMs: Long, active: Boolean) {
+        PacketDistributor.sendToPlayer(player, ReviveProgressPayload(reviverIds.take(MAX_REVIVER_COUNT), reviverNames.take(MAX_REVIVER_COUNT).map { it.take(MAX_REVIVE_NAME_LENGTH) }, targetId, targetEntityId, targetName.take(MAX_REVIVE_NAME_LENGTH), remainingMs, active))
     }
 
     fun syncComplete(player: ServerPlayer, reviverIds: List<UUID>, reviverNames: List<String>) {
@@ -69,7 +69,7 @@ object ReviveNetwork {
     }
 }
 
-data class ReviveSelfStatePayload(val active: Boolean, val title: String, val expiresAtMs: Long) : CustomPacketPayload {
+data class ReviveSelfStatePayload(val active: Boolean, val title: String, val remainingMs: Long) : CustomPacketPayload {
     override fun type(): CustomPacketPayload.Type<ReviveSelfStatePayload> = TYPE
 
     companion object {
@@ -81,13 +81,13 @@ data class ReviveSelfStatePayload(val active: Boolean, val title: String, val ex
             override fun encode(buffer: RegistryFriendlyByteBuf, value: ReviveSelfStatePayload) {
                 buffer.writeBoolean(value.active)
                 buffer.writeUtf(value.title.take(MAX_REVIVE_TEXT_LENGTH), MAX_REVIVE_TEXT_LENGTH)
-                buffer.writeVarLong(value.expiresAtMs)
+                buffer.writeVarLong(value.remainingMs)
             }
         }
     }
 }
 
-data class ReviveProgressPayload(val reviverIds: List<UUID>, val reviverNames: List<String>, val targetId: UUID, val targetEntityId: Int, val targetName: String, val expiresAtMs: Long, val active: Boolean) : CustomPacketPayload {
+data class ReviveProgressPayload(val reviverIds: List<UUID>, val reviverNames: List<String>, val targetId: UUID, val targetEntityId: Int, val targetName: String, val remainingMs: Long, val active: Boolean) : CustomPacketPayload {
     override fun type(): CustomPacketPayload.Type<ReviveProgressPayload> = TYPE
 
     companion object {
@@ -102,7 +102,7 @@ data class ReviveProgressPayload(val reviverIds: List<UUID>, val reviverNames: L
                 buffer.writeUUID(value.targetId)
                 buffer.writeVarInt(value.targetEntityId)
                 buffer.writeUtf(value.targetName.take(MAX_REVIVE_NAME_LENGTH), MAX_REVIVE_NAME_LENGTH)
-                buffer.writeVarLong(value.expiresAtMs)
+                buffer.writeVarLong(value.remainingMs)
                 buffer.writeBoolean(value.active)
             }
         }

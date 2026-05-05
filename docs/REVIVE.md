@@ -13,6 +13,7 @@ Revive turns lethal player damage into an incapacitated state.
 - The reviver is crouch/action locked for `revive_seconds`.
 - Additional revivers can help the same target; each extra reviver doubles revive speed, halving the remaining revive time again.
 - Active revives render `REVIVING X.XX SECONDS` above the reviver hotbar for real targets and debug dummies.
+- Revive countdown packets send remaining duration, not server wall-clock time, so multiplayer client clock skew does not offset the HUD timer.
 - Right-clicking again cancels the revive.
 - If the revive completes, the target returns to normal at configured minimum health and food.
 - Completing or ending incapacitation clears the red glow.
@@ -35,6 +36,7 @@ Revive turns lethal player damage into an incapacitated state.
 
 - The vanilla death screen is replaced with a CKDM-styled death screen.
 - It uses a dim black blurred background, a large death title/reason, and textured `RESPAWN` and `LEAVE GAME` buttons.
+- Client combat-kill handling seeds a temporary placeholder when no screen is open so screen-event mods do not crash before the CKDM death screen opens.
 
 ## Config
 
