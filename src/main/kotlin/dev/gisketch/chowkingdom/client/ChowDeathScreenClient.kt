@@ -14,7 +14,7 @@ object ChowDeathScreenClient {
     }
 
     private fun onScreenOpening(event: ScreenEvent.Opening) {
-        val deathScreen = event.newScreen as? DeathScreen ?: return
+        val deathScreen = runCatching { event.newScreen }.getOrNull() as? DeathScreen ?: return
         val cause = runCatching { causeField?.get(deathScreen) as? Component }.getOrNull()
         val hardcore = runCatching { hardcoreField?.getBoolean(deathScreen) ?: false }.getOrDefault(false)
         event.newScreen = ChowDeathScreen(cause, hardcore)

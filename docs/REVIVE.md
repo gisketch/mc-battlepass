@@ -17,6 +17,7 @@ Revive turns lethal player damage into an incapacitated state.
 - If the revive completes, the target returns to normal at configured minimum health and food.
 - Completing or ending incapacitation clears the red glow.
 - If `incapacitated_seconds` expires, the player dies from the original damage source with revive-failure context appended to the death message.
+- Final revive-failure death uses bounded finite damage, and the server repairs non-finite player health on tick/login before revive logic continues.
 
 ## Incapacitated UI
 

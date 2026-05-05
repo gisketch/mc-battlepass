@@ -52,6 +52,9 @@ object ReviveFeature {
     private const val LOCK_EFFECT_TICKS = 40
     private const val LOCKED_MOVE_TOLERANCE_SQR = 0.35 * 0.35
     private const val AI_TARGET_CLEAR_RADIUS = 96.0
+    private const val DEFAULT_MAX_HEALTH = 20.0f
+    private const val MAX_LETHAL_HEALTH_INPUT = 1024.0f
+    private const val FINAL_DEATH_EXTRA_DAMAGE = 10000.0f
     private val incapacitated: MutableMap<UUID, IncapacitatedPlayer> = linkedMapOf()
     private val reviveSessionsByReviver: MutableMap<UUID, ReviveSession> = linkedMapOf()
     private val reviveSessionsByTarget: MutableMap<UUID, ReviveTargetSession> = linkedMapOf()
@@ -327,6 +330,7 @@ object ReviveFeature {
     private fun onPlayerTick(event: PlayerTickEvent.Post) {
         val player = event.entity as? ServerPlayer ?: return
         if (player.level().isClientSide) return
+        sanitizePlayerHealth(player)
         incapacitated[player.uuid]?.let { state ->
             stabilizeIncapacitated(player)
         }
@@ -373,6 +377,7 @@ object ReviveFeature {
 
     private fun onPlayerLoggedIn(event: PlayerEvent.PlayerLoggedInEvent) {
         val player = event.entity as? ServerPlayer ?: return
+        sanitizePlayerHealth(player)
         incapacitated[player.uuid]?.let { state ->
             if (player.server.tickCount >= state.expiresAtTick) {
                 failRevive(player, state)
@@ -507,10 +512,13 @@ object ReviveFeature {
         player.refreshDimensions()
         player.setShiftKeyDown(false)
         player.isSprinting = false
+        player.setDeltaMovement(0.0, 0.0, 0.0)
+        sanitizePlayerHealth(player)
         finishingDeaths += player.uuid
         player.health = 1.0f
         val deathSource = FailedReviveDamageSource(state.source)
-        if (!player.hurt(deathSource, Float.MAX_VALUE)) {
+        if (!player.hurt(deathSource, reviveFinalDeathDamage(player)) || player.health > 0.0f) {
+            player.health = 0.0f
             player.die(deathSource)
             finishingDeaths.remove(player.uuid)
         }
@@ -630,13 +638,37 @@ object ReviveFeature {
 
     private fun restoreMinimumVitals(player: ServerPlayer) {
         val config = ReviveConfig.current()
-        player.health = config.revivedHealth.coerceAtMost(player.maxHealth).coerceAtLeast(1.0f)
+        val maxHealth = finitePositive(player.maxHealth, DEFAULT_MAX_HEALTH).coerceAtLeast(1.0f)
+        player.health = finitePositive(config.revivedHealth, 1.0f).coerceAtMost(maxHealth).coerceAtLeast(1.0f)
         player.foodData.setFoodLevel(config.revivedFoodLevel)
         player.foodData.setSaturation(0.0f)
         player.foodData.setExhaustion(0.0f)
         player.remainingFireTicks = 0
         player.setTicksFrozen(0)
     }
+
+    private fun sanitizePlayerHealth(player: ServerPlayer): Boolean {
+        val health = player.health
+        if (java.lang.Float.isFinite(health)) return false
+        val maxHealth = finitePositive(player.maxHealth, DEFAULT_MAX_HEALTH).coerceAtLeast(1.0f)
+        player.health = 1.0f.coerceAtMost(maxHealth)
+        player.absorptionAmount = finiteNonNegative(player.absorptionAmount, 0.0f)
+        player.setDeltaMovement(0.0, 0.0, 0.0)
+        player.fallDistance = 0.0f
+        return true
+    }
+
+    private fun reviveFinalDeathDamage(player: ServerPlayer): Float {
+        val maxHealth = finitePositive(player.maxHealth, DEFAULT_MAX_HEALTH).coerceAtMost(MAX_LETHAL_HEALTH_INPUT)
+        val absorption = finiteNonNegative(player.absorptionAmount, 0.0f).coerceAtMost(MAX_LETHAL_HEALTH_INPUT)
+        return (maxHealth + absorption + FINAL_DEATH_EXTRA_DAMAGE).coerceAtLeast(FINAL_DEATH_EXTRA_DAMAGE)
+    }
+
+    private fun finitePositive(value: Float, fallback: Float): Float =
+        if (java.lang.Float.isFinite(value) && value > 0.0f) value else fallback
+
+    private fun finiteNonNegative(value: Float, fallback: Float): Float =
+        if (java.lang.Float.isFinite(value) && value >= 0.0f) value else fallback
 
     private fun clearAiTargets(server: MinecraftServer) {
         incapacitated.keys.forEach { playerId ->
