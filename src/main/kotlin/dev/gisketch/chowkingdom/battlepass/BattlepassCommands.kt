@@ -88,6 +88,16 @@ object BattlepassCommands {
                                         .then(Commands.argument("targets", EntityArgument.players()).executes(::addXpFromActionSyntax)),
                                 ),
                         ),
+                )
+                .then(
+                    Commands.literal("reduce")
+                        .then(
+                            Commands.argument("pass", StringArgumentType.word())
+                                .then(
+                                    Commands.argument("amount", IntegerArgumentType.integer(1))
+                                        .then(Commands.argument("targets", EntityArgument.players()).executes(::reduceXpFromActionSyntax)),
+                                ),
+                        ),
                 ),
         )
         .then(
@@ -95,6 +105,20 @@ object BattlepassCommands {
                 .requires { source -> source.hasPermission(2) }
                 .then(
                     Commands.literal("xp")
+                        .then(
+                            Commands.literal("add")
+                                .then(
+                                    Commands.argument("amount", IntegerArgumentType.integer(1))
+                                        .then(Commands.argument("targets", EntityArgument.players()).executes(::addXpFromPassSyntax)),
+                                ),
+                        )
+                        .then(
+                            Commands.literal("reduce")
+                                .then(
+                                    Commands.argument("amount", IntegerArgumentType.integer(1))
+                                        .then(Commands.argument("targets", EntityArgument.players()).executes(::reduceXpFromPassSyntax)),
+                                ),
+                        )
                         .then(
                             Commands.argument("amount", IntegerArgumentType.integer(1))
                                 .then(Commands.argument("targets", EntityArgument.players()).executes(::addXpFromPassSyntax)),
@@ -119,6 +143,10 @@ object BattlepassCommands {
     private fun addXpFromActionSyntax(context: CommandContext<CommandSourceStack>): Int = addXp(context)
 
     private fun addXpFromPassSyntax(context: CommandContext<CommandSourceStack>): Int = addXp(context)
+
+    private fun reduceXpFromActionSyntax(context: CommandContext<CommandSourceStack>): Int = addXp(context, -IntegerArgumentType.getInteger(context, "amount"))
+
+    private fun reduceXpFromPassSyntax(context: CommandContext<CommandSourceStack>): Int = addXp(context, -IntegerArgumentType.getInteger(context, "amount"))
 
     private fun resetMissions(context: CommandContext<CommandSourceStack>, scope: BattlepassMissionScope): Int {
         val count = BattlepassMissionProgressStore.reset(scope)
@@ -173,16 +201,16 @@ object BattlepassCommands {
         return goals.last()
     }
 
-    private fun addXp(context: CommandContext<CommandSourceStack>): Int {
+    private fun addXp(context: CommandContext<CommandSourceStack>, signedAmount: Int? = null): Int {
         val passId = StringArgumentType.getString(context, "pass")
         val pass = BattlepassPassRegistry.get(passId) ?: throw unknownPass.create()
-        val amount = IntegerArgumentType.getInteger(context, "amount")
+        val amount = signedAmount ?: IntegerArgumentType.getInteger(context, "amount")
         val targets = EntityArgument.getPlayers(context, "targets")
 
         targets.forEach { player -> BattlepassXpStore.addXp(player, pass.id, amount) }
         BattlepassNetwork.syncAllPlayers()
         context.source.sendSuccess(
-            { Component.literal("Added $amount XP to ${targets.size} player(s) for ${pass.displayName}.") },
+            { Component.literal("${if (amount >= 0) "Added" else "Reduced"} ${kotlin.math.abs(amount)} XP ${if (amount >= 0) "to" else "from"} ${targets.size} player(s) for ${pass.displayName}.") },
             true,
         )
         return targets.size

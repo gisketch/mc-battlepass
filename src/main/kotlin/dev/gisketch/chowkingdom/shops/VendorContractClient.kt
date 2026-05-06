@@ -663,7 +663,7 @@ private class VendorSellerScreen(private var payload: VendorOpenPayload) : Scree
         private const val WHITE = 0xFFFFFFFF.toInt()
         private const val DISABLED = 0xFF928A7C.toInt()
         private const val GOLD = 0xFFFFD56E.toInt()
-        private val FRAME2_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_frame_2.png")
+        private val FRAME2_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_container_yellow.png")
         private val ITEM_FRAME_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_item.png")
         private val CHOWCOIN_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/chowcoin.png")
         private val GREEN_BUTTON_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_btn_green.png")

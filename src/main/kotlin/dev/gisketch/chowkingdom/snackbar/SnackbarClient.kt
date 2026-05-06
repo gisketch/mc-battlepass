@@ -290,7 +290,7 @@ object SnackbarClient {
         val bottom: Int get() = y + height
     }
 
-    private val FRAME_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_frame_2.png")
+    private val FRAME_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_container_yellow.png")
     private val CKDM_BOLD_FONT = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "ckdm_bold")
     private const val FRAME_WIDTH = 1646
     private const val FRAME_HEIGHT = 256

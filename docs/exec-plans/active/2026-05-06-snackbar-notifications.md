@@ -6,7 +6,7 @@ Add reusable HUD snackbar notifications with item icon, title, content, type col
 
 ## Acceptance Criteria
 
-- Snackbar uses `9slice_frame_2.png` with alpha blending.
+- Snackbar uses `9slice_container_yellow.png` with alpha blending.
 - Layout is row icon plus column title/content; icon slot and text column share height.
 - Types: generic white title, error red title, success yellow title.
 - Header uses CKDM bold font; content uses vanilla font and wraps.

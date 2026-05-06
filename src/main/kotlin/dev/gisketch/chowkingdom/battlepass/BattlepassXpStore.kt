@@ -44,7 +44,7 @@ object BattlepassXpStore {
         if (!loaded) load()
 
         val playerPasses = playerXp.getOrPut(player.stringUUID) { linkedMapOf() }
-        val total = playerPasses.getOrDefault(passId, 0) + amount
+        val total = (playerPasses.getOrDefault(passId, 0) + amount).coerceAtLeast(0)
         playerPasses[passId] = total
         save()
         return total

@@ -151,13 +151,17 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
     override fun isPauseScreen(): Boolean = false
 
     override fun renderBackground(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) {
+        renderBlurredBackground(partialTick)
+        guiGraphics.fill(0, 0, width, height, BACKGROUND_DIM_OVERLAY)
         val targetX = if (width == 0) 0.0f else ((mouseX - width / 2.0f) / (width / 2.0f)).coerceIn(-1.0f, 1.0f) * BACKGROUND_PARALLAX_MAX_OFFSET
         val targetY = if (height == 0) 0.0f else ((mouseY - height / 2.0f) / (height / 2.0f)).coerceIn(-1.0f, 1.0f) * BACKGROUND_PARALLAX_MAX_OFFSET
         backgroundParallaxX = Mth.lerp(BACKGROUND_PARALLAX_LERP, backgroundParallaxX, targetX)
         backgroundParallaxY = Mth.lerp(BACKGROUND_PARALLAX_LERP, backgroundParallaxY, targetY)
         guiGraphics.pose().pushPose()
         guiGraphics.pose().translate(-backgroundParallaxX, -backgroundParallaxY, 0.0f)
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, UI_BACKGROUND_ALPHA)
         renderTexture(guiGraphics, UI_BACKGROUND_TEXTURE, Rect(-BACKGROUND_PARALLAX_PADDING, -BACKGROUND_PARALLAX_PADDING, width + BACKGROUND_PARALLAX_PADDING * 2, height + BACKGROUND_PARALLAX_PADDING * 2), UI_BACKGROUND_WIDTH, UI_BACKGROUND_HEIGHT)
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f)
         guiGraphics.pose().popPose()
     }
 
@@ -317,7 +321,7 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
 
         val hotbar = hotbarRect()
         val contentTop = panel.y + HEADER_HEIGHT
-        val contentBottom = hotbar.y - ITEM_STRIP_GAP
+        val contentBottom = hotbar.y - CONTENT_TO_ITEM_STRIP_GAP
         val availableContentWidth = panel.width - PANEL_PADDING * 2 - DETAIL_COLUMN_GAP * 2
         val missionWidth = availableContentWidth * MISSION_PANEL_WIDTH_PERCENT / 100
         val playerWidth = availableContentWidth * PLAYER_PREVIEW_WIDTH_PERCENT / 100
@@ -351,7 +355,9 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
     }
 
     private fun renderMissions(guiGraphics: GuiGraphics, pass: BattlepassPassDefinition, rect: Rect, mouseX: Int, mouseY: Int) {
-        renderFramePanel(guiGraphics, Rect(rect.x, rect.y + MISSION_PANEL_FRAME_TOP_OFFSET, rect.width, rect.height - MISSION_PANEL_FRAME_TOP_OFFSET))
+        withEntrance(guiGraphics, EntranceStyle(MISSION_FILTER_ANIMATION_DELAY_MS, offsetY = ENTRANCE_SLIDE_DOWN_OFFSET)) {
+            renderFramePanel(guiGraphics, Rect(rect.x, rect.y + MISSION_PANEL_FRAME_TOP_OFFSET, rect.width, rect.height - MISSION_PANEL_FRAME_TOP_OFFSET))
+        }
         withEntrance(guiGraphics, EntranceStyle(MISSIONS_TITLE_ANIMATION_DELAY_MS, offsetY = ENTRANCE_SLIDE_DOWN_OFFSET)) {
             drawCkdmHighlightText(guiGraphics, "MISSIONS", rect.x + 8, rect.y + 8, CKDM_BOLD_LARGE_FONT)
         }
@@ -390,7 +396,7 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
     }
 
     private fun renderMissionFilterTabs(guiGraphics: GuiGraphics, parent: Rect, mouseX: Int, mouseY: Int) {
-        val y = parent.y + 34
+        val y = parent.y + MISSION_FILTER_Y_OFFSET
         var x = parent.x + MISSION_PANEL_X_PADDING
         missionFilterRects = MissionFilter.entries.map { filter ->
             val width = ckdmWidth(filter.label, CKDM_BOLD_FONT)
@@ -418,27 +424,23 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
             else -> ""
         }
         RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, renderAlpha * if (hovered) MISSION_ROW_HOVER_BACKGROUND_ALPHA else MISSION_ROW_BACKGROUND_ALPHA)
-        renderNineSlice(guiGraphics, MISSION_ROW_TEXTURE, rect, MISSION_ROW_TEXTURE_SIZE, MISSION_ROW_CONTAINER_CORNER_SIZE)
+        renderWideNineSlice(guiGraphics, if (hovered) MISSION_ROW_HOVER_TEXTURE else MISSION_ROW_TEXTURE, rect, MISSION_ROW_TEXTURE_WIDTH, MISSION_ROW_TEXTURE_HEIGHT, MISSION_ROW_SOURCE_CORNER_SIZE, MISSION_ROW_DESTINATION_CORNER_SIZE)
         RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, renderAlpha)
 
         val detailStackHeight = MISSION_ROW_HEADER_TEXT_HEIGHT + MISSION_ROW_TEXT_GAP + MISSION_ROW_SUB_TEXT_HEIGHT + MISSION_ROW_TEXT_GAP + MISSION_ROW_SUB_TEXT_HEIGHT
-        val iconSize = (detailStackHeight - MISSION_ROW_ICON_DETAIL_OFFSET).coerceAtLeast(BASE_ITEM_RENDER_SIZE)
+        val iconSize = MISSION_ROW_ICON_SIZE
         val iconRect = Rect(rect.x + MISSION_ROW_PADDING, rect.y + (rect.height - iconSize) / 2, iconSize, iconSize)
         renderScaledItem(guiGraphics, missionIconStack(entry), iconRect)
 
-        val completedColumnWidth = (rect.width * MISSION_COMPLETED_COLUMN_WIDTH_PERCENT / 100).coerceIn(MISSION_COMPLETED_COLUMN_MIN_WIDTH, rect.width / 2)
         val detailsX = iconRect.x + iconRect.width + MISSION_ROW_COLUMN_GAP
-        val completedColumnX = rect.x + rect.width - MISSION_ROW_PADDING - completedColumnWidth
-        val detailsWidth = (completedColumnX - detailsX - MISSION_ROW_COLUMN_GAP).coerceAtLeast(40)
+        val detailsWidth = (rect.x + rect.width - MISSION_ROW_PADDING - detailsX).coerceAtLeast(40)
         var detailY = rect.y + (rect.height - detailStackHeight) / 2
-        drawQuestTitleText(guiGraphics, fitCkdmText(titlePrefix + missionDescription(passId, entry), detailsWidth), detailsX, detailY, if (completed) TEXT_MUTED else TEXT_PRIMARY)
+        drawQuestTitleText(guiGraphics, fitCkdmText(titlePrefix + missionDescription(passId, entry), detailsWidth, CKDM_BOLD_SMALL_FONT), detailsX, detailY, if (completed) TEXT_MUTED else TEXT_PRIMARY, CKDM_BOLD_SMALL_FONT)
         detailY += MISSION_ROW_HEADER_TEXT_HEIGHT + MISSION_ROW_TEXT_GAP
         renderMissionProgressBar(guiGraphics, Rect(detailsX, detailY, detailsWidth, MISSION_PROGRESS_BAR_HEIGHT), progress, BattlepassMissionService.displayGoal(entry.event, progress) ?: progress.coerceAtLeast(1))
         detailY += MISSION_ROW_SUB_TEXT_HEIGHT + MISSION_ROW_TEXT_GAP
         drawCkdmText(guiGraphics, "XP", detailsX, detailY, MISSION_XP_LABEL_COLOR, CKDM_BOLD_SMALL_FONT)
         drawCkdmText(guiGraphics, "+${missionRewardXp(entry, progress)}", detailsX + ckdmWidth("XP", CKDM_BOLD_SMALL_FONT) + MISSION_XP_VALUE_GAP, detailY, TEXT_PRIMARY, CKDM_BOLD_SMALL_FONT)
-
-        renderMissionCompletedColumn(guiGraphics, MissionSlot(rect, passId, entry, completed), completedColumnX, rect.y, completedColumnWidth, rect.height)
     }
 
     private fun renderPlayerPreview(guiGraphics: GuiGraphics, pass: BattlepassPassDefinition, rect: Rect, currentXp: Int) {
@@ -496,15 +498,39 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
     }
 
     private fun renderXpProgressBar(guiGraphics: GuiGraphics, rect: Rect, progressXp: Int, targetXp: Int) {
-        val fillWidth = (rect.width * (progressXp.toFloat() / targetXp.coerceAtLeast(1))).toInt().coerceIn(0, rect.width)
-        guiGraphics.fill(rect.x, rect.y, rect.x + rect.width, rect.y + rect.height, colorWithRenderAlpha(PROGRESS_BACK))
-        guiGraphics.fill(rect.x, rect.y, rect.x + fillWidth, rect.y + rect.height, colorWithRenderAlpha(PROGRESS_FILL))
+        renderTexturedProgressBar(guiGraphics, rect, progressXp.toFloat() / targetXp.coerceAtLeast(1))
     }
 
     private fun renderMissionProgressBar(guiGraphics: GuiGraphics, rect: Rect, progress: Int, goal: Int) {
-        val fillWidth = (rect.width * (progress.coerceAtMost(goal).toFloat() / goal.coerceAtLeast(1))).toInt().coerceIn(0, rect.width)
-        guiGraphics.fill(rect.x, rect.y, rect.x + rect.width, rect.y + rect.height, colorWithRenderAlpha(PROGRESS_BACK))
-        guiGraphics.fill(rect.x, rect.y, rect.x + fillWidth, rect.y + rect.height, colorWithRenderAlpha(PROGRESS_FILL))
+        val progressText = "${progress.coerceAtMost(goal)}/$goal"
+        val progressTextWidth = ckdmWidth(progressText, CKDM_BOLD_SMALL_FONT)
+        val barWidth = (rect.width - progressTextWidth - MISSION_PROGRESS_TEXT_GAP).coerceAtLeast(0)
+        renderMissionTexturedProgressBar(guiGraphics, Rect(rect.x, rect.y, barWidth, rect.height), progress.coerceAtMost(goal).toFloat() / goal.coerceAtLeast(1))
+        drawCkdmText(guiGraphics, progressText, rect.x + barWidth + MISSION_PROGRESS_TEXT_GAP, rect.y, TEXT_MUTED, CKDM_BOLD_SMALL_FONT)
+    }
+
+    private fun renderMissionTexturedProgressBar(guiGraphics: GuiGraphics, rect: Rect, progress: Float) {
+        val fillWidth = (rect.width * progress.coerceIn(0.0f, 1.0f)).toInt().coerceIn(0, rect.width)
+        RenderSystem.enableBlend()
+        RenderSystem.defaultBlendFunc()
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, renderAlpha)
+        blitMissionProgressRegion(guiGraphics, PROGRESS_EMPTY_TEXTURE, rect)
+        if (fillWidth > 0) blitMissionProgressRegion(guiGraphics, PROGRESS_FILL_TEXTURE, Rect(rect.x, rect.y, fillWidth, rect.height))
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, renderAlpha)
+        RenderSystem.disableBlend()
+    }
+
+    private fun blitMissionProgressRegion(guiGraphics: GuiGraphics, texture: ResourceLocation, rect: Rect) {
+        if (rect.width <= 0 || rect.height <= 0) return
+        guiGraphics.blit(texture, rect.x, rect.y, rect.width, rect.height, PROGRESS_MISSION_SOURCE_X.toFloat(), 0.0f, PROGRESS_MISSION_SOURCE_WIDTH, PROGRESS_TEXTURE_SIZE, PROGRESS_TEXTURE_SIZE, PROGRESS_TEXTURE_SIZE)
+    }
+
+    private fun renderTexturedProgressBar(guiGraphics: GuiGraphics, rect: Rect, progress: Float) {
+        val fillWidth = (rect.width * progress.coerceIn(0.0f, 1.0f)).toInt().coerceIn(0, rect.width)
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, renderAlpha)
+        renderNineSlice(guiGraphics, PROGRESS_EMPTY_TEXTURE, rect, PROGRESS_TEXTURE_SIZE, PROGRESS_TEXTURE_CORNER_SIZE, PROGRESS_DESTINATION_CORNER_SIZE)
+        if (fillWidth > 0) renderNineSlice(guiGraphics, PROGRESS_FILL_TEXTURE, Rect(rect.x, rect.y, fillWidth, rect.height), PROGRESS_TEXTURE_SIZE, PROGRESS_TEXTURE_CORNER_SIZE, PROGRESS_DESTINATION_CORNER_SIZE)
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, renderAlpha)
     }
 
     private fun renderRewardHotbar(guiGraphics: GuiGraphics, hotbar: Rect, pass: BattlepassPassDefinition, currentXp: Int, mouseX: Int, mouseY: Int) {
@@ -530,7 +556,15 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
                 if (slot.rect.x + slot.rect.width > hotbar.x && slot.rect.x < hotbar.x + hotbar.width) {
                     rewardSlots = rewardSlots + slot
                     val hovered = slot.rect.contains(mouseX.toDouble(), mouseY.toDouble())
-                    renderRewardSlot(guiGraphics, slot, currentXp, hovered, EntranceStyle(REWARD_ANIMATION_DELAY_MS + index * REWARD_STAGGER_MS, offsetX = REWARD_SLIDE_OFFSET), interactionYOffset(rewardInteractionKey(slot), hovered) + if (slot.claimable) claimableFloatOffset() else 0)
+                    val entrance = EntranceStyle(REWARD_ANIMATION_DELAY_MS + index * REWARD_STAGGER_MS, offsetX = REWARD_SLIDE_OFFSET)
+                    renderRewardSlot(guiGraphics, slot, currentXp, hovered, entrance, interactionYOffset(rewardInteractionKey(slot), hovered).toFloat() + if (slot.claimable) claimableFloatOffset() else 0.0f)
+                    tiers.getOrNull(index + 1)?.rewards?.firstOrNull()?.let { nextReward ->
+                        withEntrance(guiGraphics, entrance) {
+                            val nextSize = slotSize(nextReward.let(::isProminentReward))
+                            val nextRect = Rect(nextX + slotSize + SLOT_GAP, hotbar.y + (hotbar.height - nextSize) / 2, nextSize, nextSize)
+                            renderRewardTierConnector(guiGraphics, slot.rect, nextRect, tier.xp, tiers[index + 1].xp, currentXp)
+                        }
+                    }
                 }
             }
             nextX += slotSize + SLOT_GAP
@@ -538,7 +572,7 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
         guiGraphics.disableScissor()
     }
 
-    private fun renderRewardSlot(guiGraphics: GuiGraphics, slot: RewardSlot, currentXp: Int, hovered: Boolean, entranceStyle: EntranceStyle? = null, interactionOffsetY: Int = 0) {
+    private fun renderRewardSlot(guiGraphics: GuiGraphics, slot: RewardSlot, currentXp: Int, hovered: Boolean, entranceStyle: EntranceStyle? = null, interactionOffsetY: Float = 0.0f) {
         registerHoverSound(rewardInteractionKey(slot), hovered)
         if (entranceStyle != null) {
             val boxProgress = entranceProgress(entranceStyle)
@@ -549,27 +583,33 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
             RenderSystem.enableBlend()
             RenderSystem.defaultBlendFunc()
             RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, renderAlpha)
-            renderRewardSlotContent(guiGraphics, slot.copy(rect = slot.rect.offset(dx, dy + interactionOffsetY)), currentXp, hovered, rewardItemEntranceScale(entranceStyle))
+            drawRewardTierLabel(guiGraphics, slot.copy(rect = slot.rect.offset(dx, dy)))
+            guiGraphics.pose().pushPose()
+            guiGraphics.pose().translate(0.0f, interactionOffsetY, 0.0f)
+            renderRewardSlotContent(guiGraphics, slot.copy(rect = slot.rect.offset(dx, dy)), currentXp, hovered, rewardItemEntranceScale(entranceStyle))
+            guiGraphics.pose().popPose()
             renderAlpha = previousAlpha
             RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, renderAlpha)
             return
         }
-        renderRewardSlotContent(guiGraphics, slot.copy(rect = slot.rect.offset(0, interactionOffsetY)), currentXp, hovered, 1.0f)
+        drawRewardTierLabel(guiGraphics, slot)
+        guiGraphics.pose().pushPose()
+        guiGraphics.pose().translate(0.0f, interactionOffsetY, 0.0f)
+        renderRewardSlotContent(guiGraphics, slot, currentXp, hovered, 1.0f)
+        guiGraphics.pose().popPose()
     }
 
     private fun renderRewardSlotContent(guiGraphics: GuiGraphics, slot: RewardSlot, currentXp: Int, hovered: Boolean, itemEntranceScale: Float) {
         val boxTexture = when {
-            !slot.unlocked -> REWARD_BOX_LOCKED_TEXTURE
-            slot.claimed -> REWARD_BOX_CLAIMED_TEXTURE
-            slot.claimable -> REWARD_BOX_CLAIMABLE_TEXTURE
-            else -> REWARD_BOX_TEXTURE
+            isProminentReward(slot.reward) -> REWARD_ITEM_PROMINENT_TEXTURE
+            !slot.unlocked -> REWARD_ITEM_LOCKED_TEXTURE
+            slot.claimed -> REWARD_ITEM_CLAIMED_TEXTURE
+            else -> REWARD_ITEM_CLAIMABLE_TEXTURE
         }
-        renderTexture(guiGraphics, boxTexture, slot.rect, REWARD_BOX_TEXTURE_SIZE, REWARD_BOX_TEXTURE_SIZE)
-        if (slot.claimable) renderClaimPrompt(guiGraphics, slot.rect)
+        renderWideNineSlice(guiGraphics, boxTexture, slot.rect, REWARD_ITEM_TEXTURE_WIDTH, REWARD_ITEM_TEXTURE_HEIGHT, REWARD_ITEM_SOURCE_CORNER_SIZE, REWARD_ITEM_DESTINATION_CORNER_SIZE)
         if (hovered && !slot.claimed) guiGraphics.fill(slot.rect.x, slot.rect.y, slot.rect.x + slot.rect.width, slot.rect.y + slot.rect.height, REWARD_HOVER_TINT)
         if (slot.current) {
-            val progressWidth = (slot.rect.width * progressFor(slot, currentXp)).toInt().coerceIn(0, slot.rect.width)
-            guiGraphics.fill(slot.rect.x, slot.rect.y + slot.rect.height - 4, slot.rect.x + progressWidth, slot.rect.y + slot.rect.height - 1, PROGRESS_FILL)
+            renderTexturedProgressBar(guiGraphics, Rect(slot.rect.x, slot.rect.y + slot.rect.height - REWARD_PROGRESS_BAR_BOTTOM_OFFSET, slot.rect.width, REWARD_PROGRESS_BAR_HEIGHT), progressFor(slot, currentXp))
         }
         renderRewardItemSprite(guiGraphics, slot.stack, slot.rect, !slot.unlocked, itemEntranceScale, if (slot.claimable && itemEntranceScale >= 1.0f) claimableItemShakeDegrees(slot) else 0.0f)
         if (itemEntranceScale <= 0.0f) return
@@ -577,10 +617,39 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
             val quantity = compactQuantity(slot.reward.quantity)
             drawCkdmShadowedText(guiGraphics, quantity, slot.rect.x + slot.rect.width - ckdmWidth(quantity, CKDM_BOLD_SMALL_FONT) - QUANTITY_PADDING, slot.rect.y + slot.rect.height - QUANTITY_TEXT_HEIGHT - QUANTITY_PADDING, TEXT_PRIMARY, CKDM_BOLD_SMALL_FONT)
         }
-        drawCkdmShadowedText(guiGraphics, slot.tierNumber.toString(), slot.rect.x + REWARD_TIER_PADDING, slot.rect.y + REWARD_TIER_PADDING, TEXT_PRIMARY)
+        drawRewardStatusLabel(guiGraphics, slot)
         if (!slot.unlocked) {
             renderLockedOverlay(guiGraphics, slot.rect, lockShakeDegrees(rewardInteractionKey(slot)))
         }
+    }
+
+    private fun drawRewardTierLabel(guiGraphics: GuiGraphics, slot: RewardSlot) {
+        val text = slot.tierNumber.toString()
+        val scale = if (isProminentReward(slot.reward)) REWARD_TIER_LABEL_PROMINENT_SCALE else REWARD_TIER_LABEL_SCALE
+        val width = (ckdmWidth(text, CKDM_BOLD_SMALL_FONT) * scale).toInt()
+        val y = slot.rect.y - REWARD_TIER_LABEL_BOTTOM_GAP - (REWARD_TIER_LABEL_HEIGHT * scale).toInt()
+        val color = if (slot.claimable) TOOLTIP_GOLD else TEXT_PRIMARY
+        drawScaledCkdmShadowedText(guiGraphics, text, slot.rect.x + (slot.rect.width - width) / 2, y, color, CKDM_SHADOW_COLOR, CKDM_SHADOW_OFFSET, CKDM_BOLD_SMALL_FONT, scale)
+    }
+
+    private fun drawRewardStatusLabel(guiGraphics: GuiGraphics, slot: RewardSlot) {
+        val text = when {
+            slot.claimed -> "CLAIMED"
+            slot.claimable -> "CLAIM"
+            else -> return
+        }
+        val color = if (slot.claimed) TEXT_MUTED else TOOLTIP_GOLD
+        drawCkdmShadowedText(guiGraphics, text, slot.rect.x + (slot.rect.width - ckdmWidth(text, CKDM_BOLD_SMALL_FONT)) / 2, slot.rect.y + slot.rect.height + REWARD_STATUS_LABEL_TOP_GAP, color, CKDM_BOLD_SMALL_FONT)
+    }
+
+    private fun renderRewardTierConnector(guiGraphics: GuiGraphics, from: Rect, to: Rect, fromXp: Int, toXp: Int, currentXp: Int) {
+        val x = from.x + from.width / 2 + REWARD_TIER_CONNECTOR_SIDE_PADDING
+        val endX = to.x + to.width / 2 - REWARD_TIER_CONNECTOR_SIDE_PADDING
+        val width = (endX - x).coerceAtLeast(0)
+        if (width <= 0) return
+        val span = (toXp - fromXp).coerceAtLeast(1)
+        val progress = ((currentXp - fromXp).toFloat() / span).coerceIn(0.0f, 1.0f)
+        renderMissionTexturedProgressBar(guiGraphics, Rect(x, from.y - REWARD_TIER_CONNECTOR_BOTTOM_GAP, width, REWARD_TIER_CONNECTOR_HEIGHT), progress)
     }
 
     private fun renderLockedOverlay(guiGraphics: GuiGraphics, rect: Rect, rotationDegrees: Float) {
@@ -600,7 +669,7 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
         drawCkdmShadowedText(guiGraphics, text, rect.x + (rect.width - ckdmWidth(text, CKDM_BOLD_CLAIM_FONT)) / 2, rect.y - CLAIM_TEXT_TOP_OFFSET, TEXT_PRIMARY, CKDM_BOLD_CLAIM_FONT)
     }
 
-    private fun claimableFloatOffset(): Int = (Mth.sin(Util.getMillis().toFloat() / CLAIM_TEXT_FLOAT_PERIOD_MS * Math.PI.toFloat() * 2.0f) * CLAIM_TEXT_FLOAT_AMPLITUDE).toInt()
+    private fun claimableFloatOffset(): Float = Mth.sin(Util.getMillis().toFloat() / CLAIM_TEXT_FLOAT_PERIOD_MS * Math.PI.toFloat() * 2.0f) * CLAIM_TEXT_FLOAT_AMPLITUDE
 
     private fun claimableItemShakeDegrees(slot: RewardSlot): Float {
         val elapsed = ((Util.getMillis() + slot.tierNumber * CLAIMABLE_SHAKE_PHASE_OFFSET_MS) % CLAIMABLE_SHAKE_PERIOD_MS).toFloat()
@@ -696,7 +765,7 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
             val hovered = active && claimAllRect.contains(mouseX.toDouble(), mouseY.toDouble())
             registerHoverSound("claim_all", hovered)
             val text = if (active) "Claim All ($claimAllClaimableCount)" else "Claim All"
-            renderBattlepassButton(guiGraphics, claimAllRect, text, active, hovered, CLAIM_BUTTON_TEXTURE, CLAIM_BUTTON_HOVER_TEXTURE)
+            renderBattlepassButton(guiGraphics, claimAllRect, text, active, hovered, if (active) CLAIM_BUTTON_TEXTURE else BACK_BUTTON_TEXTURE, if (active) CLAIM_BUTTON_HOVER_TEXTURE else BACK_BUTTON_HOVER_TEXTURE)
         }
     }
 
@@ -836,6 +905,8 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
     }
 
     private fun renderWideNineSlice(guiGraphics: GuiGraphics, texture: ResourceLocation, rect: Rect, textureWidth: Int, textureHeight: Int, sourceCorner: Int, destinationCorner: Int) {
+        RenderSystem.enableBlend()
+        RenderSystem.defaultBlendFunc()
         val edgeX = textureWidth - sourceCorner
         val edgeY = textureHeight - sourceCorner
         val middleWidth = textureWidth - sourceCorner * 2
@@ -851,6 +922,7 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
         blitWideRegion(guiGraphics, texture, Rect(rect.x, rect.y + rect.height - destinationCorner, destinationCorner, destinationCorner), 0, edgeY, sourceCorner, sourceCorner, textureWidth, textureHeight)
         blitWideRegion(guiGraphics, texture, Rect(rect.x + destinationCorner, rect.y + rect.height - destinationCorner, innerWidth, destinationCorner), sourceCorner, edgeY, middleWidth, sourceCorner, textureWidth, textureHeight)
         blitWideRegion(guiGraphics, texture, Rect(rect.x + rect.width - destinationCorner, rect.y + rect.height - destinationCorner, destinationCorner, destinationCorner), edgeX, edgeY, sourceCorner, sourceCorner, textureWidth, textureHeight)
+        RenderSystem.disableBlend()
     }
 
     private fun renderNineSlice(guiGraphics: GuiGraphics, texture: ResourceLocation, rect: Rect, textureSize: Int, sourceCorner: Int, destinationCorner: Int = sourceCorner) {
@@ -917,21 +989,21 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
         guiGraphics.pose().popPose()
     }
 
-    private fun drawQuestTitleText(guiGraphics: GuiGraphics, text: String, x: Int, y: Int, color: Int) {
+    private fun drawQuestTitleText(guiGraphics: GuiGraphics, text: String, x: Int, y: Int, color: Int, fontId: ResourceLocation = CKDM_BOLD_FONT) {
         var cursorX = x
         QUEST_TITLE_NUMBER_REGEX.findAll(text).fold(0) { index, match ->
             val before = text.substring(index, match.range.first)
             if (before.isNotEmpty()) {
-                drawCkdmShadowedText(guiGraphics, before, cursorX, y, color)
-                cursorX += ckdmWidth(before)
+                drawCkdmShadowedText(guiGraphics, before, cursorX, y, color, fontId)
+                cursorX += ckdmWidth(before, fontId)
             }
             val number = match.value
-            drawCkdmHighlightText(guiGraphics, number, cursorX, y)
-            cursorX += ckdmWidth(number)
+            drawCkdmHighlightText(guiGraphics, number, cursorX, y, fontId)
+            cursorX += ckdmWidth(number, fontId)
             match.range.last + 1
         }.let { index ->
             val rest = text.substring(index)
-            if (rest.isNotEmpty()) drawCkdmShadowedText(guiGraphics, rest, cursorX, y, color)
+            if (rest.isNotEmpty()) drawCkdmShadowedText(guiGraphics, rest, cursorX, y, color, fontId)
         }
     }
 
@@ -1268,7 +1340,7 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
         slotSize(reward?.let(::isProminentReward) == true) + SLOT_GAP
     } + 20
 
-    private fun slotSize(prominent: Boolean): Int = if (prominent) PROMINENT_SLOT_SIZE else SLOT_SIZE
+    private fun slotSize(prominent: Boolean): Int = SLOT_SIZE
 
     private fun isProminentReward(reward: BattlepassRewardDefinition): Boolean = reward.isProminent || reward.data["is_prominent"]?.toBooleanStrictOrNull() == true
 
@@ -1298,7 +1370,7 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
 
     private fun hotbarRect(): Rect {
         val panel = mainRect().inset(CONTENT_PADDING)
-        return Rect(panel.x + PANEL_PADDING, footerRect().y - ITEM_STRIP_GAP - ITEM_STRIP_HEIGHT, panel.width - PANEL_PADDING * 2, ITEM_STRIP_HEIGHT)
+        return Rect(panel.x + PANEL_PADDING, footerRect().y - ITEM_STRIP_FOOTER_GAP - ITEM_STRIP_HEIGHT, panel.width - PANEL_PADDING * 2, ITEM_STRIP_HEIGHT)
     }
 
     private fun footerRect(): Rect = Rect(0, height - FOOTER_HEIGHT, width, FOOTER_HEIGHT)
@@ -1339,25 +1411,34 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
         previousHoverSoundKey = key
     }
 
-    private val UI_BACKGROUND_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/ui_bg.png")
+    private val UI_BACKGROUND_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/bp_bg.png")
     private val REWARD_BOX_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/box.png")
     private val REWARD_BOX_CLAIMED_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/box_green_highlight.png")
     private val REWARD_BOX_CLAIMABLE_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/box_yellow_highlight.png")
     private val REWARD_BOX_LOCKED_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/box_locked.png")
     private val LOCKED_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/locked.png")
-    private val FRAME_PANEL_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_frame_2.png")
+    private val REWARD_ITEM_CLAIMABLE_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_container_yellow.png")
+    private val REWARD_ITEM_CLAIMED_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_container_green.png")
+    private val REWARD_ITEM_LOCKED_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_container_grey.png")
+    private val REWARD_ITEM_PROMINENT_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_container_gold.png")
+    private val PROGRESS_EMPTY_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_progress_empty.png")
+    private val PROGRESS_FILL_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_progress_fill.png")
+    private val FRAME_PANEL_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_container_yellow.png")
     private val CLAIM_BUTTON_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_btn_yellow.png")
     private val CLAIM_BUTTON_HOVER_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_btn_yellow_hover.png")
     private val BACK_BUTTON_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_btn_gray.png")
     private val BACK_BUTTON_HOVER_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_btn_gray_hover.png")
     private val TOOLTIP_CONTAINER_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_item.png")
-    private val MISSION_ROW_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_item.png")
+    private val MISSION_ROW_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_container_grey.png")
+    private val MISSION_ROW_HOVER_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_container_yellow.png")
     private val CKDM_BOLD_FONT = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "ckdm_bold")
     private val CKDM_BOLD_LARGE_FONT = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "ckdm_bold_large")
     private val CKDM_BOLD_SMALL_FONT = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "ckdm_bold_small")
     private val CKDM_BOLD_CLAIM_FONT = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "ckdm_bold_claim")
     private val UI_BACKGROUND_WIDTH = 2560
     private val UI_BACKGROUND_HEIGHT = 1440
+    private val UI_BACKGROUND_ALPHA = 0.6f
+    private val BACKGROUND_DIM_OVERLAY = 0x66000000
     private val BACKGROUND_PARALLAX_PADDING = 18
     private val BACKGROUND_PARALLAX_MAX_OFFSET = 6.0f
     private val BACKGROUND_PARALLAX_LERP = 0.045f
@@ -1400,6 +1481,10 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
     private val REWARD_BOX_TEXTURE_SIZE = 512
     private val LOCKED_TEXTURE_SIZE = 16
     private val LOCKED_ICON_SIZE = 40
+    private val REWARD_ITEM_TEXTURE_WIDTH = 1643
+    private val REWARD_ITEM_TEXTURE_HEIGHT = 253
+    private val REWARD_ITEM_SOURCE_CORNER_SIZE = 75
+    private val REWARD_ITEM_DESTINATION_CORNER_SIZE = 14
     private val CLAIM_BUTTON_TEXTURE_SIZE = 8
     private val CLAIM_BUTTON_CORNER_SIZE = 2
     private val CLAIM_BUTTON_DESTINATION_CORNER_SIZE = 4
@@ -1407,12 +1492,20 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
     private val CLAIM_BUTTON_HOVER_CORNER_SIZE = 3
     private val CLAIM_BUTTON_HOVER_DESTINATION_CORNER_SIZE = 5
     private val CLAIM_BUTTON_HOVER_BORDER_PADDING = 1
-    private val FRAME_PANEL_TEXTURE_WIDTH = 1646
-    private val FRAME_PANEL_TEXTURE_HEIGHT = 256
+    private val FRAME_PANEL_TEXTURE_WIDTH = 1643
+    private val FRAME_PANEL_TEXTURE_HEIGHT = 253
     private val FRAME_PANEL_SOURCE_CORNER_SIZE = 75
     private val FRAME_PANEL_DESTINATION_CORNER_SIZE = 14
     private val TOOLTIP_CONTAINER_TEXTURE_SIZE = 32
-    private val MISSION_ROW_TEXTURE_SIZE = 32
+    private val MISSION_ROW_TEXTURE_WIDTH = 1643
+    private val MISSION_ROW_TEXTURE_HEIGHT = 253
+    private val MISSION_ROW_SOURCE_CORNER_SIZE = 75
+    private val MISSION_ROW_DESTINATION_CORNER_SIZE = 14
+    private val PROGRESS_TEXTURE_SIZE = 16
+    private val PROGRESS_TEXTURE_CORNER_SIZE = 4
+    private val PROGRESS_DESTINATION_CORNER_SIZE = 4
+    private val PROGRESS_MISSION_SOURCE_X = 4
+    private val PROGRESS_MISSION_SOURCE_WIDTH = 8
     private val TOOLTIP_CONTAINER_CORNER_SIZE = 10
     private val REWARD_HOVER_TINT = 0x44FFFFFF
     private val BUTTON_DISABLED_FILL = 0x6630353D
@@ -1437,16 +1530,26 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
     private val HEADER_TITLE_TEXTURE_HEIGHT = 40
     private val FOOTER_HEIGHT = 40
     private val ITEM_STRIP_HEIGHT = 110
-    private val ITEM_STRIP_GAP = 8
-    private val SLOT_SIZE = 80
-    private val PROMINENT_SLOT_SIZE = 96
+    private val CONTENT_TO_ITEM_STRIP_GAP = 28
+    private val ITEM_STRIP_FOOTER_GAP = 6
+    private val SLOT_SIZE = 68
+    private val PROMINENT_SLOT_SIZE = 82
     private val SLOT_GAP = 8
     private val BASE_ITEM_RENDER_SIZE = 16
-    private val ITEM_RENDER_PADDING = 16
+    private val ITEM_RENDER_PADDING = 12
     private val LOCK_OVERLAY_Z = 300.0f
-    private val REWARD_TIER_PADDING = 8
+    private val REWARD_TIER_LABEL_SCALE = 2.0f
+    private val REWARD_TIER_LABEL_PROMINENT_SCALE = 2.0f
+    private val REWARD_TIER_LABEL_HEIGHT = 7
+    private val REWARD_TIER_LABEL_BOTTOM_GAP = 10
+    private val REWARD_TIER_CONNECTOR_HEIGHT = 5
+    private val REWARD_TIER_CONNECTOR_SIDE_PADDING = 16
+    private val REWARD_TIER_CONNECTOR_BOTTOM_GAP = 16
+    private val REWARD_STATUS_LABEL_TOP_GAP = 4
+    private val REWARD_PROGRESS_BAR_HEIGHT = 5
+    private val REWARD_PROGRESS_BAR_BOTTOM_OFFSET = 7
     private val CLAIM_TEXT_TOP_OFFSET = 14
-    private val CLAIM_TEXT_SCISSOR_TOP_PADDING = 14
+    private val CLAIM_TEXT_SCISSOR_TOP_PADDING = 30
     private val QUANTITY_PADDING = 8
     private val QUANTITY_TEXT_HEIGHT = 7
     private val PLAYER_PREVIEW_WIDTH_PERCENT = 20
@@ -1464,12 +1567,12 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
     private val MISSION_PANEL_X_PADDING = 18
     private val MISSION_ROW_ASPECT_WIDTH = 6.5f
     private val MISSION_ROW_MIN_HEIGHT = 48
-    private val MISSION_ROW_PADDING = 20
-    private val MISSION_ROW_COLUMN_GAP = 12
-    private val MISSION_ROW_HEADER_TEXT_HEIGHT = 9
-    private val MISSION_ROW_SUB_TEXT_HEIGHT = 7
-    private val MISSION_ROW_TEXT_GAP = 6
-    private val MISSION_ROW_ICON_DETAIL_OFFSET = 3
+    private val MISSION_ROW_PADDING = 14
+    private val MISSION_ROW_COLUMN_GAP = 8
+    private val MISSION_ROW_HEADER_TEXT_HEIGHT = 7
+    private val MISSION_ROW_SUB_TEXT_HEIGHT = 6
+    private val MISSION_ROW_TEXT_GAP = 4
+    private val MISSION_ROW_ICON_SIZE = 22
     private val MISSION_ROW_COMPLETED_GAP = 5
     private val MISSION_ROW_AVATAR_SIZE = 12
     private val MISSION_ROW_AVATAR_GAP = 3
@@ -1481,8 +1584,10 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
     private val MISSION_XP_LABEL_COLOR = 0xFF6BE06B.toInt()
     private val MISSION_ROW_BACKGROUND_ALPHA = 0.35f
     private val MISSION_ROW_HOVER_BACKGROUND_ALPHA = 0.92f
-    private val MISSION_PROGRESS_BAR_HEIGHT = 7
-    private val MISSION_HEADER_HEIGHT = 52
+    private val MISSION_PROGRESS_BAR_HEIGHT = 5
+    private val MISSION_PROGRESS_TEXT_GAP = 6
+    private val MISSION_HEADER_HEIGHT = 64
+    private val MISSION_FILTER_Y_OFFSET = 44
     private val MISSION_TAB_TEXT_HEIGHT = 9
     private val MISSION_TAB_GAP = 12
     private val MISSION_LIST_VERTICAL_PADDING = 12
