@@ -80,7 +80,7 @@ object ChowKingdomHud {
         val coinTextX = coinX + COMPACT_COIN_SIZE + COMPACT_COIN_TEXT_GAP
         drawCkdmShadowed(guiGraphics, font, coinText, coinTextX, coinY + COMPACT_COIN_TEXT_Y, COMPACT_WHITE, COMPACT_BLACK_SHADOW, COMPACT_SHADOW_OFFSET, CKDM_BOLD_FONT)
         renderChowcoinDelta(guiGraphics, font, coinText, coinTextX, coinY + COMPACT_COIN_TEXT_Y, now)
-        renderStatRow(guiGraphics, font, coinTextX + ckdmWidth(font, coinText, CKDM_BOLD_FONT) + COMPACT_STAT_GROUP_GAP, coinY, playerId)
+        renderStatRow(guiGraphics, font, coinTextX + ckdmWidth(font, coinText, CKDM_BOLD_FONT) + chowcoinDeltaPush(font, now) + COMPACT_STAT_GROUP_GAP, coinY, playerId)
 
         if (hudMissions.isEmpty()) return
 
@@ -159,12 +159,19 @@ object ChowKingdomHud {
 
     private fun renderChowcoinDelta(guiGraphics: GuiGraphics, font: Font, coinText: String, coinTextX: Int, coinTextY: Int, now: Long) {
         val delta = ChowcoinClientState.deltaDisplay(now) ?: return
-        val sign = if (delta.amount > 0L) "+" else "-"
-        val text = sign + formatChowcoins(kotlin.math.abs(delta.amount))
+        val text = chowcoinDeltaText(delta.amount)
         val color = colorWithAlpha(if (delta.amount > 0L) CHOWCOIN_DELTA_GAIN else CHOWCOIN_DELTA_LOSS, delta.alpha)
         val shadow = colorWithAlpha(COMPACT_BLACK_SHADOW, delta.alpha)
         drawCkdmShadowed(guiGraphics, font, text, coinTextX + ckdmWidth(font, coinText, CKDM_BOLD_FONT) + CHOWCOIN_DELTA_GAP, coinTextY, color, shadow, COMPACT_SHADOW_OFFSET, CKDM_BOLD_FONT)
     }
+
+    private fun chowcoinDeltaPush(font: Font, now: Long): Int {
+        val delta = ChowcoinClientState.deltaDisplay(now) ?: return 0
+        val width = CHOWCOIN_DELTA_GAP + ckdmWidth(font, chowcoinDeltaText(delta.amount), CKDM_BOLD_FONT) + CHOWCOIN_DELTA_TO_STATS_GAP
+        return (width * delta.alpha.coerceIn(0.0f, 1.0f)).toInt()
+    }
+
+    private fun chowcoinDeltaText(amount: Long): String = (if (amount > 0L) "+" else "-") + formatChowcoins(kotlin.math.abs(amount))
 
     private fun colorWithAlpha(color: Int, alpha: Float): Int = ((alpha.coerceIn(0.0f, 1.0f) * 255).toInt() shl 24) or (color and 0x00FFFFFF)
 
@@ -348,6 +355,7 @@ object ChowKingdomHud {
     private const val COMPACT_BLACK_SHADOW = 0x80000000.toInt()
     private const val COMPACT_SHADOW_OFFSET = 1
     private const val CHOWCOIN_DELTA_GAP = 7
+    private const val CHOWCOIN_DELTA_TO_STATS_GAP = 10
     private const val COMPACT_STAT_ICON_SIZE = 9
     private const val COMPACT_STAT_ICON_TEXTURE_SIZE = 16
     private const val COMPACT_STAT_TEXT_GAP = 4

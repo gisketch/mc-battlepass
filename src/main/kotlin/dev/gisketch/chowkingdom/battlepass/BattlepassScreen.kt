@@ -478,25 +478,32 @@ class BattlepassScreen(initialPassId: String? = null) : Screen(Component.transla
         val progressXp = currentXp - level * XP_PER_LEVEL
         val xpToNext = (nextLevelXp - currentXp).coerceAtLeast(0)
         val content = rect.inset(XP_PANEL_PADDING)
-        var y = content.y + XP_PANEL_TOP_GAP
         val header = "PASS LEVEL"
-        drawCkdmText(guiGraphics, fitCkdmText(header, content.width, CKDM_BOLD_LARGE_FONT), content.x + (content.width - ckdmWidth(header, CKDM_BOLD_LARGE_FONT)).coerceAtLeast(0) / 2, y, TEXT_PRIMARY, CKDM_BOLD_LARGE_FONT)
-        y += XP_PANEL_HEADER_HEIGHT + XP_PANEL_SECTION_GAP
+        val headerY = content.y + XP_PANEL_TOP_GAP
+        drawCkdmText(guiGraphics, fitCkdmText(header, content.width, CKDM_BOLD_LARGE_FONT), content.x + (content.width - ckdmWidth(header, CKDM_BOLD_LARGE_FONT)).coerceAtLeast(0) / 2, headerY, TEXT_PRIMARY, CKDM_BOLD_LARGE_FONT)
+
+        val contentBottom = content.y + content.height
+        var footerY = contentBottom - XP_PANEL_BOTTOM_GAP - XP_PANEL_FOOTER_HEIGHT
+        drawCkdmText(guiGraphics, "CURRENT XP", content.x + (content.width - ckdmWidth("CURRENT XP", CKDM_BOLD_SMALL_FONT)) / 2, footerY, TEXT_MUTED, CKDM_BOLD_SMALL_FONT)
+        footerY += XP_PANEL_FOOTER_LABEL_HEIGHT
+        val xpText = "$currentXp/$nextLevelXp XP"
+        drawCkdmText(guiGraphics, fitCkdmText(xpText, content.width, CKDM_BOLD_FONT), content.x + (content.width - ckdmWidth(xpText)).coerceAtLeast(0) / 2, footerY, PROGRESS_FILL, CKDM_BOLD_FONT)
+        footerY += XP_PANEL_FOOTER_VALUE_HEIGHT + XP_PANEL_XP_BAR_GAP
+        renderXpProgressBar(guiGraphics, Rect(content.x, footerY, content.width, XP_PANEL_PROGRESS_HEIGHT), progressXp, XP_PER_LEVEL)
+        footerY += XP_PANEL_PROGRESS_HEIGHT + XP_PANEL_FOOTER_GAP
+        val nextText = "${xpToNext}XP TO LEVEL $nextLevel"
+        drawCkdmText(guiGraphics, fitCkdmText(nextText, content.width, CKDM_BOLD_SMALL_FONT), content.x + (content.width - ckdmWidth(nextText, CKDM_BOLD_SMALL_FONT)).coerceAtLeast(0) / 2, footerY, TEXT_MUTED, CKDM_BOLD_SMALL_FONT)
+
+        val levelAreaTop = headerY + XP_PANEL_HEADER_HEIGHT + XP_PANEL_SECTION_GAP
+        val levelAreaBottom = contentBottom - XP_PANEL_BOTTOM_GAP - XP_PANEL_FOOTER_HEIGHT - XP_PANEL_LEVEL_FOOTER_GAP
+        val levelAreaHeight = (levelAreaBottom - levelAreaTop).coerceAtLeast(XP_PANEL_LEVEL_MIN_SIZE)
         val levelText = level.toString()
         val levelWidth = (ckdmWidth(levelText, CKDM_BOLD_LARGE_FONT) * XP_PANEL_LEVEL_NUMBER_SCALE).toInt()
-        val levelBox = Rect(content.x + (content.width - (levelWidth + XP_PANEL_LEVEL_BOX_X_PADDING * 2)) / 2, y, levelWidth + XP_PANEL_LEVEL_BOX_X_PADDING * 2, XP_PANEL_LEVEL_BOX_HEIGHT)
+        val levelBoxSize = minOf(content.width, levelAreaHeight).coerceAtLeast(XP_PANEL_LEVEL_MIN_SIZE)
+        val levelBox = Rect(content.x + (content.width - levelBoxSize) / 2, levelAreaTop + (levelAreaHeight - levelBoxSize) / 2, levelBoxSize, levelBoxSize)
         renderWideNineSlice(guiGraphics, FRAME_PANEL_TEXTURE, levelBox, FRAME_PANEL_TEXTURE_WIDTH, FRAME_PANEL_TEXTURE_HEIGHT, FRAME_PANEL_SOURCE_CORNER_SIZE, FRAME_PANEL_DESTINATION_CORNER_SIZE)
-        drawScaledCkdmText(guiGraphics, levelText, levelBox.x + (levelBox.width - levelWidth) / 2, levelBox.y + XP_PANEL_LEVEL_TEXT_Y, CKDM_HIGHLIGHT_TEXT_COLOR, CKDM_BOLD_LARGE_FONT, XP_PANEL_LEVEL_NUMBER_SCALE)
-        y += XP_PANEL_LEVEL_BOX_HEIGHT + XP_PANEL_SECTION_GAP
-        drawCkdmText(guiGraphics, "CURRENT XP", content.x + (content.width - ckdmWidth("CURRENT XP", CKDM_BOLD_SMALL_FONT)) / 2, y, TEXT_MUTED, CKDM_BOLD_SMALL_FONT)
-        y += XP_PANEL_SMALL_TEXT_HEIGHT
-        val xpText = "$currentXp/$nextLevelXp XP"
-        drawCkdmText(guiGraphics, fitCkdmText(xpText, content.width, CKDM_BOLD_FONT), content.x + (content.width - ckdmWidth(xpText)).coerceAtLeast(0) / 2, y, PROGRESS_FILL, CKDM_BOLD_FONT)
-        y += XP_PANEL_MEDIUM_TEXT_HEIGHT
-        renderXpProgressBar(guiGraphics, Rect(content.x, y, content.width, XP_PANEL_PROGRESS_HEIGHT), progressXp, XP_PER_LEVEL)
-        y += XP_PANEL_PROGRESS_HEIGHT + XP_PANEL_BIG_GAP
-        val nextText = "${xpToNext}XP TO LEVEL $nextLevel"
-        drawCkdmText(guiGraphics, fitCkdmText(nextText, content.width, CKDM_BOLD_SMALL_FONT), content.x + (content.width - ckdmWidth(nextText, CKDM_BOLD_SMALL_FONT)).coerceAtLeast(0) / 2, y, TEXT_MUTED, CKDM_BOLD_SMALL_FONT)
+        val levelTextHeight = (font.lineHeight * XP_PANEL_LEVEL_NUMBER_SCALE).toInt()
+        drawScaledCkdmText(guiGraphics, levelText, levelBox.x + (levelBox.width - levelWidth) / 2, levelBox.y + (levelBox.height - levelTextHeight) / 2, CKDM_HIGHLIGHT_TEXT_COLOR, CKDM_BOLD_LARGE_FONT, XP_PANEL_LEVEL_NUMBER_SCALE)
     }
 
     private fun renderXpProgressBar(guiGraphics: GuiGraphics, rect: Rect, progressXp: Int, targetXp: Int) {
@@ -611,7 +618,6 @@ class BattlepassScreen(initialPassId: String? = null) : Screen(Component.transla
             else -> REWARD_ITEM_CLAIMABLE_TEXTURE
         }
         renderWideNineSlice(guiGraphics, boxTexture, slot.rect, REWARD_ITEM_TEXTURE_WIDTH, REWARD_ITEM_TEXTURE_HEIGHT, REWARD_ITEM_SOURCE_CORNER_SIZE, REWARD_ITEM_DESTINATION_CORNER_SIZE)
-        if (hovered && !slot.claimed) guiGraphics.fill(slot.rect.x, slot.rect.y, slot.rect.x + slot.rect.width, slot.rect.y + slot.rect.height, REWARD_HOVER_TINT)
         if (slot.current) {
             renderTexturedProgressBar(guiGraphics, Rect(slot.rect.x, slot.rect.y + slot.rect.height - REWARD_PROGRESS_BAR_BOTTOM_OFFSET, slot.rect.width, REWARD_PROGRESS_BAR_HEIGHT), progressFor(slot, currentXp))
         }
@@ -1617,16 +1623,18 @@ class BattlepassScreen(initialPassId: String? = null) : Screen(Component.transla
     private val XP_PER_LEVEL = 100
     private val XP_PANEL_PADDING = 16
     private val XP_PANEL_TOP_GAP = 6
+    private val XP_PANEL_BOTTOM_GAP = 4
     private val XP_PANEL_SECTION_GAP = 10
-    private val XP_PANEL_HEADER_HEIGHT = 24
+    private val XP_PANEL_LEVEL_FOOTER_GAP = 18
+    private val XP_PANEL_HEADER_HEIGHT = 18
     private val XP_PANEL_LEVEL_NUMBER_SCALE = 2.0f
-    private val XP_PANEL_LEVEL_BOX_HEIGHT = 38
-    private val XP_PANEL_LEVEL_BOX_X_PADDING = 18
-    private val XP_PANEL_LEVEL_TEXT_Y = 5
-    private val XP_PANEL_SMALL_TEXT_HEIGHT = 16
-    private val XP_PANEL_MEDIUM_TEXT_HEIGHT = 20
+    private val XP_PANEL_LEVEL_MIN_SIZE = 42
+    private val XP_PANEL_FOOTER_LABEL_HEIGHT = 10
+    private val XP_PANEL_FOOTER_VALUE_HEIGHT = 14
+    private val XP_PANEL_XP_BAR_GAP = 5
+    private val XP_PANEL_FOOTER_GAP = 4
     private val XP_PANEL_PROGRESS_HEIGHT = 8
-    private val XP_PANEL_BIG_GAP = 24
+    private val XP_PANEL_FOOTER_HEIGHT = XP_PANEL_FOOTER_LABEL_HEIGHT + XP_PANEL_FOOTER_VALUE_HEIGHT + XP_PANEL_XP_BAR_GAP + XP_PANEL_PROGRESS_HEIGHT + XP_PANEL_FOOTER_GAP + XP_PANEL_FOOTER_LABEL_HEIGHT
     private val BUTTON_HEIGHT = 20
     private val BACK_BUTTON_WIDTH = 92
     private val CLAIM_ALL_WIDTH = 124

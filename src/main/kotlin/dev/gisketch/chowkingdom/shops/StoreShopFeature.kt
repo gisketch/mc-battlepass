@@ -184,11 +184,12 @@ object StoreShopFeature {
             stacks += buy.stack.copy()
         }
         ChowcoinStore.set(player, balance - totalCost)
+        val boughtCount = stacks.sumOf { stack -> stack.count }
         stacks.forEach { stack -> if (!player.inventory.add(stack)) player.drop(stack, false) }
         ChowcoinNetwork.syncTo(player)
         saveState()
         recordBuyMission(player, totalCost)
-        SnackbarNetwork.send(player, SnackbarNotification.texture(SnackbarIcons.CHOWCOIN_TEXTURE, "BUY SUCCESSFUL", "Bought ${stacks.sumOf { it.count }} items for $totalCost chowcoins", SnackbarType.GENERIC, SnackbarSounds.GENERIC))
+        SnackbarNetwork.send(player, SnackbarNotification.texture(SnackbarIcons.CHOWCOIN_TEXTURE, "BUY SUCCESSFUL", "Bought $boughtCount items for $totalCost chowcoins", SnackbarType.GENERIC, SnackbarSounds.GENERIC))
     }
 
     private fun view(definition: StoreDefinition): ShopViewModel {
