@@ -39,7 +39,7 @@ private data class EntranceStyle(
 
 object VendorContractClient {
     private var highlighted: Set<BlockPos> = emptySet()
-    private var vendorSellerIds: Set<UUID> = emptySet()
+    private var vendorSellers: Map<UUID, String> = emptyMap()
 
     fun register(modBus: IEventBus) {
         NeoForge.EVENT_BUS.addListener(::onRenderLevel)
@@ -53,12 +53,12 @@ object VendorContractClient {
 
     @JvmStatic
     fun syncSellerIds(payload: VendorSellerIdsPayload) {
-        vendorSellerIds = payload.sellerIds.toSet()
+        vendorSellers = payload.sellers.associate { it.sellerId to it.shopName }
     }
 
     @JvmStatic
     fun openVendor(payload: VendorOpenPayload) {
-        vendorSellerIds = vendorSellerIds + payload.sellerId
+        vendorSellers = vendorSellers + (payload.sellerId to payload.shopName)
         Minecraft.getInstance().setScreen(VendorSellerScreen(payload))
     }
 
@@ -81,7 +81,9 @@ object VendorContractClient {
     }
 
     private fun onRenderNameTag(event: RenderNameTagEvent) {
-        if (event.entity.uuid in vendorSellerIds || SellerData.isSeller(event.entity)) event.setCanRender(TriState.FALSE)
+        val shopName = vendorSellers[event.entity.uuid] ?: SellerData.read(event.entity)?.shopName ?: return
+        event.setContent(Component.literal(shopName))
+        event.setCanRender(TriState.TRUE)
     }
 }
 
@@ -95,6 +97,7 @@ private class VendorSellerScreen(private var payload: VendorOpenPayload) : Scree
     private var renameBox: EditBox? = null
     private var renameOpen = false
     private var voidConfirmOpen = false
+    private var voidConfirmOpenedAtMs = 0L
     private var renderAlpha = 1.0f
     private val openedAtMs = Util.getMillis()
 
@@ -146,10 +149,11 @@ private class VendorSellerScreen(private var payload: VendorOpenPayload) : Scree
 
     private fun renderBalance(guiGraphics: GuiGraphics) {
         val rect = balanceRect()
+        val top = rect.y + WIDGET_TOP_PAD
         renderNineSlice(guiGraphics, ITEM_FRAME_TEXTURE, rect, ITEM_FRAME_SIZE, ITEM_FRAME_SIZE, ITEM_FRAME_CORNER, 12, 0.78f)
-        drawCkdm(guiGraphics, "YOU HAVE", rect.x + 12, rect.y + 8, colorAlpha(WHITE, 0.5f), CKDM_SMALL)
-        renderChowcoin(guiGraphics, rect.x + 12, rect.y + 23, 12)
-        drawCkdm(guiGraphics, format(ChowcoinClientState.displayBalance()), rect.x + 29, rect.y + 25, WHITE, CKDM_BOLD)
+        drawCkdm(guiGraphics, "YOU HAVE", rect.x + 12, top + 8, colorAlpha(WHITE, 0.5f), CKDM_SMALL)
+        renderChowcoin(guiGraphics, rect.x + 12, top + 23, 12)
+        drawCkdm(guiGraphics, format(ChowcoinClientState.displayBalance()), rect.x + 29, top + 25, WHITE, CKDM_BOLD)
     }
 
     private fun renderSellerFilters(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
@@ -167,10 +171,11 @@ private class VendorSellerScreen(private var payload: VendorOpenPayload) : Scree
 
     private fun renderRevenue(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
         val rect = revenueRect()
+        val top = rect.y + WIDGET_TOP_PAD
         renderNineSlice(guiGraphics, ITEM_FRAME_TEXTURE, rect, ITEM_FRAME_SIZE, ITEM_FRAME_SIZE, ITEM_FRAME_CORNER, 12, 0.78f)
-        drawCkdm(guiGraphics, "CLAIMABLE", rect.x + 12, rect.y + 8, colorAlpha(WHITE, 0.5f), CKDM_SMALL)
-        renderChowcoin(guiGraphics, rect.x + 12, rect.y + 23, 12)
-        drawCkdm(guiGraphics, format(payload.claimableRevenue), rect.x + 29, rect.y + 25, WHITE, CKDM_BOLD)
+        drawCkdm(guiGraphics, "CLAIMABLE", rect.x + 12, top + 8, colorAlpha(WHITE, 0.5f), CKDM_SMALL)
+        renderChowcoin(guiGraphics, rect.x + 12, top + 23, 12)
+        drawCkdm(guiGraphics, format(payload.claimableRevenue), rect.x + 29, top + 25, WHITE, CKDM_BOLD)
         renderButton(guiGraphics, collectRect(), "COLLECT", YELLOW_BUTTON_TEXTURE, YELLOW_BUTTON_HOVER_TEXTURE, mouseX, mouseY, payload.claimableRevenue > 0)
     }
 
@@ -209,14 +214,17 @@ private class VendorSellerScreen(private var payload: VendorOpenPayload) : Scree
             drawCenteredCkdm(guiGraphics, "CART", col3().x, col3().y + PAD, col3().width, WHITE)
         }
         val total = cartTotal()
+        val canBuyNow = canBuyNow(total)
         withEntrance(guiGraphics, EntranceStyle(columnContentDelay(2, 1), offsetY = ENTRANCE_SLIDE_DOWN_OFFSET)) {
-            renderNineSlice(guiGraphics, ITEM_FRAME_TEXTURE, totalRect(), ITEM_FRAME_SIZE, ITEM_FRAME_SIZE, ITEM_FRAME_CORNER, 12, 0.78f)
-            drawCkdm(guiGraphics, "OVERALL COST", totalRect().x + 12, totalRect().y + 8, colorAlpha(WHITE, 0.5f), CKDM_SMALL)
-            renderChowcoin(guiGraphics, totalRect().x + 12, totalRect().y + 25, 12)
-            drawCkdm(guiGraphics, format(total), totalRect().x + 29, totalRect().y + 27, WHITE, CKDM_BOLD)
+            val rect = totalRect()
+            val top = rect.y + WIDGET_TOP_PAD
+            renderNineSlice(guiGraphics, ITEM_FRAME_TEXTURE, rect, ITEM_FRAME_SIZE, ITEM_FRAME_SIZE, ITEM_FRAME_CORNER, 12, 0.78f)
+            drawCkdm(guiGraphics, "OVERALL COST", rect.x + 12, top + 8, colorAlpha(WHITE, 0.5f), CKDM_SMALL)
+            renderChowcoin(guiGraphics, rect.x + 12, top + 25, 12)
+            drawCkdm(guiGraphics, format(total), rect.x + 29, top + 27, WHITE, CKDM_BOLD)
         }
         withEntrance(guiGraphics, EntranceStyle(columnContentDelay(2, 2), offsetY = ENTRANCE_SLIDE_DOWN_OFFSET)) {
-            renderButton(guiGraphics, buyNowRect(), "BUY NOW", GREEN_BUTTON_TEXTURE, GREEN_BUTTON_HOVER_TEXTURE, mouseX, mouseY, total > 0)
+            renderButton(guiGraphics, buyNowRect(), "BUY NOW", GREEN_BUTTON_TEXTURE, GREEN_BUTTON_HOVER_TEXTURE, mouseX, mouseY, canBuyNow)
         }
 
         val area = cartListRect()
@@ -282,7 +290,7 @@ private class VendorSellerScreen(private var payload: VendorOpenPayload) : Scree
                 return true
             }
         }
-        if (buyNowRect().contains(x, y) && cartTotal() > 0) {
+        if (buyNowRect().contains(x, y) && canBuyNow(cartTotal())) {
             click()
             PacketDistributor.sendToServer(VendorCartBuyPayload(payload.sellerId, cartEntries().map { VendorCartLine(it.dimension, it.pos, cartQty(it)) }))
             cart.clear()
@@ -292,6 +300,7 @@ private class VendorSellerScreen(private var payload: VendorOpenPayload) : Scree
         if (payload.canVoid && voidContractRect().contains(x, y)) {
             click()
             voidConfirmOpen = true
+            voidConfirmOpenedAtMs = Util.getMillis()
             return true
         }
         return super.mouseClicked(mouseX, mouseY, button)
@@ -396,13 +405,21 @@ private class VendorSellerScreen(private var payload: VendorOpenPayload) : Scree
     }
 
     private fun renderVoidConfirmDialog(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
-        guiGraphics.fill(0, 0, width, height, 0xAA000000.toInt())
+        val progress = dialogEntranceProgress(voidConfirmOpenedAtMs)
+        val previousAlpha = renderAlpha
+        renderAlpha *= progress
+        val pose = guiGraphics.pose()
+        pose.pushPose()
+        pose.translate(0.0f, VOID_DIALOG_SLIDE_OFFSET * (1.0f - progress), DIALOG_Z)
+        guiGraphics.fill(0, 0, width, height, colorWithRenderAlpha(0xAA000000.toInt()))
         renderNineSlice(guiGraphics, ITEM_FRAME_TEXTURE, voidConfirmDialogRect(), ITEM_FRAME_SIZE, ITEM_FRAME_SIZE, ITEM_FRAME_CORNER, 14, 0.95f)
         drawCenteredCkdm(guiGraphics, "VOID CONTRACT?", voidConfirmDialogRect().x, voidConfirmDialogRect().y + 14, voidConfirmDialogRect().width, WHITE)
         drawCenteredCkdm(guiGraphics, "SELLER AI RETURNS", voidConfirmDialogRect().x, voidConfirmDialogRect().y + 42, voidConfirmDialogRect().width, colorAlpha(WHITE, 0.64f), CKDM_SMALL)
         drawCenteredCkdm(guiGraphics, "CONTRACT GOES BACK TO YOU", voidConfirmDialogRect().x, voidConfirmDialogRect().y + 56, voidConfirmDialogRect().width, colorAlpha(WHITE, 0.64f), CKDM_SMALL)
         renderButton(guiGraphics, voidConfirmYesRect(), "VOID", RED_BUTTON_TEXTURE, RED_BUTTON_HOVER_TEXTURE, mouseX, mouseY, true)
         renderButton(guiGraphics, voidConfirmNoRect(), "KEEP", GRAY_BUTTON_TEXTURE, GRAY_BUTTON_HOVER_TEXTURE, mouseX, mouseY, true)
+        pose.popPose()
+        renderAlpha = previousAlpha
     }
 
     private fun filteredEntries(): List<VendorEntry> {
@@ -425,6 +442,7 @@ private class VendorSellerScreen(private var payload: VendorOpenPayload) : Scree
         if (value <= 0) cart.remove(key(entry)) else cart[key(entry)] = value
     }
     private fun cartTotal(): Long = cartEntries().fold(0L) { sum, entry -> sum.saturatingAdd(entry.price.saturatingMultiply(cartQty(entry).toLong())) }
+    private fun canBuyNow(total: Long): Boolean = total > 0L && ChowcoinClientState.balance() >= total
     private fun key(entry: VendorEntry): String = "${entry.dimension}:${entry.pos.asLong()}"
 
     private fun sellerEntity(): LivingEntity? {
@@ -562,6 +580,13 @@ private class VendorSellerScreen(private var payload: VendorOpenPayload) : Scree
         return (1.0f + (overshoot + 1.0f) * shifted * shifted * shifted + overshoot * shifted * shifted).coerceAtMost(ITEM_ICON_MAX_SCALE)
     }
 
+    private fun dialogEntranceProgress(openedAt: Long): Float {
+        val elapsed = (Util.getMillis() - openedAt).toFloat()
+        val linear = (elapsed / DIALOG_ENTRANCE_DURATION_MS).coerceIn(0.0f, 1.0f)
+        val inverse = 1.0f - linear
+        return 1.0f - inverse * inverse * inverse
+    }
+
     private fun columnContentDelay(column: Int, row: Int): Int = column * COLUMN_STAGGER_MS + COLUMN_CONTENT_DELAY_MS + row * CONTENT_STAGGER_MS
 
     private fun layout(): Layout {
@@ -658,8 +683,12 @@ private class VendorSellerScreen(private var payload: VendorOpenPayload) : Scree
         private const val STOCK_LIST_DELAY_MS = 80
         private const val STOCK_ROW_STAGGER_MS = 34
         private const val ENTRANCE_SLIDE_DOWN_OFFSET = -10
+        private const val WIDGET_TOP_PAD = 3
         private const val MIN_TEXT_RENDER_ALPHA = 0.004f
         private const val ITEM_ICON_BOUNCE_DURATION_MS = 220.0f
         private const val ITEM_ICON_MAX_SCALE = 1.12f
+        private const val DIALOG_ENTRANCE_DURATION_MS = 220.0f
+        private const val VOID_DIALOG_SLIDE_OFFSET = -10.0f
+        private const val DIALOG_Z = 500.0f
     }
 }

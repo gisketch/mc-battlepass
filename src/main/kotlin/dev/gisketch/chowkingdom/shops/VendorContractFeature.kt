@@ -406,10 +406,10 @@ object VendorContractFeature {
     }
 
     private fun syncVendorSellers(player: ServerPlayer) {
-        val ids = player.level().getEntitiesOfClass(Mob::class.java, player.boundingBox.inflate(128.0)) { SellerData.isSeller(it) }
-            .map { it.uuid }
+        val sellers = player.level().getEntitiesOfClass(Mob::class.java, player.boundingBox.inflate(128.0)) { SellerData.isSeller(it) }
+            .mapNotNull { seller -> SellerData.read(seller)?.let { VendorSellerName(seller.uuid, it.shopName) } }
             .take(256)
-        PacketDistributor.sendToPlayer(player, VendorSellerIdsPayload(ids))
+        PacketDistributor.sendToPlayer(player, VendorSellerIdsPayload(sellers))
     }
 
     private fun contractStack(links: List<ShopKey>): ItemStack =
@@ -964,18 +964,27 @@ data class VendorContractSelectionPayload(val positions: List<BlockPos>) : Custo
     }
 }
 
-data class VendorSellerIdsPayload(val sellerIds: List<UUID>) : CustomPacketPayload {
+data class VendorSellerName(val sellerId: UUID, val shopName: String)
+
+data class VendorSellerIdsPayload(val sellers: List<VendorSellerName>) : CustomPacketPayload {
     override fun type(): CustomPacketPayload.Type<VendorSellerIdsPayload> = TYPE
 
     companion object {
         val TYPE: CustomPacketPayload.Type<VendorSellerIdsPayload> = CustomPacketPayload.Type(ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "shops/vendor_seller_ids"))
         val STREAM_CODEC: StreamCodec<RegistryFriendlyByteBuf, VendorSellerIdsPayload> = object : StreamCodec<RegistryFriendlyByteBuf, VendorSellerIdsPayload> {
             override fun decode(buffer: RegistryFriendlyByteBuf): VendorSellerIdsPayload =
-                VendorSellerIdsPayload(List(buffer.readVarInt().coerceIn(0, 256)) { buffer.readUUID() })
+                VendorSellerIdsPayload(
+                    List(buffer.readVarInt().coerceIn(0, 256)) {
+                        VendorSellerName(buffer.readUUID(), buffer.readUtf(64))
+                    },
+                )
 
             override fun encode(buffer: RegistryFriendlyByteBuf, value: VendorSellerIdsPayload) {
-                buffer.writeVarInt(value.sellerIds.size.coerceAtMost(256))
-                value.sellerIds.take(256).forEach(buffer::writeUUID)
+                buffer.writeVarInt(value.sellers.size.coerceAtMost(256))
+                value.sellers.take(256).forEach { seller ->
+                    buffer.writeUUID(seller.sellerId)
+                    buffer.writeUtf(seller.shopName, 64)
+                }
             }
         }
     }

@@ -30,7 +30,6 @@ class ShopJadePlugin : IWailaPlugin {
 
     override fun registerClient(registration: IWailaClientRegistration) {
         registration.registerBlockComponent(ShopJadeProvider, StockShopBlock::class.java)
-        registration.addConfig(VendorJadeProvider.UID, true)
         registration.registerEntityComponent(VendorJadeProvider, Entity::class.java)
     }
 }
@@ -81,7 +80,9 @@ object VendorJadeProvider : IEntityComponentProvider, IServerDataProvider<Entity
         val shopName = data.getString(SHOP_NAME_TAG).ifBlank { "Vendor Shop" }
         val itemTypes = data.getInt(ITEM_TYPES_TAG).coerceAtLeast(0)
         val sellers = data.getInt(SELLERS_TAG).coerceAtLeast(0)
-        tooltip.replace(JadeIds.CORE_OBJECT_NAME, Component.literal(shopName))
+        if (!tooltip.replace(JadeIds.CORE_OBJECT_NAME, Component.literal(shopName))) {
+            tooltip.add(0, Component.literal(shopName), JadeIds.CORE_OBJECT_NAME)
+        }
         tooltip.add(Component.literal("Items: $itemTypes ${plural(itemTypes, "type", "types")}"), UID)
         tooltip.add(Component.literal("Sellers: $sellers"), UID)
     }
@@ -89,6 +90,8 @@ object VendorJadeProvider : IEntityComponentProvider, IServerDataProvider<Entity
     override fun shouldRequestData(accessor: EntityAccessor): Boolean = true
 
     override fun getUid(): ResourceLocation = UID
+
+    override fun getDefaultPriority(): Int = 10_000
 
     private fun plural(amount: Int, singular: String, plural: String): String = if (amount == 1) singular else plural
 

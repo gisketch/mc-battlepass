@@ -49,9 +49,8 @@ private class ShopBuyScreen(private val payload: ShopOpenBuyDialogPayload) : Scr
             RenderSystem.enableBlend()
             RenderSystem.defaultBlendFunc()
             RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f)
-            guiGraphics.fill(panel.x + 10, panel.y + 10, panel.right - 10, panel.bottom - 10, DIALOG_PANEL_FILL)
             renderNineSlice(guiGraphics, FRAME_TEXTURE, panel, FRAME_TEXTURE_WIDTH, FRAME_TEXTURE_HEIGHT, FRAME_SOURCE_CORNER, FRAME_DESTINATION_CORNER)
-            drawCentered(guiGraphics, fitText("ARE YOU SURE YOU WANT TO BUY \"${payload.itemName}\"", panel.width - 28, CKDM_BOLD_SMALL_FONT), panel.x, panel.y + 20, panel.width, CKDM_WHITE, CKDM_DARK_SHADOW, CKDM_BOLD_SMALL_FONT)
+            drawBuyTitle(guiGraphics, panel)
             renderButton(guiGraphics, minusRect(), "-", ButtonKind.RED, mouseX, mouseY, quantity > 0)
             drawCenteredScaled(guiGraphics, format(quantity.toLong()), quantityRect(), QUANTITY_TEXT_SCALE, CKDM_WHITE, CKDM_DARK_SHADOW, CKDM_BOLD_FONT)
             renderButton(guiGraphics, plusRect(), "+", ButtonKind.GREEN, mouseX, mouseY, canIncrease())
@@ -99,6 +98,24 @@ private class ShopBuyScreen(private val payload: ShopOpenBuyDialogPayload) : Scr
         val y = panelRect().y + 100
         renderChowcoin(guiGraphics, startX, y - 1, COIN_SIZE)
         drawShadowed(guiGraphics, text, startX + COIN_SIZE + 4, y, CKDM_WHITE, CKDM_DARK_SHADOW)
+    }
+
+    private fun drawBuyTitle(guiGraphics: GuiGraphics, panel: Rect) {
+        val prefix = "ARE YOU SURE YOU WANT TO BUY \""
+        val suffix = "\""
+        val maxWidth = panel.width - 28
+        val prefixComponent = ckdmText(prefix, CKDM_BOLD_SMALL_FONT)
+        val suffixComponent = ckdmText(suffix, CKDM_BOLD_SMALL_FONT)
+        val itemText = fitText(payload.itemName, (maxWidth - font.width(prefixComponent) - font.width(suffixComponent)).coerceAtLeast(20), CKDM_BOLD_SMALL_FONT)
+        val itemComponent = ckdmText(itemText, CKDM_BOLD_SMALL_FONT)
+        val totalWidth = font.width(prefixComponent) + font.width(itemComponent) + font.width(suffixComponent)
+        var x = panel.x + (panel.width - totalWidth) / 2
+        val y = panel.y + 20
+        drawShadowed(guiGraphics, prefixComponent, x, y, CKDM_WHITE, CKDM_DARK_SHADOW)
+        x += font.width(prefixComponent)
+        drawShadowed(guiGraphics, itemComponent, x, y, CKDM_GOLD, CKDM_DARK_SHADOW)
+        x += font.width(itemComponent)
+        drawShadowed(guiGraphics, suffixComponent, x, y, CKDM_WHITE, CKDM_DARK_SHADOW)
     }
 
     private fun renderButton(guiGraphics: GuiGraphics, rect: Rect, label: String, kind: ButtonKind, mouseX: Int, mouseY: Int, active: Boolean) {
@@ -253,7 +270,6 @@ private class ShopBuyScreen(private val payload: ShopOpenBuyDialogPayload) : Scr
         private val CKDM_BOLD_SMALL_FONT: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "ckdm_bold_small")
         private const val PANEL_WIDTH = 300
         private const val PANEL_HEIGHT = 170
-        private const val DIALOG_PANEL_FILL = 0xCC141414.toInt()
         private const val QUANTITY_BUTTON_SIZE = 40
         private const val QUANTITY_TEXT_WIDTH = 96
         private const val QUANTITY_ROW_HEIGHT = 30
@@ -275,6 +291,7 @@ private class ShopBuyScreen(private val payload: ShopOpenBuyDialogPayload) : Scr
         private const val CHOWCOIN_TEXTURE_SIZE = 16
         private const val COIN_SIZE = 11
         private const val CKDM_WHITE = 0xFFFFFFFF.toInt()
+        private const val CKDM_GOLD = 0xFFFFD56E.toInt()
         private const val CKDM_DARK_SHADOW = 0xCC050505.toInt()
         private const val DISABLED_TEXT_COLOR = 0xFF8E8274.toInt()
     }

@@ -55,3 +55,4 @@ Add a Vendor Contract item that links shop blocks to a frozen mob seller.
 - 2026-05-06: Added cart-row text padding and Cobblemon-specific vendor state via reflection: block owned non-pastured Pokemon, allow wild/pastured Pokemon, set `HIDE_LABEL` and `UNBATTLEABLE`, and restore prior Cobblemon flags on void/death.
 - 2026-05-06: Tuned vendor animation grouping with larger seller paperdoll and top-to-bottom stagger across seller/cart sections; normal shop dialogs now use `9slice_frame_2` and bounce-scale in.
 - 2026-05-06: Added persistent commerce audit saved data for direct shop buys, vendor buys, and completed player trades.
+- 2026-05-06: Fixed vendor/shop polish pass: gated cart checkout by client balance, padded money widgets, removed duplicate Jade config registration, raised/animated void confirmation above item icons, synced vendor shop-name nametags, and matched buy confirmation frame alpha to the shop editor.
