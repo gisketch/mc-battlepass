@@ -2,8 +2,10 @@ package dev.gisketch.chowkingdom.battlepass
 
 import com.mojang.blaze3d.platform.InputConstants
 import dev.gisketch.chowkingdom.ChowKingdomMod
+import dev.gisketch.chowkingdom.client.InventoryMenuClient
 import net.minecraft.client.KeyMapping
 import net.minecraft.client.Minecraft
+import net.minecraft.client.gui.screens.inventory.InventoryScreen
 import net.neoforged.bus.api.IEventBus
 import net.neoforged.neoforge.client.event.ClientTickEvent
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent
@@ -36,7 +38,7 @@ object BattlepassClient {
 
     private fun onClientTick(event: ClientTickEvent.Post) {
         while (OPEN_BATTLEPASS.consumeClick()) {
-            openBattlepass()
+            openInventoryPassMenu()
         }
     }
 
@@ -46,11 +48,19 @@ object BattlepassClient {
         }
     }
 
-    private fun openBattlepass() {
+    fun openBattlepass(initialPassId: String? = null) {
         val minecraft = Minecraft.getInstance()
         if (minecraft.player == null || minecraft.screen is BattlepassScreen) return
 
         BattlepassNetwork.requestSync()
-        minecraft.setScreen(BattlepassScreen())
+        minecraft.setScreen(BattlepassScreen(initialPassId))
+    }
+
+    private fun openInventoryPassMenu() {
+        val minecraft = Minecraft.getInstance()
+        val player = minecraft.player ?: return
+        BattlepassNetwork.requestSync()
+        InventoryMenuClient.openPassMenuOnNextInventory()
+        if (minecraft.screen !is InventoryScreen) minecraft.setScreen(InventoryScreen(player))
     }
 }

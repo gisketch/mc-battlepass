@@ -15,6 +15,7 @@ import dev.gisketch.chowkingdom.battlepass.CobblemonBattlepassIntegration
 import dev.gisketch.chowkingdom.client.ChowKingdomConfigScreen
 import dev.gisketch.chowkingdom.client.ChowDeathScreenClient
 import dev.gisketch.chowkingdom.client.ChowKingdomHud
+import dev.gisketch.chowkingdom.client.InventoryMenuClient
 import dev.gisketch.chowkingdom.discord.DiscordFeature
 import dev.gisketch.chowkingdom.discord.DiscordScreenshotClient
 import dev.gisketch.chowkingdom.revive.ReviveClient
@@ -66,6 +67,7 @@ class ChowKingdomMod(modBus: IEventBus, container: ModContainer) {
             BattlepassClient.register(modBus)
             ChowDeathScreenClient.register()
             ChowKingdomHud.register(modBus)
+            InventoryMenuClient.register()
             DiscordScreenshotClient.register(modBus)
             ShippingBinClient.register(modBus)
             ShopsClient.register(modBus)

@@ -1,0 +1,424 @@
+package dev.gisketch.chowkingdom.shops
+
+import com.google.gson.GsonBuilder
+import com.google.gson.annotations.SerializedName
+import com.mojang.brigadier.CommandDispatcher
+import com.mojang.brigadier.arguments.StringArgumentType
+import com.mojang.brigadier.context.CommandContext
+import dev.gisketch.chowkingdom.ChowKingdomMod
+import dev.gisketch.chowkingdom.battlepass.BattlepassMissionEventBank
+import dev.gisketch.chowkingdom.battlepass.BattlepassNetwork
+import dev.gisketch.chowkingdom.snackbar.SnackbarIcons
+import dev.gisketch.chowkingdom.snackbar.SnackbarNetwork
+import dev.gisketch.chowkingdom.snackbar.SnackbarNotification
+import dev.gisketch.chowkingdom.snackbar.SnackbarSounds
+import dev.gisketch.chowkingdom.snackbar.SnackbarType
+import dev.gisketch.chowkingdom.wallets.ChowcoinNetwork
+import dev.gisketch.chowkingdom.wallets.ChowcoinStore
+import net.minecraft.commands.CommandSourceStack
+import net.minecraft.commands.Commands
+import net.minecraft.commands.SharedSuggestionProvider
+import net.minecraft.core.registries.BuiltInRegistries
+import net.minecraft.network.chat.Component
+import net.minecraft.resources.ResourceLocation
+import net.minecraft.server.level.ServerPlayer
+import net.minecraft.world.item.ItemStack
+import net.minecraft.world.item.Items
+import net.minecraft.world.level.storage.LevelResource
+import net.neoforged.bus.api.IEventBus
+import net.neoforged.fml.loading.FMLPaths
+import net.neoforged.neoforge.event.server.ServerStartedEvent
+import net.neoforged.neoforge.network.PacketDistributor
+import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent
+import net.neoforged.neoforge.network.handling.IPayloadContext
+import java.nio.file.Files
+import java.nio.file.Path
+import java.nio.file.StandardCopyOption
+import java.time.DayOfWeek
+import java.time.LocalDateTime
+import java.time.ZoneId
+import java.time.temporal.ChronoUnit
+import java.time.temporal.WeekFields
+import java.util.Locale
+import kotlin.io.path.bufferedReader
+import kotlin.io.path.bufferedWriter
+import kotlin.io.path.createDirectories
+import kotlin.io.path.exists
+import kotlin.io.path.extension
+import kotlin.io.path.isRegularFile
+import kotlin.io.path.listDirectoryEntries
+import kotlin.random.Random
+
+object StoreShopFeature {
+    private val gson = GsonBuilder().setPrettyPrinting().create()
+    private var definitions: Map<String, StoreDefinition> = emptyMap()
+    private var state = StoreStateFile()
+    private var statePath: Path? = null
+
+    private val configDir: Path
+        get() = FMLPaths.CONFIGDIR.get().resolve(ChowKingdomMod.MOD_ID).resolve("stores")
+
+    fun register(modBus: IEventBus) {
+        reloadDefinitions()
+        modBus.addListener(::registerPayloads)
+        net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(::onServerStarted)
+    }
+
+    fun registerCommands(dispatcher: CommandDispatcher<CommandSourceStack>) {
+        dispatcher.register(shopRoot())
+        dispatcher.register(Commands.literal("chowkingdom").then(shopRoot()))
+        dispatcher.register(Commands.literal("ck").then(shopRoot()))
+    }
+
+    fun storeIds(): Collection<String> = definitions.keys.sorted()
+
+    private fun shopRoot() = Commands.literal("shop")
+        .then(
+            Commands.argument("store", StringArgumentType.word())
+                .suggests { _, builder -> SharedSuggestionProvider.suggest(storeIds(), builder) }
+                .executes(::openStoreCommand)
+                .then(
+                    Commands.literal("reload")
+                        .requires { source -> source.hasPermission(2) }
+                        .then(Commands.literal("daily").executes { context -> reloadStoreCommand(context, ShopViewPool.DAILY) })
+                        .then(Commands.literal("weekly").executes { context -> reloadStoreCommand(context, ShopViewPool.WEEKLY) })
+                        .then(Commands.literal("all").executes { context -> reloadStoreCommand(context, ShopViewPool.ALL) }),
+                ),
+        )
+
+    private fun registerPayloads(event: RegisterPayloadHandlersEvent) {
+        val registrar = event.registrar("1")
+        registrar.playToClient(StoreShopOpenPayload.TYPE, StoreShopOpenPayload.STREAM_CODEC, ::handleOpenClient)
+        registrar.playToServer(StoreShopCartBuyPayload.TYPE, StoreShopCartBuyPayload.STREAM_CODEC, ::handleCartBuy)
+    }
+
+    private fun onServerStarted(event: ServerStartedEvent) {
+        reloadDefinitions()
+        loadState(event.server.getWorldPath(LevelResource.ROOT).resolve("data").resolve("${ChowKingdomMod.MOD_ID}_stores.json"))
+    }
+
+    private fun openStoreCommand(context: CommandContext<CommandSourceStack>): Int {
+        val player = context.source.playerOrException
+        val storeId = StringArgumentType.getString(context, "store").lowercase(Locale.ROOT)
+        if (!openStore(player, storeId)) {
+            context.source.sendFailure(Component.literal("Unknown store '$storeId'."))
+            return 0
+        }
+        return 1
+    }
+
+    private fun reloadStoreCommand(context: CommandContext<CommandSourceStack>, pool: ShopViewPool): Int {
+        val storeId = StringArgumentType.getString(context, "store").lowercase(Locale.ROOT)
+        reloadDefinitions()
+        val definition = definitions[storeId]
+        if (definition == null) {
+            context.source.sendFailure(Component.literal("Unknown store '$storeId'."))
+            return 0
+        }
+        if (pool == ShopViewPool.ALL) {
+            reroll(definition, ShopViewPool.ALL)
+            reroll(definition, ShopViewPool.DAILY)
+            reroll(definition, ShopViewPool.WEEKLY)
+        } else {
+            reroll(definition, pool)
+        }
+        saveState()
+        context.source.sendSuccess({ Component.literal("Reloaded ${pool.label.lowercase(Locale.ROOT)} stock for ${definition.displayName}.") }, true)
+        runCatching { context.source.playerOrException }.getOrNull()?.let { openStore(it, storeId) }
+        return 1
+    }
+
+    private fun handleOpenClient(payload: StoreShopOpenPayload, context: IPayloadContext) {
+        if (!net.neoforged.fml.loading.FMLEnvironment.dist.isClient) return
+        context.enqueueWork {
+            runCatching {
+                val client = Class.forName("dev.gisketch.chowkingdom.shops.StoreShopClient")
+                client.getMethod("open", StoreShopOpenPayload::class.java).invoke(client.getField("INSTANCE").get(null), payload)
+            }
+        }
+    }
+
+    private fun handleCartBuy(payload: StoreShopCartBuyPayload, context: IPayloadContext) {
+        val player = context.player() as? ServerPlayer ?: return
+        buy(player, payload.storeId.lowercase(Locale.ROOT), payload.lines)
+    }
+
+    private fun openStore(player: ServerPlayer, storeId: String): Boolean {
+        reloadDefinitions()
+        val definition = definitions[storeId] ?: return false
+        ensureActive(definition)
+        PacketDistributor.sendToPlayer(player, StoreShopOpenPayload(view(definition)))
+        return true
+    }
+
+    private fun buy(player: ServerPlayer, storeId: String, lines: List<ShopViewCartLine>) {
+        val definition = definitions[storeId] ?: return
+        ensureActive(definition)
+        val activeOffers = activeOffers(definition).associateBy { it.offer.id }
+        val requested = lines.filter { it.quantity > 0 }.take(100)
+        if (requested.isEmpty()) return
+        val purchases = requested.mapNotNull { line ->
+            val active = activeOffers[line.entryId] ?: return@mapNotNull null
+            val quantity = line.quantity.coerceIn(1, stock(definition, active.pool, active.offer.id))
+            if (quantity <= 0) return@mapNotNull null
+            val stack = stackFor(active.offer, quantity)
+            if (stack.isEmpty) return@mapNotNull null
+            val total = active.offer.priceAmount.coerceAtLeast(0L).saturatingMultiply(quantity.toLong())
+            PendingStoreBuy(active, quantity, total, stack)
+        }
+        if (purchases.isEmpty()) {
+            player.displayClientMessage(Component.literal("No stock available."), true)
+            openStore(player, storeId)
+            return
+        }
+        val totalCost = purchases.fold(0L) { sum, buy -> sum.saturatingAdd(buy.total) }
+        val balance = ChowcoinStore.get(player)
+        if (balance < totalCost) {
+            player.displayClientMessage(Component.literal("Not enough chowcoins."), true)
+            ChowcoinNetwork.syncTo(player)
+            return
+        }
+        val stacks = mutableListOf<ItemStack>()
+        purchases.forEach { buy ->
+            decrement(definition, buy.active.pool, buy.active.offer.id, buy.quantity)
+            stacks += buy.stack.copy()
+        }
+        ChowcoinStore.set(player, balance - totalCost)
+        stacks.forEach { stack -> if (!player.inventory.add(stack)) player.drop(stack, false) }
+        ChowcoinNetwork.syncTo(player)
+        saveState()
+        recordBuyMission(player, totalCost)
+        SnackbarNetwork.send(player, SnackbarNotification.texture(SnackbarIcons.CHOWCOIN_TEXTURE, "BUY SUCCESSFUL", "Bought ${stacks.sumOf { it.count }} items for $totalCost chowcoins", SnackbarType.GENERIC, SnackbarSounds.GENERIC))
+    }
+
+    private fun view(definition: StoreDefinition): ShopViewModel {
+        val categories = definition.categories.map { ShopViewCategory(it.id, labelFromId(it.id)) }
+        val entries = activeOffers(definition).map { active ->
+            ShopViewEntry(
+                active.offer.id,
+                active.category.id,
+                active.pool,
+                stackFor(active.offer, 1),
+                stock(definition, active.pool, active.offer.id),
+                active.offer.priceAmount,
+                definition.displayName,
+            )
+        }
+        val pools = ShopViewPool.entries.map { pool -> ShopViewPoolInfo(pool, pool.label, resetText(definition, pool)) }
+        return ShopViewModel(definition.id, definition.displayName, "Server shared stock", categories, pools, entries)
+    }
+
+    private fun activeOffers(definition: StoreDefinition): List<ActiveStoreOffer> {
+        ensureActive(definition)
+        return ShopViewPool.entries.flatMap { pool ->
+            val poolState = stateFor(definition).pools.getOrPut(pool.id) { StorePoolState() }
+            definition.categories.flatMap { category ->
+                val allowed = when (pool) {
+                    ShopViewPool.ALL -> category.allItems.map(StoreOffer::id).toSet()
+                    else -> poolState.selected[category.id].orEmpty().toSet()
+                }
+                offersFor(category, pool).filter { it.id in allowed }.map { offer -> ActiveStoreOffer(category, pool, offer) }
+            }
+        }
+    }
+
+    private fun ensureActive(definition: StoreDefinition) {
+        ensurePool(definition, ShopViewPool.ALL)
+        ensurePool(definition, ShopViewPool.DAILY)
+        ensurePool(definition, ShopViewPool.WEEKLY)
+    }
+
+    private fun ensurePool(definition: StoreDefinition, pool: ShopViewPool) {
+        val period = periodKey(definition, pool)
+        val poolState = stateFor(definition).pools.getOrPut(pool.id) { StorePoolState() }
+        if (poolState.period != period) reroll(definition, pool)
+    }
+
+    private fun reroll(definition: StoreDefinition, pool: ShopViewPool) {
+        val poolState = stateFor(definition).pools.getOrPut(pool.id) { StorePoolState() }
+        poolState.period = periodKey(definition, pool)
+        poolState.selected.clear()
+        poolState.stock.clear()
+        definition.categories.forEach { category ->
+            val offers = offersFor(category, pool)
+            val selected = if (pool == ShopViewPool.ALL) offers else weightedSample(offers, category.itemTypesToSell.coerceAtLeast(1))
+            poolState.selected[category.id] = selected.map(StoreOffer::id).toMutableList()
+            selected.forEach { offer -> poolState.stock[offer.id] = offer.stockCount.coerceAtLeast(0) }
+        }
+    }
+
+    private fun offersFor(category: StoreCategoryDefinition, pool: ShopViewPool): List<StoreOffer> = when (pool) {
+        ShopViewPool.ALL -> category.allItems
+        ShopViewPool.DAILY -> category.dailyItems
+        ShopViewPool.WEEKLY -> category.weeklyItems
+    }.filter { it.id.isNotBlank() && it.item.isNotBlank() }
+
+    private fun stock(definition: StoreDefinition, pool: ShopViewPool, offerId: String): Int =
+        stateFor(definition).pools[pool.id]?.stock?.get(offerId) ?: 0
+
+    private fun decrement(definition: StoreDefinition, pool: ShopViewPool, offerId: String, quantity: Int) {
+        val poolState = stateFor(definition).pools.getOrPut(pool.id) { StorePoolState() }
+        poolState.stock[offerId] = (poolState.stock[offerId] ?: 0).minus(quantity).coerceAtLeast(0)
+    }
+
+    private fun stateFor(definition: StoreDefinition): StoreRuntimeState =
+        state.stores.getOrPut(definition.id) { StoreRuntimeState() }
+
+    private fun weightedSample(offers: List<StoreOffer>, count: Int): List<StoreOffer> {
+        val remaining = offers.toMutableList()
+        val selected = mutableListOf<StoreOffer>()
+        repeat(count.coerceAtMost(remaining.size)) {
+            val totalWeight = remaining.sumOf { it.weight.coerceAtLeast(1) }
+            var roll = Random.nextInt(totalWeight)
+            val pickedIndex = remaining.indexOfFirst { offer ->
+                roll -= offer.weight.coerceAtLeast(1)
+                roll < 0
+            }.coerceAtLeast(0)
+            selected += remaining.removeAt(pickedIndex)
+        }
+        return selected
+    }
+
+    private fun stackFor(offer: StoreOffer, count: Int): ItemStack {
+        val item = runCatching { ResourceLocation.parse(offer.item) }.getOrNull()
+            ?.let { id -> BuiltInRegistries.ITEM.getOptional(id).orElse(Items.AIR) }
+            ?: Items.AIR
+        if (item == Items.AIR) return ItemStack.EMPTY
+        return ItemStack(item, count.coerceAtLeast(1))
+    }
+
+    private fun reloadDefinitions() {
+        configDir.createDirectories()
+        val loaded = configDir.listDirectoryEntries("*.json")
+            .filter { it.isRegularFile() && it.extension.equals("json", ignoreCase = true) }
+            .mapNotNull(::readDefinition)
+            .associateBy { it.id.lowercase(Locale.ROOT) }
+        definitions = loaded
+    }
+
+    private fun readDefinition(path: Path): StoreDefinition? = try {
+        path.bufferedReader().use { reader -> gson.fromJson(reader, StoreDefinition::class.java) }
+            ?.normalized(path.fileName.toString().substringBeforeLast('.'))
+    } catch (exception: Exception) {
+        ChowKingdomMod.LOGGER.warn("Failed to load store config {}", path, exception)
+        null
+    }
+
+    private fun loadState(path: Path) {
+        statePath = path
+        path.parent.createDirectories()
+        state = if (path.exists()) {
+            try {
+                path.bufferedReader().use { reader -> gson.fromJson(reader, StoreStateFile::class.java) } ?: StoreStateFile()
+            } catch (exception: Exception) {
+                ChowKingdomMod.LOGGER.warn("Failed to load store state {}", path, exception)
+                StoreStateFile()
+            }
+        } else StoreStateFile()
+    }
+
+    private fun saveState() {
+        val path = statePath ?: return
+        path.parent.createDirectories()
+        val temp = Files.createTempFile(path.parent, "stores", ".json.tmp")
+        temp.bufferedWriter().use { writer -> gson.toJson(state, writer) }
+        Files.move(temp, path, StandardCopyOption.REPLACE_EXISTING)
+    }
+
+    private fun periodKey(definition: StoreDefinition, pool: ShopViewPool): String {
+        if (pool == ShopViewPool.ALL) return "all"
+        val zone = runCatching { ZoneId.of(definition.timeZone.ifBlank { DEFAULT_TIME_ZONE }) }.getOrDefault(ZoneId.of(DEFAULT_TIME_ZONE))
+        val now = LocalDateTime.now(zone).minusHours(definition.resetHour.coerceIn(0, 23).toLong()).minusMinutes(definition.resetMinute.coerceIn(0, 59).toLong())
+        if (pool == ShopViewPool.DAILY) return now.toLocalDate().toString()
+        val fields = WeekFields.of(DayOfWeek.MONDAY, 4)
+        return "${now.get(fields.weekBasedYear())}-W${now.get(fields.weekOfWeekBasedYear()).toString().padStart(2, '0')}"
+    }
+
+    private fun resetText(definition: StoreDefinition, pool: ShopViewPool): String {
+        if (pool == ShopViewPool.ALL) return ""
+        val zone = runCatching { ZoneId.of(definition.timeZone.ifBlank { DEFAULT_TIME_ZONE }) }.getOrDefault(ZoneId.of(DEFAULT_TIME_ZONE))
+        val now = LocalDateTime.now(zone)
+        val resetToday = now.toLocalDate().atTime(definition.resetHour.coerceIn(0, 23), definition.resetMinute.coerceIn(0, 59))
+        val next = when (pool) {
+            ShopViewPool.DAILY -> if (now.isBefore(resetToday)) resetToday else resetToday.plusDays(1)
+            ShopViewPool.WEEKLY -> {
+                val mondayReset = resetToday.with(WeekFields.of(DayOfWeek.MONDAY, 4).dayOfWeek(), 1)
+                if (now.isBefore(mondayReset)) mondayReset else mondayReset.plusWeeks(1)
+            }
+            ShopViewPool.ALL -> now
+        }
+        val minutes = ChronoUnit.MINUTES.between(now, next).coerceAtLeast(0)
+        val days = minutes / 1440
+        val hours = (minutes % 1440) / 60
+        val mins = minutes % 60
+        return when {
+            days > 0 -> "resets in ${days}d ${hours}h ${mins}m"
+            hours > 0 -> "resets in ${hours}h ${mins}m"
+            else -> "resets in ${mins}m"
+        }
+    }
+
+    private fun labelFromId(id: String): String = id.replace('_', ' ').split(' ').filter(String::isNotBlank).joinToString(" ") { word ->
+        word.replaceFirstChar { char -> if (char.isLowerCase()) char.titlecase(Locale.ROOT) else char.toString() }
+    }
+
+    private fun recordBuyMission(player: ServerPlayer, total: Long) {
+        val amount = total.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+        if (amount > 0 && BattlepassMissionEventBank.record(player, SHOP_VALUE_BOUGHT_EVENT, amount)) BattlepassNetwork.syncAllPlayers()
+    }
+
+    private fun Long.saturatingMultiply(other: Long): Long = if (this <= 0L || other <= 0L) 0L else if (this > Long.MAX_VALUE / other) Long.MAX_VALUE else this * other
+    private fun Long.saturatingAdd(other: Long): Long = if (other <= 0L) this else if (this > Long.MAX_VALUE - other) Long.MAX_VALUE else this + other
+
+    private const val DEFAULT_TIME_ZONE = "GMT+8"
+    private const val SHOP_VALUE_BOUGHT_EVENT = "gisketchs_chowkingdom_mod:shop_value_bought"
+
+    private data class ActiveStoreOffer(val category: StoreCategoryDefinition, val pool: ShopViewPool, val offer: StoreOffer)
+    private data class PendingStoreBuy(val active: ActiveStoreOffer, val quantity: Int, val total: Long, val stack: ItemStack)
+}
+
+class StoreDefinition(
+    @SerializedName("id") var id: String = "",
+    @SerializedName("display_name") var displayName: String = "Server Store",
+    @SerializedName("time_zone") var timeZone: String = "GMT+8",
+    @SerializedName("reset_hour") var resetHour: Int = 5,
+    @SerializedName("reset_minute") var resetMinute: Int = 0,
+    @SerializedName("categories") var categories: MutableList<StoreCategoryDefinition> = mutableListOf(),
+) {
+    fun normalized(fallbackId: String): StoreDefinition {
+        id = id.ifBlank { fallbackId }.lowercase(Locale.ROOT)
+        if (displayName.isBlank()) displayName = id
+        categories = categories.filter { it.id.isNotBlank() }.toMutableList()
+        return this
+    }
+}
+
+class StoreCategoryDefinition(
+    @SerializedName("id") var id: String = "",
+    @SerializedName("item_types_to_sell") var itemTypesToSell: Int = 1,
+    @SerializedName("daily_items") var dailyItems: MutableList<StoreOffer> = mutableListOf(),
+    @SerializedName("weekly_items") var weeklyItems: MutableList<StoreOffer> = mutableListOf(),
+    @SerializedName("all_items") var allItems: MutableList<StoreOffer> = mutableListOf(),
+)
+
+class StoreOffer(
+    @SerializedName("id") var id: String = "",
+    @SerializedName("item") var item: String = "minecraft:air",
+    @SerializedName("price_amount") var priceAmount: Long = 1L,
+    @SerializedName("stock_count") var stockCount: Int = 1,
+    @SerializedName("weight") var weight: Int = 1,
+)
+
+class StoreStateFile(
+    @SerializedName("stores") var stores: MutableMap<String, StoreRuntimeState> = linkedMapOf(),
+)
+
+class StoreRuntimeState(
+    @SerializedName("pools") var pools: MutableMap<String, StorePoolState> = linkedMapOf(),
+)
+
+class StorePoolState(
+    @SerializedName("period") var period: String = "",
+    @SerializedName("selected") var selected: MutableMap<String, MutableList<String>> = linkedMapOf(),
+    @SerializedName("stock") var stock: MutableMap<String, Int> = linkedMapOf(),
+)

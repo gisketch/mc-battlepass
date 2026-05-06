@@ -41,6 +41,7 @@ Document current mod shape, preserve existing domain docs, and make future chang
 - Package manager/build runner: Gradle wrapper.
 - Runtime: Minecraft `1.21.1`, NeoForge `21.1.228`, Java `21`.
 - Data: world data for gameplay state; config files for definitions and local preferences.
+- Battlepass UX is dedicated to exactly two configured passes: Cozy Pass (`cozy`) and Combat Pass (`combat`).
 - Security: Discord webhook URLs and bot tokens must stay out of git.
 - Performance: do not block server chat or tick threads on network/webhook work.
 - Token budget: default caveman terse chat; durable context belongs in docs.

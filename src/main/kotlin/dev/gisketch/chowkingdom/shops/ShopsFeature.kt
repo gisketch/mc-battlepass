@@ -170,6 +170,7 @@ object ShopsFeature {
         MENUS.register(modBus)
         ShopStockNetwork.register(modBus)
         VendorContractFeature.register(modBus)
+        StoreShopFeature.register(modBus)
         NeoForge.EVENT_BUS.addListener(::onRegisterCommands)
     }
 
@@ -177,6 +178,7 @@ object ShopsFeature {
         event.dispatcher.register(shopRoot("shop"))
         event.dispatcher.register(Commands.literal("chowkingdom").then(shopRoot("shop")))
         event.dispatcher.register(Commands.literal("ck").then(shopRoot("shop")))
+        StoreShopFeature.registerCommands(event.dispatcher)
     }
 
     private fun shopRoot(name: String): LiteralArgumentBuilder<CommandSourceStack> = Commands.literal(name)

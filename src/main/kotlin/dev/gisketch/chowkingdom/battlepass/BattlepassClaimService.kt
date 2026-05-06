@@ -40,7 +40,6 @@ object BattlepassClaimService {
         tier.rewards.forEach { reward -> giveReward(player, reward) }
         BattlepassXpStore.markClaimed(player, pass.id, tier.xp)
         SnackbarNetwork.send(player, SnackbarNotification.item(rewardIcon(tier.rewards.firstOrNull()), "BATTLEPASS REWARD CLAIMED", "${pass.displayName} ${tier.xp} XP reward", SnackbarType.SUCCESS, SnackbarSounds.REWARD))
-        player.displayClientMessage(Component.literal("Claimed ${pass.displayName} ${tier.xp} XP reward."), true)
         return true
     }
 
@@ -64,7 +63,6 @@ object BattlepassClaimService {
             BattlepassXpStore.markClaimed(player, pass.id, tier.xp)
         }
         SnackbarNetwork.send(player, SnackbarNotification.item(SnackbarIcons.BATTLEPASS, "BATTLEPASS REWARDS CLAIMED", "Claimed ${claimableTiers.size} ${pass.displayName} reward(s)", SnackbarType.SUCCESS, SnackbarSounds.REWARD))
-        player.displayClientMessage(Component.literal("Claimed ${claimableTiers.size} ${pass.displayName} reward(s)."), true)
         return claimableTiers.size
     }
 

@@ -26,7 +26,7 @@ import net.minecraft.world.item.Items
 import java.util.UUID
 import java.io.ByteArrayInputStream
 
-class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.MOD_ID}.battlepass")) {
+class BattlepassScreen(initialPassId: String? = null) : Screen(Component.translatable("screen.${ChowKingdomMod.MOD_ID}.battlepass")) {
     private enum class ViewMode { PASS_SELECTION, PASS_DETAIL }
 
     private enum class MissionFilter(val label: String) {
@@ -81,8 +81,8 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
         val toY: Float,
     )
 
-    private var selectedPassId: String? = null
-    private var viewMode = ViewMode.PASS_SELECTION
+    private var selectedPassId: String? = initialPassId
+    private var viewMode = if (initialPassId == null) ViewMode.PASS_SELECTION else ViewMode.PASS_DETAIL
     private var rewardScroll = 0.0f
     private var targetRewardScroll = 0.0f
     private var missionsScroll = 0.0f
