@@ -16,6 +16,7 @@ import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.state.BlockState
+import java.nio.charset.StandardCharsets
 import java.util.UUID
 
 class ShopBlockEntity(pos: BlockPos, state: BlockState) : BlockEntity(ShopsFeature.SHOP_BLOCK_ENTITY.get(), pos, state), Container {
@@ -40,6 +41,9 @@ class ShopBlockEntity(pos: BlockPos, state: BlockState) : BlockEntity(ShopsFeatu
     val stockCount: Int
         get() = storedStockCount
 
+    val ownerUuid: UUID?
+        get() = ownerId
+
     val renderStyle: ShopRenderStyle
         get() = (blockState.block as? StockShopBlock)?.renderStyle ?: ShopRenderStyle.ANGLED
 
@@ -61,7 +65,10 @@ class ShopBlockEntity(pos: BlockPos, state: BlockState) : BlockEntity(ShopsFeatu
         if (template.isEmpty) return ItemStack.EMPTY
         val removed = minOf(amount, storedStockCount, template.maxStackSize)
         storedStockCount -= removed
-        if (storedStockCount <= 0) items[DISPLAY_SLOT] = ItemStack.EMPTY
+        if (storedStockCount <= 0) {
+            items[DISPLAY_SLOT] = ItemStack.EMPTY
+            clearClaim()
+        }
         setChanged()
         return template.copyWithCount(removed)
     }
@@ -72,7 +79,10 @@ class ShopBlockEntity(pos: BlockPos, state: BlockState) : BlockEntity(ShopsFeatu
         if (template.isEmpty) return ItemStack.EMPTY
         val removed = minOf(storedStockCount, template.maxStackSize)
         storedStockCount -= removed
-        if (storedStockCount <= 0) items[DISPLAY_SLOT] = ItemStack.EMPTY
+        if (storedStockCount <= 0) {
+            items[DISPLAY_SLOT] = ItemStack.EMPTY
+            clearClaim()
+        }
         return template.copyWithCount(removed)
     }
 
@@ -80,6 +90,7 @@ class ShopBlockEntity(pos: BlockPos, state: BlockState) : BlockEntity(ShopsFeatu
         if (slot != DISPLAY_SLOT) return
         storedStockCount = stack.count.coerceIn(0, MAX_STOCK)
         items[slot] = if (storedStockCount > 0) stack.copyWithCount(1) else ItemStack.EMPTY
+        if (storedStockCount <= 0) clearClaim()
         setChanged()
     }
 
@@ -88,6 +99,13 @@ class ShopBlockEntity(pos: BlockPos, state: BlockState) : BlockEntity(ShopsFeatu
     fun isOwner(player: Player): Boolean = ownerId == null || ownerId == player.uuid || player.isCreative
 
     fun isClaimedByOther(player: Player): Boolean = ownerId != null && ownerId != player.uuid && !player.isCreative
+
+    fun claimOwner(player: Player) {
+        if (ownerId != null || stock.isEmpty) return
+        ownerId = player.uuid
+        ownerName = player.name.string
+        setChanged()
+    }
 
     fun addStock(player: Player, stack: ItemStack): Int {
         if (stack.isEmpty || isClaimedByOther(player)) return 0
@@ -116,6 +134,46 @@ class ShopBlockEntity(pos: BlockPos, state: BlockState) : BlockEntity(ShopsFeatu
         return true
     }
 
+    fun removeStock(player: Player): Boolean {
+        if (level == null) return false
+        if (stock.isEmpty || !isOwner(player)) return false
+        val template = items[DISPLAY_SLOT]
+        var remaining = storedStockCount
+        while (!template.isEmpty && remaining > 0) {
+            val dropCount = minOf(remaining, template.maxStackSize)
+            val stack = template.copyWithCount(dropCount)
+            if (!player.inventory.add(stack)) player.drop(stack, false)
+            remaining -= dropCount
+        }
+        clearContent()
+        return true
+    }
+
+    fun removeStockStacks(amount: Int): List<ItemStack> {
+        if (amount <= 0 || stock.isEmpty) return emptyList()
+        val template = items[DISPLAY_SLOT]
+        val removed = mutableListOf<ItemStack>()
+        var remaining = minOf(amount, storedStockCount)
+        while (!template.isEmpty && remaining > 0) {
+            val stackCount = minOf(remaining, template.maxStackSize)
+            removed += template.copyWithCount(stackCount)
+            storedStockCount -= stackCount
+            remaining -= stackCount
+        }
+        if (storedStockCount <= 0) {
+            items[DISPLAY_SLOT] = ItemStack.EMPTY
+            clearClaim()
+        }
+        setChanged()
+        return removed
+    }
+
+    fun debugClaimByOther(player: Player) {
+        ownerId = UUID.nameUUIDFromBytes("debug-shop-owner-${player.uuid}".toByteArray(StandardCharsets.UTF_8))
+        ownerName = "Debug Seller"
+        setChanged()
+    }
+
     override fun stillValid(player: Player): Boolean =
         level?.getBlockEntity(blockPos) === this && player.distanceToSqr(
             blockPos.x + 0.5,
@@ -126,10 +184,14 @@ class ShopBlockEntity(pos: BlockPos, state: BlockState) : BlockEntity(ShopsFeatu
     override fun clearContent() {
         items.clear()
         storedStockCount = 0
+        clearClaim()
+        setChanged()
+    }
+
+    private fun clearClaim() {
         ownerId = null
         ownerName = ""
         price = 0L
-        setChanged()
     }
 
     fun dropStock(level: Level) {

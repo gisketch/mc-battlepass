@@ -69,3 +69,11 @@ Add owner-claimed one-item shop stock state and Spuds-style stock rendering to s
 - 2026-05-06: Pushed angled shop Spud text coordinates outside full block bounds and corrected windowsill quantity rotation from currency-item plane to currency-text plane.
 - 2026-05-06: Changed angled shop quantity text from see-through render mode to normal render mode to avoid entity/depth masking on the front face.
 - 2026-05-06: Nudged angled shop quantity slightly back toward the block and right from the front view.
+- 2026-05-06: Reworked the shop editor screen around the new 9-slice frame, CKDM headers, inventory slots, save button, and remove-stock action.
+- 2026-05-06: Refined the shop editor so the custom frame wraps only editor controls and the vanilla inventory renders below it.
+- 2026-05-06: Added right-click inventory stock insertion from the editor, owner inventory return on remove, alpha-blended 9-slice rendering, and smaller frame corners.
+- 2026-05-06: Increased editor row gaps and bottom padding, and moved stock quantity into a smaller bottom-right overlay above the item.
+- 2026-05-06: Replaced the inline price field with a green price button that opens a focused input-price dialog.
+- 2026-05-06: Switched the price button to yellow and replaced custom inventory insertion with a real stock slot plus vanilla click/shift-click handling.
+- 2026-05-06: Removed the extra stock quantity overlay, increased bottom padding, and made stock slot mutations server-authoritative up to the 4096 stock cap.
+- 2026-05-06: Added sneak-right-click buyer dialog, server-authoritative shop purchase handling, `/shop debug`, and `/chowcoin add/remove/set` admin commands.

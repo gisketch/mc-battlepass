@@ -8,6 +8,7 @@ object WalletsFeature {
     fun register(modBus: IEventBus) {
         ChowcoinStore.load()
         ChowcoinNetwork.register(modBus)
+        ChowcoinCommands.register()
         NeoForge.EVENT_BUS.addListener(::onServerStarted)
     }
 

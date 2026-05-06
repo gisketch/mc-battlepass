@@ -1,9 +1,13 @@
 package dev.gisketch.chowkingdom.shops
 
 import dev.gisketch.chowkingdom.ChowKingdomMod
+import com.mojang.brigadier.builder.LiteralArgumentBuilder
+import com.mojang.brigadier.context.CommandContext
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
 import net.minecraft.core.registries.Registries
+import net.minecraft.commands.CommandSourceStack
+import net.minecraft.commands.Commands
 import net.minecraft.network.chat.Component
 import net.minecraft.network.RegistryFriendlyByteBuf
 import net.minecraft.server.level.ServerPlayer
@@ -37,10 +41,13 @@ import net.minecraft.world.level.block.state.properties.SlabType
 import net.minecraft.world.level.material.FluidState
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.phys.BlockHitResult
+import net.minecraft.world.phys.HitResult
 import net.minecraft.world.phys.shapes.CollisionContext
 import net.minecraft.world.phys.shapes.Shapes
 import net.minecraft.world.phys.shapes.VoxelShape
 import net.neoforged.bus.api.IEventBus
+import net.neoforged.neoforge.common.NeoForge
+import net.neoforged.neoforge.event.RegisterCommandsEvent
 import net.neoforged.neoforge.common.extensions.IMenuTypeExtension
 import net.neoforged.neoforge.registries.DeferredHolder
 import net.neoforged.neoforge.registries.DeferredRegister
@@ -157,6 +164,33 @@ object ShopsFeature {
         BLOCK_ENTITIES.register(modBus)
         MENUS.register(modBus)
         ShopStockNetwork.register(modBus)
+        NeoForge.EVENT_BUS.addListener(::onRegisterCommands)
+    }
+
+    private fun onRegisterCommands(event: RegisterCommandsEvent) {
+        event.dispatcher.register(shopRoot("shop"))
+        event.dispatcher.register(Commands.literal("chowkingdom").then(shopRoot("shop")))
+        event.dispatcher.register(Commands.literal("ck").then(shopRoot("shop")))
+    }
+
+    private fun shopRoot(name: String): LiteralArgumentBuilder<CommandSourceStack> = Commands.literal(name)
+        .then(Commands.literal("debug").requires { source -> source.hasPermission(2) }.executes(::debugShopOwner))
+
+    private fun debugShopOwner(context: CommandContext<CommandSourceStack>): Int {
+        val player = context.source.playerOrException
+        val hit = player.pick(6.0, 0.0f, false) as? BlockHitResult
+        if (hit == null || hit.type != HitResult.Type.BLOCK) {
+            context.source.sendFailure(Component.literal("Look at a shop first."))
+            return 0
+        }
+        val shop = player.level().getBlockEntity(hit.blockPos) as? ShopBlockEntity
+        if (shop == null) {
+            context.source.sendFailure(Component.literal("Target block is not a shop."))
+            return 0
+        }
+        shop.debugClaimByOther(player)
+        context.source.sendSuccess({ Component.literal("Shop owner changed to Debug Seller.") }, true)
+        return 1
     }
 
     private fun registerWoodShop(id: String): DeferredHolder<Block, FacingShopBlock> {
@@ -204,6 +238,14 @@ abstract class StockShopBlock(
         hand: InteractionHand,
         hit: BlockHitResult,
     ): ItemInteractionResult {
+        if (player.isShiftKeyDown) {
+            if (level.isClientSide) return ItemInteractionResult.SUCCESS
+            val shop = level.getBlockEntity(pos) as? ShopBlockEntity ?: return ItemInteractionResult.FAIL
+            if (player is ServerPlayer && shop.isClaimedByOther(player) && !shop.stock.isEmpty) {
+                ShopStockNetwork.openBuyDialog(player, shop)
+                return ItemInteractionResult.SUCCESS
+            }
+        }
         if (stack.isEmpty) return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION
         if (level.isClientSide) return ItemInteractionResult.SUCCESS
         val shop = level.getBlockEntity(pos) as? ShopBlockEntity ?: return ItemInteractionResult.FAIL
@@ -221,6 +263,10 @@ abstract class StockShopBlock(
     override fun useWithoutItem(state: BlockState, level: Level, pos: BlockPos, player: Player, hitResult: BlockHitResult): InteractionResult {
         if (!level.isClientSide && player is ServerPlayer) {
             val shop = level.getBlockEntity(pos) as? ShopBlockEntity ?: return InteractionResult.FAIL
+            if (player.isShiftKeyDown && shop.isClaimedByOther(player) && !shop.stock.isEmpty) {
+                ShopStockNetwork.openBuyDialog(player, shop)
+                return InteractionResult.SUCCESS
+            }
             player.openMenu(createMenuProvider(shop)) { buffer -> writeMenuData(buffer, shop, player) }
         }
         return InteractionResult.sidedSuccess(level.isClientSide)
