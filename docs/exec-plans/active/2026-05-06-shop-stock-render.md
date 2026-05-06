@@ -81,3 +81,4 @@ Add owner-claimed one-item shop stock state and Spuds-style stock rendering to s
 - 2026-05-06: Changed stocked non-owner shop right-click to open buying directly, removed the buy dialog background blur, and tightened/enlarged quantity controls.
 - 2026-05-06: Made the buy dialog draw without the inherited blur pass and hid the vanilla stock-slot count so the editor renders the true shop count.
 - 2026-05-06: Tuned buy dialog quantity controls with smaller centered +/- buttons and a larger scaled quantity value.
+- 2026-05-06: Added Spud-style shaped recipe JSONs for crate, hook, windows, rugs, shelves, and colored angled shop items.
