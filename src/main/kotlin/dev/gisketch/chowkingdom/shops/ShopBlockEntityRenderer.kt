@@ -203,7 +203,7 @@ class ShopBlockEntityRenderer(private val context: BlockEntityRendererProvider.C
         poseStack.translate(0.0, 0.3, 0.0)
         poseStack.mulPose(Axis.XP.rotationDegrees(40.0f))
         poseStack.translate(0.0, -0.3, 0.0)
-        CRATE_STOCK_POSITIONS.forEach { factor ->
+        CRATE_STOCK_POSITIONS.take(shop.stockCount.coerceIn(0, CRATE_STOCK_POSITIONS.size)).forEach { factor ->
             poseStack.pushPose()
             poseStack.translate(factor.x.toDouble(), factor.y.toDouble(), -factor.z.toDouble())
             poseStack.mulPose(Axis.YP.rotationDegrees(factor.rotationY))
