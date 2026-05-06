@@ -28,10 +28,11 @@ object ShopJadeProvider : IBlockComponentProvider {
 
     override fun appendTooltip(tooltip: ITooltip, accessor: BlockAccessor, config: IPluginConfig) {
         val shop = accessor.blockEntity as? ShopBlockEntity ?: return
-        if (shop.stock.isEmpty) return
+        if (!shop.hasDisplayItem) return
         replaceObjectNameWithPrice(tooltip, shop.price)
         tooltip.add(Component.translatable("jade.${ChowKingdomMod.MOD_ID}.seller", shop.ownerName.ifBlank { "Unknown" }))
         tooltip.add(Component.translatable("jade.${ChowKingdomMod.MOD_ID}.quantity", format(shop.stockCount.toLong())))
+        if (shop.stockCount <= 0) tooltip.add(Component.literal("Out of stock").withStyle(ChatFormatting.RED))
     }
 
     override fun getUid(): ResourceLocation = UID

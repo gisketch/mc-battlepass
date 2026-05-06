@@ -22,6 +22,7 @@ object ShopsClient {
     fun register(modBus: IEventBus) {
         modBus.addListener(::onRegisterRenderers)
         modBus.addListener(::onRegisterScreens)
+        VendorContractClient.register(modBus)
     }
 
     fun openBuyDialog(payload: ShopOpenBuyDialogPayload) {
@@ -38,7 +39,7 @@ object ShopsClient {
 }
 
 private class ShopBuyScreen(private val payload: ShopOpenBuyDialogPayload) : Screen(Component.literal("Buy Shop Item")) {
-    private var quantity = 1
+    private var quantity = if (payload.stockCount > 0) 1 else 0
 
     override fun render(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) {
         val panel = panelRect()
@@ -274,6 +275,7 @@ class ShopStockScreen(menu: ShopStockMenu, inventory: Inventory, title: Componen
 
     override fun render(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) {
         super.render(guiGraphics, mouseX, mouseY, partialTick)
+        renderSoldOutStock(guiGraphics)
         renderStockQuantityOverlay(guiGraphics)
         renderButtons(guiGraphics, mouseX, mouseY)
         if (priceDialogOpen) {
@@ -540,6 +542,15 @@ class ShopStockScreen(menu: ShopStockMenu, inventory: Inventory, title: Componen
         pose.popPose()
     }
 
+    private fun renderSoldOutStock(guiGraphics: GuiGraphics) {
+        val stack = displayStock()
+        if (stack.isEmpty || displayStockCount() > 0) return
+        val slot = stockSlotRect()
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 0.5f)
+        guiGraphics.renderItem(stack, slot.x + 12, slot.y + 12)
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f)
+    }
+
     private fun priceDialogRect(): Rect = Rect((width - PRICE_DIALOG_WIDTH) / 2, (height - PRICE_DIALOG_HEIGHT) / 2, PRICE_DIALOG_WIDTH, PRICE_DIALOG_HEIGHT)
 
     private fun priceDialogInputRect(): Rect = priceDialogRect().let { Rect(it.x + 18, it.y + 35, it.width - 36, 20) }
@@ -621,7 +632,7 @@ class ShopStockScreen(menu: ShopStockMenu, inventory: Inventory, title: Componen
     }
 
     private fun displayStock(): net.minecraft.world.item.ItemStack =
-        (Minecraft.getInstance().level?.getBlockEntity(menu.pos) as? ShopBlockEntity)?.stock
+        (Minecraft.getInstance().level?.getBlockEntity(menu.pos) as? ShopBlockEntity)?.displayItem
             ?: menu.getSlot(ShopStockMenu.STOCK_SLOT_INDEX).item
             ?: menu.stock
 

@@ -30,7 +30,13 @@ class ShopBlockEntity(pos: BlockPos, state: BlockState) : BlockEntity(ShopsFeatu
         private set
 
     val displayItem: ItemStack
-        get() = stock.copy()
+        get() {
+            val template = items[DISPLAY_SLOT]
+            return if (template.isEmpty) ItemStack.EMPTY else template.copyWithCount(1)
+        }
+
+    val hasDisplayItem: Boolean
+        get() = !items[DISPLAY_SLOT].isEmpty
 
     val stock: ItemStack
         get() {
@@ -65,10 +71,7 @@ class ShopBlockEntity(pos: BlockPos, state: BlockState) : BlockEntity(ShopsFeatu
         if (template.isEmpty) return ItemStack.EMPTY
         val removed = minOf(amount, storedStockCount, template.maxStackSize)
         storedStockCount -= removed
-        if (storedStockCount <= 0) {
-            items[DISPLAY_SLOT] = ItemStack.EMPTY
-            clearClaim()
-        }
+        if (storedStockCount <= 0) storedStockCount = 0
         setChanged()
         return template.copyWithCount(removed)
     }
@@ -79,18 +82,15 @@ class ShopBlockEntity(pos: BlockPos, state: BlockState) : BlockEntity(ShopsFeatu
         if (template.isEmpty) return ItemStack.EMPTY
         val removed = minOf(storedStockCount, template.maxStackSize)
         storedStockCount -= removed
-        if (storedStockCount <= 0) {
-            items[DISPLAY_SLOT] = ItemStack.EMPTY
-            clearClaim()
-        }
+        if (storedStockCount <= 0) storedStockCount = 0
         return template.copyWithCount(removed)
     }
 
     override fun setItem(slot: Int, stack: ItemStack) {
         if (slot != DISPLAY_SLOT) return
         storedStockCount = stack.count.coerceIn(0, MAX_STOCK)
-        items[slot] = if (storedStockCount > 0) stack.copyWithCount(1) else ItemStack.EMPTY
-        if (storedStockCount <= 0) clearClaim()
+        items[slot] = if (!stack.isEmpty) stack.copyWithCount(1) else ItemStack.EMPTY
+        if (items[slot].isEmpty) clearClaim()
         setChanged()
     }
 
@@ -101,7 +101,7 @@ class ShopBlockEntity(pos: BlockPos, state: BlockState) : BlockEntity(ShopsFeatu
     fun isClaimedByOther(player: Player): Boolean = ownerId != null && ownerId != player.uuid && !player.isCreative
 
     fun claimOwner(player: Player) {
-        if (ownerId != null || stock.isEmpty) return
+        if (ownerId != null || !hasDisplayItem) return
         ownerId = player.uuid
         ownerName = player.name.string
         setChanged()
@@ -109,7 +109,7 @@ class ShopBlockEntity(pos: BlockPos, state: BlockState) : BlockEntity(ShopsFeatu
 
     fun addStock(player: Player, stack: ItemStack): Int {
         if (stack.isEmpty || isClaimedByOther(player)) return 0
-        val current = stock
+        val current = displayItem
         if (!current.isEmpty && !ItemStack.isSameItemSameComponents(current, stack)) return 0
         val remaining = MAX_STOCK - storedStockCount
         if (remaining <= 0) return 0
@@ -136,7 +136,7 @@ class ShopBlockEntity(pos: BlockPos, state: BlockState) : BlockEntity(ShopsFeatu
 
     fun removeStock(player: Player): Boolean {
         if (level == null) return false
-        if (stock.isEmpty || !isOwner(player)) return false
+        if (!hasDisplayItem || !isOwner(player)) return false
         val template = items[DISPLAY_SLOT]
         var remaining = storedStockCount
         while (!template.isEmpty && remaining > 0) {
@@ -160,10 +160,7 @@ class ShopBlockEntity(pos: BlockPos, state: BlockState) : BlockEntity(ShopsFeatu
             storedStockCount -= stackCount
             remaining -= stackCount
         }
-        if (storedStockCount <= 0) {
-            items[DISPLAY_SLOT] = ItemStack.EMPTY
-            clearClaim()
-        }
+        if (storedStockCount <= 0) storedStockCount = 0
         setChanged()
         return removed
     }
@@ -217,8 +214,8 @@ class ShopBlockEntity(pos: BlockPos, state: BlockState) : BlockEntity(ShopsFeatu
         items.clear()
         ContainerHelper.loadAllItems(tag, items, registries)
         storedStockCount = tag.getInt(STOCK_COUNT_TAG).coerceIn(0, MAX_STOCK)
-        if (storedStockCount == 0) storedStockCount = items[DISPLAY_SLOT].count.coerceIn(0, MAX_STOCK)
-        items[DISPLAY_SLOT] = if (storedStockCount > 0 && !items[DISPLAY_SLOT].isEmpty) items[DISPLAY_SLOT].copyWithCount(1) else ItemStack.EMPTY
+        if (!tag.contains(STOCK_COUNT_TAG) && storedStockCount == 0) storedStockCount = items[DISPLAY_SLOT].count.coerceIn(0, MAX_STOCK)
+        items[DISPLAY_SLOT] = if (!items[DISPLAY_SLOT].isEmpty) items[DISPLAY_SLOT].copyWithCount(1) else ItemStack.EMPTY
         ownerId = if (tag.hasUUID(OWNER_ID_TAG)) tag.getUUID(OWNER_ID_TAG) else null
         ownerName = tag.getString(OWNER_NAME_TAG)
         price = tag.getLong(PRICE_TAG).coerceIn(0L, MAX_PRICE)

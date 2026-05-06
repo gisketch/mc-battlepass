@@ -1,6 +1,7 @@
 package dev.gisketch.chowkingdom.shops
 
 import com.mojang.blaze3d.vertex.PoseStack
+import com.mojang.blaze3d.systems.RenderSystem
 import com.mojang.math.Axis
 import dev.gisketch.chowkingdom.ChowKingdomMod
 import net.minecraft.client.Minecraft
@@ -228,6 +229,8 @@ class ShopBlockEntityRenderer(private val context: BlockEntityRendererProvider.C
         val renderStack = stack.copy()
         renderStack.count = 1
         val renderer = context.itemRenderer
+        val alpha = if (shop.stockCount <= 0) 0.5f else 1.0f
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, alpha)
         renderer.render(
             renderStack,
             displayContext,
@@ -238,6 +241,7 @@ class ShopBlockEntityRenderer(private val context: BlockEntityRendererProvider.C
             overlay,
             renderer.getModel(renderStack, shop.level, null, 0),
         )
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f)
     }
 
     private fun renderAngledLabels(shop: ShopBlockEntity, poseStack: PoseStack, bufferSource: MultiBufferSource, light: Int) {

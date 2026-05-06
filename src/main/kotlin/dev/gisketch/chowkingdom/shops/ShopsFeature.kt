@@ -158,12 +158,18 @@ object ShopsFeature {
         Supplier { IMenuTypeExtension.create { containerId, inventory, buffer -> ShopStockMenu.client(containerId, inventory, buffer) } },
     )
 
+    val VENDOR_CONTRACT_ITEM: DeferredHolder<Item, VendorContractItem> = ITEMS.register(
+        "vendor_contract",
+        Supplier { VendorContractItem(Item.Properties().stacksTo(1)) },
+    )
+
     fun register(modBus: IEventBus) {
         BLOCKS.register(modBus)
         ITEMS.register(modBus)
         BLOCK_ENTITIES.register(modBus)
         MENUS.register(modBus)
         ShopStockNetwork.register(modBus)
+        VendorContractFeature.register(modBus)
         NeoForge.EVENT_BUS.addListener(::onRegisterCommands)
     }
 
@@ -239,7 +245,7 @@ abstract class StockShopBlock(
         hit: BlockHitResult,
     ): ItemInteractionResult {
         val shop = level.getBlockEntity(pos) as? ShopBlockEntity ?: return ItemInteractionResult.FAIL
-        if (shop.isClaimedByOther(player) && !shop.stock.isEmpty) {
+        if (shop.isClaimedByOther(player) && shop.hasDisplayItem) {
             if (!level.isClientSide && player is ServerPlayer) ShopStockNetwork.openBuyDialog(player, shop)
             return ItemInteractionResult.SUCCESS
         }
@@ -249,7 +255,7 @@ abstract class StockShopBlock(
         val message = when {
             added > 0 -> "Added $added stock (${shop.stockCount}/${ShopBlockEntity.MAX_STOCK})"
             shop.isClaimedByOther(player) -> "Cannot add stock - owned by ${shop.ownerName.ifBlank { "another player" }}"
-            !shop.stock.isEmpty -> "This shop only accepts ${shop.stock.hoverName.string}"
+            shop.hasDisplayItem -> "This shop only accepts ${shop.displayItem.hoverName.string}"
             else -> "Could not add stock"
         }
         player.displayClientMessage(Component.literal(message), true)
@@ -259,7 +265,7 @@ abstract class StockShopBlock(
     override fun useWithoutItem(state: BlockState, level: Level, pos: BlockPos, player: Player, hitResult: BlockHitResult): InteractionResult {
         if (!level.isClientSide && player is ServerPlayer) {
             val shop = level.getBlockEntity(pos) as? ShopBlockEntity ?: return InteractionResult.FAIL
-            if (shop.isClaimedByOther(player) && !shop.stock.isEmpty) {
+            if (shop.isClaimedByOther(player) && shop.hasDisplayItem) {
                 ShopStockNetwork.openBuyDialog(player, shop)
                 return InteractionResult.SUCCESS
             }

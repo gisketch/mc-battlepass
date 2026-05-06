@@ -32,7 +32,7 @@ object ShopStockNetwork {
     }
 
     fun openBuyDialog(player: ServerPlayer, shop: ShopBlockEntity) {
-        PacketDistributor.sendToPlayer(player, ShopOpenBuyDialogPayload(shop.blockPos, shop.stock.hoverName.string, shop.stockCount, shop.price))
+        PacketDistributor.sendToPlayer(player, ShopOpenBuyDialogPayload(shop.blockPos, shop.displayItem.hoverName.string, shop.stockCount, shop.price))
     }
 
     fun sendBuy(pos: BlockPos, quantity: Int) {
@@ -79,21 +79,25 @@ object ShopStockNetwork {
         val player = context.player() as? ServerPlayer ?: return
         if (player.distanceToSqr(payload.pos.x + 0.5, payload.pos.y + 0.5, payload.pos.z + 0.5) > 64.0) return
         val shop = player.level().getBlockEntity(payload.pos) as? ShopBlockEntity ?: return
-        if (!shop.isClaimedByOther(player)) return
-        val quantity = payload.quantity.coerceIn(0, shop.stockCount)
-        if (quantity <= 0 || shop.stock.isEmpty) return
+        buyFromShop(player, shop, payload.quantity, requireOtherOwner = true)
+    }
+
+    fun buyFromShop(player: ServerPlayer, shop: ShopBlockEntity, requestedQuantity: Int, requireOtherOwner: Boolean): Boolean {
+        if (requireOtherOwner && !shop.isClaimedByOther(player)) return false
+        val quantity = requestedQuantity.coerceIn(0, shop.stockCount)
+        if (quantity <= 0 || shop.stock.isEmpty) return false
         val price = shop.price.coerceAtLeast(0L)
         val total = price.saturatingMultiply(quantity.toLong())
         val balance = ChowcoinStore.get(player)
         if (balance < total) {
             player.displayClientMessage(Component.literal("Not enough chowcoins."), true)
             ChowcoinNetwork.syncTo(player)
-            return
+            return false
         }
-        val ownerId = shop.ownerUuid ?: return
+        val ownerId = shop.ownerUuid ?: return false
         val itemName = shop.stock.hoverName.string
         val bought = shop.removeStockStacks(quantity)
-        if (bought.isEmpty()) return
+        if (bought.isEmpty()) return false
         ChowcoinStore.set(player, balance - total)
         if (total > 0L) ChowcoinStore.add(ownerId, total)
         bought.forEach { stack -> if (!player.inventory.add(stack)) player.drop(stack, false) }
@@ -104,6 +108,7 @@ object ShopStockNetwork {
             recordSaleMission(owner, total)
         }
         player.displayClientMessage(Component.literal("Bought $quantity $itemName for $total chowcoins."), true)
+        return true
     }
 
     private fun recordSaleMission(owner: ServerPlayer, total: Long) {

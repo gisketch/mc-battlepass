@@ -40,7 +40,7 @@ class ShopStockMenu private constructor(
         when (index) {
             STOCK_SLOT_INDEX -> {
                 val activeShop = shop ?: return ItemStack.EMPTY
-                val moved = activeShop.removeStockStacks(minOf(activeShop.stockCount, activeShop.stock.maxStackSize))
+                val moved = activeShop.removeStockStacks(minOf(activeShop.stockCount, activeShop.displayItem.maxStackSize))
                 if (moved.isEmpty()) return ItemStack.EMPTY
                 moved.forEach { stack -> if (!player.inventory.add(stack)) player.drop(stack, false) }
             }
@@ -131,7 +131,7 @@ class ShopStockMenu private constructor(
                 containerId,
                 inventory,
                 shop.blockPos,
-                shop.stock.copy(),
+                shop.displayItem.copy(),
                 shop.stockCount,
                 shop.price,
                 shop.ownerName,
