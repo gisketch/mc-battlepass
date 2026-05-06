@@ -53,6 +53,8 @@ object BattlepassAvailableMissionEvents {
         "gisketchs_chowkingdom_mod:shipping_bin_diamond_quality_food_sold" to "Ship {goal} Diamond Quality Foods",
         "gisketchs_chowkingdom_mod:shipping_bin_value_sold" to "Ship {goal} Chowcoins Worth",
         "gisketchs_chowkingdom_mod:shipping_bin_quality_food_value_sold" to "Ship {goal} Quality Chowcoins Worth",
+        "gisketchs_chowkingdom_mod:shop_value_sold" to "Sell {goal} Chowcoins Worth of Items",
+        "gisketchs_chowkingdom_mod:shop_value_bought" to "Buy {goal} Chowcoins Worth of Items",
     )
 
     fun ids(): List<String> = (descriptions.keys + cobblemonAliases()).distinct().sorted()

@@ -1,6 +1,8 @@
 package dev.gisketch.chowkingdom.shops
 
 import dev.gisketch.chowkingdom.ChowKingdomMod
+import dev.gisketch.chowkingdom.battlepass.BattlepassMissionEventBank
+import dev.gisketch.chowkingdom.battlepass.BattlepassNetwork
 import dev.gisketch.chowkingdom.wallets.ChowcoinNetwork
 import dev.gisketch.chowkingdom.wallets.ChowcoinStore
 import net.minecraft.core.BlockPos
@@ -95,9 +97,25 @@ object ShopStockNetwork {
         ChowcoinStore.set(player, balance - total)
         if (total > 0L) ChowcoinStore.add(ownerId, total)
         bought.forEach { stack -> if (!player.inventory.add(stack)) player.drop(stack, false) }
+        recordBuyMission(player, total)
         ChowcoinNetwork.syncTo(player)
-        player.server.playerList.getPlayer(ownerId)?.let(ChowcoinNetwork::syncTo)
+        player.server.playerList.getPlayer(ownerId)?.let { owner ->
+            ChowcoinNetwork.syncTo(owner)
+            recordSaleMission(owner, total)
+        }
         player.displayClientMessage(Component.literal("Bought $quantity $itemName for $total chowcoins."), true)
+    }
+
+    private fun recordSaleMission(owner: ServerPlayer, total: Long) {
+        if (total <= 0L) return
+        val amount = total.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+        if (BattlepassMissionEventBank.record(owner, SHOP_VALUE_SOLD_EVENT, amount)) BattlepassNetwork.syncAllPlayers()
+    }
+
+    private fun recordBuyMission(buyer: ServerPlayer, total: Long) {
+        if (total <= 0L) return
+        val amount = total.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+        if (BattlepassMissionEventBank.record(buyer, SHOP_VALUE_BOUGHT_EVENT, amount)) BattlepassNetwork.syncAllPlayers()
     }
 
     private fun Long.saturatingMultiply(other: Long): Long {
@@ -105,6 +123,9 @@ object ShopStockNetwork {
         if (this > Long.MAX_VALUE / other) return Long.MAX_VALUE
         return this * other
     }
+
+    private const val SHOP_VALUE_SOLD_EVENT = "gisketchs_chowkingdom_mod:shop_value_sold"
+    private const val SHOP_VALUE_BOUGHT_EVENT = "gisketchs_chowkingdom_mod:shop_value_bought"
 }
 
 

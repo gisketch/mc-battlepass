@@ -9,6 +9,7 @@ For quick in-game testing, replace the first daily mission in the first loaded p
 ```text
 /battlepass daily replace farmersdelight:cutting_board_used 10
 /battlepass daily replace gisketchs_chowkingdom_mod:shipping_bin_value_sold 5000,25000,50000
+/battlepass daily replace gisketchs_chowkingdom_mod:shop_value_sold 5000,25000,50000
 /battlepass milestone complete
 ```
 
@@ -205,6 +206,31 @@ Good shipping quest ideas:
 - Ship 4 diamond quality foods today.
 - Ship 128 quality foods this week.
 - Ship 25,000 chowcoins worth of quality items.
+
+## Shop Events
+
+Implemented now:
+
+- `gisketchs_chowkingdom_mod:shop_value_sold`: +total chowcoin value sold through player shops, recorded for the online shop owner when another player buys stock.
+- `gisketchs_chowkingdom_mod:shop_value_bought`: +total chowcoin value bought from player shops, recorded for the buyer.
+
+Permanent config example:
+
+```json
+{ "id": "permanent_shop_value_sold", "event": "gisketchs_chowkingdom_mod:shop_value_sold", "type": "progressive", "event_desc": "Sell {goal} Chowcoins Worth of Items", "progress": 0, "progress_goals": [100000, 500000, 1000000], "progress_xp": [500, 1250, 2500] }
+```
+
+```json
+{ "id": "permanent_shop_value_bought", "event": "gisketchs_chowkingdom_mod:shop_value_bought", "type": "progressive", "event_desc": "Buy {goal} Chowcoins Worth of Items", "progress": 0, "progress_goals": [100000, 500000, 1000000], "progress_xp": [500, 1250, 2500] }
+```
+
+Good shop quest ideas:
+
+- Sell 10,000 chowcoins worth from player shops.
+- Sell 100,000 chowcoins worth as a permanent milestone.
+- Sell 1,000,000 chowcoins worth across a long-term shopkeeper pass.
+- Buy 10,000 chowcoins worth from player shops.
+- Buy 100,000 chowcoins worth as a permanent market milestone.
 
 ## Farmer's Delight Events
 

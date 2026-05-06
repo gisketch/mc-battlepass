@@ -213,8 +213,8 @@ object TradingManager {
             transferChowcoins(second, first, secondCoins)
         } else {
             returnOfferToPlayer(session.firstOffer, first)
-            if (secondCoins > 0L) ChowcoinStore.add(first, secondCoins)
-            first.sendSystemMessage(Component.literal("Debug trade completed; your offer was returned.").withStyle(ChatFormatting.YELLOW))
+            settleDebugChowcoins(first, firstCoins, secondCoins)
+            first.sendSystemMessage(Component.literal("Debug trade completed; your item offer was returned.").withStyle(ChatFormatting.YELLOW))
         }
         finishCompletedTrade(session)
         ChowcoinNetwork.syncTo(first)
@@ -225,6 +225,11 @@ object TradingManager {
         if (amount <= 0L) return
         ChowcoinStore.set(from, ChowcoinStore.get(from) - amount)
         ChowcoinStore.add(to, amount)
+    }
+
+    private fun settleDebugChowcoins(player: ServerPlayer, outgoing: Long, incoming: Long) {
+        if (outgoing <= 0L && incoming <= 0L) return
+        ChowcoinStore.set(player, ChowcoinStore.get(player) - outgoing + incoming)
     }
 
     private fun moveOfferToInventory(container: SimpleContainer, player: ServerPlayer) {
