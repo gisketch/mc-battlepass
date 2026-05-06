@@ -3,44 +3,39 @@ package dev.gisketch.chowkingdom.client
 import com.mojang.blaze3d.systems.RenderSystem
 import dev.gisketch.chowkingdom.ChowKingdomMod
 import dev.gisketch.chowkingdom.battlepass.BattlepassClientState
-import dev.gisketch.chowkingdom.battlepass.BattlepassMissionEntry
+import dev.gisketch.chowkingdom.battlepass.BattlepassMissionIcons
 import dev.gisketch.chowkingdom.battlepass.BattlepassMissionScope
 import dev.gisketch.chowkingdom.battlepass.BattlepassMissionService
 import dev.gisketch.chowkingdom.battlepass.BattlepassPassRegistry
 import dev.gisketch.chowkingdom.battlepass.BattlepassTrackedMissions
 import dev.gisketch.chowkingdom.battlepass.BattlepassXpEventDefinition
-import dev.gisketch.chowkingdom.profiles.NicknameStore
 import dev.gisketch.chowkingdom.shipping.ShippingBinClientState
 import dev.gisketch.chowkingdom.wallets.ChowcoinClientState
 import net.minecraft.client.Minecraft
+import net.minecraft.client.gui.Font
 import net.minecraft.client.gui.GuiGraphics
-import net.minecraft.client.gui.components.PlayerFaceRenderer
 import net.minecraft.client.gui.screens.ChatScreen
 import net.minecraft.client.resources.sounds.SimpleSoundInstance
+import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.sounds.SoundEvents
 import net.minecraft.util.Mth
+import net.minecraft.world.item.ItemStack
 import net.neoforged.bus.api.IEventBus
 import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent
 import org.lwjgl.glfw.GLFW
 import java.util.Locale
 
 object ChowKingdomHud {
-    private data class HudMission(val passId: String, val entry: BattlepassMissionEntry, val progress: Int, val title: String, val completed: Boolean)
+    private data class HudMission(val title: String, val icon: ItemStack)
     private data class ActiveCompletionToast(val title: String, val missionName: String, val startedAt: Long)
     private data class ActiveShippingSaleToast(val itemCount: Int, val amount: Long, val startedAt: Long)
 
     private val LAYER_ID: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "player_hud")
-    private val AVATAR_BORDER_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/avatar-border.png")
-    private val HUD_CONTAINER_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/hud-container.png")
-    private val GREEN_BORDER_MASK_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/green-border-mask.png")
-    private val ORANGE_BORDER_MASK_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/orange-border-mask.png")
-    private val CYAN_BORDER_MASK_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/cyan-border-mask.png")
-    private val MARKER_QUEST_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/marker_quest.png")
-    private val CHECK_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/accept.png")
-    private val COINS_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/coins.png")
+    private val CHOWCOIN_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/chowcoin.png")
     private val TOAST_BUTTON_SPRITE: ResourceLocation = ResourceLocation.withDefaultNamespace("widget/button")
-    private var detailProgress = 0.0f
+    private val CKDM_BOLD_FONT: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "ckdm_bold")
+    private val CKDM_BOLD_SMALL_FONT: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "ckdm_bold_small")
     private val activeCompletionToasts: MutableList<ActiveCompletionToast> = mutableListOf()
     private val activeShippingSaleToasts: MutableList<ActiveShippingSaleToast> = mutableListOf()
 
@@ -59,120 +54,62 @@ object ChowKingdomHud {
         queueCompletionToasts(minecraft)
         queueShippingSaleToasts(minecraft)
 
-        val name = NicknameStore.nicknameFor(player.uuid) ?: player.gameProfile.name
-        val avatarX = HUD_PADDING
-        val avatarY = HUD_PADDING
-        val textX = avatarX + BORDER_SIZE + NAME_GAP
-        val nameY = avatarY
-        val coinY = nameY + HEADER_PILL_HEIGHT + HEADER_PILL_GAP
-        val trackedX = avatarX
-        val trackedY = avatarY + BORDER_SIZE + TRACKED_TOP_GAP
         val detailsVisible = GLFW.glfwGetKey(minecraft.window.window, GLFW.GLFW_KEY_TAB) == GLFW.GLFW_PRESS
-        detailProgress = Mth.lerp(TRACKED_DETAIL_ANIMATION_SPEED, detailProgress, if (detailsVisible) 1.0f else 0.0f)
-        if (!detailsVisible && detailProgress < TRACKED_DETAIL_MIN_ALPHA) detailProgress = 0.0f
-        if (detailsVisible && detailProgress > 1.0f - TRACKED_DETAIL_MIN_ALPHA) detailProgress = 1.0f
-
-        guiGraphics.blit(AVATAR_BORDER_TEXTURE, avatarX, avatarY, BORDER_SIZE, BORDER_SIZE, 0.0f, 0.0f, BORDER_SIZE, BORDER_SIZE, BORDER_SIZE, BORDER_SIZE)
-        PlayerFaceRenderer.draw(guiGraphics, player.skin, avatarX + AVATAR_INSET, avatarY + AVATAR_INSET, AVATAR_SIZE)
 
         val passes = BattlepassClientState.passes().ifEmpty { BattlepassPassRegistry.all().toList() }
         val trackedMissions = BattlepassTrackedMissions.trackedMissions(passes)
-        val headerOffset = textX - trackedX
         val selfId = BattlepassClientState.selfId() ?: player.uuid
-        val chowcoinText = formatChowcoins(ChowcoinClientState.balance())
-        val sharedWidth = sharedRowWidth(minecraft, name, chowcoinText, trackedMissions, headerOffset, selfId)
-        val headerWidth = (sharedWidth - headerOffset).coerceAtLeast(TRACKED_MIN_WIDTH)
-        renderNamePill(guiGraphics, minecraft, textX, nameY, name, headerWidth)
-        renderCoinPill(guiGraphics, minecraft, textX, coinY, chowcoinText, headerWidth)
-        renderTrackedMissions(guiGraphics, minecraft, trackedX, trackedY, trackedMissions, missionPillWidth(sharedWidth))
+        renderCompactHud(guiGraphics, minecraft, trackedMissions, selfId, detailsVisible)
         renderShippingSaleToasts(guiGraphics, minecraft)
         renderCompletionToasts(guiGraphics, minecraft)
     }
 
-    private fun sharedRowWidth(minecraft: Minecraft, name: String, chowcoinText: String, missions: List<BattlepassTrackedMissions.TrackedMission>, headerOffset: Int, playerId: java.util.UUID): Int {
-        val maxTextWidth = ((TRACKED_MAX_WIDTH - TRACKED_TEXT_PADDING * 2) / TRACKED_TEXT_SCALE).toInt()
-        val nameWidth = headerOffset + pillWidthFor(minecraft, trimToWidth(minecraft, name, maxTextWidth))
-        val coinWidth = headerOffset + HEADER_ICON_SIZE + HEADER_ICON_GAP + pillWidthFor(minecraft, chowcoinText)
-        val missionWidth = missions.maxOfOrNull { mission -> TRACKED_MARKER_SIZE + TRACKED_MARKER_GAP + pillWidthFor(minecraft, trimToWidth(minecraft, missionDescription(mission.pass.id, mission.entry, playerId), maxTextWidth)) } ?: TRACKED_MIN_WIDTH
-        return maxOf(nameWidth, coinWidth, missionWidth).coerceIn(TRACKED_MIN_WIDTH, TRACKED_MAX_WIDTH)
+    private fun renderCompactHud(guiGraphics: GuiGraphics, minecraft: Minecraft, missions: List<BattlepassTrackedMissions.TrackedMission>, playerId: java.util.UUID, showGoal: Boolean) {
+        val font = minecraft.font
+        val screenWidth = minecraft.window.guiScaledWidth
+        val maxPanelWidth = (screenWidth - HUD_PADDING * 2).coerceAtMost(COMPACT_HUD_MAX_WIDTH)
+        val maxMissionTextWidth = (maxPanelWidth - COMPACT_MISSION_ICON_SIZE - COMPACT_MISSION_ICON_GAP).coerceAtLeast(COMPACT_MIN_TEXT_WIDTH)
+        val hudMissions = compactHudMissions(minecraft, missions, playerId, showGoal, maxMissionTextWidth)
+        val coinText = formatChowcoins(ChowcoinClientState.balance())
+        val left = HUD_PADDING
+
+        val coinX = left
+        val coinY = HUD_PADDING
+        val coinIconY = coinY + (font.lineHeight - COMPACT_COIN_SIZE) / 2 + COMPACT_COIN_ICON_Y_OFFSET
+        renderIcon(guiGraphics, CHOWCOIN_TEXTURE, coinX, coinIconY, COMPACT_COIN_SIZE, COMPACT_COIN_TEXTURE_SIZE)
+        drawCkdmShadowed(guiGraphics, font, coinText, coinX + COMPACT_COIN_SIZE + COMPACT_COIN_TEXT_GAP, coinY + COMPACT_COIN_TEXT_Y, COMPACT_WHITE, COMPACT_BLACK_SHADOW, COMPACT_SHADOW_OFFSET, CKDM_BOLD_FONT)
+
+        if (hudMissions.isEmpty()) return
+
+        val headerY = coinY + COMPACT_COIN_SIZE + COMPACT_MISSIONS_TOP_GAP
+        drawCkdmShadowed(guiGraphics, font, MISSIONS_HEADER, left, headerY, COMPACT_GOLD, COMPACT_BLACK_SHADOW, COMPACT_SHADOW_OFFSET, CKDM_BOLD_SMALL_FONT)
+
+        hudMissions.forEachIndexed { index, mission ->
+            val rowX = left
+            val rowY = headerY + COMPACT_HEADER_LINE_HEIGHT + COMPACT_MISSION_HEADER_GAP + index * COMPACT_MISSION_ROW_HEIGHT
+            renderScaledItem(guiGraphics, mission.icon, rowX, rowY, COMPACT_MISSION_ICON_SIZE)
+            drawCkdmShadowedScaled(guiGraphics, font, mission.title, rowX + COMPACT_MISSION_ICON_SIZE + COMPACT_MISSION_ICON_GAP, rowY + COMPACT_MISSION_TEXT_Y, COMPACT_MISSION_TEXT_SCALE, COMPACT_WHITE, COMPACT_BLACK_SHADOW, COMPACT_SMALL_SHADOW_OFFSET, CKDM_BOLD_SMALL_FONT)
+        }
     }
 
-    private fun renderNamePill(guiGraphics: GuiGraphics, minecraft: Minecraft, x: Int, y: Int, name: String, pillWidth: Int) {
-        val title = trimToWidth(minecraft, name, ((pillWidth - TRACKED_TEXT_PADDING * 2) / TRACKED_TEXT_SCALE).toInt())
-        renderStretchedHudTexture(guiGraphics, HUD_CONTAINER_TEXTURE, x, y, pillWidth, HEADER_PILL_HEIGHT)
-        renderStretchedHudTexture(guiGraphics, CYAN_BORDER_MASK_TEXTURE, x, y, pillWidth, HEADER_PILL_HEIGHT)
-        drawPillText(guiGraphics, minecraft, title, x, y, HEADER_PILL_HEIGHT)
-    }
-
-    private fun renderCoinPill(guiGraphics: GuiGraphics, minecraft: Minecraft, x: Int, y: Int, amount: String, totalWidth: Int) {
-        val pillX = x + HEADER_ICON_SIZE + HEADER_ICON_GAP
-        val pillWidth = (totalWidth - HEADER_ICON_SIZE - HEADER_ICON_GAP).coerceAtLeast(TRACKED_MIN_WIDTH)
-        val title = trimToWidth(minecraft, amount, ((pillWidth - TRACKED_TEXT_PADDING * 2) / TRACKED_TEXT_SCALE).toInt())
-        renderIcon(guiGraphics, COINS_TEXTURE, x, y, HEADER_ICON_SIZE, HEADER_ICON_TEXTURE_SIZE)
-        renderStretchedHudTexture(guiGraphics, HUD_CONTAINER_TEXTURE, pillX, y, pillWidth, HEADER_PILL_HEIGHT)
-        renderStretchedHudTexture(guiGraphics, ORANGE_BORDER_MASK_TEXTURE, pillX, y, pillWidth, HEADER_PILL_HEIGHT)
-        drawPillText(guiGraphics, minecraft, title, pillX, y, HEADER_PILL_HEIGHT)
-    }
-
-    private fun renderTrackedMissions(guiGraphics: GuiGraphics, minecraft: Minecraft, x: Int, y: Int, missions: List<BattlepassTrackedMissions.TrackedMission>, pillWidth: Int) {
-        val playerId = BattlepassClientState.selfId() ?: minecraft.player?.uuid ?: return
-        val maxTextWidth = ((pillWidth - TRACKED_TEXT_PADDING * 2) / TRACKED_TEXT_SCALE).toInt()
-        val hudMissions = missions.mapNotNull { mission ->
+    private fun compactHudMissions(minecraft: Minecraft, missions: List<BattlepassTrackedMissions.TrackedMission>, playerId: java.util.UUID, showGoal: Boolean, maxTextWidth: Int): List<HudMission> =
+        missions.mapNotNull { mission ->
             val event = mission.entry.event
             val progress = BattlepassClientState.missionProgress(playerId, mission.pass.id, mission.entry.key)
                 ?: BattlepassClientState.missionProgress(playerId, mission.pass.id, event.event)
                 ?: event.progress
+            val goal = missionGoal(event)
             val completed = BattlepassClientState.isMissionCompleted(playerId, mission.pass.id, mission.entry.key)
-            if (completed) return@mapNotNull null
-            HudMission(mission.pass.id, mission.entry, progress, trimToWidth(minecraft, missionDescription(mission.pass.id, mission.entry, playerId), maxTextWidth), completed)
+            if (completed || goal <= 0) return@mapNotNull null
+            val title = fitCkdmText(minecraft.font, compactMissionDescription(event, progress, goal, showGoal), (maxTextWidth / COMPACT_MISSION_TEXT_SCALE).toInt(), CKDM_BOLD_SMALL_FONT)
+            HudMission(title, BattlepassMissionIcons.stack(mission.entry))
         }
 
-        hudMissions.forEachIndexed { index, mission ->
-            val rowY = y + index * TRACKED_ROW_HEIGHT
-            renderTrackedProgress(guiGraphics, minecraft, x, rowY, mission, pillWidth)
-        }
-    }
-
-    private fun renderTrackedProgress(guiGraphics: GuiGraphics, minecraft: Minecraft, x: Int, y: Int, mission: HudMission, pillWidth: Int) {
-        val event = mission.entry.event
-        val goal = missionGoal(event)
-        if (goal <= 0) return
-        val cappedProgress = mission.progress.coerceIn(0, goal)
-        val progressText = "$cappedProgress/$goal"
-        val fillWidth = (pillWidth * (cappedProgress / goal.toFloat())).toInt().coerceIn(0, pillWidth)
-        val pillX = x + TRACKED_MARKER_SIZE + TRACKED_MARKER_GAP
-        val alpha = if (mission.completed) TRACKED_COMPLETED_ALPHA else 1.0f
-        if (mission.completed) {
-            renderIcon(guiGraphics, CHECK_TEXTURE, x + (TRACKED_MARKER_SIZE - TRACKED_CHECK_SIZE) / 2, y + (TRACKED_MARKER_SIZE - TRACKED_CHECK_SIZE) / 2, TRACKED_CHECK_SIZE, MARKER_TEXTURE_SIZE, alpha)
-        } else {
-            renderIcon(guiGraphics, MARKER_QUEST_TEXTURE, x, y, TRACKED_MARKER_SIZE, MARKER_TEXTURE_SIZE, alpha)
-        }
-        renderStretchedHudTexture(guiGraphics, HUD_CONTAINER_TEXTURE, pillX, y, pillWidth, TRACKED_HEIGHT, alpha)
-        if (fillWidth > 0) {
-            guiGraphics.enableScissor(pillX, y, pillX + fillWidth, y + TRACKED_HEIGHT)
-            renderStretchedHudTexture(guiGraphics, missionMask(mission.entry.scope), pillX, y, pillWidth, TRACKED_HEIGHT, alpha)
-            guiGraphics.disableScissor()
-        }
-        drawPillText(guiGraphics, minecraft, mission.title, pillX, y, TRACKED_HEIGHT, alpha)
-        if (detailProgress > 0.01f) {
-            val detailX = pillX + pillWidth + TRACKED_DETAIL_GAP - ((1.0f - detailProgress) * TRACKED_DETAIL_SLIDE).toInt()
-            val detailY = y + (TRACKED_HEIGHT - minecraft.font.lineHeight) / 2
-            guiGraphics.drawString(minecraft.font, progressText, detailX, detailY, colorWithAlpha(TRACKED_TEXT_COLOR, detailProgress * alpha), false)
-        }
-    }
-
-    private fun renderStretchedHudTexture(guiGraphics: GuiGraphics, texture: ResourceLocation, x: Int, y: Int, width: Int, height: Int, alpha: Float = 1.0f) {
-        val outputBorder = outputBorder(height).coerceAtMost(width / 2)
-        val middleWidth = (width - outputBorder * 2).coerceAtLeast(0)
-        RenderSystem.enableBlend()
-        RenderSystem.defaultBlendFunc()
-        guiGraphics.setColor(1.0f, 1.0f, 1.0f, alpha)
-        guiGraphics.blit(texture, x, y, outputBorder, height, 0.0f, 0.0f, HUD_TEXTURE_BORDER, HUD_TEXTURE_HEIGHT, HUD_TEXTURE_WIDTH, HUD_TEXTURE_HEIGHT)
-        if (middleWidth > 0) {
-            guiGraphics.blit(texture, x + outputBorder, y, middleWidth, height, HUD_TEXTURE_BORDER.toFloat(), 0.0f, HUD_TEXTURE_WIDTH - HUD_TEXTURE_BORDER * 2, HUD_TEXTURE_HEIGHT, HUD_TEXTURE_WIDTH, HUD_TEXTURE_HEIGHT)
-        }
-        guiGraphics.blit(texture, x + width - outputBorder, y, outputBorder, height, (HUD_TEXTURE_WIDTH - HUD_TEXTURE_BORDER).toFloat(), 0.0f, HUD_TEXTURE_BORDER, HUD_TEXTURE_HEIGHT, HUD_TEXTURE_WIDTH, HUD_TEXTURE_HEIGHT)
-        guiGraphics.setColor(1.0f, 1.0f, 1.0f, 1.0f)
+    private fun compactMissionDescription(event: BattlepassXpEventDefinition, progress: Int, goal: Int, showGoal: Boolean): String {
+        val displayGoal = if (showGoal) goal else (goal - progress.coerceAtLeast(0)).coerceAtLeast(0)
+        return event.eventDesc.ifBlank { event.event }
+            .replace("{goal}", displayGoal.toString())
+            .replace("{progress}", progress.coerceAtMost(goal).toString())
     }
 
     private fun renderIcon(guiGraphics: GuiGraphics, texture: ResourceLocation, x: Int, y: Int, size: Int, textureSize: Int, alpha: Float = 1.0f) {
@@ -183,19 +120,14 @@ object ChowKingdomHud {
         guiGraphics.setColor(1.0f, 1.0f, 1.0f, 1.0f)
     }
 
-    private fun drawPillText(guiGraphics: GuiGraphics, minecraft: Minecraft, text: String, x: Int, y: Int, height: Int, alpha: Float = 1.0f) {
-        val textHeight = minecraft.font.lineHeight * TRACKED_TEXT_SCALE
-        val pose = guiGraphics.pose()
-        pose.pushPose()
-        pose.translate(x + TRACKED_TEXT_PADDING.toFloat(), y + (height - textHeight) / 2.0f, 0.0f)
-        pose.scale(TRACKED_TEXT_SCALE, TRACKED_TEXT_SCALE, 1.0f)
-        guiGraphics.drawString(minecraft.font, text, 0, 0, colorWithAlpha(TRACKED_TITLE_COLOR, alpha), false)
-        pose.popPose()
+    private fun renderScaledItem(guiGraphics: GuiGraphics, stack: ItemStack, x: Int, y: Int, size: Int) {
+        val scale = size / VANILLA_ITEM_SIZE.toFloat()
+        guiGraphics.pose().pushPose()
+        guiGraphics.pose().translate(x.toFloat(), y.toFloat(), 0.0f)
+        guiGraphics.pose().scale(scale, scale, 1.0f)
+        guiGraphics.renderItem(stack, 0, 0)
+        guiGraphics.pose().popPose()
     }
-
-    private fun outputBorder(height: Int): Int = ((HUD_TEXTURE_BORDER * height + HUD_TEXTURE_HEIGHT / 2) / HUD_TEXTURE_HEIGHT).coerceAtLeast(1)
-
-    private fun missionPillWidth(sharedWidth: Int): Int = (sharedWidth - TRACKED_MARKER_SIZE - TRACKED_MARKER_GAP).coerceAtLeast(TRACKED_MIN_WIDTH)
 
     private fun missionGoal(event: BattlepassXpEventDefinition): Int = when {
         BattlepassMissionService.isCappedRepeating(event) -> event.xpCap
@@ -203,23 +135,7 @@ object ChowKingdomHud {
         else -> 0
     }
 
-    private fun missionDescription(passId: String, entry: BattlepassMissionEntry, playerId: java.util.UUID): String {
-        val event = entry.event
-        val progress = BattlepassClientState.missionProgress(playerId, passId, entry.key)
-            ?: BattlepassClientState.missionProgress(playerId, passId, event.event)
-            ?: event.progress
-        return BattlepassMissionService.missionDescription(event, progress)
-    }
-
-    private fun pillWidthFor(minecraft: Minecraft, text: String): Int = ((minecraft.font.width(text) * TRACKED_TEXT_SCALE).toInt() + TRACKED_TEXT_PADDING * 2).coerceIn(TRACKED_MIN_WIDTH, TRACKED_MAX_WIDTH)
-
     private fun formatChowcoins(amount: Long): String = String.format(Locale.US, "%,d", amount)
-
-    private fun missionMask(scope: BattlepassMissionScope): ResourceLocation = when (scope) {
-        BattlepassMissionScope.DAILY -> GREEN_BORDER_MASK_TEXTURE
-        BattlepassMissionScope.WEEKLY -> ORANGE_BORDER_MASK_TEXTURE
-        BattlepassMissionScope.PERMANENT -> CYAN_BORDER_MASK_TEXTURE
-    }
 
     private fun colorWithAlpha(color: Int, alpha: Float): Int = ((alpha.coerceIn(0.0f, 1.0f) * 255).toInt() shl 24) or (color and 0x00FFFFFF)
 
@@ -260,7 +176,7 @@ object ChowKingdomHud {
             pose.translate(-(x + toastWidth / 2.0f), -(y + TOAST_HEIGHT / 2.0f), 0.0f)
             renderVanillaButtonBackground(guiGraphics, x, y, toastWidth, alpha)
             drawScaledToastText(guiGraphics, minecraft, "Shipping Bin", x + TOAST_TEXT_X, y + TOAST_TITLE_Y, TOAST_TITLE_SCALE, TOAST_TITLE_COLOR, alpha)
-            renderIcon(guiGraphics, COINS_TEXTURE, x + TOAST_TEXT_X, y + TOAST_NAME_Y - 2, TOAST_COIN_SIZE, HEADER_ICON_TEXTURE_SIZE, alpha)
+            renderIcon(guiGraphics, CHOWCOIN_TEXTURE, x + TOAST_TEXT_X, y + TOAST_NAME_Y - 2, TOAST_COIN_SIZE, COMPACT_COIN_TEXTURE_SIZE, alpha)
             drawShippingSaleLine(guiGraphics, minecraft, toast, x + TOAST_TEXT_X + TOAST_COIN_SIZE + TOAST_COIN_GAP, y + TOAST_NAME_Y, alpha)
             pose.popPose()
         }
@@ -336,6 +252,36 @@ object ChowKingdomHud {
         pose.popPose()
     }
 
+    private fun ckdmText(text: String, fontId: ResourceLocation): Component =
+        Component.literal(text.uppercase(Locale.ROOT)).withStyle { style -> style.withFont(fontId) }
+
+    private fun ckdmWidth(font: Font, text: String, fontId: ResourceLocation): Int = font.width(ckdmText(text, fontId))
+
+    private fun fitCkdmText(font: Font, text: String, maxWidth: Int, fontId: ResourceLocation): String {
+        if (font.width(ckdmText(text, fontId)) <= maxWidth) return text
+        val suffix = "..."
+        var trimmed = text
+        while (trimmed.isNotEmpty() && font.width(ckdmText(trimmed + suffix, fontId)) > maxWidth) trimmed = trimmed.dropLast(1)
+        return trimmed + suffix
+    }
+
+    private fun drawCkdmShadowed(guiGraphics: GuiGraphics, font: Font, text: String, x: Int, y: Int, color: Int, shadowColor: Int, shadowOffset: Int, fontId: ResourceLocation) {
+        val component = ckdmText(text, fontId)
+        guiGraphics.drawString(font, component, x + shadowOffset, y + shadowOffset, shadowColor, false)
+        guiGraphics.drawString(font, component, x, y, color, false)
+    }
+
+    private fun drawCkdmShadowedScaled(guiGraphics: GuiGraphics, font: Font, text: String, x: Int, y: Int, scale: Float, color: Int, shadowColor: Int, shadowOffset: Int, fontId: ResourceLocation) {
+        val component = ckdmText(text, fontId)
+        val pose = guiGraphics.pose()
+        pose.pushPose()
+        pose.translate(x.toFloat(), y.toFloat(), 0.0f)
+        pose.scale(scale, scale, 1.0f)
+        guiGraphics.drawString(font, component, shadowOffset, shadowOffset, shadowColor, false)
+        guiGraphics.drawString(font, component, 0, 0, color, false)
+        pose.popPose()
+    }
+
     private fun easeOutBack(progress: Float): Float {
         val shifted = progress - 1.0f
         return 1.0f + TOAST_BACK_OVERSHOOT * shifted * shifted * shifted + (TOAST_BACK_OVERSHOOT - 1.0f) * shifted * shifted
@@ -349,46 +295,29 @@ object ChowKingdomHud {
         BattlepassMissionScope.PERMANENT -> "Mission Completed"
     }
 
-    private fun trimToWidth(minecraft: Minecraft, text: String, width: Int): String {
-        if (minecraft.font.width(text) <= width) return text
-        var trimmed = text
-        while (trimmed.isNotEmpty() && minecraft.font.width("$trimmed...") > width) {
-            trimmed = trimmed.dropLast(1)
-        }
-        return "$trimmed..."
-    }
-
+    private const val MISSIONS_HEADER = "Missions"
     private const val HUD_PADDING = 8
-    private const val BORDER_SIZE = 32
-    private const val AVATAR_SIZE = 24
-    private const val AVATAR_INSET = (BORDER_SIZE - AVATAR_SIZE) / 2
-    private const val NAME_GAP = 6
-    private const val TRACKED_TOP_GAP = 5
-    private const val HEADER_PILL_HEIGHT = 14
-    private const val HEADER_PILL_GAP = 4
-    private const val HEADER_ICON_SIZE = 14
-    private const val HEADER_ICON_GAP = 4
-    private const val HEADER_ICON_TEXTURE_SIZE = 16
-    private const val TRACKED_MIN_WIDTH = 52
-    private const val TRACKED_MAX_WIDTH = 150
-    private const val TRACKED_HEIGHT = 19
-    private const val TRACKED_ROW_HEIGHT = 22
-    private const val TRACKED_TEXT_SCALE = 0.85f
-    private const val TRACKED_TEXT_PADDING = 6
-    private const val TRACKED_MARKER_SIZE = TRACKED_HEIGHT
-    private const val TRACKED_CHECK_SIZE = TRACKED_MARKER_SIZE / 2
-    private const val TRACKED_MARKER_GAP = 2
-    private const val TRACKED_DETAIL_GAP = 8
-    private const val TRACKED_DETAIL_SLIDE = 8
-    private const val TRACKED_DETAIL_ANIMATION_SPEED = 0.28f
-    private const val TRACKED_DETAIL_MIN_ALPHA = 0.02f
-    private const val TRACKED_COMPLETED_ALPHA = 0.5f
-    private const val HUD_TEXTURE_WIDTH = 128
-    private const val HUD_TEXTURE_HEIGHT = 24
-    private const val HUD_TEXTURE_BORDER = 4
-    private const val MARKER_TEXTURE_SIZE = 16
-    private const val TRACKED_TITLE_COLOR = 0xFFFFFFFF.toInt()
-    private const val TRACKED_TEXT_COLOR = 0xFFFFFFFF.toInt()
+    private const val COMPACT_HUD_MAX_WIDTH = 220
+    private const val COMPACT_MIN_TEXT_WIDTH = 72
+    private const val COMPACT_COIN_SIZE = 9
+    private const val COMPACT_COIN_TEXTURE_SIZE = 16
+    private const val COMPACT_COIN_TEXT_GAP = 4
+    private const val COMPACT_COIN_TEXT_Y = 0
+    private const val COMPACT_COIN_ICON_Y_OFFSET = -1
+    private const val COMPACT_MISSIONS_TOP_GAP = 5
+    private const val COMPACT_HEADER_LINE_HEIGHT = 8
+    private const val COMPACT_MISSION_HEADER_GAP = 2
+    private const val COMPACT_MISSION_ROW_HEIGHT = 11
+    private const val COMPACT_MISSION_ICON_SIZE = 9
+    private const val COMPACT_MISSION_ICON_GAP = 4
+    private const val COMPACT_MISSION_TEXT_Y = 1
+    private const val COMPACT_MISSION_TEXT_SCALE = 0.82f
+    private const val COMPACT_WHITE = 0xFFFFFFFF.toInt()
+    private const val COMPACT_GOLD = 0xFFFFD24A.toInt()
+    private const val COMPACT_BLACK_SHADOW = 0x80000000.toInt()
+    private const val COMPACT_SHADOW_OFFSET = 1
+    private const val COMPACT_SMALL_SHADOW_OFFSET = 1
+    private const val VANILLA_ITEM_SIZE = 16
     private const val TOAST_MIN_WIDTH = 160
     private const val TOAST_SCREEN_PADDING = 10
     private const val TOAST_HEIGHT = 44

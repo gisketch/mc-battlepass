@@ -1146,42 +1146,7 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
         return event.xp.takeIf { xp -> xp > 0 } ?: event.progressXp.firstOrNull() ?: event.xpCap
     }
 
-    private fun missionIconStack(entry: BattlepassMissionEntry): ItemStack = itemStackById(missionIconId(entry), Items.GRASS_BLOCK)
-
-    private fun missionIconId(entry: BattlepassMissionEntry): String {
-        val eventId = entry.event.event.lowercase()
-        val description = entry.event.eventDesc.lowercase()
-        return when {
-            eventId.contains("legendary") || eventId.contains("mythical") || description.contains("legendary") || description.contains("mythical") -> "cobblemon:master_ball"
-            eventId.contains("scan") || eventId.contains("pokedex") -> "cobblemon:pokedex_red"
-            eventId.startsWith("cobblemon:") -> "cobblemon:poke_ball"
-            eventId == "minecraft:monster_killed" -> "minecraft:iron_sword"
-            eventId == "minecraft:crop_harvested" || eventId == "minecraft:block_harvested" -> "minecraft:wheat"
-            eventId == "minecraft:animal_bred" -> "minecraft:wheat"
-            eventId == "minecraft:villager_traded" -> "minecraft:emerald"
-            eventId == "minecraft:fish_caught" -> "minecraft:fishing_rod"
-            eventId == "minecraft:blocks_traveled" -> "minecraft:leather_boots"
-            eventId.contains("shipping_bin") -> "gisketchs_chowkingdom_mod:shipping_bin"
-            eventId.contains("diamond_quality") -> "minecraft:diamond"
-            eventId.contains("gold_quality") -> "minecraft:gold_ingot"
-            eventId.contains("iron_quality") -> "minecraft:iron_ingot"
-            eventId.contains("quality_food_cooked") || eventId.contains("cooking_pot") -> "farmersdelight:cooking_pot"
-            eventId.contains("quality_food_eaten") || eventId.contains("meal_eaten") -> "minecraft:bowl"
-            eventId.contains("quality_crop") -> "minecraft:wheat"
-            eventId.contains("cutting_board") -> "farmersdelight:cutting_board"
-            eventId.contains("knife") -> "minecraft:iron_sword"
-            eventId.contains("feast") -> "minecraft:cake"
-            eventId.contains("wild_crop") -> "minecraft:wheat"
-            else -> "minecraft:paper"
-        }
-    }
-
-    private fun itemStackById(itemId: String, fallback: net.minecraft.world.item.Item): ItemStack {
-        val item = runCatching { ResourceLocation.parse(itemId) }.getOrNull()
-            ?.let { id -> BuiltInRegistries.ITEM.getOptional(id).orElse(fallback) }
-            ?: fallback
-        return ItemStack(item)
-    }
+    private fun missionIconStack(entry: BattlepassMissionEntry): ItemStack = BattlepassMissionIcons.stack(entry)
 
     private fun renderMissionCompletedColumn(guiGraphics: GuiGraphics, slot: MissionSlot, x: Int, y: Int, width: Int, height: Int) {
         val players = completedPlayersFor(slot)

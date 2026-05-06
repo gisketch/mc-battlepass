@@ -7,7 +7,7 @@ Stop give-up/final revive deaths from disconnecting clients with `Screen cannot 
 ## Acceptance Criteria
 
 - Give Up can trigger true death without Network Protocol Error.
-- Vanilla combat-kill packet still opens the CKDM death screen.
+- Vanilla combat-kill packet still shows the CKDM death screen.
 - Fix is targeted to client combat-kill screen opening.
 - Build passes.
 
@@ -19,7 +19,7 @@ Stop give-up/final revive deaths from disconnecting clients with `Screen cannot 
 ## Steps
 
 - Add client mixin before combat-kill `Minecraft.setScreen`.
-- Seed a harmless placeholder only when current screen is null.
+- Open the CKDM death screen directly for local-player deaths.
 - Register mixin.
 - Validate build.
 
@@ -31,7 +31,7 @@ Stop give-up/final revive deaths from disconnecting clients with `Screen cannot 
 
 ## Decision Log
 
-- The stack trace points at Fabric Screen API removing a null current screen during vanilla combat-kill death-screen open. Seeding a placeholder lets vanilla continue and keeps the normal CKDM death-screen replacement path.
+- The stack trace points at Fabric Screen API removing a null current screen during vanilla combat-kill death-screen open. Directly installing the CKDM death screen for local-player combat-kill packets bypasses that Connector/Fabric hook.
 
 ## Progress Log
 
@@ -39,3 +39,4 @@ Stop give-up/final revive deaths from disconnecting clients with `Screen cannot 
 - 2026-05-05: Added client combat-kill mixin that seeds a placeholder screen only when current screen is null.
 - 2026-05-05: Registered mixin and documented death-screen compatibility behavior.
 - 2026-05-05: Build passed.
+- 2026-05-05: Reworked mixin to cancel vanilla combat-kill screen opening and install CKDM death screen directly after Connector still crashed inside Fabric Screen API.

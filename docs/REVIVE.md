@@ -36,7 +36,7 @@ Revive turns lethal player damage into an incapacitated state.
 
 - The vanilla death screen is replaced with a CKDM-styled death screen.
 - It uses a dim black blurred background, a large death title/reason, and textured `RESPAWN` and `LEAVE GAME` buttons.
-- Client combat-kill handling seeds a temporary placeholder when no screen is open so screen-event mods do not crash before the CKDM death screen opens.
+- Client combat-kill handling opens the CKDM death screen directly for local-player deaths so Connector/Fabric screen hooks cannot crash on a null previous screen.
 
 ## Config
 

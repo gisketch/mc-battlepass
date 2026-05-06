@@ -26,6 +26,8 @@ class BattlepassXpEventDefinition {
     var type: String = "repeating"
     @SerializedName("event_desc")
     var eventDesc: String = ""
+    @SerializedName(value = "icon", alternate = ["mission_icon", "item_icon"])
+    var icon: String = ""
     var xp: Int = 0
     var progress: Int = 0
     @SerializedName("progress_goals")

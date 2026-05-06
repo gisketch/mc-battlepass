@@ -30,6 +30,21 @@ object NicknameConfig {
         return config.enableNickname && config.showOwnNameTag
     }
 
+    fun current(): NicknameClientConfigValues {
+        if (!loaded) load()
+        return NicknameClientConfigValues(config.enableNickname, config.showOwnNameTag)
+    }
+
+    fun save(values: NicknameClientConfigValues) {
+        file.parent.createDirectories()
+        config = StoredNicknameClientConfig(values.enableNickname, values.showOwnNameTag)
+        Files.createTempFile(file.parent, "nickname_client", ".json.tmp").also { temp ->
+            temp.bufferedWriter().use { writer -> gson.toJson(config, writer) }
+            Files.move(temp, file, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+        }
+        loaded = true
+    }
+
     fun load() {
         file.parent.createDirectories()
         if (!file.exists()) writeDefault()
@@ -49,6 +64,11 @@ object NicknameConfig {
         }
     }
 }
+
+data class NicknameClientConfigValues(
+    var enableNickname: Boolean = true,
+    var showOwnNameTag: Boolean = true,
+)
 
 private data class StoredNicknameClientConfig(
     var enableNickname: Boolean = true,
