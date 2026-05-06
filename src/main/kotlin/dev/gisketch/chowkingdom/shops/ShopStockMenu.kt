@@ -39,7 +39,10 @@ class ShopStockMenu private constructor(
         val copy = original.copy()
         when (index) {
             STOCK_SLOT_INDEX -> {
-                if (!moveItemStackTo(original, PLAYER_INV_START, PLAYER_SLOT_END, true)) return ItemStack.EMPTY
+                val activeShop = shop ?: return ItemStack.EMPTY
+                val moved = activeShop.removeStockStacks(minOf(activeShop.stockCount, activeShop.stock.maxStackSize))
+                if (moved.isEmpty()) return ItemStack.EMPTY
+                moved.forEach { stack -> if (!player.inventory.add(stack)) player.drop(stack, false) }
             }
             in PLAYER_INV_START until PLAYER_SLOT_END -> {
                 val activeShop = shop ?: return ItemStack.EMPTY
@@ -49,7 +52,7 @@ class ShopStockMenu private constructor(
             else -> return ItemStack.EMPTY
         }
         if (original.isEmpty) slot.setByPlayer(ItemStack.EMPTY) else slot.setChanged()
-        shop?.claimOwner(player)
+        shop.claimOwner(player)
         return copy
     }
 
@@ -93,6 +96,11 @@ class ShopStockMenu private constructor(
     }
 
     private class StockSlot(container: Container, private val shop: ShopBlockEntity?, index: Int, x: Int, y: Int) : Slot(container, index, x, y) {
+        override fun getItem(): ItemStack {
+            val stack = super.getItem()
+            return if (stack.isEmpty) stack else stack.copyWithCount(1)
+        }
+
         override fun mayPlace(stack: ItemStack): Boolean {
             if (stack.isEmpty) return false
             val current = item

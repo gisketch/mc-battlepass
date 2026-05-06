@@ -41,17 +41,16 @@ private class ShopBuyScreen(private val payload: ShopOpenBuyDialogPayload) : Scr
     private var quantity = 1
 
     override fun render(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) {
-        renderBackground(guiGraphics, mouseX, mouseY, partialTick)
         val panel = panelRect()
+        guiGraphics.fill(panel.x + 10, panel.y + 10, panel.right - 10, panel.bottom - 10, DIALOG_PANEL_FILL)
         renderNineSlice(guiGraphics, FRAME_TEXTURE, panel, FRAME_TEXTURE_WIDTH, FRAME_TEXTURE_HEIGHT, FRAME_SOURCE_CORNER, FRAME_DESTINATION_CORNER)
         drawCentered(guiGraphics, fitText("ARE YOU SURE YOU WANT TO BUY \"${payload.itemName}\"", panel.width - 28, CKDM_BOLD_SMALL_FONT), panel.x, panel.y + 20, panel.width, CKDM_WHITE, CKDM_DARK_SHADOW, CKDM_BOLD_SMALL_FONT)
         renderButton(guiGraphics, minusRect(), "-", ButtonKind.RED, mouseX, mouseY, quantity > 0)
-        drawCentered(guiGraphics, format(quantity.toLong()), quantityRect().x, quantityRect().y + 7, quantityRect().width, CKDM_WHITE, CKDM_DARK_SHADOW, CKDM_BOLD_FONT)
+        drawCenteredScaled(guiGraphics, format(quantity.toLong()), quantityRect(), QUANTITY_TEXT_SCALE, CKDM_WHITE, CKDM_DARK_SHADOW, CKDM_BOLD_FONT)
         renderButton(guiGraphics, plusRect(), "+", ButtonKind.GREEN, mouseX, mouseY, canIncrease())
         renderTotal(guiGraphics)
         renderButton(guiGraphics, yesRect(), "YES", ButtonKind.GREEN, mouseX, mouseY, canBuy())
         renderButton(guiGraphics, noRect(), "NO", ButtonKind.RED, mouseX, mouseY, true)
-        super.render(guiGraphics, mouseX, mouseY, partialTick)
     }
 
     override fun mouseClicked(mouseX: Double, mouseY: Double, button: Int): Boolean {
@@ -105,7 +104,8 @@ private class ShopBuyScreen(private val payload: ShopOpenBuyDialogPayload) : Scr
         val sourceCorner = if (active && hovered) BUTTON_HOVER_SOURCE_CORNER else BUTTON_SOURCE_CORNER
         val destinationCorner = if (active && hovered) BUTTON_HOVER_DESTINATION_CORNER else BUTTON_DESTINATION_CORNER
         renderNineSlice(guiGraphics, texture, if (hovered) rect.inflate(1) else rect, textureSize, textureSize, sourceCorner, destinationCorner)
-        drawCentered(guiGraphics, label, rect.x, rect.y + 7, rect.width, if (active) CKDM_WHITE else DISABLED_TEXT_COLOR, CKDM_DARK_SHADOW, CKDM_BOLD_SMALL_FONT)
+        val fontId = if (label == "+" || label == "-") CKDM_BOLD_FONT else CKDM_BOLD_SMALL_FONT
+        drawCentered(guiGraphics, label, rect.x, rect.y + (rect.height - font.lineHeight) / 2, rect.width, if (active) CKDM_WHITE else DISABLED_TEXT_COLOR, CKDM_DARK_SHADOW, fontId)
     }
 
     private fun canIncrease(): Boolean = quantity < payload.stockCount && totalCost(quantity + 1) <= ChowcoinClientState.balance()
@@ -121,11 +121,13 @@ private class ShopBuyScreen(private val payload: ShopOpenBuyDialogPayload) : Scr
 
     private fun panelRect(): Rect = Rect((width - PANEL_WIDTH) / 2, (height - PANEL_HEIGHT) / 2, PANEL_WIDTH, PANEL_HEIGHT)
 
-    private fun minusRect(): Rect = panelRect().let { Rect(it.x + 50, it.y + 58, 38, 24) }
+    private fun quantityGroupX(): Int = panelRect().let { it.x + (it.width - QUANTITY_GROUP_WIDTH) / 2 }
 
-    private fun quantityRect(): Rect = panelRect().let { Rect(it.x + 100, it.y + 58, 100, 24) }
+    private fun minusRect(): Rect = panelRect().let { Rect(quantityGroupX(), it.y + 56, QUANTITY_BUTTON_SIZE, QUANTITY_ROW_HEIGHT) }
 
-    private fun plusRect(): Rect = panelRect().let { Rect(it.x + 212, it.y + 58, 38, 24) }
+    private fun quantityRect(): Rect = panelRect().let { Rect(quantityGroupX() + QUANTITY_BUTTON_SIZE + QUANTITY_GAP, it.y + 56, QUANTITY_TEXT_WIDTH, QUANTITY_ROW_HEIGHT) }
+
+    private fun plusRect(): Rect = panelRect().let { Rect(quantityGroupX() + QUANTITY_BUTTON_SIZE + QUANTITY_GAP + QUANTITY_TEXT_WIDTH + QUANTITY_GAP, it.y + 56, QUANTITY_BUTTON_SIZE, QUANTITY_ROW_HEIGHT) }
 
     private fun yesRect(): Rect = panelRect().let { Rect(it.x + 67, it.y + 126, 74, 24) }
 
@@ -165,6 +167,19 @@ private class ShopBuyScreen(private val payload: ShopOpenBuyDialogPayload) : Scr
     private fun drawCentered(guiGraphics: GuiGraphics, text: String, x: Int, y: Int, width: Int, color: Int, shadowColor: Int, fontId: ResourceLocation) {
         val component = ckdmText(text, fontId)
         drawShadowed(guiGraphics, component, x + (width - font.width(component)) / 2, y, color, shadowColor)
+    }
+
+    private fun drawCenteredScaled(guiGraphics: GuiGraphics, text: String, rect: Rect, scale: Float, color: Int, shadowColor: Int, fontId: ResourceLocation) {
+        val component = ckdmText(text, fontId)
+        val scaledWidth = (font.width(component) * scale).toInt()
+        val scaledHeight = (font.lineHeight * scale).toInt()
+        val pose = guiGraphics.pose()
+        pose.pushPose()
+        pose.translate((rect.x + (rect.width - scaledWidth) / 2).toFloat(), (rect.y + (rect.height - scaledHeight) / 2).toFloat(), 0.0f)
+        pose.scale(scale, scale, 1.0f)
+        guiGraphics.drawString(font, component, 1, 1, shadowColor, false)
+        guiGraphics.drawString(font, component, 0, 0, color, false)
+        pose.popPose()
     }
 
     private fun drawShadowed(guiGraphics: GuiGraphics, component: Component, x: Int, y: Int, color: Int, shadowColor: Int) {
@@ -209,6 +224,13 @@ private class ShopBuyScreen(private val payload: ShopOpenBuyDialogPayload) : Scr
         private val CKDM_BOLD_SMALL_FONT: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "ckdm_bold_small")
         private const val PANEL_WIDTH = 300
         private const val PANEL_HEIGHT = 170
+        private const val DIALOG_PANEL_FILL = 0xF0141414.toInt()
+        private const val QUANTITY_BUTTON_SIZE = 40
+        private const val QUANTITY_TEXT_WIDTH = 96
+        private const val QUANTITY_ROW_HEIGHT = 30
+        private const val QUANTITY_GAP = 6
+        private const val QUANTITY_GROUP_WIDTH = QUANTITY_BUTTON_SIZE * 2 + QUANTITY_TEXT_WIDTH + QUANTITY_GAP * 2
+        private const val QUANTITY_TEXT_SCALE = 2.35f
         private const val FRAME_TEXTURE_WIDTH = 737
         private const val FRAME_TEXTURE_HEIGHT = 512
         private const val FRAME_SOURCE_CORNER = 75
@@ -252,6 +274,7 @@ class ShopStockScreen(menu: ShopStockMenu, inventory: Inventory, title: Componen
 
     override fun render(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) {
         super.render(guiGraphics, mouseX, mouseY, partialTick)
+        renderStockQuantityOverlay(guiGraphics)
         renderButtons(guiGraphics, mouseX, mouseY)
         if (priceDialogOpen) {
             renderPriceDialog(guiGraphics, mouseX, mouseY)
@@ -502,6 +525,21 @@ class ShopStockScreen(menu: ShopStockMenu, inventory: Inventory, title: Componen
 
     private fun stockSlotRect(): Rect = Rect(leftPos + STOCK_SLOT_X, topPos + STOCK_SLOT_Y, STOCK_SLOT_SIZE, STOCK_SLOT_SIZE)
 
+    private fun renderStockQuantityOverlay(guiGraphics: GuiGraphics) {
+        if (displayStock().isEmpty) return
+        val slot = stockSlotRect()
+        val label = ckdmText(fitCkdmText(format(displayStockCount()), STOCK_COUNT_MAX_WIDTH, CKDM_BOLD_SMALL_FONT), CKDM_BOLD_SMALL_FONT)
+        val scaledWidth = (font.width(label) * STOCK_COUNT_SCALE).toInt()
+        val scaledHeight = (font.lineHeight * STOCK_COUNT_SCALE).toInt()
+        val pose = guiGraphics.pose()
+        pose.pushPose()
+        pose.translate((slot.right - scaledWidth - 4).toFloat(), (slot.bottom - scaledHeight - 5).toFloat(), 220.0f)
+        pose.scale(STOCK_COUNT_SCALE, STOCK_COUNT_SCALE, 1.0f)
+        guiGraphics.drawString(font, label, 1, 1, CKDM_DARK_SHADOW, false)
+        guiGraphics.drawString(font, label, 0, 0, CKDM_WHITE, false)
+        pose.popPose()
+    }
+
     private fun priceDialogRect(): Rect = Rect((width - PRICE_DIALOG_WIDTH) / 2, (height - PRICE_DIALOG_HEIGHT) / 2, PRICE_DIALOG_WIDTH, PRICE_DIALOG_HEIGHT)
 
     private fun priceDialogInputRect(): Rect = priceDialogRect().let { Rect(it.x + 18, it.y + 35, it.width - 36, 20) }
@@ -586,6 +624,9 @@ class ShopStockScreen(menu: ShopStockMenu, inventory: Inventory, title: Componen
         (Minecraft.getInstance().level?.getBlockEntity(menu.pos) as? ShopBlockEntity)?.stock
             ?: menu.getSlot(ShopStockMenu.STOCK_SLOT_INDEX).item
             ?: menu.stock
+
+    private fun displayStockCount(): Int =
+        (Minecraft.getInstance().level?.getBlockEntity(menu.pos) as? ShopBlockEntity)?.stockCount ?: menu.stockCount
 
     private fun format(amount: Int): String = String.format(Locale.US, "%,d", amount)
 
@@ -677,6 +718,8 @@ class ShopStockScreen(menu: ShopStockMenu, inventory: Inventory, title: Componen
         private const val VANILLA_INVENTORY_WIDTH = 176
         private const val VANILLA_INVENTORY_HEIGHT = 96
         private const val VANILLA_INVENTORY_SOURCE_Y = 126
+        private const val STOCK_COUNT_MAX_WIDTH = 30
+        private const val STOCK_COUNT_SCALE = 0.62f
         private const val PRICE_DIALOG_WIDTH = 180
         private const val PRICE_DIALOG_HEIGHT = 98
         private const val DIALOG_SCRIM_COLOR = 0x99000000.toInt()

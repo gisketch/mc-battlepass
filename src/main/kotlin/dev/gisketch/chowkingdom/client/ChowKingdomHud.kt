@@ -70,14 +70,17 @@ object ChowKingdomHud {
         val maxPanelWidth = (screenWidth - HUD_PADDING * 2).coerceAtMost(COMPACT_HUD_MAX_WIDTH)
         val maxMissionTextWidth = (maxPanelWidth - COMPACT_MISSION_ICON_SIZE - COMPACT_MISSION_ICON_GAP).coerceAtLeast(COMPACT_MIN_TEXT_WIDTH)
         val hudMissions = compactHudMissions(minecraft, missions, playerId, showGoal, maxMissionTextWidth)
-        val coinText = formatChowcoins(ChowcoinClientState.balance())
+        val now = System.currentTimeMillis()
+        val coinText = formatChowcoins(ChowcoinClientState.displayBalance(now))
         val left = HUD_PADDING
 
         val coinX = left
         val coinY = HUD_PADDING
         val coinIconY = coinY + (font.lineHeight - COMPACT_COIN_SIZE) / 2 + COMPACT_COIN_ICON_Y_OFFSET
         renderIcon(guiGraphics, CHOWCOIN_TEXTURE, coinX, coinIconY, COMPACT_COIN_SIZE, COMPACT_COIN_TEXTURE_SIZE)
-        drawCkdmShadowed(guiGraphics, font, coinText, coinX + COMPACT_COIN_SIZE + COMPACT_COIN_TEXT_GAP, coinY + COMPACT_COIN_TEXT_Y, COMPACT_WHITE, COMPACT_BLACK_SHADOW, COMPACT_SHADOW_OFFSET, CKDM_BOLD_FONT)
+        val coinTextX = coinX + COMPACT_COIN_SIZE + COMPACT_COIN_TEXT_GAP
+        drawCkdmShadowed(guiGraphics, font, coinText, coinTextX, coinY + COMPACT_COIN_TEXT_Y, COMPACT_WHITE, COMPACT_BLACK_SHADOW, COMPACT_SHADOW_OFFSET, CKDM_BOLD_FONT)
+        renderChowcoinDelta(guiGraphics, font, coinText, coinTextX, coinY + COMPACT_COIN_TEXT_Y, now)
 
         if (hudMissions.isEmpty()) return
 
@@ -136,6 +139,15 @@ object ChowKingdomHud {
     }
 
     private fun formatChowcoins(amount: Long): String = String.format(Locale.US, "%,d", amount)
+
+    private fun renderChowcoinDelta(guiGraphics: GuiGraphics, font: Font, coinText: String, coinTextX: Int, coinTextY: Int, now: Long) {
+        val delta = ChowcoinClientState.deltaDisplay(now) ?: return
+        val sign = if (delta.amount > 0L) "+" else "-"
+        val text = sign + formatChowcoins(kotlin.math.abs(delta.amount))
+        val color = colorWithAlpha(if (delta.amount > 0L) CHOWCOIN_DELTA_GAIN else CHOWCOIN_DELTA_LOSS, delta.alpha)
+        val shadow = colorWithAlpha(COMPACT_BLACK_SHADOW, delta.alpha)
+        drawCkdmShadowed(guiGraphics, font, text, coinTextX + ckdmWidth(font, coinText, CKDM_BOLD_FONT) + CHOWCOIN_DELTA_GAP, coinTextY, color, shadow, COMPACT_SHADOW_OFFSET, CKDM_BOLD_FONT)
+    }
 
     private fun colorWithAlpha(color: Int, alpha: Float): Int = ((alpha.coerceIn(0.0f, 1.0f) * 255).toInt() shl 24) or (color and 0x00FFFFFF)
 
@@ -314,8 +326,11 @@ object ChowKingdomHud {
     private const val COMPACT_MISSION_TEXT_SCALE = 0.82f
     private const val COMPACT_WHITE = 0xFFFFFFFF.toInt()
     private const val COMPACT_GOLD = 0xFFFFD24A.toInt()
+    private const val CHOWCOIN_DELTA_GAIN = 0xFF4BFF7A.toInt()
+    private const val CHOWCOIN_DELTA_LOSS = 0xFFFF5C5C.toInt()
     private const val COMPACT_BLACK_SHADOW = 0x80000000.toInt()
     private const val COMPACT_SHADOW_OFFSET = 1
+    private const val CHOWCOIN_DELTA_GAP = 7
     private const val COMPACT_SMALL_SHADOW_OFFSET = 1
     private const val VANILLA_ITEM_SIZE = 16
     private const val TOAST_MIN_WIDTH = 160

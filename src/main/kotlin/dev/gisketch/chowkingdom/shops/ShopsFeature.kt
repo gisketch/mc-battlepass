@@ -238,17 +238,13 @@ abstract class StockShopBlock(
         hand: InteractionHand,
         hit: BlockHitResult,
     ): ItemInteractionResult {
-        if (player.isShiftKeyDown) {
-            if (level.isClientSide) return ItemInteractionResult.SUCCESS
-            val shop = level.getBlockEntity(pos) as? ShopBlockEntity ?: return ItemInteractionResult.FAIL
-            if (player is ServerPlayer && shop.isClaimedByOther(player) && !shop.stock.isEmpty) {
-                ShopStockNetwork.openBuyDialog(player, shop)
-                return ItemInteractionResult.SUCCESS
-            }
+        val shop = level.getBlockEntity(pos) as? ShopBlockEntity ?: return ItemInteractionResult.FAIL
+        if (shop.isClaimedByOther(player) && !shop.stock.isEmpty) {
+            if (!level.isClientSide && player is ServerPlayer) ShopStockNetwork.openBuyDialog(player, shop)
+            return ItemInteractionResult.SUCCESS
         }
         if (stack.isEmpty) return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION
         if (level.isClientSide) return ItemInteractionResult.SUCCESS
-        val shop = level.getBlockEntity(pos) as? ShopBlockEntity ?: return ItemInteractionResult.FAIL
         val added = shop.addStock(player, stack)
         val message = when {
             added > 0 -> "Added $added stock (${shop.stockCount}/${ShopBlockEntity.MAX_STOCK})"
@@ -263,7 +259,7 @@ abstract class StockShopBlock(
     override fun useWithoutItem(state: BlockState, level: Level, pos: BlockPos, player: Player, hitResult: BlockHitResult): InteractionResult {
         if (!level.isClientSide && player is ServerPlayer) {
             val shop = level.getBlockEntity(pos) as? ShopBlockEntity ?: return InteractionResult.FAIL
-            if (player.isShiftKeyDown && shop.isClaimedByOther(player) && !shop.stock.isEmpty) {
+            if (shop.isClaimedByOther(player) && !shop.stock.isEmpty) {
                 ShopStockNetwork.openBuyDialog(player, shop)
                 return InteractionResult.SUCCESS
             }
