@@ -235,6 +235,33 @@ Good Farmer's Delight quest ideas:
 - Harvest 32 wild crops.
 - Prepare a full course: cut 5 ingredients, cook 3 meals, serve 1 feast.
 
+## Mission List Icon Defaults
+
+Battlepass mission rows choose an icon from the event id. If the target mod item is not loaded, the UI falls back to a grass block.
+
+| Event family | Icon item |
+|---|---|
+| `cobblemon:*legendary*`, `cobblemon:*mythical*` | `cobblemon:master_ball` |
+| `cobblemon:*scan*`, `cobblemon:pokedex_scanned` | `cobblemon:pokedex_red` |
+| Other `cobblemon:*` Pokemon quests | `cobblemon:poke_ball` |
+| `minecraft:monster_killed` | `minecraft:iron_sword` |
+| `minecraft:crop_harvested`, `minecraft:block_harvested` | `minecraft:wheat` |
+| `minecraft:animal_bred` | `minecraft:wheat` |
+| `minecraft:villager_traded` | `minecraft:emerald` |
+| `minecraft:fish_caught` | `minecraft:fishing_rod` |
+| `minecraft:blocks_traveled` | `minecraft:leather_boots` |
+| `quality_food:*diamond_quality*` | `minecraft:diamond` |
+| `quality_food:*gold_quality*` | `minecraft:gold_ingot` |
+| `quality_food:*iron_quality*` | `minecraft:iron_ingot` |
+| `quality_food:*quality_food_cooked*`, `farmersdelight:cooking_pot_meal_cooked` | `farmersdelight:cooking_pot` |
+| `quality_food:*quality_food_eaten*`, `farmersdelight:meal_eaten` | `minecraft:bowl` |
+| `quality_food:*quality_crop*`, `farmersdelight:wild_crop_harvested` | `minecraft:wheat` |
+| `gisketchs_chowkingdom_mod:*shipping_bin*` | `gisketchs_chowkingdom_mod:shipping_bin` |
+| `farmersdelight:*cutting_board*` | `farmersdelight:cutting_board` |
+| `farmersdelight:*knife*` | `minecraft:iron_sword` |
+| `farmersdelight:*feast*` | `minecraft:cake` |
+| Unknown event ids | `minecraft:paper` |
+
 ## Curation Notes
 
 - Use daily missions for small goals: 10 cooks, 16 shipped items, 5,000 value.

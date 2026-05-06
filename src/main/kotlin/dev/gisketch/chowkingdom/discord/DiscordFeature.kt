@@ -59,6 +59,7 @@ object DiscordFeature {
     }
 
     private fun onLivingDeath(event: LivingDeathEvent) {
+        if (event.isCanceled) return
         val player = event.entity as? ServerPlayer ?: return
         DiscordRelay.death(player, event.source.getLocalizedDeathMessage(player).string)
     }

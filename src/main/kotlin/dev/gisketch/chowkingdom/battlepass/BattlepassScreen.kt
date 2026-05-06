@@ -1,57 +1,57 @@
 package dev.gisketch.chowkingdom.battlepass
 
-import com.mojang.math.Axis
+import com.mojang.blaze3d.systems.RenderSystem
 import dev.gisketch.chowkingdom.ChowKingdomMod
+import dev.gisketch.chowkingdom.discord.DiscordQuickSkinSupport
+import com.mojang.blaze3d.platform.NativeImage
 import net.minecraft.ChatFormatting
+import net.minecraft.Util
+import com.mojang.math.Axis
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.components.Button
 import net.minecraft.client.gui.components.PlayerFaceRenderer
+import net.minecraft.client.renderer.texture.DynamicTexture
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.gui.screens.inventory.InventoryScreen
-import net.minecraft.client.resources.DefaultPlayerSkin
 import net.minecraft.client.resources.sounds.SimpleSoundInstance
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
-import net.minecraft.Util
 import net.minecraft.sounds.SoundEvents
 import net.minecraft.util.Mth
+import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 import java.util.UUID
+import java.io.ByteArrayInputStream
 
 class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.MOD_ID}.battlepass")) {
     private enum class ViewMode { PASS_SELECTION, PASS_DETAIL }
 
     private enum class MissionFilter(val label: String) {
-        ALL("All"),
-        WEEKLY("Weekly"),
-        DAILY("Daily"),
-        PERMANENT("Permanent"),
-        COMPLETED("Done");
-
-        fun next(): MissionFilter = entries[(ordinal + 1) % entries.size]
+        ALL("ALL"), DAILY("DAILY"), WEEKLY("WEEKLY"), PERMANENT("CKDM"), COMPLETED("DONE")
     }
 
     private data class Rect(val x: Int, val y: Int, val width: Int, val height: Int) {
-        fun contains(mouseX: Double, mouseY: Double): Boolean =
-            mouseX >= x && mouseX < x + width && mouseY >= y && mouseY < y + height
+        fun contains(mouseX: Double, mouseY: Double): Boolean = mouseX >= x && mouseX < x + width && mouseY >= y && mouseY < y + height
+        fun inset(amount: Int): Rect = Rect(x + amount, y + amount, (width - amount * 2).coerceAtLeast(0), (height - amount * 2).coerceAtLeast(0))
+        fun offset(dx: Int, dy: Int): Rect = Rect(x + dx, y + dy, width, height)
+        fun inflate(amount: Int): Rect = Rect(x - amount, y - amount, width + amount * 2, height + amount * 2)
     }
 
     private data class RewardSlot(
         val rect: Rect,
         val passId: String,
         val tier: BattlepassProgressionDefinition,
+        val tierNumber: Int,
         val reward: BattlepassRewardDefinition,
         val stack: ItemStack,
-        val prominent: Boolean,
         val claimed: Boolean,
         val unlocked: Boolean,
         val claimable: Boolean,
         val current: Boolean,
         val previousXp: Int,
-        val otherPlayers: List<BattlepassClientState.PlayerProgress>,
     )
 
     private data class MissionSlot(
@@ -61,1046 +61,965 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
         val completed: Boolean,
     )
 
-    private data class SelectionMissionEntry(val passId: String, val entry: BattlepassMissionEntry)
+    private data class EntranceStyle(
+        val delayMs: Int,
+        val offsetX: Int = 0,
+        val offsetY: Int = 0,
+        val scaleFrom: Float = 1.0f,
+        val durationMs: Int = 260,
+        val timelineStartedAtMs: Long = 0L,
+    )
 
-    private data class SelectionMissionBook(val rect: Rect, val scope: BattlepassMissionScope, val maxScroll: Float)
+    private data class AvatarLayout(val perRow: Int, val width: Int, val height: Int)
 
-    private data class SelectionRewardTooltip(val pass: BattlepassPassDefinition, val tier: BattlepassProgressionDefinition, val reward: BattlepassRewardDefinition, val stack: ItemStack, val currentXp: Int)
-
-    private data class ClaimAnimation(val stack: ItemStack, val startX: Float, val startY: Float, val endX: Float, val endY: Float, val startedAt: Long)
+    private data class RewardFlyout(
+        val stack: ItemStack,
+        val startedAtMs: Long,
+        val fromX: Float,
+        val fromY: Float,
+        val toX: Float,
+        val toY: Float,
+    )
 
     private var selectedPassId: String? = null
     private var viewMode = ViewMode.PASS_SELECTION
-    private var scroll = 0.0f
-    private var targetScroll = 0.0f
+    private var rewardScroll = 0.0f
+    private var targetRewardScroll = 0.0f
     private var missionsScroll = 0.0f
     private var targetMissionsScroll = 0.0f
     private var missionsMaxScroll = 0.0f
-    private var backRect = Rect(0, 0, 0, 0)
-    private var claimAllRect = Rect(0, 0, 0, 0)
-    private var missionsRect = Rect(0, 0, 0, 0)
-    private var missionFilterRect = Rect(0, 0, 0, 0)
-    private var playerPreviewRect = Rect(0, 0, 0, 0)
-    private var backButton: Button? = null
-    private var claimAllButton: Button? = null
+    private var backgroundParallaxX = 0.0f
+    private var backgroundParallaxY = 0.0f
+    private var detailAnimationStartedAtMs = 0L
+    private var missionListAnimationStartedAtMs = 0L
+    private var renderAlpha = 1.0f
+    private val hoverAnimations = mutableMapOf<String, Float>()
+    private val pressAnimations = mutableMapOf<String, Long>()
+    private val quickSkinAvatarTextures = mutableMapOf<UUID, ResourceLocation?>()
+    private val rewardFlyouts: MutableList<RewardFlyout> = mutableListOf()
+    private var currentHoverSoundKey: String? = null
+    private var previousHoverSoundKey: String? = null
     private var autoScrollKey: String? = null
     private var missionFilter = MissionFilter.ALL
-    private var missionFilterClickProgress = 0.0f
-    private var selectionMissionBooks: List<SelectionMissionBook> = emptyList()
+    private var missionFilterRects: List<Pair<Rect, MissionFilter>> = emptyList()
+    private var missionsRect = Rect(0, 0, 0, 0)
+    private var backButtonRect = Rect(0, 0, 0, 0)
+    private var claimAllRect = Rect(0, 0, 0, 0)
+    private var playerDollTarget = Rect(0, 0, 0, 0)
+    private var claimAllClaimableCount = 0
     private var passRects: List<Pair<Rect, BattlepassPassDefinition>> = emptyList()
     private var rewardSlots: List<RewardSlot> = emptyList()
     private var missionSlots: List<MissionSlot> = emptyList()
-    private val hoverProgressBySlot: MutableMap<String, Float> = mutableMapOf()
-    private val clickProgressBySlot: MutableMap<String, Float> = mutableMapOf()
-    private val missionClickProgressByKey: MutableMap<String, Float> = mutableMapOf()
-    private val claimAnimations: MutableList<ClaimAnimation> = mutableListOf()
-    private val selectionScrollByScope: MutableMap<BattlepassMissionScope, Float> = mutableMapOf()
-    private val selectionTargetScrollByScope: MutableMap<BattlepassMissionScope, Float> = mutableMapOf()
+    private var backButton: Button? = null
+    private var claimAllButton: Button? = null
 
     override fun init() {
         BattlepassNetwork.requestSync()
         BattlepassPassRegistry.reload()
+        quickSkinAvatarTextures.clear()
         selectedPassId = selectedPassId ?: passes().firstOrNull()?.id
         backButton = addRenderableWidget(
             Button.builder(Component.translatable("ui.${ChowKingdomMod.MOD_ID}.back")) {
                 viewMode = ViewMode.PASS_SELECTION
-                scroll = 0.0f
-                targetScroll = 0.0f
+                rewardScroll = 0.0f
+                targetRewardScroll = 0.0f
+                missionsScroll = 0.0f
+                targetMissionsScroll = 0.0f
             }.bounds(0, 0, BACK_BUTTON_WIDTH, BUTTON_HEIGHT).build(),
         )
         claimAllButton = addRenderableWidget(
             Button.builder(Component.literal("Claim All")) {
                 selectedPassId?.let { passId ->
-                    startClaimAnimations(rewardSlots.filter { slot -> slot.claimable })
                     BattlepassNetwork.claimAll(passId)
+                    playClaimSound()
                 }
             }.bounds(0, 0, CLAIM_ALL_WIDTH, BUTTON_HEIGHT).build(),
         )
     }
 
     override fun render(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) {
+        currentHoverSoundKey = null
         renderBackground(guiGraphics, mouseX, mouseY, partialTick)
-        scroll = Mth.lerp(0.24f, scroll, targetScroll)
-        missionsScroll = Mth.lerp(0.24f, missionsScroll, targetMissionsScroll)
+        rewardScroll = Mth.lerp(SCROLL_LERP, rewardScroll, targetRewardScroll)
+        missionsScroll = Mth.lerp(SCROLL_LERP, missionsScroll, targetMissionsScroll)
         ensureSelectedPass()
-        if (viewMode == ViewMode.PASS_SELECTION) {
-            renderSelection(guiGraphics, mouseX, mouseY)
-        } else {
-            renderDetail(guiGraphics, mouseX, mouseY)
-        }
-        renderables.forEach { renderable -> renderable.render(guiGraphics, mouseX, mouseY, partialTick) }
+        if (viewMode == ViewMode.PASS_SELECTION) renderSelection(guiGraphics, mouseX, mouseY) else renderDetail(guiGraphics, mouseX, mouseY)
+        renderAnimatedWidgets(guiGraphics, mouseX, mouseY, partialTick)
+        finishHoverSound()
     }
 
     override fun isPauseScreen(): Boolean = false
 
     override fun renderBackground(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) {
-        renderBlurredBackground(partialTick)
+        val targetX = if (width == 0) 0.0f else ((mouseX - width / 2.0f) / (width / 2.0f)).coerceIn(-1.0f, 1.0f) * BACKGROUND_PARALLAX_MAX_OFFSET
+        val targetY = if (height == 0) 0.0f else ((mouseY - height / 2.0f) / (height / 2.0f)).coerceIn(-1.0f, 1.0f) * BACKGROUND_PARALLAX_MAX_OFFSET
+        backgroundParallaxX = Mth.lerp(BACKGROUND_PARALLAX_LERP, backgroundParallaxX, targetX)
+        backgroundParallaxY = Mth.lerp(BACKGROUND_PARALLAX_LERP, backgroundParallaxY, targetY)
+        guiGraphics.pose().pushPose()
+        guiGraphics.pose().translate(-backgroundParallaxX, -backgroundParallaxY, 0.0f)
+        renderTexture(guiGraphics, UI_BACKGROUND_TEXTURE, Rect(-BACKGROUND_PARALLAX_PADDING, -BACKGROUND_PARALLAX_PADDING, width + BACKGROUND_PARALLAX_PADDING * 2, height + BACKGROUND_PARALLAX_PADDING * 2), UI_BACKGROUND_WIDTH, UI_BACKGROUND_HEIGHT)
+        guiGraphics.pose().popPose()
     }
 
     override fun mouseClicked(mouseX: Double, mouseY: Double, button: Int): Boolean {
         if (button != 0) return super.mouseClicked(mouseX, mouseY, button)
-
         if (super.mouseClicked(mouseX, mouseY, button)) return true
 
-        val clickedPass = if (viewMode == ViewMode.PASS_SELECTION) passRects.firstOrNull { (rect, _) -> rect.contains(mouseX, mouseY) }?.second else null
-        if (clickedPass != null) {
-            playButtonClickSound()
-            selectedPassId = clickedPass.id
-            viewMode = ViewMode.PASS_DETAIL
-            scroll = 0.0f
-            targetScroll = 0.0f
-            missionsScroll = 0.0f
-            targetMissionsScroll = 0.0f
-            autoScrollKey = null
-            return true
-        }
-
-        if (viewMode == ViewMode.PASS_DETAIL && missionFilterRect.contains(mouseX, mouseY)) {
-            playButtonClickSound()
-            missionFilter = missionFilter.next()
-            missionFilterClickProgress = 1.0f
-            missionsScroll = 0.0f
-            targetMissionsScroll = 0.0f
-            return true
-        }
-
-        val clickedMission = when {
-            viewMode == ViewMode.PASS_DETAIL && missionsRect.contains(mouseX, mouseY) -> missionSlots.firstOrNull { slot -> slot.rect.contains(mouseX, mouseY) }
-            viewMode == ViewMode.PASS_SELECTION -> missionSlots.firstOrNull { slot -> slot.rect.contains(mouseX, mouseY) }
-            else -> null
-        }
-        if (clickedMission != null) {
-            playButtonClickSound()
-            missionClickProgressByKey[missionEntryKey(clickedMission.passId, clickedMission.entry)] = 1.0f
-            if (viewMode == ViewMode.PASS_SELECTION && clickedMission.entry.scope == BattlepassMissionScope.DAILY) return true
-            val pass = passes().firstOrNull { pass -> pass.id == clickedMission.passId } ?: selectedPass() ?: return true
-            val tracked = BattlepassTrackedMissions.toggle(pass, clickedMission.entry)
-            if (!tracked) Minecraft.getInstance().player?.displayClientMessage(Component.literal("Track limit reached ($MISSIONS_TRACK_LIMIT missions)"), true)
-            return true
-        }
-
-        val clickedReward = rewardSlots.firstOrNull { slot -> slot.rect.contains(mouseX, mouseY) }
-        if (clickedReward != null) {
-            clickProgressBySlot[slotKey(clickedReward)] = 1.0f
-        }
-        if (viewMode == ViewMode.PASS_DETAIL && clickedReward?.claimable == true) {
-            startClaimAnimations(listOf(clickedReward))
-            BattlepassNetwork.claim(selectedPassId ?: return true, clickedReward.tier.xp)
-            return true
-        }
-
-        return super.mouseClicked(mouseX, mouseY, button)
-    }
-
-    override fun mouseScrolled(mouseX: Double, mouseY: Double, scrollX: Double, scrollY: Double): Boolean {
-        if (viewMode == ViewMode.PASS_DETAIL && missionsRect.contains(mouseX, mouseY)) {
-            targetMissionsScroll = (targetMissionsScroll - (scrollY.toFloat() * MISSIONS_SCROLL_STEP)).coerceIn(0.0f, missionsMaxScroll)
-            return true
-        }
-
         if (viewMode == ViewMode.PASS_SELECTION) {
-            val book = selectionMissionBooks.firstOrNull { book -> book.rect.contains(mouseX, mouseY) }
-            if (book != null && book.maxScroll > 0.0f) {
-                val current = selectionTargetScrollByScope[book.scope] ?: 0.0f
-                selectionTargetScrollByScope[book.scope] = (current - (scrollY.toFloat() * MISSIONS_SCROLL_STEP)).coerceIn(0.0f, book.maxScroll)
+            passRects.firstOrNull { (rect, _) -> rect.contains(mouseX, mouseY) }?.second?.let { pass ->
+                selectedPassId = pass.id
+                viewMode = ViewMode.PASS_DETAIL
+                rewardScroll = 0.0f
+                targetRewardScroll = 0.0f
+                missionsScroll = 0.0f
+                targetMissionsScroll = 0.0f
+                autoScrollKey = null
+                resetDetailAnimation()
+                playButtonClickSound()
                 return true
             }
         }
 
-        if (viewMode != ViewMode.PASS_DETAIL || !hotbarRect().contains(mouseX, mouseY)) {
-            return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY)
+        if (viewMode == ViewMode.PASS_DETAIL) missionFilterRects.firstOrNull { (rect, _) -> rect.contains(mouseX, mouseY) }?.second?.let { filter ->
+            registerPress(missionFilterKey(filter))
+            if (missionFilter != filter) {
+                missionFilter = filter
+                resetMissionListAnimation()
+            }
+            missionsScroll = 0.0f
+            targetMissionsScroll = 0.0f
+            playButtonClickSound()
+            return true
         }
 
-        targetScroll = (targetScroll - (scrollY.toFloat() * 36.0f)).coerceIn(0.0f, maxScroll())
-        return true
+        if (viewMode == ViewMode.PASS_DETAIL && backButtonRect.contains(mouseX, mouseY)) {
+            returnToSelection()
+            playButtonClickSound()
+            return true
+        }
+
+        missionSlots.firstOrNull { slot -> missionsRect.contains(mouseX, mouseY) && slot.rect.contains(mouseX, mouseY) }?.let { mission ->
+            val pass = passes().firstOrNull { pass -> pass.id == mission.passId } ?: selectedPass() ?: return true
+            val tracked = BattlepassTrackedMissions.toggle(pass, mission.entry)
+            if (!tracked) Minecraft.getInstance().player?.displayClientMessage(Component.literal("Track limit reached ($MISSIONS_TRACK_LIMIT missions)"), true)
+            playButtonClickSound()
+            return true
+        }
+
+        if (viewMode == ViewMode.PASS_DETAIL && claimAllClaimableCount > 0 && claimAllRect.contains(mouseX, mouseY)) {
+            rewardSlots.filter { slot -> slot.claimable }.forEachIndexed { index, slot ->
+                enqueueRewardFlyout(slot, index * REWARD_FLYOUT_STAGGER_MS)
+                BattlepassNetwork.claim(selectedPassId ?: return true, slot.tier.xp)
+            }
+            playClaimSound()
+            return true
+        }
+
+        rewardSlots.firstOrNull { slot -> slot.rect.contains(mouseX, mouseY) }?.let { reward ->
+            registerPress(rewardInteractionKey(reward))
+            if (reward.claimable) {
+                enqueueRewardFlyout(reward, 0)
+                BattlepassNetwork.claim(selectedPassId ?: return true, reward.tier.xp)
+                playClaimSound()
+            } else if (!reward.unlocked) {
+                playLockedSound()
+            } else {
+                playButtonClickSound()
+            }
+            return true
+        }
+
+        return false
+    }
+
+    override fun mouseScrolled(mouseX: Double, mouseY: Double, scrollX: Double, scrollY: Double): Boolean {
+        if (viewMode == ViewMode.PASS_DETAIL && missionsRect.contains(mouseX, mouseY)) {
+            targetMissionsScroll = (targetMissionsScroll - scrollY.toFloat() * MISSIONS_SCROLL_STEP).coerceIn(0.0f, missionsMaxScroll)
+            return true
+        }
+
+        if (viewMode == ViewMode.PASS_DETAIL && hotbarRect().contains(mouseX, mouseY)) {
+            targetRewardScroll = (targetRewardScroll - scrollY.toFloat() * REWARD_SCROLL_STEP).coerceIn(0.0f, rewardMaxScroll())
+            return true
+        }
+
+        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY)
     }
 
     private fun renderSelection(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
         backButton?.visible = false
         claimAllButton?.visible = false
-        val panel = mainRect()
-        drawFrame(guiGraphics, panel, 0x16000000, 0x00000000)
+        val panel = mainRect().inset(SAFE_EDGE_PADDING)
+        drawCkdmShadowedText(guiGraphics, "BATTLEPASS", panel.x + PANEL_PADDING, panel.y + PANEL_PADDING, TEXT_PRIMARY)
 
         val passes = passes()
         if (passes.isEmpty()) {
-            guiGraphics.drawString(font, Component.translatable("ui.${ChowKingdomMod.MOD_ID}.battlepass.empty"), panel.x + 28, panel.y + 60, 0xAAB2C0, true)
+            guiGraphics.drawString(font, Component.translatable("ui.${ChowKingdomMod.MOD_ID}.battlepass.empty"), panel.x + PANEL_PADDING, panel.y + 42, TEXT_MUTED, false)
             passRects = emptyList()
             return
         }
 
         val selectedPass = passes.firstOrNull { pass -> pass.id == selectedPassId } ?: passes.first()
         selectedPassId = selectedPass.id
-        val headerBottom = renderSelectionHeader(guiGraphics, panel)
-        val scale = selectionBookScale(panel, headerBottom)
-        val bookWidth = (MISSIONS_BOOK_WIDTH * scale).toInt()
-        val bookHeight = (MISSIONS_BOOK_HEIGHT * scale).toInt()
-        val totalBooksWidth = bookWidth * 3 + SELECTION_BOOK_GAP * 2
-        val bookX = panel.x + (panel.width - totalBooksWidth) / 2
-        val bookY = headerBottom + SELECTION_HEADER_BOOK_GAP
-        val allEntries = passes.flatMap { pass -> activeMissionEntries(pass).map { entry -> SelectionMissionEntry(pass.id, entry) } }
-        missionSlots = emptyList()
-        selectionMissionBooks = emptyList()
-
-        renderSelectionMissionBook(guiGraphics, BattlepassMissionScope.DAILY, "Daily", allEntries.filter { mission -> mission.entry.scope == BattlepassMissionScope.DAILY }, bookX, bookY, scale)
-        renderSelectionMissionBook(guiGraphics, BattlepassMissionScope.WEEKLY, "Weekly", allEntries.filter { mission -> mission.entry.scope == BattlepassMissionScope.WEEKLY }, bookX + bookWidth + SELECTION_BOOK_GAP, bookY, scale)
-        renderSelectionMissionBook(guiGraphics, BattlepassMissionScope.PERMANENT, "Chowkingdom", allEntries.filter { mission -> mission.entry.scope == BattlepassMissionScope.PERMANENT }, bookX + (bookWidth + SELECTION_BOOK_GAP) * 2, bookY, scale)
-
-        renderSelectionPassButtons(guiGraphics, passes, selectedPass, bookY + bookHeight + SELECTION_BOOK_BUTTON_GAP, mouseX, mouseY)
-        renderMissionSlotTooltip(guiGraphics, mouseX, mouseY)
-    }
-
-    private fun renderSelectionHeader(guiGraphics: GuiGraphics, panel: Rect): Int {
-        val imageWidth = (panel.width - CONTENT_PADDING * 2).coerceAtMost(SELECTION_TITLE_MAX_WIDTH).coerceAtLeast(SELECTION_TITLE_MIN_WIDTH)
-        val imageHeight = imageWidth * PASS_TITLE_TEXTURE_HEIGHT / PASS_TITLE_TEXTURE_WIDTH
-        val x = panel.x + (panel.width - imageWidth) / 2
-        val y = panel.y + SELECTION_TITLE_TOP
-        guiGraphics.blit(PASS_TITLE_TEXTURE, x, y, imageWidth, imageHeight, 0.0f, 0.0f, PASS_TITLE_TEXTURE_WIDTH, PASS_TITLE_TEXTURE_HEIGHT, PASS_TITLE_TEXTURE_WIDTH, PASS_TITLE_TEXTURE_HEIGHT)
-        return y + imageHeight
-    }
-
-    private fun renderSelectionMissionBook(guiGraphics: GuiGraphics, scope: BattlepassMissionScope, title: String, entries: List<SelectionMissionEntry>, x: Int, y: Int, scale: Float) {
-        val bookWidth = (MISSIONS_BOOK_WIDTH * scale).toInt()
-        val bookHeight = (MISSIONS_BOOK_HEIGHT * scale).toInt()
-        guiGraphics.blit(MISSIONS_BOOK_TEXTURE, x, y, bookWidth, bookHeight, 0.0f, 0.0f, MISSIONS_BOOK_WIDTH, MISSIONS_BOOK_HEIGHT, MISSIONS_BOOK_WIDTH, MISSIONS_BOOK_HEIGHT)
-
-        val pose = guiGraphics.pose()
-        pose.pushPose()
-        pose.translate(x + MISSIONS_TITLE_X * scale, y + MISSIONS_TITLE_Y * scale, 0.0f)
-        pose.scale(MISSIONS_TITLE_SCALE * scale, MISSIONS_TITLE_SCALE * scale, 1.0f)
-        guiGraphics.drawString(font, title, 0, 0, MISSIONS_TITLE_COLOR, false)
-        pose.popPose()
-
-        val rectX = x + (MISSIONS_CONTAINER_X * scale).toInt()
-        val rectY = y + (MISSIONS_CONTAINER_Y * scale).toInt()
-        val rectWidth = ((MISSIONS_CONTAINER_RIGHT - MISSIONS_CONTAINER_X) * scale).toInt()
-        val rectHeight = ((MISSIONS_CONTAINER_BOTTOM - MISSIONS_CONTAINER_Y) * scale).toInt()
-        val playerId = currentPlayerId()
-        val sortedEntries = entries
-            .map { mission -> mission to (playerId?.let { id -> BattlepassClientState.isMissionCompleted(id, mission.passId, mission.entry.key) } == true) }
-            .sortedWith(compareBy<Pair<SelectionMissionEntry, Boolean>> { (_, completed) -> completed }.thenByDescending { (mission, _) -> selectionMissionCloseness(mission) })
-        val contentHeight = sortedEntries.sumOf { (mission, _) -> missionRowHeight(mission.entry.event) }
-        val maxScroll = (contentHeight * scale - rectHeight).coerceAtLeast(0.0f)
-        val targetScroll = (selectionTargetScrollByScope[scope] ?: 0.0f).coerceIn(0.0f, maxScroll)
-        val currentScroll = Mth.lerp(0.24f, selectionScrollByScope[scope] ?: 0.0f, targetScroll).coerceIn(0.0f, maxScroll)
-        selectionTargetScrollByScope[scope] = targetScroll
-        selectionScrollByScope[scope] = currentScroll
-        selectionMissionBooks = selectionMissionBooks + SelectionMissionBook(Rect(rectX, rectY, rectWidth, rectHeight), scope, maxScroll)
-
-        guiGraphics.enableScissor(rectX, rectY, rectX + rectWidth, rectY + rectHeight)
-        pose.pushPose()
-        pose.translate(rectX.toFloat(), rectY - currentScroll, 0.0f)
-        pose.scale(scale, scale, 1.0f)
-        if (sortedEntries.isEmpty()) {
-            guiGraphics.drawString(font, "No missions", 0, 0, MISSIONS_EVENT_COLOR, false)
-        } else {
-            var rowY = 0
-            sortedEntries.forEach { (mission, completed) ->
-                val entry = mission.entry
-                val rowHeight = missionRowHeight(entry.event)
-                val screenRowY = rectY + (rowY * scale - currentScroll).toInt()
-                if (screenRowY + (rowHeight * scale).toInt() > rectY && screenRowY < rectY + rectHeight) {
-                    missionSlots = missionSlots + MissionSlot(Rect(rectX, screenRowY, rectWidth, (rowHeight * scale).toInt().coerceAtLeast(1)), mission.passId, entry, completed)
-                    val clickProgress = updateAnimation(missionClickProgressByKey, missionEntryKey(mission.passId, entry), 0.0f, CLICK_ANIMATION_SPEED)
-                    val rowScale = 1.0f + (Mth.sin(clickProgress * Math.PI.toFloat()) * MISSIONS_ROW_PRESS_SCALE)
-                    pose.pushPose()
-                    pose.translate(MISSIONS_CONTENT_WIDTH / 2.0f, rowY + rowHeight / 2.0f, 0.0f)
-                    pose.scale(rowScale, rowScale, 1.0f)
-                    pose.translate(-MISSIONS_CONTENT_WIDTH / 2.0f, -(rowY + rowHeight / 2.0f), 0.0f)
-                    if (isProgressiveMission(entry.event) || BattlepassMissionService.isCappedRepeating(entry.event)) {
-                        renderProgressiveMission(guiGraphics, mission.passId, entry, rowY, completed)
-                    } else {
-                        renderRepeatingMission(guiGraphics, mission.passId, entry, rowY, completed)
-                    }
-                    pose.popPose()
-                }
-                rowY += rowHeight
-            }
-        }
-        pose.popPose()
-        guiGraphics.disableScissor()
-        renderMissionsScrollbar(guiGraphics, rectX, rectY, rectWidth, rectHeight, currentScroll, maxScroll)
-    }
-
-    private fun selectionMissionCloseness(mission: SelectionMissionEntry): Float {
-        val playerId = currentPlayerId() ?: return 0.0f
-        val event = mission.entry.event
-        val progress = BattlepassClientState.missionProgress(playerId, mission.passId, mission.entry.key)
-            ?: BattlepassClientState.missionProgress(playerId, mission.passId, event.event)
-            ?: event.progress
-        val nextGoal = when {
-            BattlepassMissionService.isCappedRepeating(event) -> event.xpCap
-            BattlepassMissionService.isProgressive(event) -> event.progressGoals.firstOrNull { goal -> progress < goal } ?: BattlepassMissionService.progressiveGoal(event)
-            else -> return 0.0f
-        }
-        return progress.coerceAtMost(nextGoal) / nextGoal.coerceAtLeast(1).toFloat()
-    }
-
-    private fun renderSelectionPassButtons(guiGraphics: GuiGraphics, passes: List<BattlepassPassDefinition>, selectedPass: BattlepassPassDefinition, y: Int, mouseX: Int, mouseY: Int) {
-        guiGraphics.drawString(font, "Select Battlepass", (width - font.width("Select Battlepass")) / 2, y, SELECTION_PASS_TEXT_COLOR, false)
-        val gapTotal = SELECTION_PASS_CARD_GAP * (passes.size - 1).coerceAtLeast(0)
-        val cardWidth = ((width - CONTENT_PADDING * 2 - gapTotal) / passes.size.coerceAtLeast(1)).coerceIn(SELECTION_PASS_CARD_MIN_WIDTH, SELECTION_PASS_CARD_MAX_WIDTH)
-        val totalWidth = cardWidth * passes.size + gapTotal
-        val cardY = y + font.lineHeight + SELECTION_PASS_TITLE_GAP
-        val cardHeight = (height - cardY - SELECTION_PASS_BOTTOM_PADDING).coerceAtLeast(SELECTION_PASS_CARD_HEIGHT)
-        var x = (width - totalWidth) / 2
-        val currentPlayerId = currentPlayerId()
-        var hoveredReward: SelectionRewardTooltip? = null
-        passRects = passes.map { pass ->
-            val rect = Rect(x, cardY, cardWidth, cardHeight)
-            val hovered = rect.contains(mouseX.toDouble(), mouseY.toDouble())
-            val currentXp = currentPlayerId?.let { playerId -> xpFor(playerId, pass.id) } ?: 0
-            renderSelectionPassCard(guiGraphics, pass, rect, hovered)
-            if (hovered) renderSelectionReticle(guiGraphics, rect)
-            if (hovered) hoveredReward = selectionRewardTooltip(pass, currentXp)
-            x += cardWidth + SELECTION_PASS_CARD_GAP
+        passRects = passes.zip(selectionCardRects(panel, passes.size)).map { (pass, rect) ->
+            renderPassCard(guiGraphics, pass, rect, pass.id == selectedPass.id, rect.contains(mouseX.toDouble(), mouseY.toDouble()))
             rect to pass
         }
-        hoveredReward?.let { tooltip -> renderSelectionRewardTooltip(guiGraphics, tooltip, mouseX, mouseY) }
-    }
 
-    private fun renderSelectionPassCard(guiGraphics: GuiGraphics, pass: BattlepassPassDefinition, rect: Rect, hovered: Boolean) {
-        val titlePadding = SELECTION_PASS_CARD_PADDING + SELECTION_PASS_TITLE_RETICLE_PADDING
-        val pose = guiGraphics.pose()
-        pose.pushPose()
-        if (hovered) {
-            pose.translate(rect.x + rect.width / 2.0f, rect.y + rect.height / 2.0f, 0.0f)
-            pose.scale(SELECTION_PASS_TITLE_HOVER_SCALE, SELECTION_PASS_TITLE_HOVER_SCALE, 1.0f)
-            pose.translate(-(rect.x + rect.width / 2.0f), -(rect.y + rect.height / 2.0f), 0.0f)
-        }
-        renderSelectionPassTitle(guiGraphics, pass, rect.x + titlePadding, rect.y + titlePadding, rect.width - titlePadding * 2, rect.height - titlePadding * 2)
-        pose.popPose()
-    }
-
-    private fun selectionRewardTooltip(pass: BattlepassPassDefinition, currentXp: Int): SelectionRewardTooltip? {
-        val tier = pass.progression.sortedBy { progression -> progression.xp }
-            .firstOrNull { progression -> currentXp < progression.xp || currentPlayerId()?.let { playerId -> isClaimed(playerId, pass.id, progression.xp) } != true }
-        val reward = tier?.rewards?.firstOrNull()
-        return if (tier != null && reward != null) SelectionRewardTooltip(pass, tier, reward, rewardStack(reward), currentXp) else null
-    }
-
-    private fun renderSelectionRewardTooltip(guiGraphics: GuiGraphics, tooltip: SelectionRewardTooltip, mouseX: Int, mouseY: Int) {
-        val itemName = rewardName(tooltip.reward, tooltip.stack)
-        val quantity = if (tooltip.reward.quantity > 1) " x${tooltip.reward.quantity}" else ""
-        val status = if (tooltip.currentXp >= tooltip.tier.xp) "Ready to claim" else "${tooltip.tier.xp - tooltip.currentXp} XP needed"
-        val lines = listOf("Next Reward", "${itemName}$quantity", "${tooltip.pass.displayName} ${tooltip.tier.xp} XP", status)
-        val tooltipWidth = (lines.maxOf { line -> font.width(line) } + TOOLTIP_PADDING * 2 + SELECTION_TOOLTIP_ITEM_SIZE + SELECTION_TOOLTIP_ITEM_GAP).coerceAtLeast(SELECTION_TOOLTIP_MIN_WIDTH)
-        val tooltipHeight = TOOLTIP_PADDING * 2 + maxOf(SELECTION_TOOLTIP_ITEM_SIZE, lines.size * TOOLTIP_LINE_HEIGHT)
-        val x = (mouseX + TOOLTIP_MOUSE_GAP).coerceAtMost(width - tooltipWidth - TOOLTIP_SCREEN_GAP).coerceAtLeast(TOOLTIP_SCREEN_GAP)
-        val y = (mouseY + TOOLTIP_MOUSE_GAP).coerceAtMost(height - tooltipHeight - TOOLTIP_SCREEN_GAP).coerceAtLeast(TOOLTIP_SCREEN_GAP)
-        renderNineSlice(guiGraphics, TOOLTIP_BACKGROUND_TEXTURE, x, y, tooltipWidth, tooltipHeight, TOOLTIP_BACKGROUND_ALPHA)
-
-        val iconX = x + TOOLTIP_PADDING
-        val iconY = y + (tooltipHeight - BASE_ITEM_RENDER_SIZE) / 2
-        if (isChowcoinReward(tooltip.reward)) {
-            renderChowcoinIcon(guiGraphics, iconX, iconY, BASE_ITEM_RENDER_SIZE)
-            renderRewardAmount(guiGraphics, tooltip.reward.quantity, iconX, iconY)
-        } else {
-            guiGraphics.renderItem(tooltip.stack, iconX, iconY)
-            guiGraphics.renderItemDecorations(font, tooltip.stack, iconX, iconY, if (tooltip.reward.quantity > 1) tooltip.reward.quantity.toString() else null)
-        }
-        var textY = y + TOOLTIP_PADDING
-        val textX = x + TOOLTIP_PADDING + SELECTION_TOOLTIP_ITEM_SIZE + SELECTION_TOOLTIP_ITEM_GAP
-        lines.forEachIndexed { index, line ->
-            guiGraphics.drawString(font, line, textX, textY, if (index == 0) TOOLTIP_PRIMARY_TEXT else TOOLTIP_SECONDARY_TEXT, index == 0)
-            textY += TOOLTIP_LINE_HEIGHT
+        passRects.firstOrNull { (rect, _) -> rect.contains(mouseX.toDouble(), mouseY.toDouble()) }?.second?.let { pass ->
+            guiGraphics.renderComponentTooltip(font, passTooltip(pass), mouseX, mouseY)
         }
     }
 
-    private fun renderSelectionPassTitle(guiGraphics: GuiGraphics, pass: BattlepassPassDefinition, x: Int, y: Int, maxWidth: Int, maxHeight: Int) {
-        val texture = pass.titleTexture.takeIf { it.isNotBlank() }?.let { runCatching { ResourceLocation.parse(it) }.getOrNull() }
-        if (texture == null || pass.titleTextureWidth <= 0 || pass.titleTextureHeight <= 0) {
-            guiGraphics.drawString(font, pass.displayName, x, y + (maxHeight - font.lineHeight) / 2, SELECTION_PASS_BUTTON_COLOR, false)
-            return
+    private fun selectionCardRects(panel: Rect, count: Int): List<Rect> {
+        val columns = count.coerceIn(1, 3)
+        val rows = (count + columns - 1) / columns
+        val gap = 10
+        val availableWidth = panel.width - PANEL_PADDING * 2 - gap * (columns - 1)
+        val cardWidth = (availableWidth / columns).coerceAtLeast(120)
+        val cardHeight = 78.coerceAtMost((panel.height - 56 - gap * (rows - 1)) / rows.coerceAtLeast(1))
+        val startX = panel.x + PANEL_PADDING
+        val startY = panel.y + 42
+        return (0 until count).map { index ->
+            Rect(startX + index % columns * (cardWidth + gap), startY + index / columns * (cardHeight + gap), cardWidth, cardHeight)
         }
-        val imageWidth = minOf(maxWidth, maxHeight * pass.titleTextureWidth / pass.titleTextureHeight)
-        val imageHeight = imageWidth * pass.titleTextureHeight / pass.titleTextureWidth
-        guiGraphics.blit(texture, x + (maxWidth - imageWidth) / 2, y + (maxHeight - imageHeight) / 2, imageWidth, imageHeight, 0.0f, 0.0f, pass.titleTextureWidth, pass.titleTextureHeight, pass.titleTextureWidth, pass.titleTextureHeight)
     }
 
-    private fun renderSelectionReticle(guiGraphics: GuiGraphics, rect: Rect) {
-        renderReticleCorner(guiGraphics, rect.x + rect.width - SELECTION_RETICLE_SIZE, rect.y, 0.0f)
-        renderReticleCorner(guiGraphics, rect.x, rect.y, -90.0f)
-        renderReticleCorner(guiGraphics, rect.x + rect.width - SELECTION_RETICLE_SIZE, rect.y + rect.height - SELECTION_RETICLE_SIZE, 90.0f)
-        renderReticleCorner(guiGraphics, rect.x, rect.y + rect.height - SELECTION_RETICLE_SIZE, 180.0f)
-    }
-
-    private fun renderReticleCorner(guiGraphics: GuiGraphics, x: Int, y: Int, rotation: Float) {
-        val pose = guiGraphics.pose()
-        pose.pushPose()
-        pose.translate(x + SELECTION_RETICLE_SIZE / 2.0f, y + SELECTION_RETICLE_SIZE / 2.0f, 0.0f)
-        pose.mulPose(Axis.ZP.rotationDegrees(rotation))
-        guiGraphics.blit(CORNER_RETICLE_TEXTURE, -SELECTION_RETICLE_SIZE / 2, -SELECTION_RETICLE_SIZE / 2, SELECTION_RETICLE_SIZE, SELECTION_RETICLE_SIZE, 0.0f, 0.0f, SELECTION_RETICLE_SOURCE_SIZE, SELECTION_RETICLE_SOURCE_SIZE, SELECTION_RETICLE_SOURCE_SIZE, SELECTION_RETICLE_SOURCE_SIZE)
-        pose.popPose()
+    private fun renderPassCard(guiGraphics: GuiGraphics, pass: BattlepassPassDefinition, rect: Rect, selected: Boolean, hovered: Boolean) {
+        registerHoverSound("pass:${pass.id}", hovered)
+        val titleTextured = renderPassTitleTexture(guiGraphics, pass, Rect(rect.x + 8, rect.y + 7, rect.width - 36, 24))
+        if (!titleTextured) {
+            drawCkdmShadowedText(guiGraphics, fitText(pass.displayName.uppercase(), rect.width - 18), rect.x + 8, rect.y + 8, if (selected || hovered) TEXT_PRIMARY else TEXT_MUTED)
+        }
+        val detailY = if (titleTextured) rect.y + 34 else rect.y + 24
+        guiGraphics.drawString(font, "${pass.progression.size} tiers", rect.x + 8, detailY, TEXT_MUTED, false)
+        guiGraphics.drawString(font, "${activeMissionEntries(pass).size} missions", rect.x + 8, detailY + 14, TEXT_MUTED, false)
+        pass.progression.sortedBy { tier -> tier.xp }.firstOrNull()?.rewards?.firstOrNull()?.let { reward ->
+            renderItemSprite(guiGraphics, rewardStack(reward), rect.x + rect.width - 26, rect.y + rect.height - 26)
+        }
     }
 
     private fun renderDetail(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
-        val selectedPass = passes().firstOrNull { pass -> pass.id == selectedPassId } ?: run {
+        if (detailAnimationStartedAtMs == 0L) resetDetailAnimation()
+        val pass = selectedPass() ?: run {
             viewMode = ViewMode.PASS_SELECTION
             renderSelection(guiGraphics, mouseX, mouseY)
             return
         }
-        val currentPlayerId = currentPlayerId()
-        val currentXp = currentPlayerId?.let { playerId -> xpFor(playerId, selectedPass.id) } ?: 0
-        val panel = mainRect()
+        val currentXp = currentPlayerId()?.let { id -> xpFor(id, pass.id) } ?: 0
         BattlepassTrackedMissions.sync(passes(), removeCompleted = true)
-        drawFrame(guiGraphics, panel, 0x16000000, 0x00000000)
 
-        val titleBottom = renderPassTitle(guiGraphics, selectedPass, panel.x + 28, panel.y + 18)
-
+        val panel = mainRect().inset(SAFE_EDGE_PADDING)
+        withEntrance(guiGraphics, EntranceStyle(HEADER_ANIMATION_DELAY_MS, scaleFrom = HEADER_SCALE_FROM), panel.x + PANEL_PADDING, panel.y + 8) {
+            renderHeader(guiGraphics, panel, pass)
+        }
         layoutBackButton(panel)
 
         val hotbar = hotbarRect()
-        val contentTop = titleBottom + CONTENT_TOP_GAP
-        val contentBottom = hotbar.y - CONTENT_BOTTOM_GAP
-        autoCenterCurrentReward(selectedPass, currentXp, hotbar)
-        renderMissionsBook(guiGraphics, selectedPass, panel.x + CONTENT_PADDING, contentTop, contentBottom, mouseX, mouseY)
-        renderPlayerPreview(guiGraphics, selectedPass, contentTop, contentBottom, currentXp)
-        renderRewardHotbar(guiGraphics, hotbar, selectedPass, currentXp, mouseX, mouseY)
+        val contentTop = panel.y + HEADER_HEIGHT
+        val contentBottom = hotbar.y - ITEM_STRIP_GAP
+        val availableContentWidth = panel.width - PANEL_PADDING * 2 - DETAIL_COLUMN_GAP
+        val missionWidth = MISSION_PANEL_WIDTH.coerceAtMost(availableContentWidth - PLAYER_PREVIEW_MIN_WIDTH).coerceAtLeast(MISSION_PANEL_MIN_WIDTH)
+        val playerWidth = (availableContentWidth - missionWidth).coerceAtLeast(PLAYER_PREVIEW_MIN_WIDTH)
+        val missionRect = Rect(panel.x + PANEL_PADDING, contentTop, missionWidth, (contentBottom - contentTop).coerceAtLeast(PLAYER_PREVIEW_MIN_HEIGHT))
+        val playerRect = Rect(missionRect.x + missionRect.width + DETAIL_COLUMN_GAP, contentTop, playerWidth, missionRect.height)
+
+        renderMissions(guiGraphics, pass, missionRect, mouseX, mouseY)
+        withEntrance(guiGraphics, EntranceStyle(MISSION_LIST_ANIMATION_DELAY_MS, offsetY = ENTRANCE_SLIDE_DOWN_OFFSET)) {
+            renderPlayerPreview(guiGraphics, pass, playerRect, currentXp)
+        }
+        autoCenterCurrentReward(pass, currentXp, hotbar)
+        renderRewardHotbar(guiGraphics, hotbar, pass, currentXp, mouseX, mouseY)
         renderClaimAllButton(guiGraphics, mouseX, mouseY)
-        renderClaimAnimations(guiGraphics)
+        renderRewardFlyouts(guiGraphics)
+        renderHoveredBattlepassTooltip(guiGraphics, currentXp, mouseX, mouseY)
+    }
+
+    private fun renderHeader(guiGraphics: GuiGraphics, panel: Rect, pass: BattlepassPassDefinition) {
+        if (!renderPassTitleTexture(guiGraphics, pass, Rect(panel.x + PANEL_PADDING, panel.y + 8, titleWidth(), HEADER_TITLE_TEXTURE_HEIGHT))) {
+            drawCkdmShadowedText(guiGraphics, fitText(pass.displayName.uppercase(), titleWidth()), panel.x + PANEL_PADDING, panel.y + 12, TEXT_PRIMARY)
+        }
     }
 
     private fun layoutBackButton(panel: Rect) {
-        backRect = Rect(panel.x + panel.width - CONTENT_PADDING - BACK_BUTTON_WIDTH, panel.y + 22, BACK_BUTTON_WIDTH, BUTTON_HEIGHT)
-        backButton?.setX(backRect.x)
-        backButton?.setY(backRect.y)
-        backButton?.visible = true
-        backButton?.active = true
+        backButtonRect = Rect(panel.x + panel.width - PANEL_PADDING - BACK_BUTTON_WIDTH, panel.y + 10, BACK_BUTTON_WIDTH, BUTTON_HEIGHT)
+        backButton?.visible = false
+        backButton?.active = false
     }
 
-    private fun renderMissionsBook(guiGraphics: GuiGraphics, pass: BattlepassPassDefinition, x: Int, y: Int, contentBottom: Int, mouseX: Int, mouseY: Int) {
-        val availableHeight = (contentBottom - y).coerceAtLeast(MISSIONS_BOOK_MIN_HEIGHT)
-        val availableWidth = (width - CONTENT_PADDING * 3 - PLAYER_PREVIEW_MAX_WIDTH).coerceAtLeast(MISSIONS_BOOK_MIN_WIDTH)
-        val scale = minOf(availableHeight / MISSIONS_BOOK_HEIGHT.toFloat(), availableWidth / MISSIONS_BOOK_WIDTH.toFloat())
-        val bookWidth = (MISSIONS_BOOK_WIDTH * scale).toInt()
-        val bookHeight = (MISSIONS_BOOK_HEIGHT * scale).toInt()
-        guiGraphics.blit(MISSIONS_BOOK_TEXTURE, x, y, bookWidth, bookHeight, 0.0f, 0.0f, MISSIONS_BOOK_WIDTH, MISSIONS_BOOK_HEIGHT, MISSIONS_BOOK_WIDTH, MISSIONS_BOOK_HEIGHT)
-
-        val pose = guiGraphics.pose()
-        pose.pushPose()
-        pose.translate(x + MISSIONS_TITLE_X * scale, y + MISSIONS_TITLE_Y * scale, 0.0f)
-        pose.scale(MISSIONS_TITLE_SCALE * scale, MISSIONS_TITLE_SCALE * scale, 1.0f)
-        guiGraphics.drawString(font, "Missions", 0, 0, MISSIONS_TITLE_COLOR, false)
-        pose.popPose()
-
-        renderMissionFilterButton(guiGraphics, x, y, scale, mouseX, mouseY)
-
-        renderMissionEvents(guiGraphics, pass, x, y, scale, mouseX, mouseY)
-    }
-
-    private fun renderMissionFilterButton(guiGraphics: GuiGraphics, bookX: Int, bookY: Int, scale: Float, mouseX: Int, mouseY: Int) {
-        val label = missionFilter.label
-        val y = bookY + (MISSIONS_FILTER_Y * scale).toInt()
-        val textWidth = font.width(label)
-        val width = ((font.width(label) + MISSIONS_FILTER_PADDING * 2) * scale).toInt().coerceAtLeast(24)
-        val height = (MISSIONS_FILTER_HEIGHT * scale).toInt().coerceAtLeast(14)
-        val x = bookX + ((MISSIONS_FILTER_RIGHT_X - MISSIONS_FILTER_RIGHT_PADDING) * scale).toInt() - width
-        missionFilterRect = Rect(x, y, width, height)
-        val hovered = missionFilterRect.contains(mouseX.toDouble(), mouseY.toDouble())
-        missionFilterClickProgress = Mth.lerp(CLICK_ANIMATION_SPEED, missionFilterClickProgress, 0.0f).let { value -> if (value < 0.001f) 0.0f else value }
-        val pressScale = 1.0f + (Mth.sin(missionFilterClickProgress * Math.PI.toFloat()) * MISSIONS_FILTER_PRESS_SCALE)
-        val alpha = if (hovered) 1.0f else MISSIONS_FILTER_IDLE_ALPHA
-        val textX = x + width - textWidth - (MISSIONS_FILTER_PADDING * scale)
-        val textY = y + (height - font.lineHeight) / 2.0f
-        val centerX = x + width / 2.0f
-        val centerY = y + height / 2.0f
-
-        val pose = guiGraphics.pose()
-        pose.pushPose()
-        pose.translate(centerX, centerY, 0.0f)
-        pose.scale(pressScale, pressScale, 1.0f)
-        pose.translate(-centerX, -centerY, 0.0f)
-        guiGraphics.drawString(font, label, textX.toInt(), textY.toInt(), colorWithAlpha(MISSIONS_FILTER_TEXT, alpha), false)
-        drawDottedUnderline(guiGraphics, textX.toInt(), (textY + font.lineHeight + MISSIONS_FILTER_UNDERLINE_GAP * scale).toInt(), textWidth, colorWithAlpha(MISSIONS_FILTER_TEXT, alpha))
-        pose.popPose()
-
-        if (hovered) {
-            val trackedCount = BattlepassTrackedMissions.trackedMissions(passes()).size
-            val trackedText = if (trackedCount >= MISSIONS_TRACK_LIMIT) "Tracked full $MISSIONS_TRACK_LIMIT/$MISSIONS_TRACK_LIMIT" else "Tracked $trackedCount/$MISSIONS_TRACK_LIMIT"
-            guiGraphics.renderComponentTooltip(font, listOf(Component.literal(trackedText)), mouseX, mouseY)
+    private fun renderMissions(guiGraphics: GuiGraphics, pass: BattlepassPassDefinition, rect: Rect, mouseX: Int, mouseY: Int) {
+        withEntrance(guiGraphics, EntranceStyle(MISSIONS_TITLE_ANIMATION_DELAY_MS, offsetY = ENTRANCE_SLIDE_DOWN_OFFSET)) {
+            drawCkdmHighlightText(guiGraphics, "MISSIONS", rect.x + 8, rect.y + 8, CKDM_BOLD_LARGE_FONT)
         }
-    }
-
-    private fun drawDottedUnderline(guiGraphics: GuiGraphics, x: Int, y: Int, width: Int, color: Int) {
-        var dotX = x
-        while (dotX < x + width) {
-            guiGraphics.hLine(dotX, (dotX + MISSIONS_FILTER_DOT_WIDTH).coerceAtMost(x + width), y, color)
-            dotX += MISSIONS_FILTER_DOT_WIDTH + MISSIONS_FILTER_DOT_GAP
+        withEntrance(guiGraphics, EntranceStyle(MISSION_FILTER_ANIMATION_DELAY_MS, offsetY = ENTRANCE_SLIDE_DOWN_OFFSET)) {
+            renderMissionFilterTabs(guiGraphics, rect, mouseX, mouseY)
         }
-    }
 
-    private fun renderMissionEvents(guiGraphics: GuiGraphics, pass: BattlepassPassDefinition, bookX: Int, bookY: Int, scale: Float, mouseX: Int, mouseY: Int) {
-        val rectX = bookX + (MISSIONS_CONTAINER_X * scale).toInt()
-        val rectY = bookY + (MISSIONS_CONTAINER_Y * scale).toInt()
-        val rectWidth = ((MISSIONS_CONTAINER_RIGHT - MISSIONS_CONTAINER_X) * scale).toInt()
-        val rectHeight = ((MISSIONS_CONTAINER_BOTTOM - MISSIONS_CONTAINER_Y) * scale).toInt()
-        missionsRect = Rect(rectX, rectY, rectWidth, rectHeight)
-        missionsMaxScroll = maxMissionsScroll(pass, scale, rectHeight)
+        missionsRect = Rect(rect.x + 8, rect.y + MISSION_HEADER_HEIGHT, rect.width - 16, rect.height - MISSION_HEADER_HEIGHT - 8)
+        val missions = visibleMissionEntries(pass)
+            .map { entry -> entry to (currentPlayerId()?.let { id -> BattlepassClientState.isMissionCompleted(id, pass.id, entry.key) } == true) }
+            .sortedBy { (_, completed) -> completed }
+        val missionRowHeight = missionRowHeight(missionsRect.width)
+        val missionRowPitch = missionRowHeight + ROW_GAP
+        missionsMaxScroll = (missions.size * missionRowPitch + MISSION_LIST_VERTICAL_PADDING * 2 - missionsRect.height).coerceAtLeast(0).toFloat()
         targetMissionsScroll = targetMissionsScroll.coerceIn(0.0f, missionsMaxScroll)
         missionsScroll = missionsScroll.coerceIn(0.0f, missionsMaxScroll)
         missionSlots = emptyList()
 
-        guiGraphics.enableScissor(rectX, rectY, rectX + rectWidth, rectY + rectHeight)
-        val pose = guiGraphics.pose()
-        pose.pushPose()
-        pose.translate(rectX.toFloat(), rectY - missionsScroll, 0.0f)
-        pose.scale(scale, scale, 1.0f)
-
-        val playerId = currentPlayerId()
-        val missions = visibleMissionEntries(pass)
-            .map { entry -> entry to (playerId?.let { id -> BattlepassClientState.isMissionCompleted(id, pass.id, entry.key) } == true) }
-            .sortedBy { (_, completed) -> completed }
+        guiGraphics.enableScissor(missionsRect.x, missionsRect.y, missionsRect.x + missionsRect.width, missionsRect.y + missionsRect.height)
+        var rowY = missionsRect.y + MISSION_LIST_VERTICAL_PADDING - missionsScroll.toInt()
         if (missions.isEmpty()) {
-            guiGraphics.drawString(font, "No missions", 0, 0, MISSIONS_EVENT_COLOR, false)
+            guiGraphics.drawString(font, "No missions", missionsRect.x, rowY, TEXT_MUTED, false)
         } else {
-            var rowY = 0
-            missions.forEach { (entry, completed) ->
-                val screenRowY = rectY + (rowY * scale - missionsScroll).toInt()
-                missionSlots = missionSlots + MissionSlot(Rect(rectX, screenRowY, rectWidth, (missionRowHeight(entry.event) * scale).toInt().coerceAtLeast(1)), pass.id, entry, completed)
-                val clickProgress = updateAnimation(missionClickProgressByKey, missionEntryKey(pass.id, entry), 0.0f, CLICK_ANIMATION_SPEED)
-                val rowScale = 1.0f + (Mth.sin(clickProgress * Math.PI.toFloat()) * MISSIONS_ROW_PRESS_SCALE)
-                val rowHeight = missionRowHeight(entry.event)
-                pose.pushPose()
-                pose.translate(MISSIONS_CONTENT_WIDTH / 2.0f, rowY + rowHeight / 2.0f, 0.0f)
-                pose.scale(rowScale, rowScale, 1.0f)
-                pose.translate(-MISSIONS_CONTENT_WIDTH / 2.0f, -(rowY + rowHeight / 2.0f), 0.0f)
-                if (isProgressiveMission(entry.event) || BattlepassMissionService.isCappedRepeating(entry.event)) {
-                    renderProgressiveMission(guiGraphics, pass.id, entry, rowY, completed)
-                } else {
-                    renderRepeatingMission(guiGraphics, pass.id, entry, rowY, completed)
+            missions.forEachIndexed { index, (entry, completed) ->
+                val row = Rect(missionsRect.x, rowY, missionsRect.width, missionRowHeight)
+                if (row.y + row.height > missionsRect.y && row.y < missionsRect.y + missionsRect.height) {
+                    missionSlots = missionSlots + MissionSlot(row, pass.id, entry, completed)
+                    withEntrance(guiGraphics, EntranceStyle(index * MISSION_ROW_STAGGER_MS, offsetY = ENTRANCE_SLIDE_DOWN_OFFSET, timelineStartedAtMs = missionListAnimationStartedAtMs)) {
+                        renderMissionRow(guiGraphics, pass.id, entry, row, completed, row.contains(mouseX.toDouble(), mouseY.toDouble()))
+                    }
                 }
-                pose.popPose()
-                rowY += missionRowHeight(entry.event)
+                rowY += missionRowPitch
             }
         }
-
-        pose.popPose()
         guiGraphics.disableScissor()
-
-        renderMissionsScrollbar(guiGraphics, rectX, rectY, rectWidth, rectHeight)
-
-        renderMissionSlotTooltip(guiGraphics, mouseX, mouseY, requireMissionsRect = true)
     }
 
-    private fun renderMissionSlotTooltip(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, requireMissionsRect: Boolean = false) {
-        val hoveredSlot = missionSlots.firstOrNull { slot ->
-            (!requireMissionsRect || missionsRect.contains(mouseX.toDouble(), mouseY.toDouble())) && slot.rect.contains(mouseX.toDouble(), mouseY.toDouble())
-        } ?: return
-        renderMissionTooltip(guiGraphics, hoveredSlot, mouseX, mouseY)
+    private fun renderMissionFilterTabs(guiGraphics: GuiGraphics, parent: Rect, mouseX: Int, mouseY: Int) {
+        val y = parent.y + 34
+        var x = parent.x + 8
+        missionFilterRects = MissionFilter.entries.map { filter ->
+            val width = ckdmWidth(filter.label, CKDM_BOLD_FONT)
+            val rect = Rect(x, y, width, MISSION_TAB_TEXT_HEIGHT)
+            val selected = filter == missionFilter
+            val hovered = rect.contains(mouseX.toDouble(), mouseY.toDouble())
+            registerHoverSound(missionFilterKey(filter), hovered)
+            val offsetY = interactionYOffset(missionFilterKey(filter), hovered)
+            if (selected) {
+                drawCkdmShadowedText(guiGraphics, filter.label, x, y + offsetY, TEXT_PRIMARY)
+            } else {
+                drawCkdmText(guiGraphics, filter.label, x, y + offsetY, if (hovered) TEXT_PRIMARY else TEXT_MUTED)
+            }
+            x += width + MISSION_TAB_GAP
+            rect to filter
+        }
     }
 
-    private fun renderMissionsScrollbar(guiGraphics: GuiGraphics, rectX: Int, rectY: Int, rectWidth: Int, rectHeight: Int, scrollValue: Float = missionsScroll, maxScrollValue: Float = missionsMaxScroll) {
-        if (maxScrollValue <= 0.0f) return
-
-        val trackX = rectX + rectWidth - MISSIONS_SCROLLBAR_RIGHT_INSET
-        val trackY = rectY
-        val trackHeight = rectHeight
-        val contentHeight = rectHeight + maxScrollValue
-        val thumbHeight = (trackHeight * (rectHeight / contentHeight)).toInt().coerceIn(MISSIONS_SCROLLBAR_MIN_THUMB_HEIGHT, trackHeight)
-        val thumbTravel = (trackHeight - thumbHeight).coerceAtLeast(1)
-        val thumbY = trackY + (thumbTravel * (scrollValue / maxScrollValue)).toInt().coerceIn(0, thumbTravel)
-
-        guiGraphics.fill(trackX, trackY, trackX + MISSIONS_SCROLLBAR_WIDTH, trackY + trackHeight, MISSIONS_SCROLLBAR_TRACK)
-        guiGraphics.fill(trackX, thumbY, trackX + MISSIONS_SCROLLBAR_WIDTH, thumbY + thumbHeight, MISSIONS_SCROLLBAR_THUMB)
-    }
-
-    private fun renderRepeatingMission(guiGraphics: GuiGraphics, passId: String, entry: BattlepassMissionEntry, y: Int, completed: Boolean) {
-        val event = entry.event
-        val xpText = "+${event.xp}"
-        val alpha = if (completed) MISSIONS_COMPLETED_ALPHA else 1.0f
-        val color = missionColor(entry.scope)
-        drawMissionTitle(guiGraphics, passId, entry, y, color, alpha, completed)
-        drawMissionString(guiGraphics, xpText, rightAlignedMissionX(xpText), y, color, alpha)
-        drawMissionSeparator(guiGraphics, y + MISSIONS_REPEATING_ROW_HEIGHT - MISSIONS_SEPARATOR_BOTTOM_GAP, color, alpha)
-    }
-
-    private fun renderProgressiveMission(guiGraphics: GuiGraphics, passId: String, entry: BattlepassMissionEntry, y: Int, completed: Boolean) {
-        val event = entry.event
-        val syncedProgress = currentPlayerId()?.let { playerId -> BattlepassClientState.missionProgress(playerId, passId, entry.key) ?: BattlepassClientState.missionProgress(playerId, passId, event.event) }
-        val eventProgress = syncedProgress ?: event.progress
-        val cappedRepeating = BattlepassMissionService.isCappedRepeating(event)
-        val goalIndex = nextProgressGoalIndex(event, eventProgress)
-        val goal = if (cappedRepeating) event.xpCap else event.progressGoals.getOrNull(goalIndex) ?: eventProgress.coerceAtLeast(1)
-        val previousGoal = event.progressGoals.getOrNull(goalIndex - 1) ?: 0
-        val xp = if (cappedRepeating) event.xp else event.progressXp.getOrNull(goalIndex) ?: event.xp
-        val progress = eventProgress.coerceAtMost(goal)
-        val span = (goal - previousGoal).coerceAtLeast(1)
-        val localProgress = (progress - previousGoal).coerceAtLeast(0)
-        val xpText = "+$xp"
-        val progressText = "$progress/$goal"
-        val progressTextWidth = missionStringWidth(progressText)
-        val barWidth = (MISSIONS_CONTENT_WIDTH - progressTextWidth - MISSIONS_PROGRESS_TEXT_GAP).coerceAtLeast(MISSIONS_PROGRESS_BAR_MIN_WIDTH)
-        val progressWidth = (barWidth * (localProgress / span.toFloat())).toInt().coerceIn(0, barWidth)
-        val alpha = if (completed) MISSIONS_COMPLETED_ALPHA else 1.0f
-        val color = missionColor(entry.scope)
-
-        drawMissionTitle(guiGraphics, passId, entry, y, color, alpha, completed)
-        drawMissionString(guiGraphics, xpText, rightAlignedMissionX(xpText), y, color, alpha)
-        guiGraphics.fill(0, y + MISSIONS_PROGRESS_BAR_Y, barWidth, y + MISSIONS_PROGRESS_BAR_Y + MISSIONS_PROGRESS_BAR_HEIGHT, colorWithAlpha(MISSIONS_PROGRESS_BAR_BACKGROUND, alpha * MISSIONS_PROGRESS_BAR_BACKGROUND_ALPHA))
-        guiGraphics.fill(0, y + MISSIONS_PROGRESS_BAR_Y, progressWidth, y + MISSIONS_PROGRESS_BAR_Y + MISSIONS_PROGRESS_BAR_HEIGHT, colorWithAlpha(color, alpha))
-        drawMissionString(guiGraphics, progressText, rightAlignedMissionX(progressText), y + MISSIONS_PROGRESS_BAR_Y - MISSIONS_PROGRESS_TEXT_Y_OFFSET, MISSIONS_EVENT_DETAIL_COLOR, alpha)
-        drawMissionSeparator(guiGraphics, y + MISSIONS_PROGRESSIVE_ROW_HEIGHT - MISSIONS_SEPARATOR_BOTTOM_GAP, color, alpha)
-    }
-
-    private fun drawMissionString(guiGraphics: GuiGraphics, text: String, x: Int, y: Int, color: Int, alpha: Float = 1.0f) {
-        val pose = guiGraphics.pose()
-        pose.pushPose()
-        pose.translate(x.toFloat(), y.toFloat(), 0.0f)
-        pose.scale(MISSIONS_EVENT_TEXT_SCALE, MISSIONS_EVENT_TEXT_SCALE, 1.0f)
-        guiGraphics.drawString(font, text, 0, 0, colorWithAlpha(color, alpha), false)
-        pose.popPose()
-    }
-
-    private fun drawMissionTitle(guiGraphics: GuiGraphics, passId: String, entry: BattlepassMissionEntry, y: Int, color: Int, alpha: Float, completed: Boolean) {
+    private fun renderMissionRow(guiGraphics: GuiGraphics, passId: String, entry: BattlepassMissionEntry, rect: Rect, completed: Boolean, hovered: Boolean) {
+        registerHoverSound("mission:$passId:${entry.key}", hovered)
+        val progress = missionProgress(passId, entry)
         val tracked = BattlepassTrackedMissions.isTracked(passId, entry.key)
-        var textX = 0
-        if (completed) {
-            guiGraphics.setColor(1.0f, 1.0f, 1.0f, alpha)
-            guiGraphics.blit(CHECK_TEXTURE, textX, y, MISSIONS_STAR_SIZE, MISSIONS_STAR_SIZE, 0.0f, 0.0f, STAR_TEXTURE_SIZE, STAR_TEXTURE_SIZE, STAR_TEXTURE_SIZE, STAR_TEXTURE_SIZE)
-            guiGraphics.setColor(1.0f, 1.0f, 1.0f, 1.0f)
-            textX += MISSIONS_STAR_SIZE + MISSIONS_STAR_GAP
+        val titlePrefix = when {
+            tracked -> "* "
+            else -> ""
         }
-        if (tracked) {
-            guiGraphics.setColor(1.0f, 1.0f, 1.0f, alpha)
-            guiGraphics.blit(STAR_TEXTURE, textX, y, MISSIONS_STAR_SIZE, MISSIONS_STAR_SIZE, 0.0f, 0.0f, STAR_TEXTURE_SIZE, STAR_TEXTURE_SIZE, STAR_TEXTURE_SIZE, STAR_TEXTURE_SIZE)
-            guiGraphics.setColor(1.0f, 1.0f, 1.0f, 1.0f)
-            textX += MISSIONS_STAR_SIZE + MISSIONS_STAR_GAP
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, renderAlpha * if (hovered) MISSION_ROW_HOVER_BACKGROUND_ALPHA else MISSION_ROW_BACKGROUND_ALPHA)
+        renderNineSlice(guiGraphics, TOOLTIP_CONTAINER_TEXTURE, rect, TOOLTIP_CONTAINER_TEXTURE_SIZE, MISSION_ROW_CONTAINER_CORNER_SIZE)
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, renderAlpha)
+
+        val detailStackHeight = MISSION_ROW_HEADER_TEXT_HEIGHT + MISSION_ROW_TEXT_GAP + MISSION_ROW_SUB_TEXT_HEIGHT + MISSION_ROW_TEXT_GAP + MISSION_ROW_SUB_TEXT_HEIGHT
+        val iconSize = (detailStackHeight - MISSION_ROW_ICON_DETAIL_OFFSET).coerceAtLeast(BASE_ITEM_RENDER_SIZE)
+        val iconRect = Rect(rect.x + MISSION_ROW_PADDING, rect.y + (rect.height - iconSize) / 2, iconSize, iconSize)
+        renderScaledItem(guiGraphics, missionIconStack(entry), iconRect)
+
+        val completedColumnWidth = (rect.width * MISSION_COMPLETED_COLUMN_WIDTH_PERCENT / 100).coerceIn(MISSION_COMPLETED_COLUMN_MIN_WIDTH, rect.width / 2)
+        val detailsX = iconRect.x + iconRect.width + MISSION_ROW_COLUMN_GAP
+        val completedColumnX = rect.x + rect.width - MISSION_ROW_PADDING - completedColumnWidth
+        val detailsWidth = (completedColumnX - detailsX - MISSION_ROW_COLUMN_GAP).coerceAtLeast(40)
+        var detailY = rect.y + (rect.height - detailStackHeight) / 2
+        drawQuestTitleText(guiGraphics, fitCkdmText(titlePrefix + missionDescription(passId, entry), detailsWidth), detailsX, detailY, if (completed) TEXT_MUTED else TEXT_PRIMARY)
+        detailY += MISSION_ROW_HEADER_TEXT_HEIGHT + MISSION_ROW_TEXT_GAP
+        drawCkdmText(guiGraphics, missionProgressText(entry, progress), detailsX, detailY, TEXT_MUTED, CKDM_BOLD_SMALL_FONT)
+        detailY += MISSION_ROW_SUB_TEXT_HEIGHT + MISSION_ROW_TEXT_GAP
+        drawCkdmText(guiGraphics, "XP", detailsX, detailY, MISSION_XP_LABEL_COLOR, CKDM_BOLD_SMALL_FONT)
+        drawCkdmText(guiGraphics, "+${missionRewardXp(entry, progress)}", detailsX + ckdmWidth("XP", CKDM_BOLD_SMALL_FONT) + MISSION_XP_VALUE_GAP, detailY, TEXT_PRIMARY, CKDM_BOLD_SMALL_FONT)
+
+        renderMissionCompletedColumn(guiGraphics, MissionSlot(rect, passId, entry, completed), completedColumnX, rect.y, completedColumnWidth, rect.height)
+    }
+
+    private fun renderPlayerPreview(guiGraphics: GuiGraphics, pass: BattlepassPassDefinition, rect: Rect, currentXp: Int) {
+        playerDollTarget = Rect(rect.x + rect.width / 2 - PLAYER_DOLL_TARGET_SIZE / 2, rect.y + rect.height / 2 - PLAYER_DOLL_TARGET_SIZE / 2, PLAYER_DOLL_TARGET_SIZE, PLAYER_DOLL_TARGET_SIZE)
+        Minecraft.getInstance().player?.let { player ->
+            val mainHand = player.mainHandItem.copy()
+            val offHand = player.offhandItem.copy()
+            player.setItemSlot(EquipmentSlot.MAINHAND, ItemStack.EMPTY)
+            player.setItemSlot(EquipmentSlot.OFFHAND, ItemStack.EMPTY)
+            try {
+                InventoryScreen.renderEntityInInventoryFollowsAngle(
+                    guiGraphics,
+                    rect.x + 8,
+                    rect.y + 28,
+                    rect.x + rect.width - 8,
+                    rect.y + rect.height - 34,
+                    (rect.height / 3).coerceIn(PLAYER_PREVIEW_MIN_SIZE, PLAYER_PREVIEW_MAX_SIZE),
+                    PLAYER_PREVIEW_Y_OFFSET,
+                    PLAYER_PREVIEW_ANGLE_X,
+                    PLAYER_PREVIEW_ANGLE_Y,
+                    player,
+                )
+            } finally {
+                player.setItemSlot(EquipmentSlot.MAINHAND, mainHand)
+                player.setItemSlot(EquipmentSlot.OFFHAND, offHand)
+            }
         }
-        drawMissionString(guiGraphics, missionDescription(passId, entry), textX, y, color, alpha)
+        renderPlayerXpProgress(guiGraphics, pass, currentXp, Rect(rect.x + 8, rect.y + rect.height - 26, rect.width - 16, 14))
     }
 
-    private fun drawMissionSeparator(guiGraphics: GuiGraphics, y: Int, color: Int, alpha: Float) {
-        drawMissionString(guiGraphics, fullMissionSeparator(), 0, y, color, alpha * MISSIONS_SEPARATOR_ALPHA)
-    }
-
-    private fun fullMissionSeparator(): String {
-        val unitWidth = missionStringWidth(MISSIONS_SEPARATOR_TEXT).coerceAtLeast(1)
-        return MISSIONS_SEPARATOR_TEXT.repeat((MISSIONS_CONTENT_WIDTH / unitWidth) + 2)
-    }
-
-    private fun rightAlignedMissionX(text: String): Int = MISSIONS_CONTENT_WIDTH - missionStringWidth(text)
-
-    private fun missionStringWidth(text: String): Int = (font.width(text) * MISSIONS_EVENT_TEXT_SCALE).toInt()
-
-    private fun colorWithAlpha(color: Int, alpha: Float): Int = ((alpha.coerceIn(0.0f, 1.0f) * 255).toInt() shl 24) or (color and 0x00FFFFFF)
-
-    private fun renderPlayerPreview(guiGraphics: GuiGraphics, pass: BattlepassPassDefinition, contentTop: Int, contentBottom: Int, currentXp: Int) {
-        val player = Minecraft.getInstance().player ?: return
-        val previewHeight = (contentBottom - contentTop).coerceAtLeast(PLAYER_PREVIEW_MIN_HEIGHT)
-        val previewWidth = (previewHeight * PLAYER_PREVIEW_ASPECT_NUMERATOR / PLAYER_PREVIEW_ASPECT_DENOMINATOR).coerceIn(PLAYER_PREVIEW_MIN_WIDTH, PLAYER_PREVIEW_MAX_WIDTH)
-        val previewSize = (previewHeight * PLAYER_PREVIEW_SIZE_NUMERATOR / PLAYER_PREVIEW_SIZE_DENOMINATOR).coerceIn(PLAYER_PREVIEW_MIN_SIZE, PLAYER_PREVIEW_MAX_SIZE)
-        val x1 = (width - PLAYER_PREVIEW_RIGHT_PADDING - previewWidth).coerceAtLeast(28)
-        val y1 = contentTop
-        playerPreviewRect = Rect(x1, y1, previewWidth, previewHeight)
-        InventoryScreen.renderEntityInInventoryFollowsAngle(
-            guiGraphics,
-            x1,
-            y1,
-            x1 + previewWidth,
-            y1 + previewHeight,
-            previewSize,
-            PLAYER_PREVIEW_Y_OFFSET,
-            PLAYER_PREVIEW_ANGLE_X,
-            PLAYER_PREVIEW_ANGLE_Y,
-            player,
-        )
-        renderPlayerXpProgress(guiGraphics, pass, currentXp, x1, y1 + PLAYER_XP_PILL_Y_OFFSET, previewWidth)
-    }
-
-    private fun renderPlayerXpProgress(guiGraphics: GuiGraphics, pass: BattlepassPassDefinition, currentXp: Int, x: Int, y: Int, width: Int) {
+    private fun renderPlayerXpProgress(guiGraphics: GuiGraphics, pass: BattlepassPassDefinition, currentXp: Int, rect: Rect) {
         val tiers = pass.progression.sortedBy { tier -> tier.xp }
         val nextTier = tiers.firstOrNull { tier -> currentXp < tier.xp }
         val previousTierXp = tiers.lastOrNull { tier -> tier.xp <= currentXp }?.xp ?: 0
         val targetXp = nextTier?.xp ?: tiers.lastOrNull()?.xp ?: currentXp
-        val remainingXp = (targetXp - currentXp).coerceAtLeast(0)
         val span = (targetXp - previousTierXp).coerceAtLeast(1)
         val progress = if (nextTier == null) 1.0f else ((currentXp - previousTierXp).toFloat() / span).coerceIn(0.0f, 1.0f)
-        val fillWidth = (width * progress).toInt().coerceIn(0, width)
-        val text = if (nextTier == null) "Max XP $currentXp" else "$remainingXp XP to $targetXp"
-
-        renderNineSlice(guiGraphics, TOOLTIP_BACKGROUND_TEXTURE, x, y, width, PLAYER_XP_PILL_HEIGHT, 1.0f)
-        if (fillWidth > 0) {
-            guiGraphics.enableScissor(x, y, x + fillWidth, y + PLAYER_XP_PILL_HEIGHT)
-            renderNineSlice(guiGraphics, GREEN_BORDER_MASK_TEXTURE, x, y, width, PLAYER_XP_PILL_HEIGHT, 1.0f)
-            guiGraphics.disableScissor()
-        }
-        guiGraphics.drawString(font, text, x + (width - font.width(text)) / 2, y + (PLAYER_XP_PILL_HEIGHT - font.lineHeight) / 2, 0xFFFFFFFF.toInt(), true)
+        val fillWidth = (rect.width * progress).toInt().coerceIn(0, rect.width)
+        val text = if (nextTier == null) "Max XP $currentXp" else "${(targetXp - currentXp).coerceAtLeast(0)} XP to $targetXp"
+        guiGraphics.fill(rect.x, rect.y, rect.x + rect.width, rect.y + rect.height, PROGRESS_BACK)
+        guiGraphics.fill(rect.x, rect.y, rect.x + fillWidth, rect.y + rect.height, PROGRESS_FILL)
+        guiGraphics.drawString(font, fitText(text, rect.width - 4), rect.x + 2, rect.y + 3, TEXT_PRIMARY, false)
     }
 
-    private fun startClaimAnimations(slots: List<RewardSlot>) {
-        if (slots.isEmpty()) return
-        val targetX = playerPreviewRect.x + playerPreviewRect.width * CLAIM_ANIMATION_TARGET_X_FACTOR
-        val targetY = playerPreviewRect.y + playerPreviewRect.height * CLAIM_ANIMATION_TARGET_Y_FACTOR
-        val now = Util.getMillis()
-        slots.forEach { slot ->
-            claimAnimations += ClaimAnimation(
-                slot.stack.copy(),
-                slot.rect.x + slot.rect.width / 2.0f,
-                slot.rect.y + slot.rect.height / 2.0f,
-                targetX,
-                targetY,
-                now,
-            )
-        }
-        playClaimSound()
-    }
-
-    private fun renderClaimAnimations(guiGraphics: GuiGraphics) {
-        val now = Util.getMillis()
-        claimAnimations.removeIf { animation -> now - animation.startedAt >= CLAIM_ANIMATION_DURATION_MS }
-        claimAnimations.forEach { animation ->
-            val progress = ((now - animation.startedAt) / CLAIM_ANIMATION_DURATION_MS.toFloat()).coerceIn(0.0f, 1.0f)
-            val eased = 1.0f - (1.0f - progress) * (1.0f - progress) * (1.0f - progress)
-            val lift = Mth.sin(progress * Math.PI.toFloat()) * CLAIM_ANIMATION_LIFT
-            val itemX = Mth.lerp(eased, animation.startX, animation.endX)
-            val itemY = Mth.lerp(eased, animation.startY, animation.endY) - lift
-            val scale = Mth.lerp(eased, CLAIM_ANIMATION_START_SCALE, CLAIM_ANIMATION_END_SCALE)
-            val pose = guiGraphics.pose()
-            pose.pushPose()
-            pose.translate(itemX, itemY, CLAIM_ANIMATION_Z)
-            pose.scale(scale, scale, 1.0f)
-            guiGraphics.renderItem(animation.stack, -BASE_ITEM_RENDER_SIZE / 2, -BASE_ITEM_RENDER_SIZE / 2)
-            pose.popPose()
-        }
-    }
-
-    private fun playClaimSound() {
-        Minecraft.getInstance().soundManager.play(SimpleSoundInstance.forUI(SoundEvents.ITEM_PICKUP, CLAIM_SOUND_PITCH, CLAIM_SOUND_VOLUME))
-    }
-
-    private fun playButtonClickSound() {
-        Minecraft.getInstance().soundManager.play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK.value(), BUTTON_CLICK_SOUND_PITCH, BUTTON_CLICK_SOUND_VOLUME))
-    }
-
-    private fun renderClaimAllButton(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
-        val claimableCount = rewardSlots.count { slot -> slot.claimable }
-        val footer = footerRect()
-        drawFrame(guiGraphics, footer, 0x22000000, 0x00000000)
-        claimAllRect = Rect((footer.x + footer.width - FOOTER_PADDING - CLAIM_ALL_WIDTH).coerceAtLeast(footer.x + FOOTER_PADDING), footer.y + (footer.height - BUTTON_HEIGHT) / 2, CLAIM_ALL_WIDTH, BUTTON_HEIGHT)
-        val label = if (claimableCount > 0) "Claim All ($claimableCount)" else "Claim All"
-        claimAllButton?.setX(claimAllRect.x)
-        claimAllButton?.setY(claimAllRect.y)
-        claimAllButton?.setMessage(Component.literal(label))
-        claimAllButton?.visible = true
-        claimAllButton?.active = claimableCount > 0
-    }
-
-    private fun renderPassTitle(guiGraphics: GuiGraphics, pass: BattlepassPassDefinition, x: Int, y: Int): Int {
-        val texture = pass.titleTexture.takeIf { it.isNotBlank() }?.let { runCatching { ResourceLocation.parse(it) }.getOrNull() }
-        val sourceWidth = pass.titleTextureWidth.coerceAtLeast(1)
-        val sourceHeight = pass.titleTextureHeight.coerceAtLeast(1)
-        if (texture == null || pass.titleTextureWidth <= 0 || pass.titleTextureHeight <= 0) {
-            guiGraphics.drawString(font, pass.displayName, x, y + 10, 0xF0F4FF, true)
-            return y + 30
-        }
-
-        val maxWidth = titleWidth()
-        val widthByHeight = TITLE_IMAGE_MAX_HEIGHT * sourceWidth / sourceHeight
-        val imageWidth = maxWidth.coerceAtMost(widthByHeight).coerceAtLeast(TITLE_IMAGE_MIN_WIDTH)
-        val imageHeight = imageWidth * sourceHeight / sourceWidth
-        guiGraphics.blit(texture, x, y, imageWidth, imageHeight, 0.0f, 0.0f, sourceWidth, sourceHeight, sourceWidth, sourceHeight)
-        return y + imageHeight
-    }
-
-    private fun autoCenterCurrentReward(pass: BattlepassPassDefinition, currentXp: Int, hotbar: Rect) {
-        val sortedTiers = pass.progression.sortedBy { tier -> tier.xp }
-        if (sortedTiers.isEmpty()) return
-
-        var offset = 12
-        var selectedCenter = offset + slotSize(sortedTiers.first().rewards.firstOrNull()?.let(::isProminentReward) == true) / 2
-        val currentPlayerId = currentPlayerId()
-
-        for (tier in sortedTiers) {
-            val prominent = tier.rewards.firstOrNull()?.let(::isProminentReward) == true
-            val size = slotSize(prominent)
-            val claimed = currentPlayerId?.let { playerId -> isClaimed(playerId, pass.id, tier.xp) } == true
-            selectedCenter = offset + size / 2
-            if (!claimed) break
-            offset += size + SLOT_GAP
-        }
-
-        if (autoScrollKey != null) return
-
-        val desiredScroll = (selectedCenter - hotbar.width / 2.0f).coerceIn(0.0f, maxScroll(rewardContentWidth(pass), hotbar.width))
-        targetScroll = desiredScroll
-        scroll = desiredScroll
-        autoScrollKey = pass.id
-    }
-
-    private fun renderRewardHotbar(
-        guiGraphics: GuiGraphics,
-        hotbar: Rect,
-        pass: BattlepassPassDefinition,
-        currentXp: Int,
-        mouseX: Int,
-        mouseY: Int,
-    ) {
-        val sortedTiers = pass.progression.sortedBy { tier -> tier.xp }
-        val contentWidth = rewardContentWidth(pass)
-        targetScroll = targetScroll.coerceIn(0.0f, maxScroll(contentWidth, hotbar.width))
-        scroll = scroll.coerceIn(0.0f, maxScroll(contentWidth, hotbar.width))
+    private fun renderRewardHotbar(guiGraphics: GuiGraphics, hotbar: Rect, pass: BattlepassPassDefinition, currentXp: Int, mouseX: Int, mouseY: Int) {
+        val tiers = pass.progression.sortedBy { tier -> tier.xp }
+        val maxScroll = maxScroll(rewardContentWidth(pass), hotbar.width)
+        targetRewardScroll = targetRewardScroll.coerceIn(0.0f, maxScroll)
+        rewardScroll = rewardScroll.coerceIn(0.0f, maxScroll)
         rewardSlots = emptyList()
-        val animationTime = (Util.getMillis() % 100_000L).toFloat() / 50.0f
-        val currentPlayerId = currentPlayerId()
-        val otherPlayersByTier = BattlepassClientState.players()
-            .filter { player -> player.uuid != currentPlayerId }
-            .groupBy { player -> tierForPlayer(sortedTiers, player.xpByPass[pass.id] ?: 0) }
+        val playerId = currentPlayerId()
 
-        guiGraphics.enableScissor(hotbar.x + 2, (hotbar.y - PLAYER_MARKER_SCISSOR_EXTRA).coerceAtLeast(0), hotbar.x + hotbar.width - 2, hotbar.y + hotbar.height - 2)
-        var nextX = hotbar.x + 12 - scroll.toInt()
-        sortedTiers.forEachIndexed { index, tier ->
+        guiGraphics.enableScissor(hotbar.x + 4, hotbar.y - CLAIM_TEXT_SCISSOR_TOP_PADDING, hotbar.x + hotbar.width - 4, hotbar.y + hotbar.height - 4)
+        var nextX = hotbar.x + 10 - rewardScroll.toInt()
+        tiers.forEachIndexed { index, tier ->
             val reward = tier.rewards.firstOrNull()
-            val prominent = reward?.let(::isProminentReward) == true
-            val slotSize = slotSize(prominent)
-            val x = nextX
-            val y = hotbar.y + (hotbar.height - slotSize) / 2
-            nextX += slotSize + SLOT_GAP
-            val previousXp = sortedTiers.getOrNull(index - 1)?.xp ?: 0
-            val claimed = currentPlayerId?.let { playerId -> isClaimed(playerId, pass.id, tier.xp) } == true
+            val slotSize = slotSize(reward?.let(::isProminentReward) == true)
+            val previousXp = tiers.getOrNull(index - 1)?.xp ?: 0
+            val claimed = playerId?.let { id -> isClaimed(id, pass.id, tier.xp) } == true
             val unlocked = currentXp >= tier.xp
             val claimable = unlocked && !claimed
             val current = !claimed && currentXp >= previousXp && !unlocked
-            reward?.let {
-                val slot = RewardSlot(Rect(x, y, slotSize, slotSize), pass.id, tier, it, rewardStack(it), prominent, claimed, unlocked, claimable, current, previousXp, otherPlayersByTier[tier.xp].orEmpty())
-                val hovered = slot.rect.contains(mouseX.toDouble(), mouseY.toDouble())
-                renderRewardSlot(guiGraphics, slot, index + 1, currentXp, hovered, animationTime)
-                rewardSlots = rewardSlots + slot
+            if (reward != null) {
+                val slot = RewardSlot(Rect(nextX, hotbar.y + (hotbar.height - slotSize) / 2, slotSize, slotSize), pass.id, tier, index + 1, reward, rewardStack(reward), claimed, unlocked, claimable, current, previousXp)
+                if (slot.rect.x + slot.rect.width > hotbar.x && slot.rect.x < hotbar.x + hotbar.width) {
+                    rewardSlots = rewardSlots + slot
+                    val hovered = slot.rect.contains(mouseX.toDouble(), mouseY.toDouble())
+                    renderRewardSlot(guiGraphics, slot, currentXp, hovered, EntranceStyle(REWARD_ANIMATION_DELAY_MS + index * REWARD_STAGGER_MS, offsetX = REWARD_SLIDE_OFFSET), interactionYOffset(rewardInteractionKey(slot), hovered) + if (slot.claimable) claimableFloatOffset() else 0)
+                }
             }
+            nextX += slotSize + SLOT_GAP
         }
         guiGraphics.disableScissor()
-
-        rewardSlots.firstOrNull { slot -> slot.rect.contains(mouseX.toDouble(), mouseY.toDouble()) }?.let { slot ->
-            guiGraphics.renderComponentTooltip(font, tooltipFor(slot, currentXp), mouseX, mouseY)
-        }
     }
 
-    private fun renderRewardSlot(guiGraphics: GuiGraphics, slot: RewardSlot, number: Int, currentXp: Int, hovered: Boolean, animationTime: Float) {
-        val rect = slot.rect
-        val slotKey = slotKey(slot)
-        val hoverProgress = updateAnimation(hoverProgressBySlot, slotKey, if (hovered) 1.0f else 0.0f, HOVER_ANIMATION_SPEED)
-        val clickProgress = updateAnimation(clickProgressBySlot, slotKey, 0.0f, CLICK_ANIMATION_SPEED)
-        val hoverLift = -HOVER_LIFT * easeOutBack(hoverProgress)
-        val clickScale = 1.0f + (Mth.sin(clickProgress * Math.PI.toFloat()) * CLICK_SCALE)
-        val goalLift = if (slot.current || slot.claimable) Mth.sin(animationTime * GOAL_FLOAT_SPEED) * GOAL_FLOAT_DISTANCE else 0.0f
-        val slotCenterX = rect.x + (rect.width / 2.0f)
-        val slotCenterY = rect.y + (rect.height / 2.0f)
-        val texture = when {
-            slot.claimable -> REWARD_CLAIMABLE_TEXTURE
-            slot.unlocked || slot.claimed -> REWARD_CONTAINER_TEXTURE
-            else -> REWARD_LOCKED_TEXTURE
+    private fun renderRewardSlot(guiGraphics: GuiGraphics, slot: RewardSlot, currentXp: Int, hovered: Boolean, entranceStyle: EntranceStyle? = null, interactionOffsetY: Int = 0) {
+        registerHoverSound(rewardInteractionKey(slot), hovered)
+        if (entranceStyle != null) {
+            val boxProgress = entranceProgress(entranceStyle)
+            val dx = (entranceStyle.offsetX * (1.0f - boxProgress)).toInt()
+            val dy = (entranceStyle.offsetY * (1.0f - boxProgress)).toInt()
+            val previousAlpha = renderAlpha
+            renderAlpha *= boxProgress
+            RenderSystem.enableBlend()
+            RenderSystem.defaultBlendFunc()
+            RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, renderAlpha)
+            renderRewardSlotContent(guiGraphics, slot.copy(rect = slot.rect.offset(dx, dy + interactionOffsetY)), currentXp, hovered, rewardItemEntranceScale(entranceStyle))
+            renderAlpha = previousAlpha
+            RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, renderAlpha)
+            return
         }
-        val textureSize = if (slot.claimable) scaled(CLAIMABLE_TEXTURE_SIZE, slot.rect.width) else slot.rect.width
-        val textureOffset = if (slot.claimable) scaled(CLAIMABLE_TEXTURE_OFFSET, slot.rect.width) else 0
-        val sourceTextureSize = if (slot.claimable) CLAIMABLE_TEXTURE_SOURCE_SIZE else CONTAINER_TEXTURE_SOURCE_SIZE
+        renderRewardSlotContent(guiGraphics, slot.copy(rect = slot.rect.offset(0, interactionOffsetY)), currentXp, hovered, 1.0f)
+    }
 
-        val pose = guiGraphics.pose()
-        pose.pushPose()
-        pose.translate(slotCenterX, slotCenterY + hoverLift + goalLift, 0.0f)
-        pose.scale(clickScale, clickScale, 1.0f)
-        pose.translate(-slotCenterX, -slotCenterY, 0.0f)
-
-        renderRewardContainer(guiGraphics, slot, texture, textureSize, textureOffset, sourceTextureSize, currentXp)
-
-        renderRewardItem(guiGraphics, slot)
-
-        val color = when {
-            slot.claimed -> 0xC8FFD7
-            slot.claimable || slot.current -> 0x8DEBFF
-            else -> 0x858B96
+    private fun renderRewardSlotContent(guiGraphics: GuiGraphics, slot: RewardSlot, currentXp: Int, hovered: Boolean, itemEntranceScale: Float) {
+        val boxTexture = when {
+            !slot.unlocked -> REWARD_BOX_LOCKED_TEXTURE
+            slot.claimed -> REWARD_BOX_CLAIMED_TEXTURE
+            slot.claimable -> REWARD_BOX_CLAIMABLE_TEXTURE
+            else -> REWARD_BOX_TEXTURE
         }
-        guiGraphics.drawString(font, number.toString(), rect.x + 7, rect.y + 6, color, true)
-
-        if (!slot.unlocked && !slot.current) {
-            val overlaySize = scaled(LOCKED_OVERLAY_SIZE, rect.width)
-            val overlayInset = (rect.width - overlaySize) / 2
-            renderOverlay(guiGraphics, LOCKED_OVERLAY_TEXTURE, rect.x + overlayInset, rect.y + overlayInset, overlaySize, overlaySize, OVERLAY_TEXTURE_SIZE)
-        }
-
-        if (slot.claimed) {
-            val claimedOverlaySize = scaled(CLAIMED_OVERLAY_SIZE, rect.width)
-            renderOverlay(
-                guiGraphics,
-                CLAIMED_OVERLAY_TEXTURE,
-                rect.x + rect.width - claimedOverlaySize,
-                rect.y + rect.height - claimedOverlaySize,
-                claimedOverlaySize,
-                claimedOverlaySize,
-                OVERLAY_TEXTURE_SIZE,
-            )
-        }
-
+        renderTexture(guiGraphics, boxTexture, slot.rect, REWARD_BOX_TEXTURE_SIZE, REWARD_BOX_TEXTURE_SIZE)
+        if (slot.claimable) renderClaimPrompt(guiGraphics, slot.rect)
+        if (hovered && !slot.claimed) guiGraphics.fill(slot.rect.x, slot.rect.y, slot.rect.x + slot.rect.width, slot.rect.y + slot.rect.height, REWARD_HOVER_TINT)
         if (slot.current) {
-            renderCurrentMarker(guiGraphics, rect)
+            val progressWidth = (slot.rect.width * progressFor(slot, currentXp)).toInt().coerceIn(0, slot.rect.width)
+            guiGraphics.fill(slot.rect.x, slot.rect.y + slot.rect.height - 4, slot.rect.x + progressWidth, slot.rect.y + slot.rect.height - 1, PROGRESS_FILL)
         }
-        renderOtherPlayerMarkers(guiGraphics, slot)
-
-        pose.popPose()
-    }
-
-    private fun renderCurrentMarker(guiGraphics: GuiGraphics, rect: Rect) {
-        val centerX = rect.x + rect.width / 2
-        val arrowX = centerX - MARKER_ARROW_SIZE / 2
-        val arrowY = rect.y - MARKER_ARROW_SIZE - MARKER_GAP
-        val avatarX = centerX - MARKER_AVATAR_SIZE / 2
-        val avatarY = arrowY - MARKER_AVATAR_SIZE - MARKER_GAP
-
-        Minecraft.getInstance().player?.let { player ->
-            PlayerFaceRenderer.draw(guiGraphics, player.skin, avatarX, avatarY, MARKER_AVATAR_SIZE)
+        renderRewardItemSprite(guiGraphics, slot.stack, slot.rect, !slot.unlocked, itemEntranceScale, if (slot.claimable && itemEntranceScale >= 1.0f) claimableItemShakeDegrees(slot) else 0.0f)
+        if (itemEntranceScale <= 0.0f) return
+        if (slot.reward.quantity > 1) {
+            val quantity = compactQuantity(slot.reward.quantity)
+            drawCkdmShadowedText(guiGraphics, quantity, slot.rect.x + slot.rect.width - ckdmWidth(quantity, CKDM_BOLD_SMALL_FONT) - QUANTITY_PADDING, slot.rect.y + slot.rect.height - QUANTITY_TEXT_HEIGHT - QUANTITY_PADDING, TEXT_PRIMARY, CKDM_BOLD_SMALL_FONT)
         }
-
-        val pose = guiGraphics.pose()
-        pose.pushPose()
-        pose.translate((arrowX + MARKER_ARROW_SIZE / 2.0f), (arrowY + MARKER_ARROW_SIZE / 2.0f), OVERLAY_Z)
-        pose.mulPose(Axis.ZP.rotationDegrees(90.0f))
-        guiGraphics.blit(
-            MARKER_ARROW_TEXTURE,
-            -MARKER_ARROW_SIZE / 2,
-            -MARKER_ARROW_SIZE / 2,
-            MARKER_ARROW_SIZE,
-            MARKER_ARROW_SIZE,
-            0.0f,
-            0.0f,
-            MARKER_ARROW_SOURCE_SIZE,
-            MARKER_ARROW_SOURCE_SIZE,
-            MARKER_ARROW_SOURCE_SIZE,
-            MARKER_ARROW_SOURCE_SIZE,
-        )
-        pose.popPose()
-    }
-
-    private fun renderOtherPlayerMarkers(guiGraphics: GuiGraphics, slot: RewardSlot) {
-        if (slot.otherPlayers.isEmpty()) return
-
-        val count = slot.otherPlayers.size
-        val size = (PLAYER_MARKER_BASE_SIZE - ((count - 1) / PLAYER_MARKER_MAX_COLUMNS) * PLAYER_MARKER_SHRINK_STEP).coerceAtLeast(PLAYER_MARKER_MIN_SIZE)
-        val rows = (count + PLAYER_MARKER_MAX_COLUMNS - 1) / PLAYER_MARKER_MAX_COLUMNS
-        val gridHeight = rows * size + (rows - 1) * PLAYER_MARKER_GAP
-        val currentMarkerOffset = if (slot.current) MARKER_TOTAL_HEIGHT + PLAYER_MARKER_TOP_GAP else 0
-        val baseY = slot.rect.y - gridHeight - PLAYER_MARKER_TOP_GAP - currentMarkerOffset
-        val centerX = slot.rect.x + slot.rect.width / 2
-        val connection = Minecraft.getInstance().connection
-
-        slot.otherPlayers.forEachIndexed { index, player ->
-            val row = index / PLAYER_MARKER_MAX_COLUMNS
-            val rowStart = row * PLAYER_MARKER_MAX_COLUMNS
-            val rowCount = (count - rowStart).coerceAtMost(PLAYER_MARKER_MAX_COLUMNS)
-            val column = index % PLAYER_MARKER_MAX_COLUMNS
-            val rowWidth = rowCount * size + (rowCount - 1) * PLAYER_MARKER_GAP
-            val x = centerX - rowWidth / 2 + column * (size + PLAYER_MARKER_GAP)
-            val y = baseY + row * (size + PLAYER_MARKER_GAP)
-            val skin = connection?.getPlayerInfo(player.uuid)?.skin ?: DefaultPlayerSkin.get(player.uuid)
-            PlayerFaceRenderer.draw(guiGraphics, skin, x, y, size)
+        drawCkdmShadowedText(guiGraphics, slot.tierNumber.toString(), slot.rect.x + REWARD_TIER_PADDING, slot.rect.y + REWARD_TIER_PADDING, TEXT_PRIMARY)
+        if (!slot.unlocked) {
+            renderLockedOverlay(guiGraphics, slot.rect, lockShakeDegrees(rewardInteractionKey(slot)))
         }
     }
 
-    private fun renderRewardContainer(
-        guiGraphics: GuiGraphics,
-        slot: RewardSlot,
-        texture: ResourceLocation,
-        textureSize: Int,
-        textureOffset: Int,
-        sourceTextureSize: Int,
-        currentXp: Int,
-    ) {
-        val rect = slot.rect
-        guiGraphics.blit(
-            texture,
-            rect.x - textureOffset,
-            rect.y - textureOffset,
-            textureSize,
-            textureSize,
-            0.0f,
-            0.0f,
-            sourceTextureSize,
-            sourceTextureSize,
-            sourceTextureSize,
-            sourceTextureSize,
-        )
+    private fun renderLockedOverlay(guiGraphics: GuiGraphics, rect: Rect, rotationDegrees: Float) {
+        guiGraphics.flush()
+        RenderSystem.disableDepthTest()
+        guiGraphics.pose().pushPose()
+        guiGraphics.pose().translate((rect.x + rect.width / 2.0f), (rect.y + rect.height / 2.0f), LOCK_OVERLAY_Z)
+        if (rotationDegrees != 0.0f) guiGraphics.pose().mulPose(Axis.ZP.rotationDegrees(rotationDegrees))
+        renderTexture(guiGraphics, LOCKED_TEXTURE, Rect(-LOCKED_ICON_SIZE / 2, -LOCKED_ICON_SIZE / 2, LOCKED_ICON_SIZE, LOCKED_ICON_SIZE), LOCKED_TEXTURE_SIZE, LOCKED_TEXTURE_SIZE)
+        guiGraphics.pose().popPose()
+        guiGraphics.flush()
+        RenderSystem.enableDepthTest()
+    }
 
-        if (!slot.current) return
+    private fun renderClaimPrompt(guiGraphics: GuiGraphics, rect: Rect) {
+        val text = "CLAIM"
+        drawCkdmShadowedText(guiGraphics, text, rect.x + (rect.width - ckdmWidth(text, CKDM_BOLD_CLAIM_FONT)) / 2, rect.y - CLAIM_TEXT_TOP_OFFSET, TEXT_PRIMARY, CKDM_BOLD_CLAIM_FONT)
+    }
 
-        val progressWidth = (rect.width * progressFor(slot, currentXp)).toInt().coerceIn(0, rect.width)
-        if (progressWidth <= 0) return
-        val sourceProgressWidth = (CONTAINER_TEXTURE_SOURCE_SIZE * progressFor(slot, currentXp)).toInt().coerceIn(0, CONTAINER_TEXTURE_SOURCE_SIZE)
+    private fun claimableFloatOffset(): Int = (Mth.sin(Util.getMillis().toFloat() / CLAIM_TEXT_FLOAT_PERIOD_MS * Math.PI.toFloat() * 2.0f) * CLAIM_TEXT_FLOAT_AMPLITUDE).toInt()
 
-        guiGraphics.blit(
-            REWARD_CONTAINER_TEXTURE,
-            rect.x,
-            rect.y,
-            progressWidth,
-            rect.height,
-            0.0f,
-            0.0f,
-            sourceProgressWidth,
-            CONTAINER_TEXTURE_SOURCE_SIZE,
-            CONTAINER_TEXTURE_SOURCE_SIZE,
-            CONTAINER_TEXTURE_SOURCE_SIZE,
+    private fun claimableItemShakeDegrees(slot: RewardSlot): Float {
+        val elapsed = ((Util.getMillis() + slot.tierNumber * CLAIMABLE_SHAKE_PHASE_OFFSET_MS) % CLAIMABLE_SHAKE_PERIOD_MS).toFloat()
+        if (elapsed > CLAIMABLE_SHAKE_ACTIVE_MS) return 0.0f
+        val fade = 1.0f - (elapsed / CLAIMABLE_SHAKE_ACTIVE_MS).coerceIn(0.0f, 1.0f)
+        return Mth.sin(elapsed / CLAIMABLE_SHAKE_ACTIVE_MS * CLAIMABLE_SHAKE_WAVES * Math.PI.toFloat() * 2.0f) * CLAIMABLE_SHAKE_DEGREES * fade
+    }
+
+    private fun enqueueRewardFlyout(slot: RewardSlot, delayMs: Int) {
+        val from = rewardItemRenderRect(slot.rect)
+        val target = playerDollTarget.takeIf { rect -> rect.width > 0 && rect.height > 0 } ?: Rect(width / 2, height / 2, PLAYER_DOLL_TARGET_SIZE, PLAYER_DOLL_TARGET_SIZE)
+        rewardFlyouts += RewardFlyout(
+            slot.stack.copy(),
+            Util.getMillis() + delayMs,
+            from.x + from.width / 2.0f,
+            from.y + from.height / 2.0f,
+            target.x + target.width / 2.0f,
+            target.y + target.height / 2.0f,
         )
     }
 
-    private fun renderRewardItem(guiGraphics: GuiGraphics, slot: RewardSlot) {
-        val pose = guiGraphics.pose()
-        val itemSize = scaled(ITEM_SIZE, slot.rect.width)
-        val itemInset = (slot.rect.width - itemSize) / 2
-        val itemX = slot.rect.x + itemInset + itemSize / 2.0f
-        val itemY = slot.rect.y + itemInset + itemSize / 2.0f
-        val itemScale = itemSize / BASE_ITEM_RENDER_SIZE.toFloat()
-        val alpha = if (!slot.unlocked && !slot.current) LOCKED_ITEM_ALPHA else 1.0f
-
-        pose.pushPose()
-        pose.translate(itemX, itemY, 0.0f)
-        pose.scale(itemScale, itemScale, 1.0f)
-        pose.translate(-BASE_ITEM_RENDER_SIZE / 2.0f, -BASE_ITEM_RENDER_SIZE / 2.0f, 0.0f)
-        guiGraphics.setColor(1.0f, 1.0f, 1.0f, alpha)
-        if (isChowcoinReward(slot.reward)) {
-            renderChowcoinIcon(guiGraphics, 0, 0, BASE_ITEM_RENDER_SIZE)
-            renderRewardAmount(guiGraphics, slot.reward.quantity, 0, 0)
-        } else {
-            guiGraphics.renderItem(slot.stack, 0, 0)
-            guiGraphics.renderItemDecorations(font, slot.stack, 0, 0, if (slot.reward.quantity > 1) slot.reward.quantity.toString() else null)
+    private fun renderRewardFlyouts(guiGraphics: GuiGraphics) {
+        val now = Util.getMillis()
+        rewardFlyouts.removeIf { flyout -> now - flyout.startedAtMs > REWARD_FLYOUT_DURATION_MS }
+        if (rewardFlyouts.isEmpty()) return
+        guiGraphics.flush()
+        RenderSystem.disableDepthTest()
+        rewardFlyouts.forEach { flyout ->
+            val elapsed = (now - flyout.startedAtMs).toFloat()
+            if (elapsed < 0.0f) return@forEach
+            val progress = (elapsed / REWARD_FLYOUT_DURATION_MS).coerceIn(0.0f, 1.0f)
+            val eased = 1.0f - (1.0f - progress) * (1.0f - progress) * (1.0f - progress)
+            val arc = Mth.sin(progress * Math.PI.toFloat()) * REWARD_FLYOUT_ARC_HEIGHT
+            val x = flyout.fromX + (flyout.toX - flyout.fromX) * eased
+            val y = flyout.fromY + (flyout.toY - flyout.fromY) * eased - arc
+            val scale = REWARD_FLYOUT_SCALE_FROM + (REWARD_FLYOUT_SCALE_TO - REWARD_FLYOUT_SCALE_FROM) * eased
+            guiGraphics.pose().pushPose()
+            guiGraphics.pose().translate(x, y, REWARD_FLYOUT_Z)
+            guiGraphics.pose().scale(scale, scale, 1.0f)
+            guiGraphics.pose().translate(-BASE_ITEM_RENDER_SIZE / 2.0f, -BASE_ITEM_RENDER_SIZE / 2.0f, 0.0f)
+            guiGraphics.renderItem(flyout.stack, 0, 0)
+            guiGraphics.pose().popPose()
         }
-        guiGraphics.setColor(1.0f, 1.0f, 1.0f, 1.0f)
-        pose.popPose()
+        guiGraphics.flush()
+        RenderSystem.enableDepthTest()
     }
 
-    private fun renderChowcoinIcon(guiGraphics: GuiGraphics, x: Int, y: Int, size: Int) {
-        guiGraphics.blit(COINS_TEXTURE, x, y, size, size, 0.0f, 0.0f, COINS_TEXTURE_SIZE, COINS_TEXTURE_SIZE, COINS_TEXTURE_SIZE, COINS_TEXTURE_SIZE)
+    private fun renderItemSprite(guiGraphics: GuiGraphics, stack: ItemStack, x: Int, y: Int) {
+        guiGraphics.renderItem(stack, x, y)
     }
 
-    private fun renderRewardAmount(guiGraphics: GuiGraphics, quantity: Int, x: Int, y: Int) {
-        if (quantity <= 1) return
-        val text = compactQuantity(quantity)
-        guiGraphics.drawString(font, text, x + BASE_ITEM_RENDER_SIZE + 1 - font.width(text), y + 9, 0xFFFFFFFF.toInt(), true)
+    private fun renderScaledItem(guiGraphics: GuiGraphics, stack: ItemStack, rect: Rect) {
+        val scale = rect.width / BASE_ITEM_RENDER_SIZE.toFloat()
+        guiGraphics.pose().pushPose()
+        guiGraphics.pose().translate(rect.x.toFloat(), rect.y.toFloat(), 0.0f)
+        guiGraphics.pose().scale(scale, scale, 1.0f)
+        guiGraphics.renderItem(stack, 0, 0)
+        guiGraphics.pose().popPose()
     }
 
-    private fun renderOverlay(guiGraphics: GuiGraphics, texture: ResourceLocation, x: Int, y: Int, width: Int, height: Int, textureSize: Int) {
-        val pose = guiGraphics.pose()
-        pose.pushPose()
-        pose.translate(0.0f, 0.0f, OVERLAY_Z)
-        guiGraphics.blit(texture, x, y, width, height, 0.0f, 0.0f, textureSize, textureSize, textureSize, textureSize)
-        pose.popPose()
-    }
-
-    private fun progressFor(slot: RewardSlot, currentXp: Int): Float {
-        val span = (slot.tier.xp - slot.previousXp).coerceAtLeast(1)
-        return ((currentXp - slot.previousXp).toFloat() / span.toFloat()).coerceIn(0.0f, 1.0f)
-    }
-
-    private fun updateAnimation(progressByKey: MutableMap<String, Float>, key: String, target: Float, speed: Float): Float {
-        val current = progressByKey[key] ?: 0.0f
-        val next = Mth.lerp(speed, current, target)
-        if (next < 0.001f && target == 0.0f) {
-            progressByKey.remove(key)
-            return 0.0f
+    private fun renderRewardItemSprite(guiGraphics: GuiGraphics, stack: ItemStack, rect: Rect, locked: Boolean, itemEntranceScale: Float, rotationDegrees: Float = 0.0f) {
+        if (itemEntranceScale <= 0.0f) return
+        val itemRect = rewardItemRenderRect(rect)
+        val scale = itemRect.width / BASE_ITEM_RENDER_SIZE
+        guiGraphics.pose().pushPose()
+        guiGraphics.pose().translate(itemRect.x + itemRect.width / 2.0f, itemRect.y + itemRect.height / 2.0f, 0.0f)
+        if (rotationDegrees != 0.0f) guiGraphics.pose().mulPose(Axis.ZP.rotationDegrees(rotationDegrees))
+        guiGraphics.pose().scale(scale * itemEntranceScale, scale * itemEntranceScale, 1.0f)
+        guiGraphics.pose().translate(-BASE_ITEM_RENDER_SIZE / 2.0f, -BASE_ITEM_RENDER_SIZE / 2.0f, 0.0f)
+        val itemAlpha = if (locked) LOCKED_ITEM_ALPHA else 1.0f
+        if (itemAlpha < 1.0f) {
+            RenderSystem.enableBlend()
+            RenderSystem.defaultBlendFunc()
         }
-        progressByKey[key] = next
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, itemAlpha)
+        guiGraphics.renderItem(stack, 0, 0)
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, renderAlpha)
+        guiGraphics.pose().popPose()
+    }
+
+    private fun rewardItemRenderRect(rect: Rect): Rect {
+        val renderSize = (rect.width - ITEM_RENDER_PADDING * 2).coerceAtLeast(BASE_ITEM_RENDER_SIZE) / BASE_ITEM_RENDER_SIZE * BASE_ITEM_RENDER_SIZE
+        return Rect(rect.x + (rect.width - renderSize) / 2, rect.y + (rect.height - renderSize) / 2, renderSize, renderSize)
+    }
+
+    private fun renderClaimAllButton(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
+        val footer = footerRect()
+        claimAllClaimableCount = rewardSlots.count { slot -> slot.claimable }
+        claimAllRect = Rect((footer.x + footer.width - CONTENT_PADDING - CLAIM_ALL_WIDTH).coerceAtLeast(footer.x + CONTENT_PADDING), footer.y + (footer.height - BUTTON_HEIGHT) / 2, CLAIM_ALL_WIDTH, BUTTON_HEIGHT)
+        claimAllButton?.visible = false
+        withEntrance(guiGraphics, EntranceStyle(FOOTER_ANIMATION_DELAY_MS, offsetY = FOOTER_SLIDE_OFFSET)) {
+            val active = claimAllClaimableCount > 0
+            val hovered = active && claimAllRect.contains(mouseX.toDouble(), mouseY.toDouble())
+            registerHoverSound("claim_all", hovered)
+            val text = if (active) "Claim All ($claimAllClaimableCount)" else "Claim All"
+            renderBattlepassButton(guiGraphics, claimAllRect, text, active, hovered)
+        }
+    }
+
+    private fun renderAnimatedWidgets(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) {
+        if (viewMode != ViewMode.PASS_DETAIL) {
+            renderables.forEach { renderable -> renderable.render(guiGraphics, mouseX, mouseY, partialTick) }
+            return
+        }
+        withEntrance(guiGraphics, EntranceStyle(HEADER_BUTTON_ANIMATION_DELAY_MS, offsetX = BUTTON_SLIDE_OFFSET)) {
+            val hovered = backButtonRect.contains(mouseX.toDouble(), mouseY.toDouble())
+            registerHoverSound("back", hovered)
+            renderBattlepassButton(guiGraphics, backButtonRect, "Back", active = true, hovered = hovered)
+        }
+    }
+
+    private fun renderBattlepassButton(guiGraphics: GuiGraphics, rect: Rect, text: String, active: Boolean, hovered: Boolean) {
+        val texture = if (active && hovered) CLAIM_BUTTON_HOVER_TEXTURE else CLAIM_BUTTON_TEXTURE
+        val renderRect = if (active && hovered) rect.inflate(CLAIM_BUTTON_HOVER_BORDER_PADDING) else rect
+        val textureSize = if (active && hovered) CLAIM_BUTTON_HOVER_TEXTURE_SIZE else CLAIM_BUTTON_TEXTURE_SIZE
+        val sourceCorner = if (active && hovered) CLAIM_BUTTON_HOVER_CORNER_SIZE else CLAIM_BUTTON_CORNER_SIZE
+        val destinationCorner = if (active && hovered) CLAIM_BUTTON_HOVER_DESTINATION_CORNER_SIZE else CLAIM_BUTTON_DESTINATION_CORNER_SIZE
+        renderNineSlice(guiGraphics, texture, renderRect, textureSize, sourceCorner, destinationCorner)
+        if (!active) guiGraphics.fill(renderRect.x, renderRect.y, renderRect.x + renderRect.width, renderRect.y + renderRect.height, colorWithRenderAlpha(BUTTON_DISABLED_FILL))
+        guiGraphics.drawString(font, text, rect.x + (rect.width - font.width(text)) / 2, rect.y + 6, colorWithRenderAlpha(if (active) TEXT_PRIMARY else TEXT_MUTED), false)
+    }
+
+    private fun returnToSelection() {
+        viewMode = ViewMode.PASS_SELECTION
+        rewardScroll = 0.0f
+        targetRewardScroll = 0.0f
+        missionsScroll = 0.0f
+        targetMissionsScroll = 0.0f
+    }
+
+    private fun withEntrance(guiGraphics: GuiGraphics, style: EntranceStyle, anchorX: Int = 0, anchorY: Int = 0, render: () -> Unit) {
+        val eased = entranceProgress(style)
+        val previousAlpha = renderAlpha
+        renderAlpha *= eased
+        RenderSystem.enableBlend()
+        RenderSystem.defaultBlendFunc()
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, renderAlpha)
+        guiGraphics.pose().pushPose()
+        guiGraphics.pose().translate(style.offsetX * (1.0f - eased), style.offsetY * (1.0f - eased), 0.0f)
+        if (style.scaleFrom != 1.0f) {
+            val scale = style.scaleFrom + (1.0f - style.scaleFrom) * eased
+            guiGraphics.pose().translate(anchorX.toFloat(), anchorY.toFloat(), 0.0f)
+            guiGraphics.pose().scale(scale, scale, 1.0f)
+            guiGraphics.pose().translate(-anchorX.toFloat(), -anchorY.toFloat(), 0.0f)
+        }
+        render()
+        guiGraphics.pose().popPose()
+        renderAlpha = previousAlpha
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, renderAlpha)
+    }
+
+    private fun entranceProgress(style: EntranceStyle): Float {
+        val timelineStartedAtMs = style.timelineStartedAtMs.takeIf { value -> value > 0L } ?: detailAnimationStartedAtMs
+        val elapsed = (Util.getMillis() - timelineStartedAtMs - style.delayMs).toFloat()
+        val linear = (elapsed / style.durationMs.coerceAtLeast(1)).coerceIn(0.0f, 1.0f)
+        val inverse = 1.0f - linear
+        return 1.0f - inverse * inverse * inverse
+    }
+
+    private fun rewardItemEntranceScale(style: EntranceStyle): Float {
+        val timelineStartedAtMs = style.timelineStartedAtMs.takeIf { value -> value > 0L } ?: detailAnimationStartedAtMs
+        val elapsed = (Util.getMillis() - timelineStartedAtMs - style.delayMs - style.durationMs).toFloat()
+        val progress = (elapsed / REWARD_ITEM_BOUNCE_DURATION_MS).coerceIn(0.0f, 1.0f)
+        if (progress <= 0.0f) return 0.0f
+        val shifted = progress - 1.0f
+        val overshoot = 1.70158f
+        return (1.0f + (overshoot + 1.0f) * shifted * shifted * shifted + overshoot * shifted * shifted).coerceAtMost(REWARD_ITEM_MAX_BOUNCE_SCALE)
+    }
+
+    private fun interactionYOffset(key: String, hovered: Boolean): Int {
+        val hover = hoverProgress(key, hovered)
+        val press = pressProgress(key)
+        return (-HOVER_LIFT_OFFSET * hover + PRESS_DOWN_OFFSET * press).toInt()
+    }
+
+    private fun hoverProgress(key: String, hovered: Boolean): Float {
+        val current = hoverAnimations[key] ?: 0.0f
+        val target = if (hovered) 1.0f else 0.0f
+        val next = Mth.lerp(HOVER_LERP, current, target)
+        if (next < 0.01f && !hovered) hoverAnimations.remove(key) else hoverAnimations[key] = next
         return next
     }
 
-    private fun easeOutBack(progress: Float): Float {
-        val shifted = progress - 1.0f
-        return 1.0f + (BACK_EASE_C3 * shifted * shifted * shifted) + (BACK_EASE_C1 * shifted * shifted)
+    private fun pressProgress(key: String): Float {
+        val startedAtMs = pressAnimations[key] ?: return 0.0f
+        val elapsed = (Util.getMillis() - startedAtMs).toFloat()
+        if (elapsed >= PRESS_ANIMATION_DURATION_MS) {
+            pressAnimations.remove(key)
+            return 0.0f
+        }
+        val linear = 1.0f - (elapsed / PRESS_ANIMATION_DURATION_MS).coerceIn(0.0f, 1.0f)
+        return linear * linear
     }
+
+    private fun lockShakeDegrees(key: String): Float {
+        val startedAtMs = pressAnimations[key] ?: return 0.0f
+        val elapsed = (Util.getMillis() - startedAtMs).toFloat()
+        if (elapsed >= LOCK_SHAKE_DURATION_MS) return 0.0f
+        val fade = 1.0f - (elapsed / LOCK_SHAKE_DURATION_MS).coerceIn(0.0f, 1.0f)
+        return Mth.sin(elapsed / LOCK_SHAKE_DURATION_MS * LOCK_SHAKE_WAVES * Math.PI.toFloat() * 2.0f) * LOCK_SHAKE_DEGREES * fade
+    }
+
+    private fun registerPress(key: String) {
+        pressAnimations[key] = Util.getMillis()
+    }
+
+    private fun rewardInteractionKey(slot: RewardSlot): String = "reward:${slot.passId}:${slot.tier.xp}"
+
+    private fun missionFilterKey(filter: MissionFilter): String = "mission-filter:${filter.name}"
+
+    private fun resetDetailAnimation() {
+        detailAnimationStartedAtMs = Util.getMillis()
+        missionListAnimationStartedAtMs = detailAnimationStartedAtMs + MISSION_LIST_ANIMATION_DELAY_MS
+    }
+
+    private fun resetMissionListAnimation() {
+        missionListAnimationStartedAtMs = Util.getMillis()
+    }
+
+    private fun renderTexture(guiGraphics: GuiGraphics, texture: ResourceLocation, rect: Rect, textureWidth: Int, textureHeight: Int) {
+        RenderSystem.enableBlend()
+        RenderSystem.defaultBlendFunc()
+        guiGraphics.blit(texture, rect.x, rect.y, rect.width, rect.height, 0.0f, 0.0f, textureWidth, textureHeight, textureWidth, textureHeight)
+        RenderSystem.disableBlend()
+    }
+
+    private fun renderNineSlice(guiGraphics: GuiGraphics, texture: ResourceLocation, rect: Rect, textureSize: Int, sourceCorner: Int, destinationCorner: Int = sourceCorner) {
+        val edge = textureSize - sourceCorner
+        val middle = textureSize - sourceCorner * 2
+        val innerWidth = (rect.width - destinationCorner * 2).coerceAtLeast(0)
+        val innerHeight = (rect.height - destinationCorner * 2).coerceAtLeast(0)
+        RenderSystem.enableBlend()
+        RenderSystem.defaultBlendFunc()
+        blitRegion(guiGraphics, texture, Rect(rect.x, rect.y, destinationCorner, destinationCorner), 0, 0, sourceCorner, sourceCorner, textureSize)
+        blitRegion(guiGraphics, texture, Rect(rect.x + destinationCorner, rect.y, innerWidth, destinationCorner), sourceCorner, 0, middle, sourceCorner, textureSize)
+        blitRegion(guiGraphics, texture, Rect(rect.x + rect.width - destinationCorner, rect.y, destinationCorner, destinationCorner), edge, 0, sourceCorner, sourceCorner, textureSize)
+        blitRegion(guiGraphics, texture, Rect(rect.x, rect.y + destinationCorner, destinationCorner, innerHeight), 0, sourceCorner, sourceCorner, middle, textureSize)
+        blitRegion(guiGraphics, texture, Rect(rect.x + destinationCorner, rect.y + destinationCorner, innerWidth, innerHeight), sourceCorner, sourceCorner, middle, middle, textureSize)
+        blitRegion(guiGraphics, texture, Rect(rect.x + rect.width - destinationCorner, rect.y + destinationCorner, destinationCorner, innerHeight), edge, sourceCorner, sourceCorner, middle, textureSize)
+        blitRegion(guiGraphics, texture, Rect(rect.x, rect.y + rect.height - destinationCorner, destinationCorner, destinationCorner), 0, edge, sourceCorner, sourceCorner, textureSize)
+        blitRegion(guiGraphics, texture, Rect(rect.x + destinationCorner, rect.y + rect.height - destinationCorner, innerWidth, destinationCorner), sourceCorner, edge, middle, sourceCorner, textureSize)
+        blitRegion(guiGraphics, texture, Rect(rect.x + rect.width - destinationCorner, rect.y + rect.height - destinationCorner, destinationCorner, destinationCorner), edge, edge, sourceCorner, sourceCorner, textureSize)
+        RenderSystem.disableBlend()
+    }
+
+    private fun blitRegion(guiGraphics: GuiGraphics, texture: ResourceLocation, rect: Rect, sourceX: Int, sourceY: Int, sourceWidth: Int, sourceHeight: Int, textureSize: Int) {
+        if (rect.width <= 0 || rect.height <= 0) return
+        guiGraphics.blit(texture, rect.x, rect.y, rect.width, rect.height, sourceX.toFloat(), sourceY.toFloat(), sourceWidth, sourceHeight, textureSize, textureSize)
+    }
+
+    private fun renderPassTitleTexture(guiGraphics: GuiGraphics, pass: BattlepassPassDefinition, bounds: Rect): Boolean {
+        val texture = pass.titleTexture.takeIf(String::isNotBlank)?.let { value -> runCatching { ResourceLocation.parse(value) }.getOrNull() } ?: return false
+        val textureWidth = pass.titleTextureWidth.coerceAtLeast(1)
+        val textureHeight = pass.titleTextureHeight.coerceAtLeast(1)
+        val targetWidth = (bounds.height * textureWidth / textureHeight).coerceAtMost(bounds.width)
+        renderTexture(guiGraphics, texture, Rect(bounds.x, bounds.y, targetWidth, bounds.height), textureWidth, textureHeight)
+        return true
+    }
+
+    private fun drawCkdmText(guiGraphics: GuiGraphics, text: String, x: Int, y: Int, color: Int, fontId: ResourceLocation = CKDM_BOLD_FONT) {
+        guiGraphics.drawString(font, ckdmText(text, fontId), x, y, colorWithRenderAlpha(color), false)
+    }
+
+    private fun drawCkdmShadowedText(guiGraphics: GuiGraphics, text: String, x: Int, y: Int, color: Int, fontId: ResourceLocation = CKDM_BOLD_FONT) {
+        drawCkdmShadowedText(guiGraphics, text, x, y, color, CKDM_SHADOW_COLOR, CKDM_SHADOW_OFFSET, fontId)
+    }
+
+    private fun drawCkdmHighlightText(guiGraphics: GuiGraphics, text: String, x: Int, y: Int, fontId: ResourceLocation = CKDM_BOLD_FONT) {
+        drawCkdmShadowedText(guiGraphics, text, x, y, CKDM_HIGHLIGHT_TEXT_COLOR, CKDM_HIGHLIGHT_SHADOW_COLOR, CKDM_HIGHLIGHT_SHADOW_OFFSET, fontId)
+    }
+
+    private fun drawCkdmShadowedText(guiGraphics: GuiGraphics, text: String, x: Int, y: Int, color: Int, shadowColor: Int, shadowOffset: Int, fontId: ResourceLocation = CKDM_BOLD_FONT) {
+        val component = ckdmText(text, fontId)
+        guiGraphics.drawString(font, component, x + shadowOffset, y + shadowOffset, colorWithRenderAlpha(shadowColor), false)
+        guiGraphics.drawString(font, component, x, y, colorWithRenderAlpha(color), false)
+    }
+
+    private fun drawQuestTitleText(guiGraphics: GuiGraphics, text: String, x: Int, y: Int, color: Int) {
+        var cursorX = x
+        QUEST_TITLE_NUMBER_REGEX.findAll(text).fold(0) { index, match ->
+            val before = text.substring(index, match.range.first)
+            if (before.isNotEmpty()) {
+                drawCkdmShadowedText(guiGraphics, before, cursorX, y, color)
+                cursorX += ckdmWidth(before)
+            }
+            val number = match.value
+            drawCkdmHighlightText(guiGraphics, number, cursorX, y)
+            cursorX += ckdmWidth(number)
+            match.range.last + 1
+        }.let { index ->
+            val rest = text.substring(index)
+            if (rest.isNotEmpty()) drawCkdmShadowedText(guiGraphics, rest, cursorX, y, color)
+        }
+    }
+
+    private fun colorWithRenderAlpha(color: Int): Int {
+        val alpha = (((color ushr 24) and 0xFF) * renderAlpha).toInt().coerceIn(0, 255)
+        return (alpha shl 24) or (color and 0x00FFFFFF)
+    }
+
+    private fun ckdmWidth(text: String, fontId: ResourceLocation = CKDM_BOLD_FONT): Int = font.width(ckdmText(text, fontId))
+
+    private fun ckdmText(text: String, fontId: ResourceLocation = CKDM_BOLD_FONT): Component = Component.literal(text.uppercase()).withStyle { style -> style.withFont(fontId) }
+
+    private fun renderHoveredBattlepassTooltip(guiGraphics: GuiGraphics, currentXp: Int, mouseX: Int, mouseY: Int) {
+        val rewardSlot = rewardSlots.firstOrNull { slot -> slot.rect.contains(mouseX.toDouble(), mouseY.toDouble()) }
+        val missionSlot = missionSlots.firstOrNull { slot -> missionsRect.contains(mouseX.toDouble(), mouseY.toDouble()) && slot.rect.contains(mouseX.toDouble(), mouseY.toDouble()) }
+        if (rewardSlot == null && missionSlot == null) return
+        guiGraphics.flush()
+        RenderSystem.disableDepthTest()
+        guiGraphics.pose().pushPose()
+        guiGraphics.pose().translate(0.0f, 0.0f, TOOLTIP_Z)
+        if (rewardSlot != null) {
+            renderRewardTooltip(guiGraphics, rewardSlot, currentXp, mouseX, mouseY)
+        } else if (missionSlot != null) {
+            renderMissionTooltip(guiGraphics, missionSlot, mouseX, mouseY)
+        }
+        guiGraphics.pose().popPose()
+        guiGraphics.flush()
+        RenderSystem.enableDepthTest()
+    }
+
+    private fun renderMissionTooltip(guiGraphics: GuiGraphics, slot: MissionSlot, mouseX: Int, mouseY: Int) {
+        val progress = missionProgress(slot.passId, slot.entry)
+        val goal = BattlepassMissionService.displayGoal(slot.entry.event, progress)
+        val progressText = goal?.let { value -> "${progress.coerceAtMost(value)}/$value" } ?: "+${slot.entry.event.xp} XP"
+        val completedPlayers = completedPlayersFor(slot)
+        val title = missionTypeLabel(slot.entry.scope)
+        val avatarLayout = avatarLayout(completedPlayers.size)
+        val width = listOf(
+            ckdmWidth(title),
+            ckdmWidth(progressText, CKDM_BOLD_SMALL_FONT),
+            avatarLayout.width,
+        ).maxOrNull().orEmptyWidth() + TOOLTIP_PADDING * 2
+        val avatarHeight = if (completedPlayers.isEmpty()) 0 else TOOLTIP_AVATAR_FOOTER_GAP + avatarLayout.height
+        val height = TOOLTIP_PADDING * 2 + TOOLTIP_HEADER_CONTENT_GAP + TOOLTIP_SMALL_TEXT_HEIGHT + avatarHeight
+        val origin = tooltipOrigin(mouseX, mouseY, width, height)
+        var textY = origin.y + TOOLTIP_PADDING
+        drawTooltipPanel(guiGraphics, origin, width, height)
+        drawCkdmShadowedText(guiGraphics, title, origin.x + TOOLTIP_PADDING, textY, TEXT_PRIMARY)
+        textY += TOOLTIP_HEADER_CONTENT_GAP
+        drawCkdmText(guiGraphics, progressText, origin.x + TOOLTIP_PADDING, textY, TOOLTIP_GOLD, CKDM_BOLD_SMALL_FONT)
+        textY += TOOLTIP_SMALL_TEXT_HEIGHT + TOOLTIP_AVATAR_FOOTER_GAP
+        renderCompletedPlayerAvatars(guiGraphics, completedPlayers, origin.x + TOOLTIP_PADDING, textY, width - TOOLTIP_PADDING * 2)
+    }
+
+    private fun renderRewardTooltip(guiGraphics: GuiGraphics, slot: RewardSlot, currentXp: Int, mouseX: Int, mouseY: Int) {
+        val remaining = (slot.tier.xp - currentXp).coerceAtLeast(0)
+        val claimedPlayers = if (slot.claimed) claimedPlayersFor(slot) else emptyList()
+        val title = when {
+            slot.claimed -> "CLAIMED"
+            else -> "${compactQuantity(slot.reward.quantity)} ${rewardName(slot.reward, slot.stack)}"
+        }
+        val detail = when {
+            slot.claimed -> ""
+            slot.unlocked -> "CLICK TO CLAIM"
+            else -> "$remaining XP NEEDED"
+        }
+        val avatarLayout = avatarLayout(claimedPlayers.size)
+        val width = listOf(ckdmWidth(title), ckdmWidth(detail, CKDM_BOLD_SMALL_FONT), avatarLayout.width).maxOrNull().orEmptyWidth() + TOOLTIP_PADDING * 2
+        val avatarHeight = if (claimedPlayers.isEmpty()) 0 else TOOLTIP_AVATAR_FOOTER_GAP + avatarLayout.height
+        val detailHeight = if (detail.isBlank()) 0 else TOOLTIP_LINE_HEIGHT
+        val height = TOOLTIP_PADDING * 2 + TOOLTIP_LINE_HEIGHT + detailHeight + avatarHeight
+        val origin = tooltipOrigin(mouseX, mouseY, width, height)
+        drawTooltipPanel(guiGraphics, origin, width, height)
+        drawCkdmShadowedText(guiGraphics, title, origin.x + TOOLTIP_PADDING, origin.y + TOOLTIP_PADDING, TEXT_PRIMARY)
+        if (detail.isNotBlank()) drawCkdmText(guiGraphics, detail, origin.x + TOOLTIP_PADDING, origin.y + TOOLTIP_PADDING + TOOLTIP_LINE_HEIGHT, TOOLTIP_GOLD, CKDM_BOLD_SMALL_FONT)
+        if (claimedPlayers.isNotEmpty()) renderCompletedPlayerAvatars(guiGraphics, claimedPlayers, origin.x + TOOLTIP_PADDING, origin.y + TOOLTIP_PADDING + TOOLTIP_LINE_HEIGHT + TOOLTIP_AVATAR_FOOTER_GAP, width - TOOLTIP_PADDING * 2)
+    }
+
+    private fun renderCompletedPlayerAvatars(guiGraphics: GuiGraphics, players: List<BattlepassClientState.PlayerProgress>, x: Int, y: Int, maxWidth: Int) {
+        if (players.isEmpty()) {
+            return
+        }
+        val connection = Minecraft.getInstance().connection
+        val layout = avatarLayout(players.size, maxWidth)
+        players.forEachIndexed { index, player ->
+            val column = index % layout.perRow
+            val row = index / layout.perRow
+            val avatarX = x + column * (TOOLTIP_AVATAR_SIZE + TOOLTIP_AVATAR_GAP)
+            val avatarY = y + row * (TOOLTIP_AVATAR_SIZE + TOOLTIP_AVATAR_GAP)
+            val quickSkinTexture = quickSkinAvatarTexture(player.uuid)
+            val skin = connection?.getPlayerInfo(player.uuid)?.skin
+            if (quickSkinTexture != null) {
+                renderTexture(guiGraphics, quickSkinTexture, Rect(avatarX, avatarY, TOOLTIP_AVATAR_SIZE, TOOLTIP_AVATAR_SIZE), QUICKSKIN_HEAD_TEXTURE_SIZE, QUICKSKIN_HEAD_TEXTURE_SIZE)
+            } else if (skin != null) {
+                PlayerFaceRenderer.draw(guiGraphics, skin, avatarX, avatarY, TOOLTIP_AVATAR_SIZE)
+            } else {
+                guiGraphics.fill(avatarX, avatarY, avatarX + TOOLTIP_AVATAR_SIZE, avatarY + TOOLTIP_AVATAR_SIZE, colorWithRenderAlpha(TOOLTIP_AVATAR_FALLBACK_FILL))
+                guiGraphics.drawString(font, player.name.take(1).uppercase(), avatarX + 3, avatarY + 2, colorWithRenderAlpha(TEXT_PRIMARY), false)
+            }
+        }
+    }
+
+    private fun avatarLayout(count: Int, maxWidth: Int = TOOLTIP_AVATAR_CONTENT_WIDTH): AvatarLayout {
+        if (count <= 0) return AvatarLayout(1, 0, 0)
+        val perRow = ((maxWidth + TOOLTIP_AVATAR_GAP) / (TOOLTIP_AVATAR_SIZE + TOOLTIP_AVATAR_GAP)).coerceAtLeast(1)
+        val rows = (count + perRow - 1) / perRow
+        val firstRowCount = count.coerceAtMost(perRow)
+        val width = firstRowCount * TOOLTIP_AVATAR_SIZE + (firstRowCount - 1).coerceAtLeast(0) * TOOLTIP_AVATAR_GAP
+        val height = rows * TOOLTIP_AVATAR_SIZE + (rows - 1).coerceAtLeast(0) * TOOLTIP_AVATAR_GAP
+        return AvatarLayout(perRow, width, height)
+    }
+
+    private fun quickSkinAvatarTexture(playerId: UUID): ResourceLocation? {
+        if (quickSkinAvatarTextures.containsKey(playerId)) return quickSkinAvatarTextures[playerId]
+        val texture = runCatching {
+            val bytes = DiscordQuickSkinSupport.quickSkinHeadPng(playerId) ?: return@runCatching null
+            val image = NativeImage.read(ByteArrayInputStream(bytes))
+            val id = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "quickskin/battlepass_avatar/${playerId.toString().replace("-", "_")}")
+            Minecraft.getInstance().textureManager.register(id, DynamicTexture(image))
+            id
+        }.getOrNull()
+        quickSkinAvatarTextures[playerId] = texture
+        return texture
+    }
+
+    private fun completedPlayersFor(slot: MissionSlot): List<BattlepassClientState.PlayerProgress> {
+        val players = BattlepassClientState.players().filter { player -> player.completedMissionKeysByPass[slot.passId]?.contains(slot.entry.key) == true }
+        if (players.isNotEmpty() || !slot.completed) return players
+        return selfPlayerProgress()?.let(::listOf).orEmpty()
+    }
+
+    private fun claimedPlayersFor(slot: RewardSlot): List<BattlepassClientState.PlayerProgress> {
+        val players = BattlepassClientState.players().filter { player -> player.claimedByPass[slot.passId]?.contains(slot.tier.xp) == true }
+        if (players.isNotEmpty() || !slot.claimed) return players
+        return selfPlayerProgress()?.let(::listOf).orEmpty()
+    }
+
+    private fun selfPlayerProgress(): BattlepassClientState.PlayerProgress? {
+        val player = Minecraft.getInstance().player ?: return null
+        return BattlepassClientState.PlayerProgress(player.uuid, player.gameProfile.name, emptyMap(), emptyMap(), emptyMap(), emptyMap())
+    }
+
+    private fun drawTooltipPanel(guiGraphics: GuiGraphics, origin: Rect, width: Int, height: Int) {
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, TOOLTIP_BACKGROUND_ALPHA)
+        renderNineSlice(guiGraphics, TOOLTIP_CONTAINER_TEXTURE, Rect(origin.x, origin.y, width, height), TOOLTIP_CONTAINER_TEXTURE_SIZE, TOOLTIP_CONTAINER_CORNER_SIZE)
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, renderAlpha)
+    }
+
+    private fun tooltipOrigin(mouseX: Int, mouseY: Int, width: Int, height: Int): Rect {
+        val x = (mouseX + TOOLTIP_MOUSE_OFFSET).coerceAtMost(this.width - width - SAFE_EDGE_PADDING).coerceAtLeast(SAFE_EDGE_PADDING)
+        val y = (mouseY + TOOLTIP_MOUSE_OFFSET).coerceAtMost(this.height - height - SAFE_EDGE_PADDING).coerceAtLeast(SAFE_EDGE_PADDING)
+        return Rect(x, y, width, height)
+    }
+
+    private fun Int?.orEmptyWidth(): Int = this ?: 0
 
     private fun tooltipFor(slot: RewardSlot, currentXp: Int): List<Component> {
         val remaining = (slot.tier.xp - currentXp).coerceAtLeast(0)
@@ -1110,139 +1029,44 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
             slot.current -> Component.literal("$remaining XP to claim").withStyle(ChatFormatting.AQUA)
             else -> Component.literal("Locked - $remaining XP needed").withStyle(ChatFormatting.GRAY)
         }
-
-        return listOf(
-            Component.literal("Tier ${slot.tier.xp} XP").withStyle(ChatFormatting.GOLD),
-            Component.literal("${rewardName(slot.reward, slot.stack)} x${slot.reward.quantity}"),
-            status,
-        )
+        return listOf(Component.literal("Tier ${slot.tier.xp} XP").withStyle(ChatFormatting.GOLD), Component.literal("${rewardName(slot.reward, slot.stack)} x${slot.reward.quantity}"), status)
     }
 
     private fun tooltipFor(slot: MissionSlot): List<Component> {
-        val event = slot.entry.event
-        val progress = currentPlayerId()?.let { playerId -> BattlepassClientState.missionProgress(playerId, slot.passId, slot.entry.key) ?: BattlepassClientState.missionProgress(playerId, slot.passId, event.event) } ?: event.progress
-        val detail = when {
-            BattlepassMissionService.isCappedRepeating(event) -> Component.literal("XP cap: ${progress.coerceAtMost(event.xpCap)}/${event.xpCap} (+${event.xp} each)").withStyle(ChatFormatting.GRAY)
-            BattlepassMissionService.isProgressive(event) -> Component.literal("Progress: ${progress.coerceAtMost(BattlepassMissionService.progressiveGoal(event))}/${BattlepassMissionService.progressiveGoal(event)}").withStyle(ChatFormatting.GRAY)
-            else -> Component.literal("Repeating: +${event.xp} XP").withStyle(ChatFormatting.GRAY)
-        }
-        val status = if (slot.completed) Component.literal("Completed") else Component.literal("Active")
-        return listOf(
-            detail,
-            status,
-        )
+        val progress = missionProgress(slot.passId, slot.entry)
+        val detail = BattlepassMissionService.displayGoal(slot.entry.event, progress)?.let { goal ->
+            Component.literal("Progress: ${progress.coerceAtMost(goal)}/$goal").withStyle(ChatFormatting.GRAY)
+        } ?: Component.literal("Repeating: +${slot.entry.event.xp} XP").withStyle(ChatFormatting.GRAY)
+        val status = if (slot.completed) Component.literal("Completed") else Component.literal("Click to track")
+        return listOf(Component.literal(missionTypeLabel(slot.entry.scope)).withStyle(missionChatColor(slot.entry.scope)), detail, status)
     }
 
-    private fun renderMissionTooltip(guiGraphics: GuiGraphics, slot: MissionSlot, mouseX: Int, mouseY: Int) {
-        val lines = tooltipFor(slot)
-        val title = missionDescription(slot.passId, slot.entry)
-        val missionType = missionTypeLabel(slot.entry.scope)
-        val passLine = if (viewMode == ViewMode.PASS_SELECTION) passes().firstOrNull { pass -> pass.id == slot.passId }?.displayName?.let { name -> "Pass: $name" } else null
-        val completedPlayers = BattlepassClientState.players().filter { player -> player.completedMissionKeysByPass[slot.passId]?.contains(slot.entry.key) == true }
-        val avatarCount = completedPlayers.size.coerceAtMost(TOOLTIP_MAX_COMPLETED_AVATARS)
-        val avatarWidth = if (avatarCount > 0) avatarCount * TOOLTIP_AVATAR_SIZE + (avatarCount - 1) * TOOLTIP_AVATAR_GAP else 0
-        val plusWidth = if (completedPlayers.size > avatarCount) font.width("+${completedPlayers.size - avatarCount}") + TOOLTIP_AVATAR_GAP else 0
-        val headerWidth = maxOf(font.width(title), font.width(missionType), passLine?.let(font::width) ?: 0)
-        val lineWidth = maxOf(lines.maxOfOrNull { line -> font.width(line) } ?: 0, headerWidth)
-        val completedWidth = maxOf(font.width(TOOLTIP_COMPLETED_LABEL), avatarWidth + plusWidth, font.width(TOOLTIP_COMPLETED_EMPTY))
-        val tooltipWidth = (maxOf(lineWidth, completedWidth) + TOOLTIP_PADDING * 2).coerceAtLeast(TOOLTIP_MIN_WIDTH)
-        val completedHeight = if (completedPlayers.isEmpty()) font.lineHeight else TOOLTIP_AVATAR_SIZE
-        val headerLines = 2 + if (passLine == null) 0 else 1
-        val tooltipHeight = TOOLTIP_PADDING * 2 + (lines.size + headerLines) * TOOLTIP_LINE_HEIGHT + TOOLTIP_SECTION_GAP + font.lineHeight + TOOLTIP_SECTION_GAP + completedHeight
-        val x = (mouseX + TOOLTIP_MOUSE_GAP).coerceAtMost(width - tooltipWidth - TOOLTIP_SCREEN_GAP).coerceAtLeast(TOOLTIP_SCREEN_GAP)
-        val y = (mouseY + TOOLTIP_MOUSE_GAP).coerceAtMost(height - tooltipHeight - TOOLTIP_SCREEN_GAP).coerceAtLeast(TOOLTIP_SCREEN_GAP)
-
-        renderNineSlice(guiGraphics, TOOLTIP_BACKGROUND_TEXTURE, x, y, tooltipWidth, tooltipHeight, TOOLTIP_BACKGROUND_ALPHA)
-        var textY = y + TOOLTIP_PADDING
-        guiGraphics.drawString(font, title, x + TOOLTIP_PADDING, textY, TOOLTIP_PRIMARY_TEXT, true)
-        textY += TOOLTIP_LINE_HEIGHT
-        guiGraphics.drawString(font, missionType, x + TOOLTIP_PADDING, textY, TOOLTIP_PRIMARY_TEXT, true)
-        textY += TOOLTIP_LINE_HEIGHT
-        if (passLine != null) {
-            guiGraphics.drawString(font, passLine, x + TOOLTIP_PADDING, textY, TOOLTIP_SECONDARY_TEXT, false)
-            textY += TOOLTIP_LINE_HEIGHT
-        }
-        lines.forEach { line ->
-            guiGraphics.drawString(font, line, x + TOOLTIP_PADDING, textY, TOOLTIP_SECONDARY_TEXT, false)
-            textY += TOOLTIP_LINE_HEIGHT
-        }
-        textY += TOOLTIP_SECTION_GAP
-        guiGraphics.drawString(font, TOOLTIP_COMPLETED_LABEL, x + TOOLTIP_PADDING, textY, TOOLTIP_PRIMARY_TEXT, false)
-        textY += font.lineHeight + TOOLTIP_SECTION_GAP
-        if (completedPlayers.isEmpty()) {
-            guiGraphics.drawString(font, Component.literal(TOOLTIP_COMPLETED_EMPTY).withStyle(ChatFormatting.GRAY, ChatFormatting.ITALIC), x + TOOLTIP_PADDING, textY, TOOLTIP_SECONDARY_TEXT, false)
-        } else {
-            val connection = Minecraft.getInstance().connection
-            completedPlayers.take(TOOLTIP_MAX_COMPLETED_AVATARS).forEachIndexed { index, player ->
-                val skin = connection?.getPlayerInfo(player.uuid)?.skin ?: DefaultPlayerSkin.get(player.uuid)
-                PlayerFaceRenderer.draw(guiGraphics, skin, x + TOOLTIP_PADDING + index * (TOOLTIP_AVATAR_SIZE + TOOLTIP_AVATAR_GAP), textY, TOOLTIP_AVATAR_SIZE)
-            }
-            if (completedPlayers.size > TOOLTIP_MAX_COMPLETED_AVATARS) {
-                guiGraphics.drawString(font, "+${completedPlayers.size - TOOLTIP_MAX_COMPLETED_AVATARS}", x + TOOLTIP_PADDING + avatarWidth + TOOLTIP_AVATAR_GAP, textY + (TOOLTIP_AVATAR_SIZE - font.lineHeight) / 2, 0xFFFFFFFF.toInt(), false)
-            }
-        }
-    }
+    private fun passTooltip(pass: BattlepassPassDefinition): List<Component> = listOf(
+        Component.literal(pass.displayName).withStyle(ChatFormatting.GOLD),
+        Component.literal(pass.description.ifBlank { "Open battlepass" }).withStyle(ChatFormatting.GRAY),
+    )
 
     private fun missionTypeLabel(scope: BattlepassMissionScope): String = when (scope) {
         BattlepassMissionScope.DAILY -> "Daily Mission"
         BattlepassMissionScope.WEEKLY -> "Weekly Mission"
-        BattlepassMissionScope.PERMANENT -> "Chowkingdom Mission"
-    }
-
-    private fun renderNineSlice(guiGraphics: GuiGraphics, texture: ResourceLocation, x: Int, y: Int, width: Int, height: Int, alpha: Float) {
-        val border = TOOLTIP_NINE_SLICE_BORDER
-        val centerWidth = (width - border * 2).coerceAtLeast(0)
-        val centerHeight = (height - border * 2).coerceAtLeast(0)
-        guiGraphics.setColor(1.0f, 1.0f, 1.0f, alpha)
-        guiGraphics.blit(texture, x, y, border, border, 0.0f, 0.0f, border, border, TOOLTIP_TEXTURE_WIDTH, TOOLTIP_TEXTURE_HEIGHT)
-        guiGraphics.blit(texture, x + width - border, y, border, border, (TOOLTIP_TEXTURE_WIDTH - border).toFloat(), 0.0f, border, border, TOOLTIP_TEXTURE_WIDTH, TOOLTIP_TEXTURE_HEIGHT)
-        guiGraphics.blit(texture, x, y + height - border, border, border, 0.0f, (TOOLTIP_TEXTURE_HEIGHT - border).toFloat(), border, border, TOOLTIP_TEXTURE_WIDTH, TOOLTIP_TEXTURE_HEIGHT)
-        guiGraphics.blit(texture, x + width - border, y + height - border, border, border, (TOOLTIP_TEXTURE_WIDTH - border).toFloat(), (TOOLTIP_TEXTURE_HEIGHT - border).toFloat(), border, border, TOOLTIP_TEXTURE_WIDTH, TOOLTIP_TEXTURE_HEIGHT)
-        if (centerWidth > 0) {
-            guiGraphics.blit(texture, x + border, y, centerWidth, border, border.toFloat(), 0.0f, TOOLTIP_TEXTURE_WIDTH - border * 2, border, TOOLTIP_TEXTURE_WIDTH, TOOLTIP_TEXTURE_HEIGHT)
-            guiGraphics.blit(texture, x + border, y + height - border, centerWidth, border, border.toFloat(), (TOOLTIP_TEXTURE_HEIGHT - border).toFloat(), TOOLTIP_TEXTURE_WIDTH - border * 2, border, TOOLTIP_TEXTURE_WIDTH, TOOLTIP_TEXTURE_HEIGHT)
-        }
-        if (centerHeight > 0) {
-            guiGraphics.blit(texture, x, y + border, border, centerHeight, 0.0f, border.toFloat(), border, TOOLTIP_TEXTURE_HEIGHT - border * 2, TOOLTIP_TEXTURE_WIDTH, TOOLTIP_TEXTURE_HEIGHT)
-            guiGraphics.blit(texture, x + width - border, y + border, border, centerHeight, (TOOLTIP_TEXTURE_WIDTH - border).toFloat(), border.toFloat(), border, TOOLTIP_TEXTURE_HEIGHT - border * 2, TOOLTIP_TEXTURE_WIDTH, TOOLTIP_TEXTURE_HEIGHT)
-        }
-        if (centerWidth > 0 && centerHeight > 0) {
-            guiGraphics.blit(texture, x + border, y + border, centerWidth, centerHeight, border.toFloat(), border.toFloat(), TOOLTIP_TEXTURE_WIDTH - border * 2, TOOLTIP_TEXTURE_HEIGHT - border * 2, TOOLTIP_TEXTURE_WIDTH, TOOLTIP_TEXTURE_HEIGHT)
-        }
-        guiGraphics.setColor(1.0f, 1.0f, 1.0f, 1.0f)
+        BattlepassMissionScope.PERMANENT -> "Permanent Mission"
     }
 
     private fun missionColor(scope: BattlepassMissionScope): Int = when (scope) {
-        BattlepassMissionScope.DAILY -> MISSIONS_DAILY_COLOR
-        BattlepassMissionScope.WEEKLY -> MISSIONS_WEEKLY_COLOR
-        BattlepassMissionScope.PERMANENT -> MISSIONS_PERMANENT_COLOR
+        BattlepassMissionScope.DAILY -> 0xFFFFC857.toInt()
+        BattlepassMissionScope.WEEKLY -> 0xFFFF7A6E.toInt()
+        BattlepassMissionScope.PERMANENT -> 0xFF9AD67F.toInt()
     }
 
     private fun missionChatColor(scope: BattlepassMissionScope): ChatFormatting = when (scope) {
         BattlepassMissionScope.DAILY -> ChatFormatting.GOLD
-        BattlepassMissionScope.WEEKLY -> ChatFormatting.DARK_RED
-        BattlepassMissionScope.PERMANENT -> ChatFormatting.DARK_GREEN
-    }
-
-    private fun missionFooter(scope: BattlepassMissionScope): String = when (scope) {
-        BattlepassMissionScope.DAILY -> "Daily mission"
-        BattlepassMissionScope.WEEKLY -> "Weekly mission"
-        BattlepassMissionScope.PERMANENT -> "Permanent mission"
-    }
-
-    private fun drawFrame(guiGraphics: GuiGraphics, rect: Rect, fillColor: Int, borderColor: Int) {
-        guiGraphics.fill(rect.x, rect.y, rect.x + rect.width, rect.y + rect.height, fillColor)
-        guiGraphics.hLine(rect.x, rect.x + rect.width - 1, rect.y, borderColor)
-        guiGraphics.hLine(rect.x, rect.x + rect.width - 1, rect.y + rect.height - 1, borderColor)
-        guiGraphics.vLine(rect.x, rect.y, rect.y + rect.height - 1, borderColor)
-        guiGraphics.vLine(rect.x + rect.width - 1, rect.y, rect.y + rect.height - 1, borderColor)
+        BattlepassMissionScope.WEEKLY -> ChatFormatting.RED
+        BattlepassMissionScope.PERMANENT -> ChatFormatting.GREEN
     }
 
     private fun rewardStack(reward: BattlepassRewardDefinition): ItemStack {
         if (isChowcoinReward(reward)) return ItemStack(Items.GOLD_NUGGET, reward.quantity.coerceIn(1, 64))
-        val item = runCatching { ResourceLocation.parse(reward.item) }.getOrNull()
-            ?.let { id -> BuiltInRegistries.ITEM.getOptional(id).orElse(Items.BARRIER) }
-            ?: Items.BARRIER
+        val item = runCatching { ResourceLocation.parse(reward.item) }.getOrNull()?.let { id -> BuiltInRegistries.ITEM.getOptional(id).orElse(Items.BARRIER) } ?: Items.BARRIER
         return ItemStack(item, reward.quantity.coerceIn(1, 64))
     }
 
@@ -1259,45 +1083,32 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
         return reward.type.equals("currency", ignoreCase = true) && reward.data["currency"]?.equals("chowcoin", ignoreCase = true) == true
     }
 
-    private fun mainRect(): Rect {
-        return Rect(0, 0, width, height)
+    private fun autoCenterCurrentReward(pass: BattlepassPassDefinition, currentXp: Int, hotbar: Rect) {
+        if (autoScrollKey == pass.id) return
+        val sortedTiers = pass.progression.sortedBy { tier -> tier.xp }
+        var offset = 10
+        var selectedCenter = offset + SLOT_SIZE / 2
+        val playerId = currentPlayerId()
+        for (tier in sortedTiers) {
+            val reward = tier.rewards.firstOrNull()
+            val size = slotSize(reward?.let(::isProminentReward) == true)
+            val claimed = playerId?.let { id -> isClaimed(id, pass.id, tier.xp) } == true
+            selectedCenter = offset + size / 2
+            if (!claimed) break
+            offset += size + SLOT_GAP
+        }
+        val desiredScroll = (selectedCenter - hotbar.width / 2.0f).coerceIn(0.0f, maxScroll(rewardContentWidth(pass), hotbar.width))
+        targetRewardScroll = desiredScroll
+        rewardScroll = desiredScroll
+        autoScrollKey = pass.id
     }
 
-    private fun hotbarRect(): Rect {
-        val panel = mainRect()
-        return Rect(panel.x + CONTENT_PADDING, footerRect().y - ITEM_STRIP_GAP - ITEM_STRIP_HEIGHT, (panel.width - CONTENT_PADDING * 2).coerceAtLeast(160), ITEM_STRIP_HEIGHT)
+    private fun progressFor(slot: RewardSlot, currentXp: Int): Float {
+        val span = (slot.tier.xp - slot.previousXp).coerceAtLeast(1)
+        return ((currentXp - slot.previousXp).toFloat() / span).coerceIn(0.0f, 1.0f)
     }
 
-    private fun footerRect(): Rect {
-        val panel = mainRect()
-        return Rect(panel.x, panel.y + panel.height - FOOTER_HEIGHT, panel.width, FOOTER_HEIGHT)
-    }
-
-    private fun passListWidth(): Int = (width - 56).coerceAtMost(420)
-
-    private fun titleWidth(): Int = (width - 176).coerceAtLeast(160).coerceAtMost(420)
-
-    private fun selectionBookScale(panel: Rect, headerBottom: Int): Float {
-        val availableWidth = panel.width - CONTENT_PADDING * 2 - SELECTION_BOOK_GAP * 2
-        val availableHeight = panel.height - headerBottom - SELECTION_HEADER_BOOK_GAP - SELECTION_BOOK_BUTTON_GAP - SELECTION_PASS_BUTTON_HEIGHT - CONTENT_BOTTOM_GAP
-        return minOf(
-            (availableWidth / (MISSIONS_BOOK_WIDTH * 3.0f)).coerceAtLeast(SELECTION_BOOK_MIN_SCALE),
-            (availableHeight / MISSIONS_BOOK_HEIGHT.toFloat()).coerceAtLeast(SELECTION_BOOK_MIN_SCALE),
-        )
-    }
-
-    private fun maxScroll(): Float = maxScroll(selectedPass()?.let(::rewardContentWidth) ?: 10, hotbarRect().width)
-
-    private fun maxScroll(contentWidth: Int, visibleWidth: Int): Float = (contentWidth - visibleWidth + 24).coerceAtLeast(0).toFloat()
-
-    private fun maxMissionsScroll(pass: BattlepassPassDefinition, scale: Float, visibleHeight: Int): Float {
-        val contentHeight = visibleMissionEntries(pass).ifEmpty { listOf(BattlepassMissionEntry(BattlepassMissionScope.PERMANENT, 0, BattlepassXpEventDefinition())) }.sumOf { entry -> missionRowHeight(entry.event) }
-        return (contentHeight * scale - visibleHeight).coerceAtLeast(0.0f)
-    }
-
-    private fun visibleMissionEntries(pass: BattlepassPassDefinition): List<BattlepassMissionEntry> {
-        return filterMissionEntries(pass, activeMissionEntries(pass))
-    }
+    private fun visibleMissionEntries(pass: BattlepassPassDefinition): List<BattlepassMissionEntry> = filterMissionEntries(pass, activeMissionEntries(pass))
 
     private fun activeMissionEntries(pass: BattlepassPassDefinition): List<BattlepassMissionEntry> {
         val activeKeys = BattlepassClientState.activeMissionKeys(pass.id)
@@ -1311,36 +1122,88 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
         MissionFilter.DAILY -> entries.filter { entry -> entry.scope == BattlepassMissionScope.DAILY }
         MissionFilter.WEEKLY -> entries.filter { entry -> entry.scope == BattlepassMissionScope.WEEKLY }
         MissionFilter.PERMANENT -> entries.filter { entry -> entry.scope == BattlepassMissionScope.PERMANENT }
-        MissionFilter.COMPLETED -> entries.filter { entry -> currentPlayerId()?.let { playerId -> BattlepassClientState.isMissionCompleted(playerId, pass.id, entry.key) } == true }
+        MissionFilter.COMPLETED -> entries.filter { entry -> currentPlayerId()?.let { id -> BattlepassClientState.isMissionCompleted(id, pass.id, entry.key) } == true }
     }
 
     private fun missionDescription(passId: String, entry: BattlepassMissionEntry): String = BattlepassMissionService.missionDescription(entry.event, missionProgress(passId, entry))
 
     private fun missionProgress(passId: String, entry: BattlepassMissionEntry): Int {
         val event = entry.event
-        return currentPlayerId()?.let { playerId -> BattlepassClientState.missionProgress(playerId, passId, entry.key) ?: BattlepassClientState.missionProgress(playerId, passId, event.event) } ?: event.progress
+        return currentPlayerId()?.let { id -> BattlepassClientState.missionProgress(id, passId, entry.key) ?: BattlepassClientState.missionProgress(id, passId, event.event) } ?: event.progress
     }
 
-    private fun missionRowHeight(event: BattlepassXpEventDefinition): Int = if (isProgressiveMission(event) || BattlepassMissionService.isCappedRepeating(event)) MISSIONS_PROGRESSIVE_ROW_HEIGHT else MISSIONS_REPEATING_ROW_HEIGHT
+    private fun missionProgressText(entry: BattlepassMissionEntry, progress: Int): String {
+        val goal = BattlepassMissionService.displayGoal(entry.event, progress)
+        return if (goal != null) "PROGRESS ${progress.coerceAtMost(goal)}/$goal" else "PROGRESS $progress"
+    }
 
-    private fun isProgressiveMission(event: BattlepassXpEventDefinition): Boolean = event.type.equals("progressive", ignoreCase = true)
+    private fun missionRewardXp(entry: BattlepassMissionEntry, progress: Int): Int {
+        val event = entry.event
+        if (BattlepassMissionService.isProgressive(event)) {
+            val index = event.progressGoals.indexOfFirst { goal -> progress < goal }.takeIf { value -> value >= 0 } ?: (event.progressGoals.size - 1).coerceAtLeast(0)
+            return event.progressXp.getOrNull(index) ?: event.xp
+        }
+        return event.xp.takeIf { xp -> xp > 0 } ?: event.progressXp.firstOrNull() ?: event.xpCap
+    }
 
-    private fun nextProgressGoalIndex(event: BattlepassXpEventDefinition, progress: Int): Int {
-        val nextIndex = event.progressGoals.indexOfFirst { goal -> progress < goal }
-        return if (nextIndex >= 0) nextIndex else (event.progressGoals.size - 1).coerceAtLeast(0)
+    private fun missionIconStack(entry: BattlepassMissionEntry): ItemStack = BattlepassMissionIcons.stack(entry)
+
+    private fun renderMissionCompletedColumn(guiGraphics: GuiGraphics, slot: MissionSlot, x: Int, y: Int, width: Int, height: Int) {
+        val players = completedPlayersFor(slot)
+        if (players.isEmpty()) return
+        val label = "COMPLETED BY"
+        val labelWidth = ckdmWidth(label, CKDM_BOLD_SMALL_FONT)
+        val avatarCount = players.size.coerceAtMost(MISSION_ROW_MAX_AVATARS)
+        val overflow = (players.size - avatarCount).coerceAtLeast(0)
+        val overflowText = if (overflow > 0) "+$overflow" else ""
+        val avatarsWidth = if (avatarCount == 0) 0 else avatarCount * MISSION_ROW_AVATAR_SIZE + (avatarCount - 1) * MISSION_ROW_AVATAR_GAP
+        val overflowWidth = if (overflowText.isBlank()) 0 else MISSION_ROW_AVATAR_GAP + ckdmWidth(overflowText, CKDM_BOLD_SMALL_FONT)
+        val rowWidth = avatarsWidth + overflowWidth
+        val stackHeight = MISSION_ROW_SUB_TEXT_HEIGHT + MISSION_ROW_COMPLETED_GAP + MISSION_ROW_AVATAR_SIZE
+        val labelX = x + width - labelWidth
+        val labelY = y + (height - stackHeight) / 2
+        drawCkdmText(guiGraphics, label, labelX, labelY, TEXT_MUTED, CKDM_BOLD_SMALL_FONT)
+        var avatarX = x + width - rowWidth
+        val avatarY = labelY + MISSION_ROW_SUB_TEXT_HEIGHT + MISSION_ROW_COMPLETED_GAP
+        players.take(avatarCount).forEach { player ->
+            renderPlayerAvatar(guiGraphics, player, avatarX, avatarY, MISSION_ROW_AVATAR_SIZE)
+            avatarX += MISSION_ROW_AVATAR_SIZE + MISSION_ROW_AVATAR_GAP
+        }
+        if (overflowText.isNotBlank()) drawCkdmText(guiGraphics, overflowText, avatarX, avatarY + (MISSION_ROW_AVATAR_SIZE - MISSION_ROW_SUB_TEXT_HEIGHT) / 2, TEXT_PRIMARY, CKDM_BOLD_SMALL_FONT)
+    }
+
+    private fun renderPlayerAvatar(guiGraphics: GuiGraphics, player: BattlepassClientState.PlayerProgress, x: Int, y: Int, size: Int) {
+        val connection = Minecraft.getInstance().connection
+        val quickSkinTexture = quickSkinAvatarTexture(player.uuid)
+        val skin = connection?.getPlayerInfo(player.uuid)?.skin
+        if (quickSkinTexture != null) {
+            renderTexture(guiGraphics, quickSkinTexture, Rect(x, y, size, size), QUICKSKIN_HEAD_TEXTURE_SIZE, QUICKSKIN_HEAD_TEXTURE_SIZE)
+        } else if (skin != null) {
+            PlayerFaceRenderer.draw(guiGraphics, skin, x, y, size)
+        } else {
+            guiGraphics.fill(x, y, x + size, y + size, colorWithRenderAlpha(TOOLTIP_AVATAR_FALLBACK_FILL))
+            guiGraphics.drawString(font, player.name.take(1).uppercase(), x + 3, y + 2, colorWithRenderAlpha(TEXT_PRIMARY), false)
+        }
+    }
+
+    private fun missionRowHeight(rowWidth: Int): Int = (rowWidth / MISSION_ROW_ASPECT_WIDTH).toInt().coerceAtLeast(MISSION_ROW_MIN_HEIGHT)
+
+    private fun fitCkdmText(text: String, maxWidth: Int, fontId: ResourceLocation = CKDM_BOLD_FONT): String {
+        if (ckdmWidth(text, fontId) <= maxWidth) return text
+        val suffix = "..."
+        var trimmed = text
+        while (trimmed.isNotEmpty() && ckdmWidth(trimmed + suffix, fontId) > maxWidth) trimmed = trimmed.dropLast(1)
+        return trimmed + suffix
     }
 
     private fun rewardContentWidth(pass: BattlepassPassDefinition): Int = pass.progression.sumOf { tier ->
-        val prominent = tier.rewards.firstOrNull()?.let(::isProminentReward) == true
-        slotSize(prominent) + SLOT_GAP
-    } + 10
+        val reward = tier.rewards.firstOrNull()
+        slotSize(reward?.let(::isProminentReward) == true) + SLOT_GAP
+    } + 20
 
     private fun slotSize(prominent: Boolean): Int = if (prominent) PROMINENT_SLOT_SIZE else SLOT_SIZE
 
-    private fun isProminentReward(reward: BattlepassRewardDefinition): Boolean =
-        reward.isProminent || reward.data["is_prominent"]?.toBooleanStrictOrNull() == true
-
-    private fun scaled(value: Int, slotSize: Int): Int = (value * slotSize / SLOT_SIZE.toFloat()).toInt()
+    private fun isProminentReward(reward: BattlepassRewardDefinition): Boolean = reward.isProminent || reward.data["is_prominent"]?.toBooleanStrictOrNull() == true
 
     private fun selectedPass(): BattlepassPassDefinition? = passes().firstOrNull { pass -> pass.id == selectedPassId }
 
@@ -1360,215 +1223,218 @@ class BattlepassScreen : Screen(Component.translatable("screen.${ChowKingdomMod.
 
     private fun isClaimed(playerId: UUID, passId: String, tierXp: Int): Boolean = BattlepassClientState.isClaimed(playerId, passId, tierXp) ?: BattlepassXpStore.isClaimed(playerId, passId, tierXp)
 
-    private fun tierForPlayer(sortedTiers: List<BattlepassProgressionDefinition>, xp: Int): Int {
-        sortedTiers.firstOrNull { tier -> xp < tier.xp }?.let { tier -> return tier.xp }
-        return sortedTiers.lastOrNull()?.xp ?: 0
+    private fun rewardMaxScroll(): Float = maxScroll(selectedPass()?.let(::rewardContentWidth) ?: 0, hotbarRect().width)
+
+    private fun maxScroll(contentWidth: Int, visibleWidth: Int): Float = (contentWidth - visibleWidth + 16).coerceAtLeast(0).toFloat()
+
+    private fun mainRect(): Rect = Rect(0, 0, width, height)
+
+    private fun hotbarRect(): Rect {
+        val panel = mainRect().inset(CONTENT_PADDING)
+        return Rect(panel.x + PANEL_PADDING, footerRect().y - ITEM_STRIP_GAP - ITEM_STRIP_HEIGHT, panel.width - PANEL_PADDING * 2, ITEM_STRIP_HEIGHT)
     }
 
-    private fun slotKey(slot: RewardSlot): String = "${slot.passId}:${slot.tier.xp}"
+    private fun footerRect(): Rect = Rect(0, height - FOOTER_HEIGHT, width, FOOTER_HEIGHT)
 
-    private fun missionEntryKey(passId: String, entry: BattlepassMissionEntry): String = "$passId:${entry.key}"
+    private fun titleWidth(): Int = (width - 176).coerceAtLeast(120).coerceAtMost(420)
 
-        private val REWARD_CONTAINER_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/battlepass_container.png")
-        private val REWARD_CLAIMABLE_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/battlepass-claimable.png")
-        private val REWARD_LOCKED_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/battlepass-locked.png")
-        private val LOCKED_OVERLAY_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/locked.png")
-        private val CLAIMED_OVERLAY_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/accept.png")
-        private val MARKER_ARROW_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/right_arrow.png")
-        private val MISSIONS_BOOK_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/bp_book.png")
-        private val PASS_TITLE_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/pass_title.png")
-        private val TOOLTIP_BACKGROUND_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/hud-container.png")
-        private val GREEN_BORDER_MASK_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/green-border-mask.png")
-        private val COINS_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/coins.png")
-        private val CORNER_RETICLE_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/corner_reticle.png")
-        private val STAR_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/star.png")
-        private val CHECK_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/accept.png")
-        private val SLOT_SIZE = 52
-        private val PROMINENT_SLOT_SIZE = 65
-        private val SLOT_GAP = 12
-        private val CONTAINER_TEXTURE_SOURCE_SIZE = 64
-        private val CLAIMABLE_TEXTURE_SOURCE_SIZE = 72
-        private val CLAIMABLE_TEXTURE_SIZE = 60
-        private val CLAIMABLE_TEXTURE_OFFSET = 4
-        private val BASE_ITEM_RENDER_SIZE = 16
-        private val COINS_TEXTURE_SIZE = 16
-        private val ITEM_SIZE = 32
-        private val LOCKED_OVERLAY_SIZE = 40
-        private val LOCKED_ITEM_ALPHA = 0.5f
-        private val OVERLAY_TEXTURE_SIZE = 16
-        private val CLAIMED_OVERLAY_SIZE = 24
-        private val OVERLAY_Z = 300.0f
-        private val TITLE_IMAGE_MIN_WIDTH = 120
-        private val TITLE_IMAGE_MAX_HEIGHT = 48
-        private val PASS_TITLE_TEXTURE_WIDTH = 1024
-        private val PASS_TITLE_TEXTURE_HEIGHT = 213
-        private val SELECTION_TITLE_TOP = 14
-        private val SELECTION_TITLE_MIN_WIDTH = 90
-        private val SELECTION_TITLE_MAX_WIDTH = 180
-        private val SELECTION_HEADER_BOOK_GAP = 8
-        private val SELECTION_BOOK_GAP = 16
-        private val SELECTION_BOOK_BUTTON_GAP = 12
-        private val SELECTION_BOOK_MIN_SCALE = 0.42f
-        private val SELECTION_PASS_BUTTON_HEIGHT = 122
-        private val SELECTION_PASS_BUTTON_PADDING = 5
-        private val SELECTION_PASS_BUTTON_COLOR = 0x773A2F
-        private val SELECTION_PASS_TEXT_COLOR = 0xFFFFFFFF.toInt()
-        private val SELECTION_PASS_SEPARATOR_COLOR = 0x773A2F
-        private val SELECTION_PASS_BUTTON_IDLE_ALPHA = 0.55f
-        private val SELECTION_PASS_SEPARATOR = " | "
-        private val SELECTION_PASS_CARD_MIN_WIDTH = 132
-        private val SELECTION_PASS_CARD_MAX_WIDTH = 320
-        private val SELECTION_PASS_CARD_HEIGHT = 54
-        private val SELECTION_PASS_BOTTOM_PADDING = 14
-        private val SELECTION_PASS_CARD_GAP = 16
-        private val SELECTION_PASS_CARD_PADDING = 8
-        private val SELECTION_PASS_TITLE_HOVER_SCALE = 1.06f
-        private val SELECTION_PASS_TITLE_HEIGHT = 26
-        private val SELECTION_PASS_TITLE_GAP = 5
-        private val SELECTION_PASS_REWARD_GAP = 9
-        private val SELECTION_PASS_REWARD_SIZE = 34
-        private val SELECTION_RETICLE_SIZE = 16
-        private val SELECTION_RETICLE_SOURCE_SIZE = 32
-        private val SELECTION_PASS_TITLE_RETICLE_PADDING = 8
-        private val CONTENT_PADDING = 28
-        private val CONTENT_TOP_GAP = 12
-        private val CONTENT_BOTTOM_GAP = 12
-        private val HEADER_MIN_TEXT_Y = 8
-        private val MISSIONS_BOOK_WIDTH = 201
-        private val MISSIONS_BOOK_HEIGHT = 169
-        private val MISSIONS_BOOK_MIN_WIDTH = 96
-        private val MISSIONS_BOOK_MIN_HEIGHT = 108
-        private val MISSIONS_TITLE_X = 18
-        private val MISSIONS_TITLE_Y = 16
-        private val MISSIONS_TITLE_COLOR = 0x773A2F
-        private val MISSIONS_TITLE_SCALE = 1.0f
-        private val MISSIONS_FILTER_X = 122
-        private val MISSIONS_FILTER_RIGHT_X = 178
-        private val MISSIONS_FILTER_RIGHT_PADDING = 12
-        private val MISSIONS_FILTER_Y = 13
-        private val MISSIONS_FILTER_WIDTH = 39
-        private val MISSIONS_FILTER_HEIGHT = 18
-        private val MISSIONS_FILTER_PADDING = 3
-        private val MISSIONS_FILTER_IDLE_ALPHA = 0.5f
-        private val MISSIONS_FILTER_PRESS_SCALE = 0.08f
-        private val MISSIONS_FILTER_UNDERLINE_OFFSET = 1
-        private val MISSIONS_FILTER_UNDERLINE_GAP = 3
-        private val MISSIONS_FILTER_DOT_WIDTH = 1
-        private val MISSIONS_FILTER_DOT_GAP = 4
-        private val MISSIONS_FILTER_FILL = 0x66C69A62
-        private val MISSIONS_FILTER_HOVER_FILL = 0x88D3AA72.toInt()
-        private val MISSIONS_FILTER_BORDER = 0xAA7A5131.toInt()
-        private val MISSIONS_FILTER_HOVER_BORDER = 0xFF7A5131.toInt()
-        private val MISSIONS_FILTER_TEXT = 0x773A2F
-        private val MISSIONS_CONTAINER_X = 18
-        private val MISSIONS_CONTAINER_Y = 34
-        private val MISSIONS_CONTAINER_RIGHT = 178
-        private val MISSIONS_CONTAINER_BOTTOM = 146
-        private val MISSIONS_CONTAINER_WIDTH = MISSIONS_CONTAINER_RIGHT - MISSIONS_CONTAINER_X
-        private val MISSIONS_CONTENT_WIDTH = MISSIONS_CONTAINER_WIDTH - 9
-        private val MISSIONS_REPEATING_ROW_HEIGHT = 13
-        private val MISSIONS_PROGRESSIVE_ROW_HEIGHT = 23
-        private val MISSIONS_PROGRESS_BAR_Y = 10
-        private val MISSIONS_PROGRESS_BAR_MIN_WIDTH = 40
-        private val MISSIONS_PROGRESS_BAR_HEIGHT = 3
-        private val MISSIONS_PROGRESS_TEXT_GAP = 6
-        private val MISSIONS_PROGRESS_TEXT_Y_OFFSET = 1
-        private val MISSIONS_STAR_SIZE = 8
-        private val MISSIONS_STAR_GAP = 2
-        private val STAR_TEXTURE_SIZE = 16
-        private val MISSIONS_EVENT_TEXT_SCALE = 0.68f
-        private val MISSIONS_COMPLETED_ALPHA = 0.25f
-        private val MISSIONS_SEPARATOR_ALPHA = 0.25f
-        private val MISSIONS_SEPARATOR_TEXT = "- - - - - - - - -"
-        private val MISSIONS_SEPARATOR_BOTTOM_GAP = 7
-        private val MISSIONS_EVENT_COLOR = 0x773A2F
-        private val MISSIONS_EVENT_DETAIL_COLOR = 0x5E4A3D
-        private val MISSIONS_SEPARATOR_COLOR = 0x773A2F
-        private val MISSIONS_DAILY_COLOR = 0x9B652C
-        private val MISSIONS_WEEKLY_COLOR = 0x7D2F27
-        private val MISSIONS_PERMANENT_COLOR = 0x5E5A2F
-        private val MISSIONS_PROGRESS_BAR_BACKGROUND = 0x321F18
-        private val MISSIONS_PROGRESS_BAR_BACKGROUND_ALPHA = 0.5f
-        private val MISSIONS_PROGRESS_BAR_FILL = 0xFF773A2F.toInt()
-        private val MISSIONS_SCROLLBAR_WIDTH = 2
-        private val MISSIONS_SCROLLBAR_RIGHT_INSET = 3
-        private val MISSIONS_SCROLLBAR_MIN_THUMB_HEIGHT = 12
-        private val MISSIONS_SCROLLBAR_TRACK = 0x44321F18
-        private val MISSIONS_SCROLLBAR_THUMB = 0xAA7A5131.toInt()
-        private val MISSIONS_SCROLL_STEP = 18.0f
-        private val MISSIONS_ROW_PRESS_SCALE = 0.035f
-        private val MISSIONS_TRACK_LIMIT = 7
-        private val TOOLTIP_TEXTURE_WIDTH = 128
-        private val TOOLTIP_TEXTURE_HEIGHT = 24
-        private val TOOLTIP_NINE_SLICE_BORDER = 4
-        private val TOOLTIP_BACKGROUND_ALPHA = 0.94f
-        private val TOOLTIP_PADDING = 8
-        private val TOOLTIP_LINE_HEIGHT = 11
-        private val TOOLTIP_SECTION_GAP = 4
-        private val TOOLTIP_MOUSE_GAP = 12
-        private val TOOLTIP_SCREEN_GAP = 4
-        private val TOOLTIP_MIN_WIDTH = 132
-        private val TOOLTIP_AVATAR_SIZE = 12
-        private val TOOLTIP_AVATAR_GAP = 3
-        private val TOOLTIP_MAX_COMPLETED_AVATARS = 8
-        private val TOOLTIP_COMPLETED_LABEL = "Completed:"
-        private val TOOLTIP_COMPLETED_EMPTY = "No one completed yet"
-        private val TOOLTIP_PRIMARY_TEXT = 0xFFFFFFFF.toInt()
-        private val TOOLTIP_SECONDARY_TEXT = 0xFFB8C0CC.toInt()
-        private val ITEM_STRIP_HEIGHT = 76
-        private val ITEM_STRIP_GAP = 10
-        private val FOOTER_HEIGHT = 46
-        private val FOOTER_PADDING = 28
-        private val PLAYER_PREVIEW_MIN_WIDTH = 112
-        private val PLAYER_PREVIEW_MAX_WIDTH = 190
-        private val PLAYER_PREVIEW_MIN_HEIGHT = 130
-        private val PLAYER_PREVIEW_ASPECT_NUMERATOR = 3
-        private val PLAYER_PREVIEW_ASPECT_DENOMINATOR = 4
-        private val PLAYER_PREVIEW_RIGHT_PADDING = 44
-        private val PLAYER_PREVIEW_MIN_SIZE = 58
-        private val PLAYER_PREVIEW_MAX_SIZE = 104
-        private val PLAYER_PREVIEW_SIZE_NUMERATOR = 11
-        private val PLAYER_PREVIEW_SIZE_DENOMINATOR = 20
-        private val CLAIM_ANIMATION_DURATION_MS = 720L
-        private val CLAIM_ANIMATION_TARGET_X_FACTOR = 0.5f
-        private val CLAIM_ANIMATION_TARGET_Y_FACTOR = 0.58f
-        private val CLAIM_ANIMATION_START_SCALE = 1.35f
-        private val CLAIM_ANIMATION_END_SCALE = 0.62f
-        private val CLAIM_ANIMATION_LIFT = 28.0f
-        private val CLAIM_ANIMATION_Z = 420.0f
-        private val CLAIM_SOUND_PITCH = 1.2f
-        private val CLAIM_SOUND_VOLUME = 0.7f
-        private val BUTTON_CLICK_SOUND_PITCH = 1.0f
-        private val BUTTON_CLICK_SOUND_VOLUME = 0.6f
-        private val PLAYER_PREVIEW_Y_OFFSET = 0.0625f
-        private val PLAYER_PREVIEW_ANGLE_X = 0.15f
-        private val PLAYER_PREVIEW_ANGLE_Y = 0.0f
-        private val PLAYER_XP_PILL_HEIGHT = 18
-        private val PLAYER_XP_PILL_Y_OFFSET = 16
-        private val SELECTION_TOOLTIP_MIN_WIDTH = 148
-        private val SELECTION_TOOLTIP_ITEM_SIZE = 16
-        private val SELECTION_TOOLTIP_ITEM_GAP = 8
-        private val CLAIM_ALL_WIDTH = 124
-        private val BACK_BUTTON_WIDTH = 92
-        private val BUTTON_HEIGHT = 20
-        private val MARKER_AVATAR_SIZE = 24
-        private val MARKER_ARROW_SIZE = 24
-        private val MARKER_ARROW_SOURCE_SIZE = 16
-        private val MARKER_GAP = 2
-        private val MARKER_TOTAL_HEIGHT = MARKER_AVATAR_SIZE + MARKER_ARROW_SIZE + MARKER_GAP * 2
-        private val PLAYER_MARKER_BASE_SIZE = 18
-        private val PLAYER_MARKER_MIN_SIZE = 10
-        private val PLAYER_MARKER_SHRINK_STEP = 2
-        private val PLAYER_MARKER_GAP = 2
-        private val PLAYER_MARKER_TOP_GAP = 4
-        private val PLAYER_MARKER_MAX_COLUMNS = 3
-        private val PLAYER_MARKER_SCISSOR_EXTRA = 112
-        private val HOVER_LIFT = 4.0f
-        private val HOVER_ANIMATION_SPEED = 0.22f
-        private val CLICK_ANIMATION_SPEED = 0.32f
-        private val CLICK_SCALE = 0.12f
-        private val GOAL_FLOAT_SPEED = 0.18f
-        private val GOAL_FLOAT_DISTANCE = 2.0f
-        private val BACK_EASE_C1 = 1.15f
-        private val BACK_EASE_C3 = BACK_EASE_C1 + 1.0f
+    private fun fitText(text: String, maxWidth: Int): String {
+        if (font.width(text) <= maxWidth) return text
+        val suffix = "..."
+        var trimmed = text
+        while (trimmed.isNotEmpty() && font.width(trimmed + suffix) > maxWidth) trimmed = trimmed.dropLast(1)
+        return trimmed + suffix
+    }
+
+    private fun playClaimSound() {
+        Minecraft.getInstance().soundManager.play(SimpleSoundInstance.forUI(SoundEvents.ITEM_PICKUP, CLAIM_SOUND_PITCH, CLAIM_SOUND_VOLUME))
+    }
+
+    private fun playButtonClickSound() {
+        Minecraft.getInstance().soundManager.play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK.value(), BUTTON_CLICK_SOUND_PITCH, BUTTON_CLICK_SOUND_VOLUME))
+    }
+
+    private fun playHoverSound() {
+        Minecraft.getInstance().soundManager.play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK.value(), HOVER_SOUND_PITCH, HOVER_SOUND_VOLUME))
+    }
+
+    private fun playLockedSound() {
+        Minecraft.getInstance().soundManager.play(SimpleSoundInstance.forUI(SoundEvents.CHEST_LOCKED, LOCKED_SOUND_PITCH, LOCKED_SOUND_VOLUME))
+    }
+
+    private fun registerHoverSound(key: String, hovered: Boolean) {
+        if (hovered && currentHoverSoundKey == null) currentHoverSoundKey = key
+    }
+
+    private fun finishHoverSound() {
+        val key = currentHoverSoundKey
+        if (key != null && key != previousHoverSoundKey) playHoverSound()
+        previousHoverSoundKey = key
+    }
+
+    private val UI_BACKGROUND_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/ui_bg.png")
+    private val REWARD_BOX_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/box.png")
+    private val REWARD_BOX_CLAIMED_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/box_green_highlight.png")
+    private val REWARD_BOX_CLAIMABLE_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/box_yellow_highlight.png")
+    private val REWARD_BOX_LOCKED_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/box_locked.png")
+    private val LOCKED_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/locked.png")
+    private val CLAIM_BUTTON_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_btn_green.png")
+    private val CLAIM_BUTTON_HOVER_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_btn_green_hover.png")
+    private val TOOLTIP_CONTAINER_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_container.png")
+    private val CKDM_BOLD_FONT = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "ckdm_bold")
+    private val CKDM_BOLD_LARGE_FONT = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "ckdm_bold_large")
+    private val CKDM_BOLD_SMALL_FONT = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "ckdm_bold_small")
+    private val CKDM_BOLD_CLAIM_FONT = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "ckdm_bold_claim")
+    private val UI_BACKGROUND_WIDTH = 2560
+    private val UI_BACKGROUND_HEIGHT = 1440
+    private val BACKGROUND_PARALLAX_PADDING = 18
+    private val BACKGROUND_PARALLAX_MAX_OFFSET = 6.0f
+    private val BACKGROUND_PARALLAX_LERP = 0.045f
+    private val HEADER_ANIMATION_DELAY_MS = 0
+    private val HEADER_BUTTON_ANIMATION_DELAY_MS = 80
+    private val MISSIONS_TITLE_ANIMATION_DELAY_MS = 150
+    private val MISSION_FILTER_ANIMATION_DELAY_MS = 220
+    private val MISSION_LIST_ANIMATION_DELAY_MS = 290
+    private val REWARD_ANIMATION_DELAY_MS = 410
+    private val FOOTER_ANIMATION_DELAY_MS = 620
+    private val MISSION_ROW_STAGGER_MS = 32
+    private val REWARD_STAGGER_MS = 34
+    private val REWARD_ITEM_BOUNCE_DURATION_MS = 220.0f
+    private val REWARD_ITEM_MAX_BOUNCE_SCALE = 1.12f
+    private val HOVER_LERP = 0.24f
+    private val HOVER_LIFT_OFFSET = 4
+    private val PRESS_DOWN_OFFSET = 7
+    private val PRESS_ANIMATION_DURATION_MS = 150.0f
+    private val LOCK_SHAKE_DURATION_MS = 260.0f
+    private val LOCK_SHAKE_WAVES = 3.0f
+    private val LOCK_SHAKE_DEGREES = 9.0f
+    private val CLAIM_TEXT_FLOAT_PERIOD_MS = 1250.0f
+    private val CLAIM_TEXT_FLOAT_AMPLITUDE = 2.0f
+    private val CLAIMABLE_SHAKE_PERIOD_MS = 3000L
+    private val CLAIMABLE_SHAKE_ACTIVE_MS = 520.0f
+    private val CLAIMABLE_SHAKE_WAVES = 2.5f
+    private val CLAIMABLE_SHAKE_DEGREES = 6.0f
+    private val CLAIMABLE_SHAKE_PHASE_OFFSET_MS = 113L
+    private val REWARD_FLYOUT_DURATION_MS = 700.0f
+    private val REWARD_FLYOUT_STAGGER_MS = 65
+    private val REWARD_FLYOUT_ARC_HEIGHT = 28.0f
+    private val REWARD_FLYOUT_SCALE_FROM = 1.55f
+    private val REWARD_FLYOUT_SCALE_TO = 0.7f
+    private val REWARD_FLYOUT_Z = 500.0f
+    private val ENTRANCE_SLIDE_DOWN_OFFSET = -10
+    private val REWARD_SLIDE_OFFSET = 18
+    private val BUTTON_SLIDE_OFFSET = 18
+    private val FOOTER_SLIDE_OFFSET = 10
+    private val HEADER_SCALE_FROM = 0.92f
+    private val REWARD_BOX_TEXTURE_SIZE = 512
+    private val LOCKED_TEXTURE_SIZE = 16
+    private val LOCKED_ICON_SIZE = 40
+    private val CLAIM_BUTTON_TEXTURE_SIZE = 8
+    private val CLAIM_BUTTON_CORNER_SIZE = 2
+    private val CLAIM_BUTTON_DESTINATION_CORNER_SIZE = 4
+    private val CLAIM_BUTTON_HOVER_TEXTURE_SIZE = 10
+    private val CLAIM_BUTTON_HOVER_CORNER_SIZE = 3
+    private val CLAIM_BUTTON_HOVER_DESTINATION_CORNER_SIZE = 5
+    private val CLAIM_BUTTON_HOVER_BORDER_PADDING = 1
+    private val TOOLTIP_CONTAINER_TEXTURE_SIZE = 32
+    private val TOOLTIP_CONTAINER_CORNER_SIZE = 10
+    private val REWARD_HOVER_TINT = 0x44FFFFFF
+    private val BUTTON_DISABLED_FILL = 0x6630353D
+    private val TOOLTIP_GOLD = 0xFFFFC857.toInt()
+    private val TOOLTIP_AVATAR_FALLBACK_FILL = 0xFF3A414C.toInt()
+    private val LOCKED_ITEM_ALPHA = 0.5f
+    private val PROGRESS_BACK = 0xFF2C3138.toInt()
+    private val PROGRESS_FILL = 0xFF72C66F.toInt()
+    private val TEXT_PRIMARY = 0xFFFFFFFF.toInt()
+    private val TEXT_MUTED = 0xFFB8C0CC.toInt()
+    private val CKDM_HIGHLIGHT_TEXT_COLOR = 0xFFFFD447.toInt()
+    private val CKDM_HIGHLIGHT_SHADOW_COLOR = 0xFFFF7A1A.toInt()
+    private val CKDM_HIGHLIGHT_SHADOW_OFFSET = 2
+    private val CKDM_SHADOW_COLOR = 0xAA000000.toInt()
+    private val CKDM_SHADOW_OFFSET = 2
+    private val QUEST_TITLE_NUMBER_REGEX = Regex("\\d+")
+    private val SAFE_EDGE_PADDING = 8
+    private val CONTENT_PADDING = 10
+    private val PANEL_PADDING = 12
+    private val DETAIL_COLUMN_GAP = 18
+    private val HEADER_HEIGHT = 64
+    private val HEADER_TITLE_TEXTURE_HEIGHT = 40
+    private val FOOTER_HEIGHT = 40
+    private val ITEM_STRIP_HEIGHT = 110
+    private val ITEM_STRIP_GAP = 8
+    private val SLOT_SIZE = 80
+    private val PROMINENT_SLOT_SIZE = 96
+    private val SLOT_GAP = 8
+    private val BASE_ITEM_RENDER_SIZE = 16
+    private val ITEM_RENDER_PADDING = 16
+    private val LOCK_OVERLAY_Z = 300.0f
+    private val REWARD_TIER_PADDING = 8
+    private val CLAIM_TEXT_TOP_OFFSET = 14
+    private val CLAIM_TEXT_SCISSOR_TOP_PADDING = 14
+    private val QUANTITY_PADDING = 8
+    private val QUANTITY_TEXT_HEIGHT = 7
+    private val PLAYER_PREVIEW_WIDTH = 172
+    private val PLAYER_PREVIEW_MIN_WIDTH = 112
+    private val PLAYER_PREVIEW_MIN_HEIGHT = 120
+    private val PLAYER_PREVIEW_MIN_SIZE = 42
+    private val PLAYER_PREVIEW_MAX_SIZE = 82
+    private val PLAYER_DOLL_TARGET_SIZE = 24
+    private val PLAYER_PREVIEW_Y_OFFSET = 0.0625f
+    private val PLAYER_PREVIEW_ANGLE_X = 0.15f
+    private val PLAYER_PREVIEW_ANGLE_Y = 0.0f
+    private val MISSION_PANEL_WIDTH = 420
+    private val MISSION_PANEL_MIN_WIDTH = 320
+    private val MISSION_ROW_ASPECT_WIDTH = 6.5f
+    private val MISSION_ROW_MIN_HEIGHT = 48
+    private val MISSION_ROW_PADDING = 20
+    private val MISSION_ROW_COLUMN_GAP = 12
+    private val MISSION_ROW_HEADER_TEXT_HEIGHT = 9
+    private val MISSION_ROW_SUB_TEXT_HEIGHT = 7
+    private val MISSION_ROW_TEXT_GAP = 6
+    private val MISSION_ROW_ICON_DETAIL_OFFSET = 3
+    private val MISSION_ROW_COMPLETED_GAP = 5
+    private val MISSION_ROW_AVATAR_SIZE = 12
+    private val MISSION_ROW_AVATAR_GAP = 3
+    private val MISSION_ROW_MAX_AVATARS = 3
+    private val MISSION_ROW_CONTAINER_CORNER_SIZE = 10
+    private val MISSION_XP_VALUE_GAP = 4
+    private val MISSION_COMPLETED_COLUMN_WIDTH_PERCENT = 30
+    private val MISSION_COMPLETED_COLUMN_MIN_WIDTH = 96
+    private val MISSION_XP_LABEL_COLOR = 0xFF6BE06B.toInt()
+    private val MISSION_ROW_BACKGROUND_ALPHA = 0.3f
+    private val MISSION_ROW_HOVER_BACKGROUND_ALPHA = 0.8f
+    private val MISSION_HEADER_HEIGHT = 52
+    private val MISSION_TAB_TEXT_HEIGHT = 9
+    private val MISSION_TAB_GAP = 12
+    private val MISSION_LIST_VERTICAL_PADDING = 12
+    private val MISSIONS_SCROLL_STEP = 24.0f
+    private val REWARD_SCROLL_STEP = 42.0f
+    private val MISSIONS_TRACK_LIMIT = 7
+    private val ROW_GAP = 4
+    private val SCROLLBAR_GAP = 6
+    private val BUTTON_HEIGHT = 20
+    private val BACK_BUTTON_WIDTH = 92
+    private val CLAIM_ALL_WIDTH = 124
+    private val TOOLTIP_PADDING = 14
+    private val TOOLTIP_LINE_HEIGHT = 13
+    private val TOOLTIP_SMALL_TEXT_HEIGHT = 7
+    private val TOOLTIP_HEADER_CONTENT_GAP = 11
+    private val TOOLTIP_SECTION_GAP = 20
+    private val TOOLTIP_MOUSE_OFFSET = 12
+    private val TOOLTIP_AVATAR_SIZE = 12
+    private val TOOLTIP_AVATAR_GAP = 3
+    private val TOOLTIP_AVATAR_FOOTER_GAP = 8
+    private val TOOLTIP_AVATAR_CONTENT_WIDTH = 96
+    private val TOOLTIP_Z = 450.0f
+    private val TOOLTIP_BACKGROUND_ALPHA = 0.75f
+    private val QUICKSKIN_HEAD_TEXTURE_SIZE = 128
+    private val SCROLL_LERP = 0.35f
+    private val CLAIM_SOUND_PITCH = 1.2f
+    private val CLAIM_SOUND_VOLUME = 0.7f
+    private val BUTTON_CLICK_SOUND_PITCH = 1.0f
+    private val BUTTON_CLICK_SOUND_VOLUME = 0.6f
+    private val HOVER_SOUND_PITCH = 1.55f
+    private val HOVER_SOUND_VOLUME = 0.18f
+    private val LOCKED_SOUND_PITCH = 0.8f
+    private val LOCKED_SOUND_VOLUME = 0.7f
 }

@@ -12,9 +12,13 @@ import dev.gisketch.chowkingdom.battlepass.BattlepassVanillaEventIntegration
 import dev.gisketch.chowkingdom.battlepass.BattlepassWorldData
 import dev.gisketch.chowkingdom.battlepass.BattlepassXpStore
 import dev.gisketch.chowkingdom.battlepass.CobblemonBattlepassIntegration
+import dev.gisketch.chowkingdom.client.ChowKingdomConfigScreen
+import dev.gisketch.chowkingdom.client.ChowDeathScreenClient
 import dev.gisketch.chowkingdom.client.ChowKingdomHud
 import dev.gisketch.chowkingdom.discord.DiscordFeature
 import dev.gisketch.chowkingdom.discord.DiscordScreenshotClient
+import dev.gisketch.chowkingdom.revive.ReviveClient
+import dev.gisketch.chowkingdom.revive.ReviveFeature
 import dev.gisketch.chowkingdom.shipping.ShippingBinClient
 import dev.gisketch.chowkingdom.profiles.ProfilesFeature
 import dev.gisketch.chowkingdom.shipping.ShippingBinFeature
@@ -27,6 +31,7 @@ import net.neoforged.bus.api.IEventBus
 import net.neoforged.fml.ModContainer
 import net.neoforged.fml.common.Mod
 import net.neoforged.fml.loading.FMLEnvironment
+import net.neoforged.neoforge.client.gui.IConfigScreenFactory
 import org.slf4j.Logger
 
 @Mod(ChowKingdomMod.MOD_ID)
@@ -47,13 +52,19 @@ class ChowKingdomMod(modBus: IEventBus, container: ModContainer) {
         ShippingBinFeature.register(modBus)
         ShopsFeature.register()
         ProfilesFeature.register(modBus)
+        ReviveFeature.register(modBus)
         TradingFeature.register(modBus)
         DiscordFeature.register()
         if (FMLEnvironment.dist == Dist.CLIENT) {
+            container.registerExtensionPoint(IConfigScreenFactory::class.java) {
+                IConfigScreenFactory { _, modListScreen -> ChowKingdomConfigScreen(modListScreen) }
+            }
             BattlepassClient.register(modBus)
+            ChowDeathScreenClient.register()
             ChowKingdomHud.register(modBus)
             DiscordScreenshotClient.register(modBus)
             ShippingBinClient.register(modBus)
+            ReviveClient.register(modBus)
             TradingClient.register(modBus)
         }
     }
