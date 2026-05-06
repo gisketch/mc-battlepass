@@ -50,7 +50,7 @@ class ChowKingdomMod(modBus: IEventBus, container: ModContainer) {
         BattlepassCommands.register()
         WalletsFeature.register(modBus)
         ShippingBinFeature.register(modBus)
-        ShopsFeature.register()
+        ShopsFeature.register(modBus)
         ProfilesFeature.register(modBus)
         ReviveFeature.register(modBus)
         TradingFeature.register(modBus)
