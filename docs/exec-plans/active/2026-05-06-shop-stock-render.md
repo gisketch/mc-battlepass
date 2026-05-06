@@ -8,7 +8,7 @@ Add owner-claimed one-item shop stock state and Spuds-style stock rendering to s
 - Shop blocks have block entities with one stock item type capped at 4096 items.
 - First player to right-click stock into the shop becomes owner.
 - Only owner or creative players can add matching stock, set price, or break stocked shops.
-- Stock item, stock count, price count, and Chowcoin icon render in-world using Spuds-style display zones.
+- Stock item and stock count render in-world using Spuds-style display zones; non-rug stock counts use the old currency positions.
 - Owner price screen uses the local `chowcoin.png` texture.
 - Jade integration shows seller, quantity, and price when Jade is installed.
 - Buying/selling flow is not implemented yet.
@@ -24,7 +24,7 @@ Add owner-claimed one-item shop stock state and Spuds-style stock rendering to s
 - [x] Add shop block entity/stock registration.
 - [x] Add owner gate for adding stock and breaking.
 - [x] Add price menu/screen/network update.
-- [x] Add client block entity renderer for item, stock count, price count, and Chowcoin icon.
+- [x] Add client block entity renderer for item and stock count.
 - [x] Add optional Jade provider for seller, quantity, and price.
 - [x] Validate build and resource checks.
 
@@ -38,7 +38,7 @@ Add owner-claimed one-item shop stock state and Spuds-style stock rendering to s
 
 - Use direct right-click stock insertion instead of a chest UI because the shop now has owner and price state.
 - Store one item stack with count up to 4096; render count separately so item renderer still gets a count-1 copy.
-- Currency is fixed to Chowcoin in data/UI; world rendering mirrors Spuds text/icon positions with `chowcoin.png` as the currency icon.
+- Currency is fixed to Chowcoin in data/UI and Jade; world rendering does not show currency labels.
 
 # Progress Log
 
@@ -55,3 +55,17 @@ Add owner-claimed one-item shop stock state and Spuds-style stock rendering to s
 - 2026-05-06: Shifted currency icon/price clusters left, reduced stock quantity text scale, and limited rug labels to the front side.
 - 2026-05-06: Lifted normal and windowsill shop stock item render positions so items float clear of the shop geometry.
 - 2026-05-06: Swapped rug front-only labels to keep the visible front pair and remove the rear pair.
+- 2026-05-06: Removed all world currency labels; non-rug quantity text now renders at old currency positions, and rug keeps only one quantity label.
+- 2026-05-06: Made world quantity text double-sided so old currency-position labels read from the front face.
+- 2026-05-06: Removed duplicate hook quantity and rotated non-rug quantity text upright while leaving rug orientation unchanged.
+- 2026-05-06: Nudged merchant crate quantity left/up and pushed angled shop quantity labels outward from the block face.
+- 2026-05-06: Nudged hook quantity slightly right and changed quantity text color to white.
+- 2026-05-06: Corrected hook nudge direction and pushed angled labels beyond the block bounds for visibility.
+- 2026-05-06: Stored stock count separately from the saved ItemStack to avoid crashes above vanilla stack-count codec limits, split drops, and moved merchant crate quantity forward.
+- 2026-05-06: Corrected merchant crate quantity to use the text-facing plane rotation instead of the old currency item rotation.
+- 2026-05-06: Split double-sided text face offsets so each side is nudged outward from its own face instead of sharing one model-side offset.
+- 2026-05-06: Reset non-rug quantity labels to Spud currency text transforms with white text, instead of using currency item transforms for font rendering.
+- 2026-05-06: Kept Spud currency text transforms but restored see-through double-sided font rendering for visibility in this renderer.
+- 2026-05-06: Pushed angled shop Spud text coordinates outside full block bounds and corrected windowsill quantity rotation from currency-item plane to currency-text plane.
+- 2026-05-06: Changed angled shop quantity text from see-through render mode to normal render mode to avoid entity/depth masking on the front face.
+- 2026-05-06: Nudged angled shop quantity slightly back toward the block and right from the front view.

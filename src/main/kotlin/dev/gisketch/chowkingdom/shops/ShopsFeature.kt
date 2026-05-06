@@ -7,7 +7,6 @@ import net.minecraft.core.registries.Registries
 import net.minecraft.network.chat.Component
 import net.minecraft.network.RegistryFriendlyByteBuf
 import net.minecraft.server.level.ServerPlayer
-import net.minecraft.world.Containers
 import net.minecraft.world.InteractionHand
 import net.minecraft.world.InteractionResult
 import net.minecraft.world.ItemInteractionResult
@@ -255,7 +254,7 @@ abstract class StockShopBlock(
         if (!state.`is`(newState.block)) {
             val shop = level.getBlockEntity(pos) as? ShopBlockEntity
             if (shop != null) {
-                Containers.dropContents(level, pos, shop)
+                shop.dropStock(level)
                 level.updateNeighbourForOutputSignal(pos, this)
             }
         }

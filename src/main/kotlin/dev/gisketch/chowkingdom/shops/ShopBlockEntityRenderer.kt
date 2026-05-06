@@ -2,15 +2,11 @@ package dev.gisketch.chowkingdom.shops
 
 import com.mojang.blaze3d.vertex.PoseStack
 import com.mojang.math.Axis
-import dev.gisketch.chowkingdom.ChowKingdomMod
 import net.minecraft.client.gui.Font
 import net.minecraft.client.renderer.MultiBufferSource
-import net.minecraft.client.renderer.RenderType
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider
-import net.minecraft.client.renderer.texture.OverlayTexture
 import net.minecraft.core.Direction
-import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.item.ItemDisplayContext
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.block.HorizontalDirectionalBlock
@@ -238,69 +234,50 @@ class ShopBlockEntityRenderer(private val context: BlockEntityRendererProvider.C
 
     private fun renderAngledLabels(shop: ShopBlockEntity, poseStack: PoseStack, bufferSource: MultiBufferSource, light: Int) {
         poseStack.pushPose()
-        poseStack.translate(0.3, 1.05, 0.25)
-        poseStack.translate(0.2, 0.0, 0.25)
-        poseStack.mulPose(Axis.YP.rotationDegrees(facingRotation(facing(shop))))
-        poseStack.translate(-0.2, 0.0, -0.25)
-        poseStack.mulPose(Axis.ZP.rotationDegrees(180.0f))
-        poseStack.mulPose(Axis.XP.rotationDegrees(-67.5f))
-        renderText(shop.stockText(), STOCK_TEXT_COLOR, 0.014f, poseStack, bufferSource, light)
-        poseStack.popPose()
-
-        poseStack.pushPose()
         when (facing(shop)) {
             Direction.NORTH -> {
-                poseStack.translate(0.385, 0.535, 0.0525)
-                poseStack.mulPose(Axis.YP.rotationDegrees(180.0f))
+                poseStack.translate(0.54, 0.514375, 0.0)
+                poseStack.mulPose(Axis.ZP.rotationDegrees(180.0f))
                 poseStack.mulPose(Axis.XP.rotationDegrees(-22.5f))
             }
             Direction.EAST -> {
-                poseStack.translate(0.9475, 0.535, 0.385)
+                poseStack.translate(1.0, 0.514375, 0.54)
+                poseStack.mulPose(Axis.ZP.rotationDegrees(180.0f))
                 poseStack.mulPose(Axis.YP.rotationDegrees(90.0f))
                 poseStack.mulPose(Axis.XP.rotationDegrees(-22.5f))
             }
             Direction.SOUTH -> {
-                poseStack.translate(0.615, 0.535, 0.9475)
+                poseStack.translate(0.46, 0.514375, 1.0)
+                poseStack.mulPose(Axis.ZP.rotationDegrees(180.0f))
+                poseStack.mulPose(Axis.YP.rotationDegrees(180.0f))
                 poseStack.mulPose(Axis.XP.rotationDegrees(-22.5f))
             }
             Direction.WEST -> {
-                poseStack.translate(0.0525, 0.535, 0.615)
+                poseStack.translate(0.0, 0.514375, 0.46)
+                poseStack.mulPose(Axis.ZP.rotationDegrees(180.0f))
                 poseStack.mulPose(Axis.YP.rotationDegrees(270.0f))
                 poseStack.mulPose(Axis.XP.rotationDegrees(-22.5f))
             }
             else -> {}
         }
-        renderCurrencyLabel(shop.priceText(), 0.12f, 0.012f, poseStack, bufferSource, light)
+        renderText(shop.stockText(), STOCK_TEXT_COLOR, 0.018f, poseStack, bufferSource, light, displayMode = Font.DisplayMode.NORMAL)
         poseStack.popPose()
     }
 
     private fun renderCrateLabels(shop: ShopBlockEntity, poseStack: PoseStack, bufferSource: MultiBufferSource, light: Int) {
         poseStack.pushPose()
-        poseStack.translate(-0.03, 0.3, -0.5975)
+        poseStack.translate(0.06, 0.14, -0.664)
         poseStack.mulPose(Axis.ZP.rotationDegrees(180.0f))
         poseStack.mulPose(Axis.XP.rotationDegrees(-22.5f))
-        renderText(shop.stockText(), STOCK_TEXT_COLOR, 0.016f, poseStack, bufferSource, light)
-        poseStack.popPose()
-
-        poseStack.pushPose()
-        poseStack.translate(-0.12, 0.14, -0.664)
-        poseStack.mulPose(Axis.ZP.rotationDegrees(180.0f))
-        poseStack.mulPose(Axis.XP.rotationDegrees(157.5f))
-        renderCurrencyLabel(shop.priceText(), 0.12f, 0.012f, poseStack, bufferSource, light)
+        renderText(shop.stockText(), STOCK_TEXT_COLOR, 0.018f, poseStack, bufferSource, light)
         poseStack.popPose()
     }
 
     private fun renderShelfPairLabels(shop: ShopBlockEntity, poseStack: PoseStack, bufferSource: MultiBufferSource, light: Int) {
         poseStack.pushPose()
-        poseStack.translate(0.2, -0.16, 0.43749)
+        poseStack.translate(-0.08, -0.16, 0.43749)
         poseStack.mulPose(Axis.ZP.rotationDegrees(180.0f))
-        renderText(shop.stockText(), STOCK_TEXT_COLOR, 0.012f, poseStack, bufferSource, light, invertZ = true)
-        poseStack.popPose()
-
-        poseStack.pushPose()
-        poseStack.translate(-0.245, -0.16, 0.43)
-        poseStack.mulPose(Axis.YP.rotationDegrees(180.0f))
-        renderCurrencyLabel(shop.priceText(), 0.15f, 0.011f, poseStack, bufferSource, light)
+        renderText(shop.stockText(), STOCK_TEXT_COLOR, 0.016f, poseStack, bufferSource, light, invertZ = true)
         poseStack.popPose()
     }
 
@@ -309,20 +286,10 @@ class ShopBlockEntityRenderer(private val context: BlockEntityRendererProvider.C
         poseStack.translate(0.5, 0.0, 0.5)
         poseStack.mulPose(Axis.YP.rotationDegrees(facingRotation(facing(shop))))
         poseStack.translate(-0.5, 0.0, -0.5)
+        poseStack.translate(0.30125, 0.22, 0.9167)
         poseStack.mulPose(Axis.ZP.rotationDegrees(180.0f))
-        poseStack.mulPose(Axis.XP.rotationDegrees(-90.0f))
-        poseStack.translate(-0.15, -0.126, -0.15)
-        renderText(shop.stockText(), STOCK_TEXT_COLOR, 0.016f, poseStack, bufferSource, light)
-        poseStack.popPose()
-
-        poseStack.pushPose()
-        poseStack.translate(0.5, 0.0, 0.5)
-        poseStack.mulPose(Axis.YP.rotationDegrees(facingRotation(facing(shop))))
-        poseStack.translate(-0.5, 0.0, -0.5)
-        poseStack.translate(0.13125, 0.22, 0.9167)
-        poseStack.mulPose(Axis.ZP.rotationDegrees(180.0f))
-        poseStack.mulPose(Axis.XP.rotationDegrees(157.5f))
-        renderCurrencyLabel(shop.priceText(), 0.12f, 0.012f, poseStack, bufferSource, light)
+        poseStack.mulPose(Axis.XP.rotationDegrees(-22.5f))
+        renderText(shop.stockText(), STOCK_TEXT_COLOR, 0.018f, poseStack, bufferSource, light, invertZ = true)
         poseStack.popPose()
     }
 
@@ -330,17 +297,9 @@ class ShopBlockEntityRenderer(private val context: BlockEntityRendererProvider.C
         poseStack.pushPose()
         poseStack.translate(0.5, 0.5, 0.5)
         poseStack.mulPose(Axis.YP.rotationDegrees(facingRotation(facing(shop))))
-        poseStack.translate(-0.12, 0.2, -0.04)
-        poseStack.mulPose(Axis.YP.rotationDegrees(180.0f))
-        poseStack.pushPose()
-        poseStack.translate(-0.12, 0.0, -0.04)
-        poseStack.mulPose(Axis.YP.rotationDegrees(180.0f))
-        poseStack.translate(0.12, 0.0, 0.04)
-        renderCurrencyLabel(shop.priceText(), 0.15f, 0.011f, poseStack, bufferSource, light)
-        poseStack.popPose()
-        poseStack.pushPose()
-        renderCurrencyLabel(shop.priceText(), 0.15f, 0.011f, poseStack, bufferSource, light)
-        poseStack.popPose()
+        poseStack.translate(0.05, 0.18, -0.03126)
+        poseStack.mulPose(Axis.ZP.rotationDegrees(180.0f))
+        renderText(shop.stockText(), STOCK_TEXT_COLOR, 0.016f, poseStack, bufferSource, light, invertZ = true)
         poseStack.popPose()
     }
 
@@ -356,14 +315,6 @@ class ShopBlockEntityRenderer(private val context: BlockEntityRendererProvider.C
         renderText(shop.stockText(), STOCK_TEXT_COLOR, 0.014f, poseStack, bufferSource, light)
         poseStack.popPose()
 
-        poseStack.pushPose()
-        poseStack.translate(0.39, 0.3, 0.23)
-        poseStack.mulPose(Axis.YP.rotationDegrees(180.0f))
-        poseStack.translate(-0.39, -0.3, -0.23)
-        poseStack.mulPose(Axis.XP.rotationDegrees(90.0f))
-        poseStack.mulPose(Axis.ZP.rotationDegrees(-45.0f))
-        renderCurrencyLabel(shop.priceText(), 0.16f, 0.012f, poseStack, bufferSource, light)
-        poseStack.popPose()
         poseStack.popPose()
     }
 
@@ -377,11 +328,27 @@ class ShopBlockEntityRenderer(private val context: BlockEntityRendererProvider.C
         invertZ: Boolean = false,
         x: Float = quantityTextX(text),
         displayMode: Font.DisplayMode = Font.DisplayMode.SEE_THROUGH,
+        rotateHalfTurn: Boolean = false,
+        doubleSided: Boolean = true,
     ) {
         val font = context.font
-        poseStack.translate(0.0, 0.0, if (invertZ) -TEXT_FACE_OFFSET else TEXT_FACE_OFFSET)
+        val faceOffset = if (invertZ) -TEXT_FACE_OFFSET else TEXT_FACE_OFFSET
+        poseStack.pushPose()
+        poseStack.translate(0.0, 0.0, faceOffset)
+        if (rotateHalfTurn) poseStack.mulPose(Axis.ZP.rotationDegrees(180.0f))
         poseStack.scale(scale, scale, if (invertZ) -scale else scale)
         drawTextFace(font, text, color, poseStack, bufferSource, light, x, displayMode)
+        poseStack.popPose()
+
+        if (!doubleSided) return
+
+        poseStack.pushPose()
+        poseStack.translate(0.0, 0.0, -faceOffset)
+        if (rotateHalfTurn) poseStack.mulPose(Axis.ZP.rotationDegrees(180.0f))
+        poseStack.scale(scale, scale, if (invertZ) -scale else scale)
+        poseStack.mulPose(Axis.YP.rotationDegrees(180.0f))
+        drawTextFace(font, text, color, poseStack, bufferSource, light, -x - font.width(text), displayMode)
+        poseStack.popPose()
     }
 
     private fun drawTextFace(
@@ -408,38 +375,7 @@ class ShopBlockEntityRenderer(private val context: BlockEntityRendererProvider.C
         )
     }
 
-    private fun renderCurrencyLabel(text: String, iconScale: Float, textScale: Float, poseStack: PoseStack, bufferSource: MultiBufferSource, light: Int) {
-        poseStack.translate(CURRENCY_GROUP_LEFT_SHIFT, 0.0, 0.0)
-        renderChowcoinIcon(iconScale, poseStack, bufferSource, light)
-        val font = context.font
-        poseStack.pushPose()
-        poseStack.translate(iconScale * 0.65 + CURRENCY_TEXT_GAP, 0.0, 0.0)
-        renderText(text, PRICE_TEXT_COLOR, textScale, poseStack, bufferSource, light, x = 0.0f, displayMode = Font.DisplayMode.NORMAL)
-        poseStack.popPose()
-        poseStack.pushPose()
-        poseStack.translate(iconScale * 0.65 + CURRENCY_TEXT_GAP, 0.0, 0.0)
-        poseStack.mulPose(Axis.YP.rotationDegrees(180.0f))
-        renderText(text, PRICE_TEXT_COLOR, textScale, poseStack, bufferSource, light, x = -font.width(text).toFloat(), displayMode = Font.DisplayMode.NORMAL)
-        poseStack.popPose()
-    }
-
-    private fun renderChowcoinIcon(scale: Float, poseStack: PoseStack, bufferSource: MultiBufferSource, light: Int) {
-        poseStack.pushPose()
-        poseStack.scale(scale, scale, scale)
-        val pose = poseStack.last()
-        val matrix = pose.pose()
-        val normal = pose
-        val buffer = bufferSource.getBuffer(RenderType.text(CHOWCOIN_TEXTURE))
-        buffer.addVertex(matrix, -0.5f, -0.5f, 0.0f).setColor(255, 255, 255, 255).setUv(0.0f, 1.0f).setOverlay(OverlayTexture.NO_OVERLAY).setLight(light).setNormal(normal, 0.0f, 0.0f, 1.0f)
-        buffer.addVertex(matrix, 0.5f, -0.5f, 0.0f).setColor(255, 255, 255, 255).setUv(1.0f, 1.0f).setOverlay(OverlayTexture.NO_OVERLAY).setLight(light).setNormal(normal, 0.0f, 0.0f, 1.0f)
-        buffer.addVertex(matrix, 0.5f, 0.5f, 0.0f).setColor(255, 255, 255, 255).setUv(1.0f, 0.0f).setOverlay(OverlayTexture.NO_OVERLAY).setLight(light).setNormal(normal, 0.0f, 0.0f, 1.0f)
-        buffer.addVertex(matrix, -0.5f, 0.5f, 0.0f).setColor(255, 255, 255, 255).setUv(0.0f, 0.0f).setOverlay(OverlayTexture.NO_OVERLAY).setLight(light).setNormal(normal, 0.0f, 0.0f, 1.0f)
-        poseStack.popPose()
-    }
-
     private fun ShopBlockEntity.stockText(): String = stockCount.toString()
-
-    private fun ShopBlockEntity.priceText(): String = price.toString()
 
     private fun quantityTextX(text: String): Float =
         when {
@@ -469,11 +405,7 @@ class ShopBlockEntityRenderer(private val context: BlockEntityRendererProvider.C
     private data class CrateStockPosition(val x: Float, val y: Float, val z: Float, val rotationY: Float, val rotationX: Float)
 
     companion object {
-        private val CHOWCOIN_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/chowcoin.png")
-        private const val CURRENCY_GROUP_LEFT_SHIFT = -0.12
-        private const val CURRENCY_TEXT_GAP = 0.015
-        private const val PRICE_TEXT_COLOR = 0xffffff
-        private const val STOCK_TEXT_COLOR = 0xffff00
+        private const val STOCK_TEXT_COLOR = 0xffffff
         private const val RUG_LABEL_LIFT = 0.03
         private const val TEXT_FACE_OFFSET = 0.002
         private val CRATE_STOCK_POSITIONS = listOf(
