@@ -19,6 +19,12 @@ object BattlepassClientState {
         val claimedByPass: Map<String, Set<Int>>,
         val missionProgressByPass: Map<String, Map<String, Int>>,
         val completedMissionKeysByPass: Map<String, Set<String>>,
+        val uniquePokemonCaught: Int,
+        val hostileMonstersKilled: Int,
+        val koCount: Int,
+        val deaths: Int,
+        val chowcoins: Long,
+        val playtimeTicks: Long,
     )
 
     data class MissionCompletionNotification(
@@ -57,6 +63,12 @@ object BattlepassClientState {
                     player.claimedByPass.mapValues { (_, tiers) -> tiers.toSet() },
                     player.missionProgressByPass,
                     player.completedMissionKeysByPass.mapValues { (_, keys) -> keys.toSet() },
+                    player.uniquePokemonCaught,
+                    player.hostileMonstersKilled,
+                    player.koCount,
+                    player.deaths,
+                    player.chowcoins,
+                    player.playtimeTicks,
                 )
             },
             payload.activeMissionKeysByPass,
@@ -88,6 +100,12 @@ object BattlepassClientState {
 
     fun isMissionCompleted(playerId: UUID, passId: String, eventId: String): Boolean =
         snapshot?.players?.firstOrNull { player -> player.uuid == playerId }?.completedMissionKeysByPass?.get(passId)?.contains(eventId) == true
+
+    fun uniquePokemonCaught(playerId: UUID): Int = snapshot?.players?.firstOrNull { player -> player.uuid == playerId }?.uniquePokemonCaught ?: 0
+
+    fun hostileMonstersKilled(playerId: UUID): Int = snapshot?.players?.firstOrNull { player -> player.uuid == playerId }?.hostileMonstersKilled ?: 0
+
+    fun playerProgress(playerId: UUID): PlayerProgress? = snapshot?.players?.firstOrNull { player -> player.uuid == playerId }
 
     fun drainMissionCompletionNotifications(): List<MissionCompletionNotification> = pendingCompletions.toList().also { pendingCompletions.clear() }
 

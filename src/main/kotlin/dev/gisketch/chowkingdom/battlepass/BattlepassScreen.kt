@@ -478,14 +478,16 @@ class BattlepassScreen(initialPassId: String? = null) : Screen(Component.transla
         val progressXp = currentXp - level * XP_PER_LEVEL
         val xpToNext = (nextLevelXp - currentXp).coerceAtLeast(0)
         val content = rect.inset(XP_PANEL_PADDING)
-        var y = content.y + 8
+        var y = content.y + XP_PANEL_TOP_GAP
         val header = "PASS LEVEL"
         drawCkdmText(guiGraphics, fitCkdmText(header, content.width, CKDM_BOLD_LARGE_FONT), content.x + (content.width - ckdmWidth(header, CKDM_BOLD_LARGE_FONT)).coerceAtLeast(0) / 2, y, TEXT_PRIMARY, CKDM_BOLD_LARGE_FONT)
-        y += XP_PANEL_HEADER_HEIGHT
+        y += XP_PANEL_HEADER_HEIGHT + XP_PANEL_SECTION_GAP
         val levelText = level.toString()
         val levelWidth = (ckdmWidth(levelText, CKDM_BOLD_LARGE_FONT) * XP_PANEL_LEVEL_NUMBER_SCALE).toInt()
-        drawScaledCkdmShadowedText(guiGraphics, levelText, content.x + (content.width - levelWidth) / 2, y, CKDM_HIGHLIGHT_TEXT_COLOR, CKDM_HIGHLIGHT_SHADOW_COLOR, CKDM_HIGHLIGHT_SHADOW_OFFSET, CKDM_BOLD_LARGE_FONT, XP_PANEL_LEVEL_NUMBER_SCALE)
-        y += XP_PANEL_LEVEL_NUMBER_HEIGHT
+        val levelBox = Rect(content.x + (content.width - (levelWidth + XP_PANEL_LEVEL_BOX_X_PADDING * 2)) / 2, y, levelWidth + XP_PANEL_LEVEL_BOX_X_PADDING * 2, XP_PANEL_LEVEL_BOX_HEIGHT)
+        renderWideNineSlice(guiGraphics, FRAME_PANEL_TEXTURE, levelBox, FRAME_PANEL_TEXTURE_WIDTH, FRAME_PANEL_TEXTURE_HEIGHT, FRAME_PANEL_SOURCE_CORNER_SIZE, FRAME_PANEL_DESTINATION_CORNER_SIZE)
+        drawScaledCkdmText(guiGraphics, levelText, levelBox.x + (levelBox.width - levelWidth) / 2, levelBox.y + XP_PANEL_LEVEL_TEXT_Y, CKDM_HIGHLIGHT_TEXT_COLOR, CKDM_BOLD_LARGE_FONT, XP_PANEL_LEVEL_NUMBER_SCALE)
+        y += XP_PANEL_LEVEL_BOX_HEIGHT + XP_PANEL_SECTION_GAP
         drawCkdmText(guiGraphics, "CURRENT XP", content.x + (content.width - ckdmWidth("CURRENT XP", CKDM_BOLD_SMALL_FONT)) / 2, y, TEXT_MUTED, CKDM_BOLD_SMALL_FONT)
         y += XP_PANEL_SMALL_TEXT_HEIGHT
         val xpText = "$currentXp/$nextLevelXp XP"
@@ -543,6 +545,7 @@ class BattlepassScreen(initialPassId: String? = null) : Screen(Component.transla
 
         guiGraphics.enableScissor(hotbar.x + 4, hotbar.y - CLAIM_TEXT_SCISSOR_TOP_PADDING, hotbar.x + hotbar.width - 4, hotbar.y + hotbar.height - 4)
         var nextX = hotbar.x + 10 - rewardScroll.toInt()
+        var visibleSlotIndex = 0
         tiers.forEachIndexed { index, tier ->
             val reward = tier.rewards.firstOrNull()
             val slotSize = slotSize(reward?.let(::isProminentReward) == true)
@@ -556,7 +559,8 @@ class BattlepassScreen(initialPassId: String? = null) : Screen(Component.transla
                 if (slot.rect.x + slot.rect.width > hotbar.x && slot.rect.x < hotbar.x + hotbar.width) {
                     rewardSlots = rewardSlots + slot
                     val hovered = slot.rect.contains(mouseX.toDouble(), mouseY.toDouble())
-                    val entrance = EntranceStyle(REWARD_ANIMATION_DELAY_MS + index * REWARD_STAGGER_MS, offsetX = REWARD_SLIDE_OFFSET)
+                    val entrance = EntranceStyle(REWARD_ANIMATION_DELAY_MS + visibleSlotIndex * REWARD_STAGGER_MS, offsetX = REWARD_SLIDE_OFFSET)
+                    visibleSlotIndex++
                     renderRewardSlot(guiGraphics, slot, currentXp, hovered, entrance, interactionYOffset(rewardInteractionKey(slot), hovered).toFloat() + if (slot.claimable) claimableFloatOffset() else 0.0f)
                     tiers.getOrNull(index + 1)?.rewards?.firstOrNull()?.let { nextReward ->
                         withEntrance(guiGraphics, entrance) {
@@ -757,7 +761,7 @@ class BattlepassScreen(initialPassId: String? = null) : Screen(Component.transla
 
     private fun renderClaimAllButton(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
         val footer = footerRect()
-        claimAllClaimableCount = rewardSlots.count { slot -> slot.claimable }
+        claimAllClaimableCount = selectedPass()?.let { pass -> claimableRewardCount(pass) } ?: 0
         claimAllRect = Rect((footer.x + footer.width - CONTENT_PADDING - CLAIM_ALL_WIDTH).coerceAtLeast(footer.x + CONTENT_PADDING), footer.y + (footer.height - BUTTON_HEIGHT) / 2, CLAIM_ALL_WIDTH, BUTTON_HEIGHT)
         claimAllButton?.visible = false
         withEntrance(guiGraphics, EntranceStyle(FOOTER_ANIMATION_DELAY_MS, offsetY = FOOTER_SLIDE_OFFSET)) {
@@ -767,6 +771,12 @@ class BattlepassScreen(initialPassId: String? = null) : Screen(Component.transla
             val text = if (active) "Claim All ($claimAllClaimableCount)" else "Claim All"
             renderBattlepassButton(guiGraphics, claimAllRect, text, active, hovered, if (active) CLAIM_BUTTON_TEXTURE else BACK_BUTTON_TEXTURE, if (active) CLAIM_BUTTON_HOVER_TEXTURE else BACK_BUTTON_HOVER_TEXTURE)
         }
+    }
+
+    private fun claimableRewardCount(pass: BattlepassPassDefinition): Int {
+        val playerId = currentPlayerId() ?: return 0
+        val currentXp = xpFor(playerId, pass.id)
+        return pass.progression.count { tier -> currentXp >= tier.xp && !isClaimed(playerId, pass.id, tier.xp) }
     }
 
     private fun renderAnimatedWidgets(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) {
@@ -989,6 +999,14 @@ class BattlepassScreen(initialPassId: String? = null) : Screen(Component.transla
         guiGraphics.pose().popPose()
     }
 
+    private fun drawScaledCkdmText(guiGraphics: GuiGraphics, text: String, x: Int, y: Int, color: Int, fontId: ResourceLocation, scale: Float) {
+        guiGraphics.pose().pushPose()
+        guiGraphics.pose().translate(x.toFloat(), y.toFloat(), 0.0f)
+        guiGraphics.pose().scale(scale, scale, 1.0f)
+        drawCkdmText(guiGraphics, text, 0, 0, color, fontId)
+        guiGraphics.pose().popPose()
+    }
+
     private fun drawQuestTitleText(guiGraphics: GuiGraphics, text: String, x: Int, y: Int, color: Int, fontId: ResourceLocation = CKDM_BOLD_FONT) {
         var cursorX = x
         QUEST_TITLE_NUMBER_REGEX.findAll(text).fold(0) { index, match ->
@@ -1143,7 +1161,7 @@ class BattlepassScreen(initialPassId: String? = null) : Screen(Component.transla
 
     private fun selfPlayerProgress(): BattlepassClientState.PlayerProgress? {
         val player = Minecraft.getInstance().player ?: return null
-        return BattlepassClientState.PlayerProgress(player.uuid, player.gameProfile.name, emptyMap(), emptyMap(), emptyMap(), emptyMap())
+        return BattlepassClientState.PlayerProgress(player.uuid, player.gameProfile.name, emptyMap(), emptyMap(), emptyMap(), emptyMap(), 0, 0, 0, 0, 0L, 0L)
     }
 
     private fun drawTooltipPanel(guiGraphics: GuiGraphics, origin: Rect, width: Int, height: Int) {
@@ -1598,9 +1616,13 @@ class BattlepassScreen(initialPassId: String? = null) : Screen(Component.transla
     private val SCROLLBAR_GAP = 6
     private val XP_PER_LEVEL = 100
     private val XP_PANEL_PADDING = 16
+    private val XP_PANEL_TOP_GAP = 6
+    private val XP_PANEL_SECTION_GAP = 10
     private val XP_PANEL_HEADER_HEIGHT = 24
     private val XP_PANEL_LEVEL_NUMBER_SCALE = 2.0f
-    private val XP_PANEL_LEVEL_NUMBER_HEIGHT = 44
+    private val XP_PANEL_LEVEL_BOX_HEIGHT = 38
+    private val XP_PANEL_LEVEL_BOX_X_PADDING = 18
+    private val XP_PANEL_LEVEL_TEXT_Y = 5
     private val XP_PANEL_SMALL_TEXT_HEIGHT = 16
     private val XP_PANEL_MEDIUM_TEXT_HEIGHT = 20
     private val XP_PANEL_PROGRESS_HEIGHT = 8

@@ -16,6 +16,7 @@ import dev.gisketch.chowkingdom.client.ChowKingdomConfigScreen
 import dev.gisketch.chowkingdom.client.ChowDeathScreenClient
 import dev.gisketch.chowkingdom.client.ChowKingdomHud
 import dev.gisketch.chowkingdom.client.InventoryMenuClient
+import dev.gisketch.chowkingdom.client.PlayerListHudClient
 import dev.gisketch.chowkingdom.discord.DiscordFeature
 import dev.gisketch.chowkingdom.discord.DiscordScreenshotClient
 import dev.gisketch.chowkingdom.revive.ReviveClient
@@ -68,6 +69,7 @@ class ChowKingdomMod(modBus: IEventBus, container: ModContainer) {
             ChowDeathScreenClient.register()
             ChowKingdomHud.register(modBus)
             InventoryMenuClient.register()
+            PlayerListHudClient.register(modBus)
             DiscordScreenshotClient.register(modBus)
             ShippingBinClient.register(modBus)
             ShopsClient.register(modBus)

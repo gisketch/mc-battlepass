@@ -16,11 +16,13 @@ import net.minecraft.client.gui.Font
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.screens.ChatScreen
 import net.minecraft.client.resources.sounds.SimpleSoundInstance
+import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.sounds.SoundEvents
 import net.minecraft.util.Mth
 import net.minecraft.world.item.ItemStack
+import net.minecraft.world.item.Items
 import net.neoforged.bus.api.IEventBus
 import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent
 import org.lwjgl.glfw.GLFW
@@ -33,6 +35,8 @@ object ChowKingdomHud {
 
     private val LAYER_ID: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "player_hud")
     private val CHOWCOIN_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/chowcoin.png")
+    private val HOSTILE_KILLS_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/kilic.png")
+    private val POKE_BALL_ITEM_ID: ResourceLocation = ResourceLocation.fromNamespaceAndPath("cobblemon", "poke_ball")
     private val TOAST_BUTTON_SPRITE: ResourceLocation = ResourceLocation.withDefaultNamespace("widget/button")
     private val CKDM_BOLD_FONT: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "ckdm_bold")
     private val CKDM_BOLD_SMALL_FONT: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "ckdm_bold_small")
@@ -76,6 +80,7 @@ object ChowKingdomHud {
         val coinTextX = coinX + COMPACT_COIN_SIZE + COMPACT_COIN_TEXT_GAP
         drawCkdmShadowed(guiGraphics, font, coinText, coinTextX, coinY + COMPACT_COIN_TEXT_Y, COMPACT_WHITE, COMPACT_BLACK_SHADOW, COMPACT_SHADOW_OFFSET, CKDM_BOLD_FONT)
         renderChowcoinDelta(guiGraphics, font, coinText, coinTextX, coinY + COMPACT_COIN_TEXT_Y, now)
+        renderStatRow(guiGraphics, font, coinTextX + ckdmWidth(font, coinText, CKDM_BOLD_FONT) + COMPACT_STAT_GROUP_GAP, coinY, playerId)
 
         if (hudMissions.isEmpty()) return
 
@@ -127,6 +132,19 @@ object ChowKingdomHud {
         guiGraphics.pose().popPose()
     }
 
+    private fun renderStatRow(guiGraphics: GuiGraphics, font: Font, x: Int, y: Int, playerId: java.util.UUID) {
+        val iconY = y + (font.lineHeight - COMPACT_STAT_ICON_SIZE) / 2 + COMPACT_COIN_ICON_Y_OFFSET
+        val pokemonText = formatCompactNumber(BattlepassClientState.uniquePokemonCaught(playerId))
+        renderScaledItem(guiGraphics, pokeBallStack(), x, iconY, COMPACT_STAT_ICON_SIZE)
+        val pokemonTextX = x + COMPACT_STAT_ICON_SIZE + COMPACT_STAT_TEXT_GAP
+        drawCkdmShadowed(guiGraphics, font, pokemonText, pokemonTextX, y + COMPACT_COIN_TEXT_Y, COMPACT_WHITE, COMPACT_BLACK_SHADOW, COMPACT_SHADOW_OFFSET, CKDM_BOLD_FONT)
+
+        val hostileX = pokemonTextX + ckdmWidth(font, pokemonText, CKDM_BOLD_FONT) + COMPACT_STAT_GROUP_GAP
+        val hostileText = formatCompactNumber(BattlepassClientState.hostileMonstersKilled(playerId))
+        renderIcon(guiGraphics, HOSTILE_KILLS_TEXTURE, hostileX, iconY, COMPACT_STAT_ICON_SIZE, COMPACT_STAT_ICON_TEXTURE_SIZE)
+        drawCkdmShadowed(guiGraphics, font, hostileText, hostileX + COMPACT_STAT_ICON_SIZE + COMPACT_STAT_TEXT_GAP, y + COMPACT_COIN_TEXT_Y, COMPACT_WHITE, COMPACT_BLACK_SHADOW, COMPACT_SHADOW_OFFSET, CKDM_BOLD_FONT)
+    }
+
     private fun missionGoal(event: BattlepassXpEventDefinition): Int = when {
         BattlepassMissionService.isCappedRepeating(event) -> event.xpCap
         BattlepassMissionService.isProgressive(event) -> BattlepassMissionService.progressiveGoal(event)
@@ -134,6 +152,10 @@ object ChowKingdomHud {
     }
 
     private fun formatChowcoins(amount: Long): String = String.format(Locale.US, "%,d", amount)
+
+    private fun formatCompactNumber(amount: Int): String = String.format(Locale.US, "%,d", amount)
+
+    private fun pokeBallStack(): ItemStack = ItemStack(BuiltInRegistries.ITEM.getOptional(POKE_BALL_ITEM_ID).orElse(Items.BARRIER))
 
     private fun renderChowcoinDelta(guiGraphics: GuiGraphics, font: Font, coinText: String, coinTextX: Int, coinTextY: Int, now: Long) {
         val delta = ChowcoinClientState.deltaDisplay(now) ?: return
@@ -326,6 +348,10 @@ object ChowKingdomHud {
     private const val COMPACT_BLACK_SHADOW = 0x80000000.toInt()
     private const val COMPACT_SHADOW_OFFSET = 1
     private const val CHOWCOIN_DELTA_GAP = 7
+    private const val COMPACT_STAT_ICON_SIZE = 9
+    private const val COMPACT_STAT_ICON_TEXTURE_SIZE = 16
+    private const val COMPACT_STAT_TEXT_GAP = 4
+    private const val COMPACT_STAT_GROUP_GAP = 10
     private const val COMPACT_SMALL_SHADOW_OFFSET = 1
     private const val VANILLA_ITEM_SIZE = 16
     private const val TOAST_MIN_WIDTH = 160

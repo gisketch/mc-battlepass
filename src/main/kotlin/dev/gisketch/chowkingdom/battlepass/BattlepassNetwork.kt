@@ -2,11 +2,14 @@ package dev.gisketch.chowkingdom.battlepass
 
 import com.google.gson.GsonBuilder
 import dev.gisketch.chowkingdom.ChowKingdomMod
+import dev.gisketch.chowkingdom.revive.ReviveStore
+import dev.gisketch.chowkingdom.wallets.ChowcoinStore
 import net.minecraft.network.RegistryFriendlyByteBuf
 import net.minecraft.network.codec.StreamCodec
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerPlayer
+import net.minecraft.stats.Stats
 import net.neoforged.bus.api.IEventBus
 import net.neoforged.neoforge.common.NeoForge
 import net.neoforged.neoforge.event.entity.player.PlayerEvent
@@ -17,6 +20,8 @@ import net.neoforged.neoforge.server.ServerLifecycleHooks
 import java.util.UUID
 
 object BattlepassNetwork {
+    private val lastKnownPlayerProgress: MutableMap<java.util.UUID, BattlepassPlayerProgressPayload> = linkedMapOf()
+
     private val gson = GsonBuilder().create()
 
     fun register(modBus: IEventBus) {
@@ -98,7 +103,7 @@ object BattlepassNetwork {
         val passIds = passes.map { pass -> pass.id }
         receiver.server.playerList.players.forEach(CobblemonBattlepassIntegration::refreshCobblemonProgress)
         val activeMissionKeysByPass = passes.associate { pass -> pass.id to BattlepassMissionProgressStore.activeMissionKeys(pass) }
-        val players = receiver.server.playerList.players.map { player ->
+        val onlinePlayers = receiver.server.playerList.players.map { player ->
             BattlepassPlayerProgressPayload(
                 player.uuid,
                 player.gameProfile.name,
@@ -106,10 +111,26 @@ object BattlepassNetwork {
                 passIds.associateWith { passId -> BattlepassXpStore.claimedTiers(player.uuid, passId).sorted() },
                 passes.associate { pass -> pass.id to BattlepassMissionProgressStore.progressForPass(player.uuid, pass) },
                 passes.associate { pass -> pass.id to BattlepassMissionProgressStore.completedKeysForPass(player.uuid, pass) },
+                CobblemonBattlepassIntegration.uniqueCaughtSpecies(player),
+                eventProgress(player, passes, "minecraft:monster_killed"),
+                ReviveStore.incapacitatedCount(player.uuid),
+                player.stats.getValue(Stats.CUSTOM.get(Stats.DEATHS)),
+                ChowcoinStore.get(player.uuid),
+                player.stats.getValue(Stats.CUSTOM.get(Stats.PLAY_TIME)).toLong(),
             )
         }
+        onlinePlayers.forEach { player -> lastKnownPlayerProgress[player.uuid] = player }
+        val players = (lastKnownPlayerProgress.values + onlinePlayers).associateBy { player -> player.uuid }.values.toList()
         return BattlepassSyncPayload(passes.map { pass -> gson.toJson(pass) }, players, activeMissionKeysByPass, receiver.uuid)
     }
+
+    private fun eventProgress(player: ServerPlayer, passes: List<BattlepassPassDefinition>, eventId: String): Int =
+        passes.maxOfOrNull { pass ->
+            val progress = BattlepassMissionProgressStore.progressForPass(player.uuid, pass)
+            BattlepassMissionService.allEntries(pass)
+                .filter { entry -> entry.event.event == eventId }
+                .maxOfOrNull { entry -> progress[entry.key] ?: 0 } ?: 0
+        } ?: 0
 }
 
 object BattlepassSyncRequestPayload : CustomPacketPayload {
@@ -231,6 +252,12 @@ data class BattlepassPlayerProgressPayload(
     val claimedByPass: Map<String, List<Int>>,
     val missionProgressByPass: Map<String, Map<String, Int>>,
     val completedMissionKeysByPass: Map<String, List<String>>,
+    val uniquePokemonCaught: Int,
+    val hostileMonstersKilled: Int,
+    val koCount: Int,
+    val deaths: Int,
+    val chowcoins: Long,
+    val playtimeTicks: Long,
 ) {
     fun encode(buffer: RegistryFriendlyByteBuf) {
         buffer.writeUUID(uuid)
@@ -261,6 +288,12 @@ data class BattlepassPlayerProgressPayload(
             buffer.writeVarInt(keys.size)
             keys.forEach { key -> buffer.writeUtf(key, MAX_STRING_LENGTH) }
         }
+        buffer.writeVarInt(uniquePokemonCaught)
+        buffer.writeVarInt(hostileMonstersKilled)
+        buffer.writeVarInt(koCount)
+        buffer.writeVarInt(deaths)
+        buffer.writeVarLong(chowcoins)
+        buffer.writeVarLong(playtimeTicks)
     }
 
     companion object {
@@ -290,7 +323,13 @@ data class BattlepassPlayerProgressPayload(
                 val passId = buffer.readUtf(MAX_STRING_LENGTH)
                 completedMissionKeysByPass[passId] = List(buffer.readVarInt()) { buffer.readUtf(MAX_STRING_LENGTH) }
             }
-            return BattlepassPlayerProgressPayload(uuid, name, xpByPass, claimedByPass, missionProgressByPass, completedMissionKeysByPass)
+            val uniquePokemonCaught = buffer.readVarInt()
+            val hostileMonstersKilled = buffer.readVarInt()
+            val koCount = buffer.readVarInt()
+            val deaths = buffer.readVarInt()
+            val chowcoins = buffer.readVarLong()
+            val playtimeTicks = buffer.readVarLong()
+            return BattlepassPlayerProgressPayload(uuid, name, xpByPass, claimedByPass, missionProgressByPass, completedMissionKeysByPass, uniquePokemonCaught, hostileMonstersKilled, koCount, deaths, chowcoins, playtimeTicks)
         }
     }
 }

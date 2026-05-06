@@ -93,6 +93,18 @@ object CobblemonBattlepassIntegration {
         if (refreshCobblemonProgress(player)) BattlepassNetwork.syncAllPlayers()
     }
 
+    fun uniqueCaughtSpecies(player: ServerPlayer): Int {
+        val pokedexCount = playerPokedexManager(player)?.let { manager -> registeredSpeciesRecords(manager).count { record -> record.caught } } ?: 0
+        val ownedCount = playerPokemon(player).map(::ownedPokemonKey).distinct().count()
+        return maxOf(pokedexCount, ownedCount)
+    }
+
+    private fun ownedPokemonKey(pokemon: Any): String {
+        val facts = pokemonFacts(pokemon, null)
+        val formLabels = facts.labels.sorted().joinToString(",")
+        return if (formLabels.isBlank()) facts.species else "${facts.species}|$formLabels"
+    }
+
     private fun refreshPokedexProgress(player: ServerPlayer): Boolean {
         val manager = playerPokedexManager(player) ?: return false
         return setPokedexProgress(player, manager)
