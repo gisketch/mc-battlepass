@@ -206,7 +206,7 @@ private class VendorSellerScreen(private var payload: VendorOpenPayload) : Scree
         drawCkdm(guiGraphics, format(entry.price), right - 126, rect.y + 23, WHITE, CKDM_BOLD)
         renderButton(guiGraphics, rowMinusRect(rect), "-", GRAY_BUTTON_TEXTURE, GRAY_BUTTON_HOVER_TEXTURE, mouseX, mouseY, cartQty(entry) > 0)
         drawCenteredCkdm(guiGraphics, cartQty(entry).toString(), rowQtyRect(rect).x, rowQtyRect(rect).y + 6, rowQtyRect(rect).width, WHITE)
-        renderButton(guiGraphics, rowPlusRect(rect), "+", GRAY_BUTTON_TEXTURE, GRAY_BUTTON_HOVER_TEXTURE, mouseX, mouseY, entry.stockCount > 0 && cartQty(entry) < entry.stockCount)
+        renderButton(guiGraphics, rowPlusRect(rect), "+", GRAY_BUTTON_TEXTURE, GRAY_BUTTON_HOVER_TEXTURE, mouseX, mouseY, canAddToCart(entry))
     }
 
     private fun renderCart(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
@@ -258,6 +258,7 @@ private class VendorSellerScreen(private var payload: VendorOpenPayload) : Scree
         if (payload.canManage && collectRect().contains(x, y) && payload.claimableRevenue > 0) {
             click()
             PacketDistributor.sendToServer(VendorCollectPayload(payload.sellerId))
+            minecraft?.setScreen(null)
             return true
         }
         visibleSellers().forEachIndexed { index, seller ->
@@ -276,7 +277,7 @@ private class VendorSellerScreen(private var payload: VendorOpenPayload) : Scree
                     click()
                     return true
                 }
-                rowPlusRect(row).contains(x, y) && entry.stockCount > 0 && cartQty(entry) < entry.stockCount -> {
+                rowPlusRect(row).contains(x, y) && canAddToCart(entry) -> {
                     setCartQty(entry, cartQty(entry) + 1)
                     click()
                     return true
@@ -292,7 +293,7 @@ private class VendorSellerScreen(private var payload: VendorOpenPayload) : Scree
         }
         if (buyNowRect().contains(x, y) && canBuyNow(cartTotal())) {
             click()
-            PacketDistributor.sendToServer(VendorCartBuyPayload(payload.sellerId, cartEntries().map { VendorCartLine(it.dimension, it.pos, cartQty(it)) }))
+            PacketDistributor.sendToServer(VendorCartBuyPayload(payload.sellerId, purchasableCartEntries().map { VendorCartLine(it.dimension, it.pos, cartQty(it)) }))
             cart.clear()
             minecraft?.setScreen(null)
             return true
@@ -436,13 +437,17 @@ private class VendorSellerScreen(private var payload: VendorOpenPayload) : Scree
 
     private fun visibleSellers(): List<SellerFilter> = sellers().drop(sellerScroll).take(visibleSellerRows())
     private fun cartEntries(): List<VendorEntry> = payload.entries.filter { cartQty(it) > 0 }
+    private fun purchasableCartEntries(): List<VendorEntry> = cartEntries().filterNot(::isOwnEntry)
     private fun cartQty(entry: VendorEntry): Int = cart[key(entry)] ?: 0
     private fun setCartQty(entry: VendorEntry, qty: Int) {
+        if (qty > 0 && isOwnEntry(entry)) return
         val value = qty.coerceIn(0, entry.stockCount.coerceAtLeast(0))
         if (value <= 0) cart.remove(key(entry)) else cart[key(entry)] = value
     }
-    private fun cartTotal(): Long = cartEntries().fold(0L) { sum, entry -> sum.saturatingAdd(entry.price.saturatingMultiply(cartQty(entry).toLong())) }
+    private fun cartTotal(): Long = purchasableCartEntries().fold(0L) { sum, entry -> sum.saturatingAdd(entry.price.saturatingMultiply(cartQty(entry).toLong())) }
     private fun canBuyNow(total: Long): Boolean = total > 0L && ChowcoinClientState.balance() >= total
+    private fun canAddToCart(entry: VendorEntry): Boolean = !isOwnEntry(entry) && entry.stockCount > 0 && cartQty(entry) < entry.stockCount
+    private fun isOwnEntry(entry: VendorEntry): Boolean = minecraft?.player?.uuid == entry.ownerId
     private fun key(entry: VendorEntry): String = "${entry.dimension}:${entry.pos.asLong()}"
 
     private fun sellerEntity(): LivingEntity? {

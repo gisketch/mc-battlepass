@@ -28,6 +28,12 @@ class ShopBlockEntity(pos: BlockPos, state: BlockState) : BlockEntity(ShopsFeatu
         private set
     var price: Long = 0L
         private set
+    var soldCount: Long = 0L
+        private set
+    var totalRevenue: Long = 0L
+        private set
+    var claimableRevenue: Long = 0L
+        private set
 
     val displayItem: ItemStack
         get() {
@@ -165,6 +171,22 @@ class ShopBlockEntity(pos: BlockPos, state: BlockState) : BlockEntity(ShopsFeatu
         return removed
     }
 
+    fun recordSale(quantity: Int, total: Long, claimable: Boolean) {
+        if (quantity <= 0 || total <= 0L) return
+        soldCount = soldCount.saturatingAdd(quantity.toLong())
+        totalRevenue = totalRevenue.saturatingAdd(total)
+        if (claimable) claimableRevenue = claimableRevenue.saturatingAdd(total)
+        setChanged()
+    }
+
+    fun collectRevenue(player: Player): Long {
+        if (!isOwner(player) || claimableRevenue <= 0L) return 0L
+        val amount = claimableRevenue
+        claimableRevenue = 0L
+        setChanged()
+        return amount
+    }
+
     fun debugClaimByOther(player: Player) {
         ownerId = UUID.nameUUIDFromBytes("debug-shop-owner-${player.uuid}".toByteArray(StandardCharsets.UTF_8))
         ownerName = "Debug Seller"
@@ -189,6 +211,9 @@ class ShopBlockEntity(pos: BlockPos, state: BlockState) : BlockEntity(ShopsFeatu
         ownerId = null
         ownerName = ""
         price = 0L
+        soldCount = 0L
+        totalRevenue = 0L
+        claimableRevenue = 0L
     }
 
     fun dropStock(level: Level) {
@@ -219,6 +244,9 @@ class ShopBlockEntity(pos: BlockPos, state: BlockState) : BlockEntity(ShopsFeatu
         ownerId = if (tag.hasUUID(OWNER_ID_TAG)) tag.getUUID(OWNER_ID_TAG) else null
         ownerName = tag.getString(OWNER_NAME_TAG)
         price = tag.getLong(PRICE_TAG).coerceIn(0L, MAX_PRICE)
+        soldCount = tag.getLong(SOLD_COUNT_TAG).coerceAtLeast(0L)
+        totalRevenue = tag.getLong(TOTAL_REVENUE_TAG).coerceAtLeast(0L)
+        claimableRevenue = tag.getLong(CLAIMABLE_REVENUE_TAG).coerceAtLeast(0L)
     }
 
     override fun saveAdditional(tag: CompoundTag, registries: HolderLookup.Provider) {
@@ -228,6 +256,9 @@ class ShopBlockEntity(pos: BlockPos, state: BlockState) : BlockEntity(ShopsFeatu
         ownerId?.let { tag.putUUID(OWNER_ID_TAG, it) }
         if (ownerName.isNotBlank()) tag.putString(OWNER_NAME_TAG, ownerName)
         tag.putLong(PRICE_TAG, price)
+        tag.putLong(SOLD_COUNT_TAG, soldCount.coerceAtLeast(0L))
+        tag.putLong(TOTAL_REVENUE_TAG, totalRevenue.coerceAtLeast(0L))
+        tag.putLong(CLAIMABLE_REVENUE_TAG, claimableRevenue.coerceAtLeast(0L))
     }
 
     override fun getUpdateTag(registries: HolderLookup.Provider): CompoundTag = saveWithoutMetadata(registries)
@@ -251,5 +282,11 @@ class ShopBlockEntity(pos: BlockPos, state: BlockState) : BlockEntity(ShopsFeatu
         private const val OWNER_NAME_TAG = "OwnerName"
         private const val PRICE_TAG = "Price"
         private const val STOCK_COUNT_TAG = "StockCount"
+        private const val SOLD_COUNT_TAG = "SoldCount"
+        private const val TOTAL_REVENUE_TAG = "TotalRevenue"
+        private const val CLAIMABLE_REVENUE_TAG = "ClaimableRevenue"
     }
 }
+
+private fun Long.saturatingAdd(other: Long): Long =
+    if (other <= 0L) this else if (this > Long.MAX_VALUE - other) Long.MAX_VALUE else this + other

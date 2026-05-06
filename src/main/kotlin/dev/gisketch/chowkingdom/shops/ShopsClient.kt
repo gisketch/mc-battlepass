@@ -14,6 +14,7 @@ import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.sounds.SoundEvents
 import net.minecraft.world.entity.player.Inventory
+import net.minecraft.world.inventory.Slot
 import net.neoforged.bus.api.IEventBus
 import net.neoforged.neoforge.client.event.EntityRenderersEvent
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent
@@ -101,21 +102,31 @@ private class ShopBuyScreen(private val payload: ShopOpenBuyDialogPayload) : Scr
     }
 
     private fun drawBuyTitle(guiGraphics: GuiGraphics, panel: Rect) {
-        val prefix = "ARE YOU SURE YOU WANT TO BUY \""
-        val suffix = "\""
+        val prefix = "ARE YOU SURE YOU WANT TO BUY"
         val maxWidth = panel.width - 28
         val prefixComponent = ckdmText(prefix, CKDM_BOLD_SMALL_FONT)
-        val suffixComponent = ckdmText(suffix, CKDM_BOLD_SMALL_FONT)
-        val itemText = fitText(payload.itemName, (maxWidth - font.width(prefixComponent) - font.width(suffixComponent)).coerceAtLeast(20), CKDM_BOLD_SMALL_FONT)
+        val itemText = fitText(payload.itemName, (maxWidth - font.width(prefixComponent) - TITLE_ITEM_ICON_SIZE - TITLE_ITEM_GAP * 2).coerceAtLeast(20), CKDM_BOLD_SMALL_FONT)
         val itemComponent = ckdmText(itemText, CKDM_BOLD_SMALL_FONT)
-        val totalWidth = font.width(prefixComponent) + font.width(itemComponent) + font.width(suffixComponent)
+        val totalWidth = font.width(prefixComponent) + TITLE_ITEM_GAP * 2 + TITLE_ITEM_ICON_SIZE + font.width(itemComponent)
         var x = panel.x + (panel.width - totalWidth) / 2
         val y = panel.y + 20
         drawShadowed(guiGraphics, prefixComponent, x, y, CKDM_WHITE, CKDM_DARK_SHADOW)
         x += font.width(prefixComponent)
+        x += TITLE_ITEM_GAP
+        renderTitleItem(guiGraphics, x, y - 2)
+        x += TITLE_ITEM_ICON_SIZE + TITLE_ITEM_GAP
         drawShadowed(guiGraphics, itemComponent, x, y, CKDM_GOLD, CKDM_DARK_SHADOW)
-        x += font.width(itemComponent)
-        drawShadowed(guiGraphics, suffixComponent, x, y, CKDM_WHITE, CKDM_DARK_SHADOW)
+    }
+
+    private fun renderTitleItem(guiGraphics: GuiGraphics, x: Int, y: Int) {
+        if (payload.stack.isEmpty) return
+        val scale = TITLE_ITEM_ICON_SIZE / 16.0f
+        val pose = guiGraphics.pose()
+        pose.pushPose()
+        pose.translate(x.toFloat(), y.toFloat(), 120.0f)
+        pose.scale(scale, scale, 1.0f)
+        guiGraphics.renderItem(payload.stack, 0, 0)
+        pose.popPose()
     }
 
     private fun renderButton(guiGraphics: GuiGraphics, rect: Rect, label: String, kind: ButtonKind, mouseX: Int, mouseY: Int, active: Boolean) {
@@ -290,6 +301,8 @@ private class ShopBuyScreen(private val payload: ShopOpenBuyDialogPayload) : Scr
         private const val BUTTON_HOVER_DESTINATION_CORNER = 5
         private const val CHOWCOIN_TEXTURE_SIZE = 16
         private const val COIN_SIZE = 11
+        private const val TITLE_ITEM_ICON_SIZE = 12
+        private const val TITLE_ITEM_GAP = 4
         private const val CKDM_WHITE = 0xFFFFFFFF.toInt()
         private const val CKDM_GOLD = 0xFFFFD56E.toInt()
         private const val CKDM_DARK_SHADOW = 0xCC050505.toInt()
@@ -302,6 +315,7 @@ class ShopStockScreen(menu: ShopStockMenu, inventory: Inventory, title: Componen
     private var priceDialogOpen = false
     private var savedPrice = menu.price
     private var currentPrice = menu.price
+    private var currentClaimableRevenue = menu.claimableRevenue
     private var previousPriceHover = false
     private var previousSaveHover = false
     private var previousCollectHover = false
@@ -356,6 +370,16 @@ class ShopStockScreen(menu: ShopStockMenu, inventory: Inventory, title: Componen
 
     override fun renderLabels(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) = Unit
 
+    override fun renderSlot(guiGraphics: GuiGraphics, slot: Slot) {
+        if (slot == menu.getSlot(ShopStockMenu.STOCK_SLOT_INDEX)) {
+            withBounce(guiGraphics, Rect(leftPos, topPos, imageWidth, EDITOR_FRAME_HEIGHT), 0) {
+                super.renderSlot(guiGraphics, slot)
+            }
+            return
+        }
+        super.renderSlot(guiGraphics, slot)
+    }
+
     override fun mouseClicked(mouseX: Double, mouseY: Double, button: Int): Boolean {
         if (priceDialogOpen) return clickPriceDialog(mouseX.toInt(), mouseY.toInt(), button)
         if (button == 0) {
@@ -364,7 +388,7 @@ class ShopStockScreen(menu: ShopStockMenu, inventory: Inventory, title: Componen
             when {
                 priceButtonRect().contains(pointX, pointY) -> return openPriceDialog()
                 saveButtonRect().contains(pointX, pointY) -> return clickSave()
-                collectButtonRect().contains(pointX, pointY) -> return true
+                collectButtonRect().contains(pointX, pointY) -> return clickCollect()
                 removeButtonRect().contains(pointX, pointY) -> return clickRemove()
             }
         }
@@ -421,9 +445,9 @@ class ShopStockScreen(menu: ShopStockMenu, inventory: Inventory, title: Componen
 
     private fun renderStats(guiGraphics: GuiGraphics) {
         val stats = listOf(
-            StatWidget("SOLD", format(0), false),
-            StatWidget("TOTAL REVENUE", format(0L), true),
-            StatWidget("TO CLAIM", format(0L), true),
+            StatWidget("SOLD", format(menu.soldCount), false),
+            StatWidget("TOTAL REVENUE", format(menu.totalRevenue), true),
+            StatWidget("TO CLAIM", format(currentClaimableRevenue), true),
         )
         stats.forEachIndexed { index, stat ->
             val rect = Rect(leftPos + STATS_X + index * (STAT_WIDTH + STAT_GAP), topPos + STATS_Y, STAT_WIDTH, STAT_HEIGHT)
@@ -491,6 +515,14 @@ class ShopStockScreen(menu: ShopStockMenu, inventory: Inventory, title: Componen
         if (!canRemove()) return true
         playClickSound()
         ShopStockNetwork.sendRemoveStock(menu.pos)
+        return true
+    }
+
+    private fun clickCollect(): Boolean {
+        if (!canCollect()) return true
+        playClickSound()
+        ShopStockNetwork.sendCollectRevenue(menu.pos)
+        currentClaimableRevenue = 0L
         return true
     }
 
@@ -565,7 +597,7 @@ class ShopStockScreen(menu: ShopStockMenu, inventory: Inventory, title: Componen
 
     private fun canSave(): Boolean = menu.canEdit && currentPrice != savedPrice
 
-    private fun canCollect(): Boolean = false
+    private fun canCollect(): Boolean = menu.canEdit && currentClaimableRevenue > 0L
 
     private fun canRemove(): Boolean = menu.canEdit && !displayStock().isEmpty
 

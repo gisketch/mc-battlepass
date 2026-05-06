@@ -32,8 +32,12 @@ object ShopStockNetwork {
         runCatching { PacketDistributor.sendToServer(ShopRemoveStockPayload(pos)) }
     }
 
+    fun sendCollectRevenue(pos: BlockPos) {
+        runCatching { PacketDistributor.sendToServer(ShopCollectRevenuePayload(pos)) }
+    }
+
     fun openBuyDialog(player: ServerPlayer, shop: ShopBlockEntity) {
-        PacketDistributor.sendToPlayer(player, ShopOpenBuyDialogPayload(shop.blockPos, shop.displayItem.hoverName.string, shop.stockCount, shop.price))
+        PacketDistributor.sendToPlayer(player, ShopOpenBuyDialogPayload(shop.blockPos, shop.displayItem.copyWithCount(1), shop.displayItem.hoverName.string, shop.stockCount, shop.price))
     }
 
     fun sendBuy(pos: BlockPos, quantity: Int) {
@@ -45,6 +49,7 @@ object ShopStockNetwork {
         registrar.playToClient(ShopOpenBuyDialogPayload.TYPE, ShopOpenBuyDialogPayload.STREAM_CODEC, ::handleOpenBuyDialog)
         registrar.playToServer(ShopSetPricePayload.TYPE, ShopSetPricePayload.STREAM_CODEC, ::handleSetPrice)
         registrar.playToServer(ShopRemoveStockPayload.TYPE, ShopRemoveStockPayload.STREAM_CODEC, ::handleRemoveStock)
+        registrar.playToServer(ShopCollectRevenuePayload.TYPE, ShopCollectRevenuePayload.STREAM_CODEC, ::handleCollectRevenue)
         registrar.playToServer(ShopBuyPayload.TYPE, ShopBuyPayload.STREAM_CODEC, ::handleBuy)
     }
 
@@ -76,6 +81,17 @@ object ShopStockNetwork {
         }
     }
 
+    private fun handleCollectRevenue(payload: ShopCollectRevenuePayload, context: IPayloadContext) {
+        val player = context.player() as? ServerPlayer ?: return
+        if (player.distanceToSqr(payload.pos.x + 0.5, payload.pos.y + 0.5, payload.pos.z + 0.5) > 64.0) return
+        val shop = player.level().getBlockEntity(payload.pos) as? ShopBlockEntity ?: return
+        val amount = shop.collectRevenue(player)
+        if (amount <= 0L) return
+        ChowcoinStore.add(player, amount)
+        ChowcoinNetwork.syncTo(player)
+        player.displayClientMessage(Component.literal("Collected $amount chowcoins."), true)
+    }
+
     private fun handleBuy(payload: ShopBuyPayload, context: IPayloadContext) {
         val player = context.player() as? ServerPlayer ?: return
         if (player.distanceToSqr(payload.pos.x + 0.5, payload.pos.y + 0.5, payload.pos.z + 0.5) > 64.0) return
@@ -99,10 +115,11 @@ object ShopStockNetwork {
         val itemName = shop.stock.hoverName.string
         val bought = shop.removeStockStacks(quantity)
         if (bought.isEmpty()) return false
+        val boughtCount = bought.sumOf { it.count }
         ChowcoinStore.set(player, balance - total)
-        if (total > 0L) ChowcoinStore.add(ownerId, total)
+        shop.recordSale(boughtCount, total, claimable = true)
         bought.forEach { stack -> if (!player.inventory.add(stack)) player.drop(stack, false) }
-        CommerceAuditLog.recordShopBuy(player, ownerId, shop.ownerName, shop.blockPos, itemName, bought.sumOf { it.count }, total)
+        CommerceAuditLog.recordShopBuy(player, ownerId, shop.ownerName, shop.blockPos, itemName, boughtCount, total)
         recordBuyMission(player, total)
         ChowcoinNetwork.syncTo(player)
         player.server.playerList.getPlayer(ownerId)?.let { owner ->
@@ -136,17 +153,18 @@ object ShopStockNetwork {
 }
 
 
-data class ShopOpenBuyDialogPayload(val pos: BlockPos, val itemName: String, val stockCount: Int, val price: Long) : CustomPacketPayload {
+data class ShopOpenBuyDialogPayload(val pos: BlockPos, val stack: net.minecraft.world.item.ItemStack, val itemName: String, val stockCount: Int, val price: Long) : CustomPacketPayload {
     override fun type(): CustomPacketPayload.Type<ShopOpenBuyDialogPayload> = TYPE
 
     companion object {
         val TYPE: CustomPacketPayload.Type<ShopOpenBuyDialogPayload> = CustomPacketPayload.Type(ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "shops/open_buy_dialog"))
         val STREAM_CODEC: StreamCodec<RegistryFriendlyByteBuf, ShopOpenBuyDialogPayload> = object : StreamCodec<RegistryFriendlyByteBuf, ShopOpenBuyDialogPayload> {
             override fun decode(buffer: RegistryFriendlyByteBuf): ShopOpenBuyDialogPayload =
-                ShopOpenBuyDialogPayload(buffer.readBlockPos(), buffer.readUtf(128), buffer.readVarInt(), buffer.readVarLong())
+                ShopOpenBuyDialogPayload(buffer.readBlockPos(), net.minecraft.world.item.ItemStack.OPTIONAL_STREAM_CODEC.decode(buffer), buffer.readUtf(128), buffer.readVarInt(), buffer.readVarLong())
 
             override fun encode(buffer: RegistryFriendlyByteBuf, value: ShopOpenBuyDialogPayload) {
                 buffer.writeBlockPos(value.pos)
+                net.minecraft.world.item.ItemStack.OPTIONAL_STREAM_CODEC.encode(buffer, value.stack.copyWithCount(1))
                 buffer.writeUtf(value.itemName, 128)
                 buffer.writeVarInt(value.stockCount)
                 buffer.writeVarLong(value.price)
@@ -170,6 +188,22 @@ data class ShopBuyPayload(val pos: BlockPos, val quantity: Int) : CustomPacketPa
         }
     }
 }
+
+data class ShopCollectRevenuePayload(val pos: BlockPos) : CustomPacketPayload {
+    override fun type(): CustomPacketPayload.Type<ShopCollectRevenuePayload> = TYPE
+
+    companion object {
+        val TYPE: CustomPacketPayload.Type<ShopCollectRevenuePayload> = CustomPacketPayload.Type(ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "shops/collect_revenue"))
+        val STREAM_CODEC: StreamCodec<RegistryFriendlyByteBuf, ShopCollectRevenuePayload> = object : StreamCodec<RegistryFriendlyByteBuf, ShopCollectRevenuePayload> {
+            override fun decode(buffer: RegistryFriendlyByteBuf): ShopCollectRevenuePayload = ShopCollectRevenuePayload(buffer.readBlockPos())
+
+            override fun encode(buffer: RegistryFriendlyByteBuf, value: ShopCollectRevenuePayload) {
+                buffer.writeBlockPos(value.pos)
+            }
+        }
+    }
+}
+
 data class ShopSetPricePayload(val pos: BlockPos, val price: Long) : CustomPacketPayload {
     override fun type(): CustomPacketPayload.Type<ShopSetPricePayload> = TYPE
 

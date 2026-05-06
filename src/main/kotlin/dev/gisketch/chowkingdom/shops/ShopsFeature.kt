@@ -321,6 +321,9 @@ abstract class StockShopBlock(
         buffer.writeVarLong(shop.price)
         buffer.writeUtf(shop.ownerName, 64)
         buffer.writeBoolean(!shop.isClaimedByOther(player))
+        buffer.writeVarLong(shop.soldCount)
+        buffer.writeVarLong(shop.totalRevenue)
+        buffer.writeVarLong(shop.claimableRevenue)
     }
 }
 

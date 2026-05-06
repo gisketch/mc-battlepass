@@ -209,7 +209,7 @@ object VendorContractFeature {
                 state.shopName,
                 state.ownerId == player.uuid || player.isCreative,
                 canManage,
-                state.revenue[player.uuid] ?: 0L,
+                vendorClaimableRevenue(player, state),
                 entries,
             ),
         )
@@ -240,6 +240,7 @@ object VendorContractFeature {
             if (state.links.none { it == key }) return@mapNotNull null
             val shop = resolveShop(player.server, key) ?: return@mapNotNull null
             if (!isValidLinkedShop(shop) || shop.stockCount <= 0) return@mapNotNull null
+            if (shop.ownerUuid == player.uuid) return@mapNotNull null
             val quantity = line.quantity.coerceIn(1, shop.stockCount)
             val total = shop.price.saturatingMultiply(quantity.toLong())
             PendingBuy(key, shop, quantity, total, shop.ownerUuid ?: return@mapNotNull null, shop.ownerName, shop.displayItem.hoverName.string)
@@ -259,19 +260,21 @@ object VendorContractFeature {
         resolved.forEach { buy ->
             val removed = buy.shop.removeStockStacks(buy.quantity)
             if (removed.isNotEmpty()) {
+                val boughtCount = removed.sumOf { it.count }
                 bought += removed
-                SellerData.addRevenue(seller, buy.ownerId, buy.total)
-                CommerceAuditLog.recordVendorBuy(player, buy.ownerId, buy.ownerName, seller, buy.key.dimension, buy.key.pos, buy.itemName, removed.sumOf { it.count }, buy.total)
+                buy.shop.recordSale(boughtCount, buy.total, claimable = true)
+                CommerceAuditLog.recordVendorBuy(player, buy.ownerId, buy.ownerName, seller, buy.key.dimension, buy.key.pos, buy.itemName, boughtCount, buy.total)
             }
         }
         if (bought.isEmpty()) {
             player.displayClientMessage(Component.literal("Stock changed. Try again."), true)
             return
         }
+        val boughtCount = bought.sumOf { it.count }
         ChowcoinStore.set(player, balance - totalCost)
         bought.forEach { stack -> if (!player.inventory.add(stack)) player.drop(stack, false) }
         ChowcoinNetwork.syncTo(player)
-        player.displayClientMessage(Component.literal("Bought ${bought.sumOf { it.count }} items for $totalCost chowcoins."), true)
+        player.displayClientMessage(Component.literal("Bought $boughtCount items for $totalCost chowcoins."), true)
     }
 
     private fun handleVoid(payload: VendorVoidPayload, context: IPayloadContext) {
@@ -299,16 +302,13 @@ object VendorContractFeature {
     private fun handleCollect(payload: VendorCollectPayload, context: IPayloadContext) {
         val player = context.player() as? ServerPlayer ?: return
         val seller = findSeller(player.server, payload.sellerId) as? Mob ?: return
+        val state = SellerData.read(seller) ?: return
         if (!canManageSeller(player, seller)) return
-        val amount = SellerData.collectRevenue(seller, player.uuid)
-        if (amount <= 0L) {
-            openVendor(player, seller)
-            return
-        }
+        val amount = collectVendorRevenue(player, state)
+        if (amount <= 0L) return
         ChowcoinStore.add(player, amount)
         ChowcoinNetwork.syncTo(player)
         player.displayClientMessage(Component.literal("Collected $amount chowcoins."), true)
-        openVendor(player, seller)
     }
 
     private fun handleOpenClient(payload: VendorOpenPayload, context: IPayloadContext) {
@@ -437,6 +437,18 @@ object VendorContractFeature {
         if (state.ownerId == player.uuid || player.isCreative) return true
         return state.links.any { key -> resolveShop(player.server, key)?.ownerUuid == player.uuid }
     }
+
+    private fun vendorClaimableRevenue(player: ServerPlayer, state: SellerState): Long =
+        state.links.distinct().asSequence()
+            .mapNotNull { key -> resolveShop(player.server, key) }
+            .filter { shop -> player.isCreative || shop.ownerUuid == player.uuid }
+            .fold(0L) { sum, shop -> sum.saturatingAdd(shop.claimableRevenue) }
+
+    private fun collectVendorRevenue(player: ServerPlayer, state: SellerState): Long =
+        state.links.distinct().asSequence()
+            .mapNotNull { key -> resolveShop(player.server, key) }
+            .filter { shop -> player.isCreative || shop.ownerUuid == player.uuid }
+            .fold(0L) { sum, shop -> sum.saturatingAdd(shop.collectRevenue(player)) }
 
     fun jadeSummary(server: MinecraftServer, seller: Entity): VendorJadeSummary? {
         val state = SellerData.read(seller) ?: return null

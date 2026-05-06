@@ -20,6 +20,9 @@ class ShopStockMenu private constructor(
     val price: Long,
     val ownerName: String,
     val canEdit: Boolean,
+    val soldCount: Long,
+    val totalRevenue: Long,
+    val claimableRevenue: Long,
     private val stockContainer: Container,
     private val shop: ShopBlockEntity?,
 ) : AbstractContainerMenu(ShopsFeature.SHOP_STOCK_MENU.get(), containerId) {
@@ -136,6 +139,9 @@ class ShopStockMenu private constructor(
                 shop.price,
                 shop.ownerName,
                 !shop.isClaimedByOther(inventory.player),
+                shop.soldCount,
+                shop.totalRevenue,
+                shop.claimableRevenue,
                 shop,
                 shop,
             )
@@ -152,6 +158,9 @@ class ShopStockMenu private constructor(
                 buffer.readVarLong(),
                 buffer.readUtf(64),
                 buffer.readBoolean(),
+                buffer.readVarLong(),
+                buffer.readVarLong(),
+                buffer.readVarLong(),
                 SimpleContainer(1),
                 null,
             )
