@@ -22,6 +22,7 @@ import dev.gisketch.chowkingdom.revive.ReviveFeature
 import dev.gisketch.chowkingdom.shipping.ShippingBinClient
 import dev.gisketch.chowkingdom.profiles.ProfilesFeature
 import dev.gisketch.chowkingdom.shipping.ShippingBinFeature
+import dev.gisketch.chowkingdom.shops.ShopsClient
 import dev.gisketch.chowkingdom.shops.ShopsFeature
 import dev.gisketch.chowkingdom.trading.TradingClient
 import dev.gisketch.chowkingdom.trading.TradingFeature
@@ -64,6 +65,7 @@ class ChowKingdomMod(modBus: IEventBus, container: ModContainer) {
             ChowKingdomHud.register(modBus)
             DiscordScreenshotClient.register(modBus)
             ShippingBinClient.register(modBus)
+            ShopsClient.register(modBus)
             ReviveClient.register(modBus)
             TradingClient.register(modBus)
         }

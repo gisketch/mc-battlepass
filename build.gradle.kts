@@ -95,6 +95,7 @@ sourceSets {
 dependencies {
     implementation("thedarkcolour:kotlinforforge-neoforge:$kotlinForForgeVersion")
     implementation("maven.modrinth:owo-lib:$owoLibVersion")
+    compileOnly("maven.modrinth:jade:15.9.3+neoforge")
 
     testImplementation(kotlin("test"))
 }

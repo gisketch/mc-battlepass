@@ -47,3 +47,9 @@ modId="cobblemon"
 type="optional"
 ordering="AFTER"
 side="BOTH"
+
+[[dependencies.${mod_id}]]
+modId="jade"
+type="optional"
+ordering="AFTER"
+side="CLIENT"

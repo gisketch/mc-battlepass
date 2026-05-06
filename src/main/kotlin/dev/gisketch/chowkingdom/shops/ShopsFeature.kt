@@ -4,16 +4,30 @@ import dev.gisketch.chowkingdom.ChowKingdomMod
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
 import net.minecraft.core.registries.Registries
+import net.minecraft.network.chat.Component
+import net.minecraft.network.RegistryFriendlyByteBuf
+import net.minecraft.server.level.ServerPlayer
+import net.minecraft.world.Containers
+import net.minecraft.world.InteractionHand
+import net.minecraft.world.InteractionResult
+import net.minecraft.world.ItemInteractionResult
+import net.minecraft.world.SimpleMenuProvider
 import net.minecraft.world.item.BlockItem
 import net.minecraft.world.item.Item
+import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.context.BlockPlaceContext
+import net.minecraft.world.inventory.MenuType
 import net.minecraft.world.level.BlockGetter
+import net.minecraft.world.level.Level
 import net.minecraft.world.level.LevelAccessor
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.Blocks
+import net.minecraft.world.level.block.EntityBlock
 import net.minecraft.world.level.block.HorizontalDirectionalBlock
 import net.minecraft.world.level.block.Mirror
 import net.minecraft.world.level.block.Rotation
+import net.minecraft.world.level.block.entity.BlockEntity
+import net.minecraft.world.level.block.entity.BlockEntityType
 import net.minecraft.world.level.block.state.BlockBehaviour
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.level.block.state.StateDefinition
@@ -21,10 +35,14 @@ import net.minecraft.world.level.block.state.properties.BlockStateProperties
 import net.minecraft.world.level.block.state.properties.BooleanProperty
 import net.minecraft.world.level.block.state.properties.DirectionProperty
 import net.minecraft.world.level.block.state.properties.SlabType
+import net.minecraft.world.level.material.FluidState
+import net.minecraft.world.entity.player.Player
+import net.minecraft.world.phys.BlockHitResult
 import net.minecraft.world.phys.shapes.CollisionContext
 import net.minecraft.world.phys.shapes.Shapes
 import net.minecraft.world.phys.shapes.VoxelShape
 import net.neoforged.bus.api.IEventBus
+import net.neoforged.neoforge.common.extensions.IMenuTypeExtension
 import net.neoforged.neoforge.registries.DeferredHolder
 import net.neoforged.neoforge.registries.DeferredRegister
 import java.util.function.Supplier
@@ -32,9 +50,11 @@ import java.util.function.Supplier
 object ShopsFeature {
     private val BLOCKS: DeferredRegister<Block> = DeferredRegister.create(Registries.BLOCK, ChowKingdomMod.MOD_ID)
     private val ITEMS: DeferredRegister<Item> = DeferredRegister.create(Registries.ITEM, ChowKingdomMod.MOD_ID)
+    private val BLOCK_ENTITIES: DeferredRegister<BlockEntityType<*>> = DeferredRegister.create(Registries.BLOCK_ENTITY_TYPE, ChowKingdomMod.MOD_ID)
+    private val MENUS: DeferredRegister<MenuType<*>> = DeferredRegister.create(Registries.MENU, ChowKingdomMod.MOD_ID)
 
     private val woodShopBlocks = mutableListOf<DeferredHolder<Block, FacingShopBlock>>()
-    private val simpleShopBlocks = mutableListOf<DeferredHolder<Block, out Block>>()
+    private val allShopBlocks = mutableListOf<DeferredHolder<Block, out StockShopBlock>>()
 
     private val WOOD_VARIANTS = listOf(
         "acacia",
@@ -93,35 +113,64 @@ object ShopsFeature {
             woodShopBlocks += registerWoodShop("shop_$variant")
         }
 
-        simpleShopBlocks += registerBlock("hook_shop") { FacingShopBlock(shopProperties(Blocks.CHAIN), HookShopBlock.SHAPE) }
-        simpleShopBlocks += registerBlock("crate_shop") { FacingShopBlock(shopProperties(Blocks.OAK_PLANKS)) }
-        simpleShopBlocks += registerBlock("shop_window_calcite") { FacingShopBlock(shopProperties(Blocks.STONE), WindowShopBlock.SHAPE_NORTH_SOUTH, WindowShopBlock.SHAPE_EAST_WEST) }
-        simpleShopBlocks += registerBlock("shop_window_andesite") { FacingShopBlock(shopProperties(Blocks.STONE), WindowShopBlock.SHAPE_NORTH_SOUTH, WindowShopBlock.SHAPE_EAST_WEST) }
+        registerBlock("hook_shop") { FacingShopBlock(shopProperties(Blocks.CHAIN), ShopRenderStyle.HOOK, HookShopBlock.SHAPE) }
+        registerBlock("crate_shop") { FacingShopBlock(shopProperties(Blocks.OAK_PLANKS), ShopRenderStyle.CRATE) }
+        registerBlock("shop_window_calcite") {
+            FacingShopBlock(
+                shopProperties(Blocks.STONE),
+                ShopRenderStyle.WINDOW,
+                WindowShopBlock.SHAPE_NORTH_SOUTH,
+                WindowShopBlock.SHAPE_EAST_WEST,
+            )
+        }
+        registerBlock("shop_window_andesite") {
+            FacingShopBlock(
+                shopProperties(Blocks.STONE),
+                ShopRenderStyle.WINDOW,
+                WindowShopBlock.SHAPE_NORTH_SOUTH,
+                WindowShopBlock.SHAPE_EAST_WEST,
+            )
+        }
 
         RUG_BLOCKS.forEach { id ->
-            simpleShopBlocks += registerBlock(id) { RugShopBlock(shopProperties(Blocks.RED_CARPET)) }
+            registerBlock(id) { RugShopBlock(shopProperties(Blocks.RED_CARPET)) }
         }
 
         WOOD_VARIANTS.forEach { variant ->
-            simpleShopBlocks += registerBlock("shelf_shop_$variant") { ShelfShopBlock(shopProperties(Blocks.OAK_PLANKS)) }
+            registerBlock("shelf_shop_$variant") { ShelfShopBlock(shopProperties(Blocks.OAK_PLANKS)) }
         }
     }
+
+    @Suppress("NULLABILITY_MISMATCH_BASED_ON_JAVA_ANNOTATIONS")
+    val SHOP_BLOCK_ENTITY: DeferredHolder<BlockEntityType<*>, BlockEntityType<ShopBlockEntity>> =
+        BLOCK_ENTITIES.register("shop", Supplier {
+            BlockEntityType.Builder.of(::ShopBlockEntity, *allShopBlocks.map { it.get() }.toTypedArray()).build(null)
+        })
+
+    val SHOP_STOCK_MENU: DeferredHolder<MenuType<*>, MenuType<ShopStockMenu>> = MENUS.register(
+        "shop_stock",
+        Supplier { IMenuTypeExtension.create { containerId, inventory, buffer -> ShopStockMenu.client(containerId, inventory, buffer) } },
+    )
 
     fun register(modBus: IEventBus) {
         BLOCKS.register(modBus)
         ITEMS.register(modBus)
+        BLOCK_ENTITIES.register(modBus)
+        MENUS.register(modBus)
+        ShopStockNetwork.register(modBus)
     }
 
     private fun registerWoodShop(id: String): DeferredHolder<Block, FacingShopBlock> {
-        val block = registerBlock(id) { FacingShopBlock(shopProperties(Blocks.OAK_PLANKS)) }
+        val block = registerBlock(id) { FacingShopBlock(shopProperties(Blocks.OAK_PLANKS), ShopRenderStyle.ANGLED) }
         COLOURS.forEach { colour ->
             ITEMS.register("${id}_$colour", Supplier { BlockItem(block.get(), Item.Properties()) })
         }
         return block
     }
 
-    private fun <T : Block> registerBlock(id: String, factory: () -> T): DeferredHolder<Block, T> {
+    private fun <T : StockShopBlock> registerBlock(id: String, factory: () -> T): DeferredHolder<Block, T> {
         val block = BLOCKS.register(id, Supplier { factory() })
+        allShopBlocks += block
         ITEMS.register(id, Supplier { BlockItem(block.get(), Item.Properties()) })
         return block
     }
@@ -132,11 +181,108 @@ object ShopsFeature {
             .strength(2.0f, Float.MAX_VALUE)
 }
 
+enum class ShopRenderStyle {
+    ANGLED,
+    HOOK,
+    CRATE,
+    WINDOW,
+    RUG,
+    SHELF,
+}
+
+abstract class StockShopBlock(
+    properties: BlockBehaviour.Properties,
+    val renderStyle: ShopRenderStyle,
+) : Block(properties), EntityBlock {
+    override fun newBlockEntity(pos: BlockPos, state: BlockState): BlockEntity = ShopBlockEntity(pos, state)
+
+    override fun useItemOn(
+        stack: ItemStack,
+        state: BlockState,
+        level: Level,
+        pos: BlockPos,
+        player: Player,
+        hand: InteractionHand,
+        hit: BlockHitResult,
+    ): ItemInteractionResult {
+        if (stack.isEmpty) return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION
+        if (level.isClientSide) return ItemInteractionResult.SUCCESS
+        val shop = level.getBlockEntity(pos) as? ShopBlockEntity ?: return ItemInteractionResult.FAIL
+        val added = shop.addStock(player, stack)
+        val message = when {
+            added > 0 -> "Added $added stock (${shop.stockCount}/${ShopBlockEntity.MAX_STOCK})"
+            shop.isClaimedByOther(player) -> "Cannot add stock - owned by ${shop.ownerName.ifBlank { "another player" }}"
+            !shop.stock.isEmpty -> "This shop only accepts ${shop.stock.hoverName.string}"
+            else -> "Could not add stock"
+        }
+        player.displayClientMessage(Component.literal(message), true)
+        return if (added > 0) ItemInteractionResult.SUCCESS else ItemInteractionResult.FAIL
+    }
+
+    override fun useWithoutItem(state: BlockState, level: Level, pos: BlockPos, player: Player, hitResult: BlockHitResult): InteractionResult {
+        if (!level.isClientSide && player is ServerPlayer) {
+            val shop = level.getBlockEntity(pos) as? ShopBlockEntity ?: return InteractionResult.FAIL
+            player.openMenu(createMenuProvider(shop)) { buffer -> writeMenuData(buffer, shop, player) }
+        }
+        return InteractionResult.sidedSuccess(level.isClientSide)
+    }
+
+    override fun attack(state: BlockState, level: Level, pos: BlockPos, player: Player) {
+        val shop = level.getBlockEntity(pos) as? ShopBlockEntity
+        if (shop != null && shop.isClaimedByOther(player)) {
+            if (level.isClientSide) player.displayClientMessage(Component.literal("Cannot break - owned by ${shop.ownerName.ifBlank { "another player" }}"), true)
+            return
+        }
+        super.attack(state, level, pos, player)
+    }
+
+    override fun getDestroyProgress(state: BlockState, player: Player, level: BlockGetter, pos: BlockPos): Float {
+        val shop = level.getBlockEntity(pos) as? ShopBlockEntity
+        if (shop != null && shop.isClaimedByOther(player)) return 0.0f
+        return super.getDestroyProgress(state, player, level, pos)
+    }
+
+    override fun onDestroyedByPlayer(state: BlockState, world: Level, pos: BlockPos, player: Player, willHarvest: Boolean, fluid: FluidState): Boolean {
+        val shop = world.getBlockEntity(pos) as? ShopBlockEntity
+        if (shop != null && shop.isClaimedByOther(player)) {
+            if (world.isClientSide) player.displayClientMessage(Component.literal("Cannot break - owned by ${shop.ownerName.ifBlank { "another player" }}"), true)
+            return false
+        }
+        return super.onDestroyedByPlayer(state, world, pos, player, willHarvest, fluid)
+    }
+
+    override fun onRemove(state: BlockState, level: Level, pos: BlockPos, newState: BlockState, isMoving: Boolean) {
+        if (!state.`is`(newState.block)) {
+            val shop = level.getBlockEntity(pos) as? ShopBlockEntity
+            if (shop != null) {
+                Containers.dropContents(level, pos, shop)
+                level.updateNeighbourForOutputSignal(pos, this)
+            }
+        }
+        super.onRemove(state, level, pos, newState, isMoving)
+    }
+
+    private fun createMenuProvider(shop: ShopBlockEntity): SimpleMenuProvider =
+        SimpleMenuProvider(
+            { containerId, playerInventory, _ -> ShopStockMenu.server(containerId, playerInventory, shop) },
+            Component.literal("Shop Stock"),
+        )
+
+    private fun writeMenuData(buffer: RegistryFriendlyByteBuf, shop: ShopBlockEntity, player: Player) {
+        buffer.writeBlockPos(shop.blockPos)
+        buffer.writeVarInt(shop.stockCount)
+        buffer.writeVarLong(shop.price)
+        buffer.writeUtf(shop.ownerName, 64)
+        buffer.writeBoolean(!shop.isClaimedByOther(player))
+    }
+}
+
 private open class FacingShopBlock(
     properties: BlockBehaviour.Properties,
+    renderStyle: ShopRenderStyle,
     private val northSouthShape: VoxelShape = Shapes.block(),
     private val eastWestShape: VoxelShape = northSouthShape,
-) : Block(properties) {
+) : StockShopBlock(properties, renderStyle) {
     init {
         registerDefaultState(stateDefinition.any().setValue(FACING, Direction.NORTH))
     }
@@ -165,7 +311,7 @@ private open class FacingShopBlock(
     }
 }
 
-private class RugShopBlock(properties: BlockBehaviour.Properties) : Block(properties) {
+private class RugShopBlock(properties: BlockBehaviour.Properties) : StockShopBlock(properties, ShopRenderStyle.RUG) {
     init {
         registerDefaultState(
             stateDefinition.any()
@@ -212,7 +358,7 @@ private class RugShopBlock(properties: BlockBehaviour.Properties) : Block(proper
     }
 }
 
-private class ShelfShopBlock(properties: BlockBehaviour.Properties) : FacingShopBlock(properties) {
+private class ShelfShopBlock(properties: BlockBehaviour.Properties) : FacingShopBlock(properties, ShopRenderStyle.SHELF) {
     init {
         registerDefaultState(
             stateDefinition.any()

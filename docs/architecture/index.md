@@ -17,7 +17,7 @@
 - `discord/`: webhook relay, inbound bot bridge, account links, screenshot upload, avatar support.
 - `trading/`: player trade requests, trade menu/session state, glow cues, chowcoin trade offers, debug solo trade.
 - `revive/`: incapacitated-player state, revive timers, persisted incap counts, OP/debug commands.
-- `shops/`: visual-only Spuds-style shop block and item registration; shop menus, storage, trades, and ownership are not implemented yet.
+- `shops/`: Spuds-style shop block/item registration, owner-claimed one-item stock storage, stock count renderer, hover price label, optional Jade tooltip, and owner price screen. Buying/selling flow is not implemented yet.
 - `client/`: HUD rendering.
 - `src/main/java/.../mixin/`: renderer/profile/keyboard mixins.
 
