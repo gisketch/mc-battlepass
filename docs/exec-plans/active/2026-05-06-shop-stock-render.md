@@ -84,3 +84,7 @@ Add owner-claimed one-item shop stock state and Spuds-style stock rendering to s
 - 2026-05-06: Added Spud-style shaped recipe JSONs for crate, hook, windows, rugs, shelves, and colored angled shop items.
 - 2026-05-06: Added shop sale-value battlepass event recording and documented permanent progressive shopkeeper missions.
 - 2026-05-06: Added buyer-side shop value battlepass event recording and docs examples.
+- 2026-05-06: Changed world shop quantities to hover-only and added chowcoin price nametags above stocked shops.
+- 2026-05-06: Changed Jade shop price tooltip to use the chowcoin texture instead of the Chowcoins word.
+- 2026-05-06: Replaced Jade shop object-name title with a white chowcoin-icon price row.
+- 2026-05-06: Added a GUI sprite copy of chowcoin.png so Jade sprite elements resolve instead of missing-texture purple/black.

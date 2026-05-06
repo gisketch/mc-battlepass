@@ -2,16 +2,23 @@ package dev.gisketch.chowkingdom.shops
 
 import com.mojang.blaze3d.vertex.PoseStack
 import com.mojang.math.Axis
+import dev.gisketch.chowkingdom.ChowKingdomMod
+import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.Font
 import net.minecraft.client.renderer.MultiBufferSource
+import net.minecraft.client.renderer.RenderType
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider
 import net.minecraft.core.Direction
+import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.item.ItemDisplayContext
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.block.HorizontalDirectionalBlock
 import net.minecraft.world.level.block.state.properties.BlockStateProperties
 import net.minecraft.world.level.block.state.properties.SlabType
+import net.minecraft.world.phys.BlockHitResult
+import net.minecraft.world.phys.HitResult
+import java.util.Locale
 
 class ShopBlockEntityRenderer(private val context: BlockEntityRendererProvider.Context) : BlockEntityRenderer<ShopBlockEntity> {
     override fun render(
@@ -33,6 +40,7 @@ class ShopBlockEntityRenderer(private val context: BlockEntityRendererProvider.C
             ShopRenderStyle.RUG -> renderRug(shop, stack, partialTick, poseStack, bufferSource, packedLight, packedOverlay)
             ShopRenderStyle.SHELF -> renderShelf(shop, stack, poseStack, bufferSource, packedLight, packedOverlay)
         }
+        renderPriceTag(shop, poseStack, bufferSource, packedLight)
     }
 
     private fun renderAngled(
@@ -233,6 +241,7 @@ class ShopBlockEntityRenderer(private val context: BlockEntityRendererProvider.C
     }
 
     private fun renderAngledLabels(shop: ShopBlockEntity, poseStack: PoseStack, bufferSource: MultiBufferSource, light: Int) {
+        if (!isHovered(shop)) return
         poseStack.pushPose()
         when (facing(shop)) {
             Direction.NORTH -> {
@@ -265,6 +274,7 @@ class ShopBlockEntityRenderer(private val context: BlockEntityRendererProvider.C
     }
 
     private fun renderCrateLabels(shop: ShopBlockEntity, poseStack: PoseStack, bufferSource: MultiBufferSource, light: Int) {
+        if (!isHovered(shop)) return
         poseStack.pushPose()
         poseStack.translate(0.06, 0.14, -0.664)
         poseStack.mulPose(Axis.ZP.rotationDegrees(180.0f))
@@ -274,6 +284,7 @@ class ShopBlockEntityRenderer(private val context: BlockEntityRendererProvider.C
     }
 
     private fun renderShelfPairLabels(shop: ShopBlockEntity, poseStack: PoseStack, bufferSource: MultiBufferSource, light: Int) {
+        if (!isHovered(shop)) return
         poseStack.pushPose()
         poseStack.translate(-0.08, -0.16, 0.43749)
         poseStack.mulPose(Axis.ZP.rotationDegrees(180.0f))
@@ -282,6 +293,7 @@ class ShopBlockEntityRenderer(private val context: BlockEntityRendererProvider.C
     }
 
     private fun renderWindowLabels(shop: ShopBlockEntity, poseStack: PoseStack, bufferSource: MultiBufferSource, light: Int) {
+        if (!isHovered(shop)) return
         poseStack.pushPose()
         poseStack.translate(0.5, 0.0, 0.5)
         poseStack.mulPose(Axis.YP.rotationDegrees(facingRotation(facing(shop))))
@@ -294,6 +306,7 @@ class ShopBlockEntityRenderer(private val context: BlockEntityRendererProvider.C
     }
 
     private fun renderHookLabels(shop: ShopBlockEntity, poseStack: PoseStack, bufferSource: MultiBufferSource, light: Int) {
+        if (!isHovered(shop)) return
         poseStack.pushPose()
         poseStack.translate(0.5, 0.5, 0.5)
         poseStack.mulPose(Axis.YP.rotationDegrees(facingRotation(facing(shop))))
@@ -304,6 +317,7 @@ class ShopBlockEntityRenderer(private val context: BlockEntityRendererProvider.C
     }
 
     private fun renderRugLabels(shop: ShopBlockEntity, poseStack: PoseStack, bufferSource: MultiBufferSource, light: Int) {
+        if (!isHovered(shop)) return
         poseStack.pushPose()
         poseStack.translate(0.5, 0.18, 0.5)
         poseStack.translate(0.0, RUG_LABEL_LIFT, 0.0)
@@ -316,6 +330,46 @@ class ShopBlockEntityRenderer(private val context: BlockEntityRendererProvider.C
         poseStack.popPose()
 
         poseStack.popPose()
+    }
+
+    private fun renderPriceTag(shop: ShopBlockEntity, poseStack: PoseStack, bufferSource: MultiBufferSource, light: Int) {
+        val text = format(shop.price)
+        val font = context.font
+        val textWidth = font.width(text)
+        val contentWidth = PRICE_ICON_SIZE + PRICE_TEXT_GAP + textWidth
+        val startX = -contentWidth / 2.0f
+        poseStack.pushPose()
+        poseStack.translate(0.5, PRICE_TAG_Y, 0.5)
+        poseStack.mulPose(Minecraft.getInstance().entityRenderDispatcher.cameraOrientation())
+        poseStack.scale(-PRICE_TAG_SCALE, -PRICE_TAG_SCALE, PRICE_TAG_SCALE)
+        renderTextureQuad(poseStack, bufferSource, CHOWCOIN_TEXTURE, startX, -PRICE_ICON_SIZE / 2.0f, PRICE_ICON_SIZE.toFloat(), PRICE_ICON_SIZE.toFloat(), light)
+        font.drawInBatch(
+            text,
+            startX + PRICE_ICON_SIZE + PRICE_TEXT_GAP,
+            -4.0f,
+            PRICE_TEXT_COLOR,
+            false,
+            poseStack.last().pose(),
+            bufferSource,
+            Font.DisplayMode.SEE_THROUGH,
+            PRICE_BACKGROUND_COLOR,
+            light,
+        )
+        poseStack.popPose()
+    }
+
+    private fun renderTextureQuad(poseStack: PoseStack, bufferSource: MultiBufferSource, texture: ResourceLocation, x: Float, y: Float, width: Float, height: Float, light: Int) {
+        val matrix = poseStack.last().pose()
+        val consumer = bufferSource.getBuffer(RenderType.text(texture))
+        consumer.addVertex(matrix, x, y + height, 0.0f).setColor(255, 255, 255, 255).setUv(0.0f, 1.0f).setLight(light)
+        consumer.addVertex(matrix, x + width, y + height, 0.0f).setColor(255, 255, 255, 255).setUv(1.0f, 1.0f).setLight(light)
+        consumer.addVertex(matrix, x + width, y, 0.0f).setColor(255, 255, 255, 255).setUv(1.0f, 0.0f).setLight(light)
+        consumer.addVertex(matrix, x, y, 0.0f).setColor(255, 255, 255, 255).setUv(0.0f, 0.0f).setLight(light)
+    }
+
+    private fun isHovered(shop: ShopBlockEntity): Boolean {
+        val hit = Minecraft.getInstance().hitResult as? BlockHitResult ?: return false
+        return hit.type == HitResult.Type.BLOCK && hit.blockPos == shop.blockPos
     }
 
     private fun renderText(
@@ -377,6 +431,8 @@ class ShopBlockEntityRenderer(private val context: BlockEntityRendererProvider.C
 
     private fun ShopBlockEntity.stockText(): String = stockCount.toString()
 
+    private fun format(amount: Long): String = String.format(Locale.US, "%,d", amount)
+
     private fun quantityTextX(text: String): Float =
         when {
             text.length >= 3 -> -10.5f
@@ -406,8 +462,15 @@ class ShopBlockEntityRenderer(private val context: BlockEntityRendererProvider.C
 
     companion object {
         private const val STOCK_TEXT_COLOR = 0xffffff
+        private const val PRICE_TEXT_COLOR = 0xffffff
+        private const val PRICE_BACKGROUND_COLOR = 0x66000000
+        private const val PRICE_TAG_Y = 1.32
+        private const val PRICE_TAG_SCALE = 0.025f
+        private const val PRICE_ICON_SIZE = 8
+        private const val PRICE_TEXT_GAP = 3
         private const val RUG_LABEL_LIFT = 0.03
         private const val TEXT_FACE_OFFSET = 0.002
+        private val CHOWCOIN_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/chowcoin.png")
         private val CRATE_STOCK_POSITIONS = listOf(
             CrateStockPosition(0.02f, 0.2f, 0.33f, -8f, 0f),
             CrateStockPosition(-0.23f, 0.53f, 0.26f, -4f, -4f),

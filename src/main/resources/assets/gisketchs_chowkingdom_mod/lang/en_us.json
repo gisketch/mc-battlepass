@@ -291,6 +291,5 @@
   "item.gisketchs_chowkingdom_mod.shop_oak_pink": "Oak Pink Shop",
   "config.jade.plugin_gisketchs_chowkingdom_mod.shop_stock": "Shop Stock",
   "jade.gisketchs_chowkingdom_mod.seller": "Seller: %s",
-  "jade.gisketchs_chowkingdom_mod.quantity": "Quantity: %s",
-  "jade.gisketchs_chowkingdom_mod.price": "Price: %s Chowcoins"
+  "jade.gisketchs_chowkingdom_mod.quantity": "Quantity: %s"
 }
