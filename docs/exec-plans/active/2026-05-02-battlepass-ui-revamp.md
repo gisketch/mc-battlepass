@@ -57,7 +57,7 @@ Replace battlepass screen custom texture UI with barebones vanilla-style rectang
 - `./gradlew.bat build --console=plain` passed after fixing tooltip text z-order and adding locked-icon shake on locked reward press.
 - `./gradlew.bat build --console=plain` passed after tightening tooltip section spacing and rendering Claim All with `9slice_btn_green.png` 2px corners.
 - `./gradlew.bat build --console=plain` passed after rendering the full custom tooltip pass with depth disabled and high z.
-- `./gradlew.bat build --console=plain` passed after scaling Claim All 9-slice destination corners and switching tooltip panels to `9slice_container.png`.
+- `./gradlew.bat build --console=plain` passed after scaling Claim All 9-slice destination corners and switching tooltip panels to `9slice_item.png`.
 - `./gradlew.bat build --console=plain` passed after increasing the mission tooltip gap between progress content and the Completed header.
 - `./gradlew.bat build --console=plain` passed after increasing tooltip padding to 14px and drawing the tooltip 9-slice background at 75% opacity.
 - `./gradlew.bat build --console=plain` passed after removing `COMPLETED`/`NONE` text rows and adding claimed-player heads to claimed reward tooltips.
@@ -113,7 +113,7 @@ Replace battlepass screen custom texture UI with barebones vanilla-style rectang
 - 2026-05-02: Fixed custom tooltip text being hidden behind the panel by removing panel-only high-z rendering. Locked reward icons now rotate in a short decaying shake when a locked slot is pressed. Build passed.
 - 2026-05-02: Reworked mission tooltip layout into header/content sections with uniform padding, removed the oversized reward tooltip minimum width, and added a reusable 8px 9-slice renderer for the green Claim All button texture. Build passed.
 - 2026-05-02: Fixed tooltips rendering behind item sprites by flushing item buffers, disabling depth test, and drawing panel/text/avatar together at high z. Build passed.
-- 2026-05-02: Extended 9-slice renderer to separate source corner size from destination corner size. Claim All now draws 2px source corners as 4px screen corners, and tooltips use `9slice_container.png` with 10px source corners. Build passed.
+- 2026-05-02: Extended 9-slice renderer to separate source corner size from destination corner size. Claim All now draws 2px source corners as 4px screen corners, and tooltips use `9slice_item.png` with 10px source corners. Build passed.
 - 2026-05-02: Increased mission tooltip section gap from 14px to 20px so progress and `COMPLETED` read as separate groups. Build passed.
 - 2026-05-02: Increased tooltip padding to 14px relative to the 10px 9-slice corners and set tooltip container texture alpha to 75% while keeping text fully opaque. Build passed.
 - 2026-05-02: Mission tooltips now show completed-player heads directly when present and nothing when none. Claimed reward tooltips show `CLAIMED` plus heads of all synced players, including self, who claimed the tier. Build passed.

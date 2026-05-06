@@ -3,6 +3,7 @@ package dev.gisketch.chowkingdom.shops
 import dev.gisketch.chowkingdom.ChowKingdomMod
 import dev.gisketch.chowkingdom.battlepass.BattlepassMissionEventBank
 import dev.gisketch.chowkingdom.battlepass.BattlepassNetwork
+import dev.gisketch.chowkingdom.commerce.CommerceAuditLog
 import dev.gisketch.chowkingdom.wallets.ChowcoinNetwork
 import dev.gisketch.chowkingdom.wallets.ChowcoinStore
 import net.minecraft.core.BlockPos
@@ -101,6 +102,7 @@ object ShopStockNetwork {
         ChowcoinStore.set(player, balance - total)
         if (total > 0L) ChowcoinStore.add(ownerId, total)
         bought.forEach { stack -> if (!player.inventory.add(stack)) player.drop(stack, false) }
+        CommerceAuditLog.recordShopBuy(player, ownerId, shop.ownerName, shop.blockPos, itemName, bought.sumOf { it.count }, total)
         recordBuyMission(player, total)
         ChowcoinNetwork.syncTo(player)
         player.server.playerList.getPlayer(ownerId)?.let { owner ->

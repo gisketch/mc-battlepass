@@ -2,6 +2,7 @@ package dev.gisketch.chowkingdom.trading
 
 import com.mojang.brigadier.context.CommandContext
 import dev.gisketch.chowkingdom.ChatGlyphs
+import dev.gisketch.chowkingdom.commerce.CommerceAuditLog
 import dev.gisketch.chowkingdom.wallets.ChowcoinNetwork
 import dev.gisketch.chowkingdom.wallets.ChowcoinStore
 import net.minecraft.ChatFormatting
@@ -206,6 +207,8 @@ object TradingManager {
 
         session.completed = true
         session.suppressOfferChange = true
+        val firstOfferedItems = session.offeredItems(session.firstId).map(ItemStack::copy)
+        val secondOfferedItems = session.offeredItems(session.secondId).map(ItemStack::copy)
         moveOfferToInventory(session.secondOffer, first)
         if (second != null) {
             moveOfferToInventory(session.firstOffer, second)
@@ -216,6 +219,7 @@ object TradingManager {
             settleDebugChowcoins(first, firstCoins, secondCoins)
             first.sendSystemMessage(Component.literal("Debug trade completed; your item offer was returned.").withStyle(ChatFormatting.YELLOW))
         }
+        CommerceAuditLog.recordTrade(first.server, session.firstId, session.firstName, session.secondId, session.secondName, firstOfferedItems, secondOfferedItems, firstCoins, secondCoins, session.debug)
         finishCompletedTrade(session)
         ChowcoinNetwork.syncTo(first)
         second?.let(ChowcoinNetwork::syncTo)

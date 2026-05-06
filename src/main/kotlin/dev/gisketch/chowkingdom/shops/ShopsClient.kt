@@ -9,6 +9,7 @@ import net.minecraft.client.gui.components.EditBox
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen
 import net.minecraft.client.resources.sounds.SimpleSoundInstance
+import net.minecraft.Util
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.sounds.SoundEvents
@@ -40,18 +41,24 @@ object ShopsClient {
 
 private class ShopBuyScreen(private val payload: ShopOpenBuyDialogPayload) : Screen(Component.literal("Buy Shop Item")) {
     private var quantity = if (payload.stockCount > 0) 1 else 0
+    private val openedAtMs = Util.getMillis()
 
     override fun render(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) {
         val panel = panelRect()
-        guiGraphics.fill(panel.x + 10, panel.y + 10, panel.right - 10, panel.bottom - 10, DIALOG_PANEL_FILL)
-        renderNineSlice(guiGraphics, FRAME_TEXTURE, panel, FRAME_TEXTURE_WIDTH, FRAME_TEXTURE_HEIGHT, FRAME_SOURCE_CORNER, FRAME_DESTINATION_CORNER)
-        drawCentered(guiGraphics, fitText("ARE YOU SURE YOU WANT TO BUY \"${payload.itemName}\"", panel.width - 28, CKDM_BOLD_SMALL_FONT), panel.x, panel.y + 20, panel.width, CKDM_WHITE, CKDM_DARK_SHADOW, CKDM_BOLD_SMALL_FONT)
-        renderButton(guiGraphics, minusRect(), "-", ButtonKind.RED, mouseX, mouseY, quantity > 0)
-        drawCenteredScaled(guiGraphics, format(quantity.toLong()), quantityRect(), QUANTITY_TEXT_SCALE, CKDM_WHITE, CKDM_DARK_SHADOW, CKDM_BOLD_FONT)
-        renderButton(guiGraphics, plusRect(), "+", ButtonKind.GREEN, mouseX, mouseY, canIncrease())
-        renderTotal(guiGraphics)
-        renderButton(guiGraphics, yesRect(), "YES", ButtonKind.GREEN, mouseX, mouseY, canBuy())
-        renderButton(guiGraphics, noRect(), "NO", ButtonKind.RED, mouseX, mouseY, true)
+        withBounce(guiGraphics, panel) {
+            RenderSystem.enableBlend()
+            RenderSystem.defaultBlendFunc()
+            RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f)
+            guiGraphics.fill(panel.x + 10, panel.y + 10, panel.right - 10, panel.bottom - 10, DIALOG_PANEL_FILL)
+            renderNineSlice(guiGraphics, FRAME_TEXTURE, panel, FRAME_TEXTURE_WIDTH, FRAME_TEXTURE_HEIGHT, FRAME_SOURCE_CORNER, FRAME_DESTINATION_CORNER)
+            drawCentered(guiGraphics, fitText("ARE YOU SURE YOU WANT TO BUY \"${payload.itemName}\"", panel.width - 28, CKDM_BOLD_SMALL_FONT), panel.x, panel.y + 20, panel.width, CKDM_WHITE, CKDM_DARK_SHADOW, CKDM_BOLD_SMALL_FONT)
+            renderButton(guiGraphics, minusRect(), "-", ButtonKind.RED, mouseX, mouseY, quantity > 0)
+            drawCenteredScaled(guiGraphics, format(quantity.toLong()), quantityRect(), QUANTITY_TEXT_SCALE, CKDM_WHITE, CKDM_DARK_SHADOW, CKDM_BOLD_FONT)
+            renderButton(guiGraphics, plusRect(), "+", ButtonKind.GREEN, mouseX, mouseY, canIncrease())
+            renderTotal(guiGraphics)
+            renderButton(guiGraphics, yesRect(), "YES", ButtonKind.GREEN, mouseX, mouseY, canBuy())
+            renderButton(guiGraphics, noRect(), "NO", ButtonKind.RED, mouseX, mouseY, true)
+        }
     }
 
     override fun mouseClicked(mouseX: Double, mouseY: Double, button: Int): Boolean {
@@ -137,6 +144,7 @@ private class ShopBuyScreen(private val payload: ShopOpenBuyDialogPayload) : Scr
     private fun renderNineSlice(guiGraphics: GuiGraphics, texture: ResourceLocation, rect: Rect, textureWidth: Int, textureHeight: Int, sourceCorner: Int, destinationCorner: Int = sourceCorner) {
         RenderSystem.enableBlend()
         RenderSystem.defaultBlendFunc()
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f)
         val edgeX = textureWidth - sourceCorner
         val edgeY = textureHeight - sourceCorner
         val middleWidth = textureWidth - sourceCorner * 2
@@ -152,6 +160,7 @@ private class ShopBuyScreen(private val payload: ShopOpenBuyDialogPayload) : Scr
         blitRegion(guiGraphics, texture, Rect(rect.x, rect.y + rect.height - destinationCorner, destinationCorner, destinationCorner), 0, edgeY, sourceCorner, sourceCorner, textureWidth, textureHeight)
         blitRegion(guiGraphics, texture, Rect(rect.x + destinationCorner, rect.y + rect.height - destinationCorner, innerWidth, destinationCorner), sourceCorner, edgeY, middleWidth, sourceCorner, textureWidth, textureHeight)
         blitRegion(guiGraphics, texture, Rect(rect.x + rect.width - destinationCorner, rect.y + rect.height - destinationCorner, destinationCorner, destinationCorner), edgeX, edgeY, sourceCorner, sourceCorner, textureWidth, textureHeight)
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f)
     }
 
     private fun blitRegion(guiGraphics: GuiGraphics, texture: ResourceLocation, rect: Rect, sourceX: Int, sourceY: Int, sourceWidth: Int, sourceHeight: Int, textureWidth: Int, textureHeight: Int) {
@@ -163,6 +172,25 @@ private class ShopBuyScreen(private val payload: ShopOpenBuyDialogPayload) : Scr
         RenderSystem.enableBlend()
         RenderSystem.defaultBlendFunc()
         guiGraphics.blit(CHOWCOIN_TEXTURE, x, y, size, size, 0.0f, 0.0f, CHOWCOIN_TEXTURE_SIZE, CHOWCOIN_TEXTURE_SIZE, CHOWCOIN_TEXTURE_SIZE, CHOWCOIN_TEXTURE_SIZE)
+    }
+
+    private fun withBounce(guiGraphics: GuiGraphics, rect: Rect, render: () -> Unit) {
+        val scale = bounceScale(Util.getMillis() - openedAtMs)
+        val pose = guiGraphics.pose()
+        pose.pushPose()
+        pose.translate(rect.x + rect.width / 2.0f, rect.y + rect.height / 2.0f, 0.0f)
+        pose.scale(scale, scale, 1.0f)
+        pose.translate(-(rect.x + rect.width / 2.0f), -(rect.y + rect.height / 2.0f), 0.0f)
+        render()
+        pose.popPose()
+    }
+
+    private fun bounceScale(elapsedMs: Long): Float {
+        val progress = (elapsedMs / BOUNCE_DURATION_MS).coerceIn(0.0f, 1.0f)
+        val shifted = progress - 1.0f
+        val overshoot = 1.70158f
+        return (1.0f + (overshoot + 1.0f) * shifted * shifted * shifted + overshoot * shifted * shifted)
+            .coerceAtLeast(BOUNCE_SCALE_FROM)
     }
 
     private fun drawCentered(guiGraphics: GuiGraphics, text: String, x: Int, y: Int, width: Int, color: Int, shadowColor: Int, fontId: ResourceLocation) {
@@ -215,7 +243,7 @@ private class ShopBuyScreen(private val payload: ShopOpenBuyDialogPayload) : Scr
 
     companion object {
         private val CHOWCOIN_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/chowcoin.png")
-        private val FRAME_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_frame.png")
+        private val FRAME_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_frame_2.png")
         private val GREEN_BUTTON_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_btn_green.png")
         private val GREEN_BUTTON_HOVER_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_btn_green_hover.png")
         private val RED_BUTTON_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_btn_red.png")
@@ -225,17 +253,19 @@ private class ShopBuyScreen(private val payload: ShopOpenBuyDialogPayload) : Scr
         private val CKDM_BOLD_SMALL_FONT: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "ckdm_bold_small")
         private const val PANEL_WIDTH = 300
         private const val PANEL_HEIGHT = 170
-        private const val DIALOG_PANEL_FILL = 0xF0141414.toInt()
+        private const val DIALOG_PANEL_FILL = 0xCC141414.toInt()
         private const val QUANTITY_BUTTON_SIZE = 40
         private const val QUANTITY_TEXT_WIDTH = 96
         private const val QUANTITY_ROW_HEIGHT = 30
         private const val QUANTITY_GAP = 6
         private const val QUANTITY_GROUP_WIDTH = QUANTITY_BUTTON_SIZE * 2 + QUANTITY_TEXT_WIDTH + QUANTITY_GAP * 2
         private const val QUANTITY_TEXT_SCALE = 2.35f
-        private const val FRAME_TEXTURE_WIDTH = 737
-        private const val FRAME_TEXTURE_HEIGHT = 512
+        private const val FRAME_TEXTURE_WIDTH = 1646
+        private const val FRAME_TEXTURE_HEIGHT = 256
         private const val FRAME_SOURCE_CORNER = 75
-        private const val FRAME_DESTINATION_CORNER = 18
+        private const val FRAME_DESTINATION_CORNER = 14
+        private const val BOUNCE_DURATION_MS = 320.0f
+        private const val BOUNCE_SCALE_FROM = 0.86f
         private const val BUTTON_TEXTURE_SIZE = 8
         private const val BUTTON_SOURCE_CORNER = 2
         private const val BUTTON_DESTINATION_CORNER = 4
@@ -259,6 +289,7 @@ class ShopStockScreen(menu: ShopStockMenu, inventory: Inventory, title: Componen
     private var previousSaveHover = false
     private var previousCollectHover = false
     private var previousRemoveHover = false
+    private var openedAtMs = Util.getMillis()
 
     init {
         imageWidth = SCREEN_WIDTH
@@ -271,13 +302,16 @@ class ShopStockScreen(menu: ShopStockMenu, inventory: Inventory, title: Componen
         super.init()
         priceDialogInput = null
         priceDialogOpen = false
+        openedAtMs = Util.getMillis()
     }
 
     override fun render(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) {
         super.render(guiGraphics, mouseX, mouseY, partialTick)
-        renderSoldOutStock(guiGraphics)
-        renderStockQuantityOverlay(guiGraphics)
-        renderButtons(guiGraphics, mouseX, mouseY)
+        withBounce(guiGraphics, Rect(leftPos, topPos, imageWidth, EDITOR_FRAME_HEIGHT), 0) {
+            renderSoldOutStock(guiGraphics)
+            renderStockQuantityOverlay(guiGraphics)
+            renderButtons(guiGraphics, mouseX, mouseY)
+        }
         if (priceDialogOpen) {
             renderPriceDialog(guiGraphics, mouseX, mouseY)
             renderTooltip(guiGraphics, mouseX, mouseY)
@@ -289,14 +323,18 @@ class ShopStockScreen(menu: ShopStockMenu, inventory: Inventory, title: Componen
     override fun renderBg(guiGraphics: GuiGraphics, partialTick: Float, mouseX: Int, mouseY: Int) {
         RenderSystem.enableBlend()
         RenderSystem.defaultBlendFunc()
-        renderNineSlice(guiGraphics, FRAME_TEXTURE, Rect(leftPos, topPos, imageWidth, EDITOR_FRAME_HEIGHT), FRAME_TEXTURE_WIDTH, FRAME_TEXTURE_HEIGHT, FRAME_SOURCE_CORNER, FRAME_DESTINATION_CORNER)
-        renderPriceButton(guiGraphics, mouseX, mouseY)
-        renderVanillaInventory(guiGraphics)
-        renderStats(guiGraphics)
-        renderStock(guiGraphics)
-        renderStaticLabels(guiGraphics)
-        renderPriceText(guiGraphics)
-        renderPriceCurrencyLabel(guiGraphics)
+        withBounce(guiGraphics, Rect(leftPos, topPos, imageWidth, EDITOR_FRAME_HEIGHT), 0) {
+            renderNineSlice(guiGraphics, FRAME_TEXTURE, Rect(leftPos, topPos, imageWidth, EDITOR_FRAME_HEIGHT), FRAME_TEXTURE_WIDTH, FRAME_TEXTURE_HEIGHT, FRAME_SOURCE_CORNER, FRAME_DESTINATION_CORNER)
+            renderPriceButton(guiGraphics, mouseX, mouseY)
+            renderStats(guiGraphics)
+            renderStock(guiGraphics)
+            renderStaticLabels(guiGraphics)
+            renderPriceText(guiGraphics)
+            renderPriceCurrencyLabel(guiGraphics)
+        }
+        withBounce(guiGraphics, Rect(leftPos + VANILLA_INVENTORY_X, topPos + VANILLA_INVENTORY_Y, VANILLA_INVENTORY_WIDTH, VANILLA_INVENTORY_HEIGHT), 90) {
+            renderVanillaInventory(guiGraphics)
+        }
     }
 
     override fun renderLabels(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) = Unit
@@ -347,16 +385,8 @@ class ShopStockScreen(menu: ShopStockMenu, inventory: Inventory, title: Componen
         val hovered = menu.canEdit && !priceDialogOpen && rect.contains(mouseX, mouseY)
         if (hovered && !previousPriceHover) playHoverSound()
         previousPriceHover = hovered
-        val texture = when {
-            !menu.canEdit -> GRAY_BUTTON_TEXTURE
-            hovered -> YELLOW_BUTTON_HOVER_TEXTURE
-            else -> YELLOW_BUTTON_TEXTURE
-        }
-        val textureSize = if (hovered) BUTTON_HOVER_TEXTURE_SIZE else BUTTON_TEXTURE_SIZE
-        val sourceCorner = if (hovered) BUTTON_HOVER_SOURCE_CORNER else BUTTON_SOURCE_CORNER
-        val destinationCorner = if (hovered) BUTTON_HOVER_DESTINATION_CORNER else BUTTON_DESTINATION_CORNER
         val renderRect = if (hovered) rect.inflate(1) else rect
-        renderNineSlice(guiGraphics, texture, renderRect, textureSize, textureSize, sourceCorner, destinationCorner)
+        renderNineSlice(guiGraphics, FRAME_TEXTURE, renderRect, FRAME_TEXTURE_WIDTH, FRAME_TEXTURE_HEIGHT, FRAME_SOURCE_CORNER, FRAME_DESTINATION_CORNER)
     }
 
     private fun renderPriceText(guiGraphics: GuiGraphics) {
@@ -487,14 +517,19 @@ class ShopStockScreen(menu: ShopStockMenu, inventory: Inventory, title: Componen
     }
 
     private fun renderPriceDialog(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
+        RenderSystem.enableBlend()
+        RenderSystem.defaultBlendFunc()
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f)
         guiGraphics.fill(0, 0, width, height, DIALOG_SCRIM_COLOR)
         val panel = priceDialogRect()
-        guiGraphics.fill(panel.x, panel.y, panel.right, panel.bottom, DIALOG_PANEL_COLOR)
-        guiGraphics.renderOutline(panel.x, panel.y, panel.width, panel.height, DIALOG_OUTLINE_COLOR)
-        guiGraphics.drawCenteredString(font, Component.literal("Input Price"), panel.x + panel.width / 2, panel.y + 12, CKDM_WHITE)
-        priceDialogInput?.render(guiGraphics, mouseX, mouseY, 0.0f)
-        renderDialogButton(guiGraphics, priceDialogDoneRect(), "DONE", priceDialogDoneRect().contains(mouseX, mouseY), true)
-        renderDialogButton(guiGraphics, priceDialogCancelRect(), "CANCEL", priceDialogCancelRect().contains(mouseX, mouseY), false)
+        withBounce(guiGraphics, panel, 0) {
+            renderNineSlice(guiGraphics, FRAME_TEXTURE, panel, FRAME_TEXTURE_WIDTH, FRAME_TEXTURE_HEIGHT, FRAME_SOURCE_CORNER, FRAME_DESTINATION_CORNER)
+            guiGraphics.drawCenteredString(font, Component.literal("Input Price"), panel.x + panel.width / 2, panel.y + 12, CKDM_WHITE)
+            renderNineSlice(guiGraphics, FRAME_TEXTURE, priceDialogInputRect().inflate(4), FRAME_TEXTURE_WIDTH, FRAME_TEXTURE_HEIGHT, FRAME_SOURCE_CORNER, 8)
+            priceDialogInput?.render(guiGraphics, mouseX, mouseY, 0.0f)
+            renderDialogButton(guiGraphics, priceDialogDoneRect(), "DONE", priceDialogDoneRect().contains(mouseX, mouseY), true)
+            renderDialogButton(guiGraphics, priceDialogCancelRect(), "CANCEL", priceDialogCancelRect().contains(mouseX, mouseY), false)
+        }
     }
 
     private fun renderDialogButton(guiGraphics: GuiGraphics, rect: Rect, labelText: String, hovered: Boolean, confirm: Boolean) {
@@ -562,6 +597,7 @@ class ShopStockScreen(menu: ShopStockMenu, inventory: Inventory, title: Componen
     private fun renderNineSlice(guiGraphics: GuiGraphics, texture: ResourceLocation, rect: Rect, textureWidth: Int, textureHeight: Int, sourceCorner: Int, destinationCorner: Int = sourceCorner) {
         RenderSystem.enableBlend()
         RenderSystem.defaultBlendFunc()
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f)
         val edgeX = textureWidth - sourceCorner
         val edgeY = textureHeight - sourceCorner
         val middleWidth = textureWidth - sourceCorner * 2
@@ -577,6 +613,7 @@ class ShopStockScreen(menu: ShopStockMenu, inventory: Inventory, title: Componen
         blitRegion(guiGraphics, texture, Rect(rect.x, rect.y + rect.height - destinationCorner, destinationCorner, destinationCorner), 0, edgeY, sourceCorner, sourceCorner, textureWidth, textureHeight)
         blitRegion(guiGraphics, texture, Rect(rect.x + destinationCorner, rect.y + rect.height - destinationCorner, innerWidth, destinationCorner), sourceCorner, edgeY, middleWidth, sourceCorner, textureWidth, textureHeight)
         blitRegion(guiGraphics, texture, Rect(rect.x + rect.width - destinationCorner, rect.y + rect.height - destinationCorner, destinationCorner, destinationCorner), edgeX, edgeY, sourceCorner, sourceCorner, textureWidth, textureHeight)
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f)
     }
 
     private fun blitRegion(guiGraphics: GuiGraphics, texture: ResourceLocation, rect: Rect, sourceX: Int, sourceY: Int, sourceWidth: Int, sourceHeight: Int, textureWidth: Int, textureHeight: Int) {
@@ -631,6 +668,25 @@ class ShopStockScreen(menu: ShopStockMenu, inventory: Inventory, title: Componen
         guiGraphics.blit(CHOWCOIN_TEXTURE, x, y, size, size, 0.0f, 0.0f, CHOWCOIN_TEXTURE_SIZE, CHOWCOIN_TEXTURE_SIZE, CHOWCOIN_TEXTURE_SIZE, CHOWCOIN_TEXTURE_SIZE)
     }
 
+    private fun withBounce(guiGraphics: GuiGraphics, rect: Rect, delayMs: Int, render: () -> Unit) {
+        val scale = bounceScale(Util.getMillis() - openedAtMs - delayMs)
+        val pose = guiGraphics.pose()
+        pose.pushPose()
+        pose.translate(rect.x + rect.width / 2.0f, rect.y + rect.height / 2.0f, 0.0f)
+        pose.scale(scale, scale, 1.0f)
+        pose.translate(-(rect.x + rect.width / 2.0f), -(rect.y + rect.height / 2.0f), 0.0f)
+        render()
+        pose.popPose()
+    }
+
+    private fun bounceScale(elapsedMs: Long): Float {
+        val progress = (elapsedMs / BOUNCE_DURATION_MS).coerceIn(0.0f, 1.0f)
+        val shifted = progress - 1.0f
+        val overshoot = 1.70158f
+        return (1.0f + (overshoot + 1.0f) * shifted * shifted * shifted + overshoot * shifted * shifted)
+            .coerceAtLeast(BOUNCE_SCALE_FROM)
+    }
+
     private fun displayStock(): net.minecraft.world.item.ItemStack =
         (Minecraft.getInstance().level?.getBlockEntity(menu.pos) as? ShopBlockEntity)?.displayItem
             ?: menu.getSlot(ShopStockMenu.STOCK_SLOT_INDEX).item
@@ -665,7 +721,7 @@ class ShopStockScreen(menu: ShopStockMenu, inventory: Inventory, title: Componen
 
     companion object {
         private val CHOWCOIN_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/chowcoin.png")
-        private val FRAME_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_frame.png")
+        private val FRAME_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_frame_2.png")
         private val SLOT_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_slot.png")
         private val VANILLA_INVENTORY_TEXTURE: ResourceLocation = ResourceLocation.withDefaultNamespace("textures/gui/container/generic_54.png")
         private val GREEN_BUTTON_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_btn_green.png")
@@ -680,10 +736,10 @@ class ShopStockScreen(menu: ShopStockMenu, inventory: Inventory, title: Componen
         private const val SCREEN_WIDTH = 320
         private const val SCREEN_HEIGHT = 286
         private const val EDITOR_FRAME_HEIGHT = 180
-        private const val FRAME_TEXTURE_WIDTH = 737
-        private const val FRAME_TEXTURE_HEIGHT = 512
+        private const val FRAME_TEXTURE_WIDTH = 1646
+        private const val FRAME_TEXTURE_HEIGHT = 256
         private const val FRAME_SOURCE_CORNER = 75
-        private const val FRAME_DESTINATION_CORNER = 18
+        private const val FRAME_DESTINATION_CORNER = 14
         private const val SLOT_TEXTURE_SIZE = 370
         private const val SLOT_SOURCE_CORNER = 75
         private const val SLOT_DESTINATION_CORNER = 10
@@ -734,8 +790,8 @@ class ShopStockScreen(menu: ShopStockMenu, inventory: Inventory, title: Componen
         private const val PRICE_DIALOG_WIDTH = 180
         private const val PRICE_DIALOG_HEIGHT = 98
         private const val DIALOG_SCRIM_COLOR = 0x99000000.toInt()
-        private const val DIALOG_PANEL_COLOR = 0xEE1E1E1E.toInt()
-        private const val DIALOG_OUTLINE_COLOR = 0xFFFFFFFF.toInt()
+        private const val BOUNCE_DURATION_MS = 320.0f
+        private const val BOUNCE_SCALE_FROM = 0.86f
         private const val CKDM_WHITE = 0xFFFFFFFF.toInt()
         private const val CKDM_DARK_SHADOW = 0xCC050505.toInt()
         private const val BUTTON_TEXT_SHADOW = 0xAA101010.toInt()

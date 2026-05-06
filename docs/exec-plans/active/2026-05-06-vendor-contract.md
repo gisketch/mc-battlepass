@@ -15,6 +15,7 @@ Add a Vendor Contract item that links shop blocks to a frozen mob seller.
 - Buying through a seller pays each linked shop owner and removes stock from the source shop.
 - Sold-out linked shops stay visible as quantity `0` and out-of-stock until the owner removes the item.
 - Owner can void the seller, restore AI, and recover the contract.
+- Vendor UI is full screen with 1:2:1 columns for seller info/filter/revenue, stock list/search, and cart checkout.
 
 ## Context Links
 
@@ -48,3 +49,9 @@ Add a Vendor Contract item that links shop blocks to a frozen mob seller.
 - 2026-05-06: Plan created from user request and revision.
 - 2026-05-06: Implemented Vendor Contract item, configurable 100-link default, shared-owner seller links, mob signing, vendor buy/void screen, yellow linked-shop outline, and validation checks.
 - 2026-05-06: Changed sold-out shops to retain their item template, owner, price, contract links, and render quantity `0`; only `REMOVE ITEM` unlinks/clears the shop.
+- 2026-05-06: Rebuilt vendor UI as a full-screen three-column shop with seller paperdoll, editable shop name, seller filter list, cart checkout, and per-seller claimable revenue collection.
+- 2026-05-06: Polished vendor stock rows with `9slice_item`, stock sorting, smaller matching stock text, restored void button, buy-close feedback, and protected vendored mobs from name tags, attacks, damage, and projectile impacts.
+- 2026-05-06: Added vendor entrance motion matching battlepass timing: staggered columns, staggered stock rows, delayed item icon scale-in, chowcoin baseline nudges, and a void-contract confirmation dialog.
+- 2026-05-06: Added cart-row text padding and Cobblemon-specific vendor state via reflection: block owned non-pastured Pokemon, allow wild/pastured Pokemon, set `HIDE_LABEL` and `UNBATTLEABLE`, and restore prior Cobblemon flags on void/death.
+- 2026-05-06: Tuned vendor animation grouping with larger seller paperdoll and top-to-bottom stagger across seller/cart sections; normal shop dialogs now use `9slice_frame_2` and bounce-scale in.
+- 2026-05-06: Added persistent commerce audit saved data for direct shop buys, vendor buys, and completed player trades.

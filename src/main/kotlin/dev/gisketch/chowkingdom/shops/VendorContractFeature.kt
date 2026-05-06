@@ -3,13 +3,14 @@ package dev.gisketch.chowkingdom.shops
 import com.google.gson.GsonBuilder
 import com.google.gson.annotations.SerializedName
 import dev.gisketch.chowkingdom.ChowKingdomMod
+import dev.gisketch.chowkingdom.commerce.CommerceAuditLog
+import dev.gisketch.chowkingdom.wallets.ChowcoinNetwork
+import dev.gisketch.chowkingdom.wallets.ChowcoinStore
 import net.minecraft.core.BlockPos
-import net.minecraft.core.Registry
 import net.minecraft.core.component.DataComponents
 import net.minecraft.core.registries.Registries
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.nbt.ListTag
-import net.minecraft.nbt.StringTag
 import net.minecraft.network.RegistryFriendlyByteBuf
 import net.minecraft.network.chat.Component
 import net.minecraft.network.codec.StreamCodec
@@ -28,12 +29,17 @@ import net.minecraft.world.item.Item
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.TooltipFlag
 import net.minecraft.world.item.component.CustomData
+import net.minecraft.world.phys.EntityHitResult
 import net.minecraft.world.phys.Vec3
 import net.neoforged.bus.api.EventPriority
 import net.neoforged.bus.api.IEventBus
 import net.neoforged.fml.loading.FMLPaths
 import net.neoforged.neoforge.common.NeoForge
+import net.neoforged.neoforge.event.entity.ProjectileImpactEvent
+import net.neoforged.neoforge.event.entity.living.LivingDamageEvent
 import net.neoforged.neoforge.event.entity.living.LivingDeathEvent
+import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent
+import net.neoforged.neoforge.event.entity.player.AttackEntityEvent
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent
 import net.neoforged.neoforge.event.server.ServerStartedEvent
 import net.neoforged.neoforge.event.tick.ServerTickEvent
@@ -43,6 +49,7 @@ import net.neoforged.neoforge.network.handling.IPayloadContext
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.UUID
+import java.util.function.Consumer
 import kotlin.io.path.bufferedReader
 import kotlin.io.path.bufferedWriter
 import kotlin.io.path.createDirectories
@@ -63,10 +70,15 @@ object VendorContractFeature {
     fun register(modBus: IEventBus) {
         VendorContractConfig.load()
         modBus.addListener(::registerPayloads)
+        CobblemonVendorSupport.registerEvents()
         NeoForge.EVENT_BUS.addListener(::onServerStarted)
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, ::onRightClickBlock)
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, ::onEntityInteractSpecific)
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, ::onEntityInteract)
+        NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, ::onAttackEntity)
+        NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, ::onIncomingDamage)
+        NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, ::onLivingDamagePre)
+        NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, ::onProjectileImpact)
         NeoForge.EVENT_BUS.addListener(::onLivingDeath)
         NeoForge.EVENT_BUS.addListener(::onServerTick)
     }
@@ -75,8 +87,12 @@ object VendorContractFeature {
         val registrar = event.registrar("1")
         registrar.playToClient(VendorOpenPayload.TYPE, VendorOpenPayload.STREAM_CODEC, ::handleOpenClient)
         registrar.playToClient(VendorContractSelectionPayload.TYPE, VendorContractSelectionPayload.STREAM_CODEC, ::handleSelectionClient)
+        registrar.playToClient(VendorSellerIdsPayload.TYPE, VendorSellerIdsPayload.STREAM_CODEC, ::handleSellerIdsClient)
         registrar.playToServer(VendorBuyPayload.TYPE, VendorBuyPayload.STREAM_CODEC, ::handleBuy)
+        registrar.playToServer(VendorCartBuyPayload.TYPE, VendorCartBuyPayload.STREAM_CODEC, ::handleCartBuy)
         registrar.playToServer(VendorVoidPayload.TYPE, VendorVoidPayload.STREAM_CODEC, ::handleVoid)
+        registrar.playToServer(VendorRenamePayload.TYPE, VendorRenamePayload.STREAM_CODEC, ::handleRename)
+        registrar.playToServer(VendorCollectPayload.TYPE, VendorCollectPayload.STREAM_CODEC, ::handleCollect)
     }
 
     private fun onServerStarted(event: ServerStartedEvent) {
@@ -159,12 +175,17 @@ object VendorContractFeature {
     }
 
     private fun signSeller(player: ServerPlayer, seller: Mob, stack: ItemStack) {
+        if (!CobblemonVendorSupport.canBecomeVendor(seller)) {
+            player.displayClientMessage(Component.literal("Owned party Pokemon cannot sign contracts. Use wild or pastured Pokemon."), true)
+            return
+        }
         val links = VendorContractData.links(stack).filter { resolveShop(player.server, it)?.let(::isValidLinkedShop) == true }.take(VendorContractConfig.maxLinks())
         if (links.isEmpty()) {
             player.displayClientMessage(Component.literal("No loaded valid shops on this contract."), true)
             return
         }
         SellerData.save(seller, player, links)
+        CobblemonVendorSupport.applyVendorState(seller)
         seller.setNoAi(true)
         seller.setPersistenceRequired()
         seller.setDeltaMovement(Vec3.ZERO)
@@ -178,9 +199,20 @@ object VendorContractFeature {
         val entries = state.links.mapNotNull { key ->
             val shop = resolveShop(player.server, key) ?: return@mapNotNull null
             if (!isValidLinkedShop(shop)) return@mapNotNull null
-            VendorEntry(key.dimension, key.pos, shop.displayItem.copy(), shop.stockCount, shop.price, shop.ownerName)
+            VendorEntry(key.dimension, key.pos, shop.displayItem.copy(), shop.stockCount, shop.price, shop.ownerUuid ?: return@mapNotNull null, shop.ownerName)
         }
-        PacketDistributor.sendToPlayer(player, VendorOpenPayload(seller.uuid, state.ownerId == player.uuid || player.isCreative, entries))
+        val canManage = player.isCreative || state.ownerId == player.uuid || entries.any { it.ownerId == player.uuid }
+        PacketDistributor.sendToPlayer(
+            player,
+            VendorOpenPayload(
+                seller.uuid,
+                state.shopName,
+                state.ownerId == player.uuid || player.isCreative,
+                canManage,
+                state.revenue[player.uuid] ?: 0L,
+                entries,
+            ),
+        )
     }
 
     private fun handleBuy(payload: VendorBuyPayload, context: IPayloadContext) {
@@ -195,6 +227,53 @@ object VendorContractFeature {
         if (ShopStockNetwork.buyFromShop(player, shop, payload.quantity, requireOtherOwner = true)) openVendor(player, seller)
     }
 
+    private fun handleCartBuy(payload: VendorCartBuyPayload, context: IPayloadContext) {
+        val player = context.player() as? ServerPlayer ?: return
+        val seller = findSeller(player.server, payload.sellerId) as? Mob ?: return
+        val state = SellerData.read(seller) ?: return
+        if (player.level() !== seller.level() || player.distanceToSqr(seller) > 64.0) return
+        val lines = payload.lines.filter { it.quantity > 0 }.take(100)
+        if (lines.isEmpty()) return
+
+        val resolved = lines.mapNotNull { line ->
+            val key = ShopKey(line.dimension, line.pos)
+            if (state.links.none { it == key }) return@mapNotNull null
+            val shop = resolveShop(player.server, key) ?: return@mapNotNull null
+            if (!isValidLinkedShop(shop) || shop.stockCount <= 0) return@mapNotNull null
+            val quantity = line.quantity.coerceIn(1, shop.stockCount)
+            val total = shop.price.saturatingMultiply(quantity.toLong())
+            PendingBuy(key, shop, quantity, total, shop.ownerUuid ?: return@mapNotNull null, shop.ownerName, shop.displayItem.hoverName.string)
+        }
+        if (resolved.isEmpty()) {
+            player.displayClientMessage(Component.literal("No stock available."), true)
+            return
+        }
+        val totalCost = resolved.fold(0L) { sum, buy -> sum.saturatingAdd(buy.total) }
+        val balance = ChowcoinStore.get(player)
+        if (balance < totalCost) {
+            player.displayClientMessage(Component.literal("Not enough chowcoins."), true)
+            ChowcoinNetwork.syncTo(player)
+            return
+        }
+        val bought = mutableListOf<ItemStack>()
+        resolved.forEach { buy ->
+            val removed = buy.shop.removeStockStacks(buy.quantity)
+            if (removed.isNotEmpty()) {
+                bought += removed
+                SellerData.addRevenue(seller, buy.ownerId, buy.total)
+                CommerceAuditLog.recordVendorBuy(player, buy.ownerId, buy.ownerName, seller, buy.key.dimension, buy.key.pos, buy.itemName, removed.sumOf { it.count }, buy.total)
+            }
+        }
+        if (bought.isEmpty()) {
+            player.displayClientMessage(Component.literal("Stock changed. Try again."), true)
+            return
+        }
+        ChowcoinStore.set(player, balance - totalCost)
+        bought.forEach { stack -> if (!player.inventory.add(stack)) player.drop(stack, false) }
+        ChowcoinNetwork.syncTo(player)
+        player.displayClientMessage(Component.literal("Bought ${bought.sumOf { it.count }} items for $totalCost chowcoins."), true)
+    }
+
     private fun handleVoid(payload: VendorVoidPayload, context: IPayloadContext) {
         val player = context.player() as? ServerPlayer ?: return
         val seller = findSeller(player.server, payload.sellerId) as? Mob ?: return
@@ -202,10 +281,34 @@ object VendorContractFeature {
         if (player.level() !== seller.level() || player.distanceToSqr(seller) > 64.0) return
         if (state.ownerId != player.uuid && !player.isCreative) return
         SellerData.clear(seller)
+        CobblemonVendorSupport.restoreVendorState(seller, state.previousCobblemonHideLabel, state.previousCobblemonUnbattleable, state.previousCobblemonShouldRenderName)
         seller.setNoAi(state.previousNoAi)
         val contract = contractStack(state.links)
         if (!player.inventory.add(contract)) player.drop(contract, false)
         player.displayClientMessage(Component.literal("Contract Voided"), true)
+    }
+
+    private fun handleRename(payload: VendorRenamePayload, context: IPayloadContext) {
+        val player = context.player() as? ServerPlayer ?: return
+        val seller = findSeller(player.server, payload.sellerId) as? Mob ?: return
+        if (!canManageSeller(player, seller)) return
+        SellerData.setShopName(seller, payload.name)
+        openVendor(player, seller)
+    }
+
+    private fun handleCollect(payload: VendorCollectPayload, context: IPayloadContext) {
+        val player = context.player() as? ServerPlayer ?: return
+        val seller = findSeller(player.server, payload.sellerId) as? Mob ?: return
+        if (!canManageSeller(player, seller)) return
+        val amount = SellerData.collectRevenue(seller, player.uuid)
+        if (amount <= 0L) {
+            openVendor(player, seller)
+            return
+        }
+        ChowcoinStore.add(player, amount)
+        ChowcoinNetwork.syncTo(player)
+        player.displayClientMessage(Component.literal("Collected $amount chowcoins."), true)
+        openVendor(player, seller)
     }
 
     private fun handleOpenClient(payload: VendorOpenPayload, context: IPayloadContext) {
@@ -228,10 +331,42 @@ object VendorContractFeature {
         }
     }
 
+    private fun handleSellerIdsClient(payload: VendorSellerIdsPayload, context: IPayloadContext) {
+        if (!net.neoforged.fml.loading.FMLEnvironment.dist.isClient) return
+        context.enqueueWork {
+            runCatching {
+                val client = Class.forName("dev.gisketch.chowkingdom.shops.VendorContractClient")
+                client.getMethod("syncSellerIds", VendorSellerIdsPayload::class.java).invoke(client.getField("INSTANCE").get(null), payload)
+            }
+        }
+    }
+
+    private fun onAttackEntity(event: AttackEntityEvent) {
+        if (SellerData.isSeller(event.target)) event.isCanceled = true
+    }
+
+    private fun onIncomingDamage(event: LivingIncomingDamageEvent) {
+        if (!SellerData.isSeller(event.entity)) return
+        event.isCanceled = true
+        event.amount = 0.0f
+    }
+
+    private fun onLivingDamagePre(event: LivingDamageEvent.Pre) {
+        if (SellerData.isSeller(event.entity)) event.newDamage = 0.0f
+    }
+
+    private fun onProjectileImpact(event: ProjectileImpactEvent) {
+        val hit = event.rayTraceResult as? EntityHitResult ?: return
+        if (!SellerData.isSeller(hit.entity)) return
+        event.isCanceled = true
+        event.projectile.discard()
+    }
+
     private fun onLivingDeath(event: LivingDeathEvent) {
         val seller = event.entity as? Mob ?: return
         val state = SellerData.read(seller) ?: return
         SellerData.clear(seller)
+        CobblemonVendorSupport.restoreVendorState(seller, state.previousCobblemonHideLabel, state.previousCobblemonUnbattleable, state.previousCobblemonShouldRenderName)
         seller.spawnAtLocation(contractStack(state.links))
     }
 
@@ -244,12 +379,16 @@ object VendorContractFeature {
                 if (SellerData.isSeller(mob)) freezeSeller(mob)
             }
         }
-        event.server.playerList.players.forEach(::syncContractSelection)
+        event.server.playerList.players.forEach { player ->
+            syncContractSelection(player)
+            syncVendorSellers(player)
+        }
     }
 
     private fun freezeSeller(mob: Mob) {
         val state = SellerData.read(mob) ?: return
         mob.setNoAi(true)
+        CobblemonVendorSupport.applyVendorState(mob)
         mob.setDeltaMovement(Vec3.ZERO)
         val dx = mob.x - state.anchorX
         val dy = mob.y - state.anchorY
@@ -264,6 +403,13 @@ object VendorContractFeature {
         val dimension = player.level().dimension().location().toString()
         val positions = stack?.let { VendorContractData.links(it).filter { key -> key.dimension == dimension }.map { key -> key.pos } } ?: emptyList()
         PacketDistributor.sendToPlayer(player, VendorContractSelectionPayload(positions))
+    }
+
+    private fun syncVendorSellers(player: ServerPlayer) {
+        val ids = player.level().getEntitiesOfClass(Mob::class.java, player.boundingBox.inflate(128.0)) { SellerData.isSeller(it) }
+            .map { it.uuid }
+            .take(256)
+        PacketDistributor.sendToPlayer(player, VendorSellerIdsPayload(ids))
     }
 
     private fun contractStack(links: List<ShopKey>): ItemStack =
@@ -285,7 +431,42 @@ object VendorContractFeature {
         shop.ownerUuid != null && shop.hasDisplayItem && shop.price > 0L
 
     private fun isContract(stack: ItemStack): Boolean = !stack.isEmpty && stack.item === ShopsFeature.VENDOR_CONTRACT_ITEM.get()
+
+    private fun canManageSeller(player: ServerPlayer, seller: Mob): Boolean {
+        val state = SellerData.read(seller) ?: return false
+        if (state.ownerId == player.uuid || player.isCreative) return true
+        return state.links.any { key -> resolveShop(player.server, key)?.ownerUuid == player.uuid }
+    }
+
+    fun jadeSummary(server: MinecraftServer, seller: Entity): VendorJadeSummary? {
+        val state = SellerData.read(seller) ?: return null
+        val shops = state.links.mapNotNull { key -> resolveShop(server, key) }
+            .filter(::isValidLinkedShop)
+        val itemTypes = shops.map { shop -> net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(shop.displayItem.item) }
+            .distinct()
+            .size
+        val sellerCount = shops.mapNotNull(ShopBlockEntity::ownerUuid)
+            .distinct()
+            .size
+        return VendorJadeSummary(state.shopName, itemTypes, sellerCount)
+    }
+
+    private fun Long.saturatingMultiply(other: Long): Long {
+        if (this <= 0L || other <= 0L) return 0L
+        if (this > Long.MAX_VALUE / other) return Long.MAX_VALUE
+        return this * other
+    }
+
+    private fun Long.saturatingAdd(other: Long): Long {
+        if (other <= 0L) return this
+        if (this > Long.MAX_VALUE - other) return Long.MAX_VALUE
+        return this + other
+    }
+
+    private data class PendingBuy(val key: ShopKey, val shop: ShopBlockEntity, val quantity: Int, val total: Long, val ownerId: UUID, val ownerName: String, val itemName: String)
 }
+
+data class VendorJadeSummary(val shopName: String, val itemTypes: Int, val sellerCount: Int)
 
 object VendorContractConfig {
     private val gson = GsonBuilder().setPrettyPrinting().create()
@@ -369,11 +550,16 @@ object VendorContractData {
 data class SellerState(
     val ownerId: UUID,
     val ownerName: String,
+    val shopName: String,
     val previousNoAi: Boolean,
+    val previousCobblemonHideLabel: Boolean?,
+    val previousCobblemonUnbattleable: Boolean?,
+    val previousCobblemonShouldRenderName: Boolean?,
     val anchorX: Double,
     val anchorY: Double,
     val anchorZ: Double,
     val links: List<ShopKey>,
+    val revenue: Map<UUID, Long>,
 )
 
 object SellerData {
@@ -383,7 +569,13 @@ object SellerData {
         entity.persistentData.put(SELLER_TAG, CompoundTag().also { tag ->
             tag.putUUID(OWNER_ID_TAG, owner.uuid)
             tag.putString(OWNER_NAME_TAG, owner.gameProfile.name)
+            tag.putString(SHOP_NAME_TAG, "${owner.gameProfile.name}'s Vendor")
             tag.putBoolean(PREVIOUS_NO_AI_TAG, entity.isNoAi)
+            CobblemonVendorSupport.readVendorState(entity)?.let { state ->
+                tag.putBoolean(PREVIOUS_COBBLEMON_HIDE_LABEL_TAG, state.hideLabel)
+                tag.putBoolean(PREVIOUS_COBBLEMON_UNBATTLEABLE_TAG, state.unbattleable)
+                tag.putBoolean(PREVIOUS_COBBLEMON_SHOULD_RENDER_NAME_TAG, state.shouldRenderName)
+            }
             tag.putDouble(ANCHOR_X_TAG, entity.x)
             tag.putDouble(ANCHOR_Y_TAG, entity.y)
             tag.putDouble(ANCHOR_Z_TAG, entity.z)
@@ -397,11 +589,16 @@ object SellerData {
         return SellerState(
             tag.getUUID(OWNER_ID_TAG),
             tag.getString(OWNER_NAME_TAG),
+            tag.getString(SHOP_NAME_TAG).ifBlank { "Vendor Shop" },
             tag.getBoolean(PREVIOUS_NO_AI_TAG),
+            tag.takeIf { it.contains(PREVIOUS_COBBLEMON_HIDE_LABEL_TAG) }?.getBoolean(PREVIOUS_COBBLEMON_HIDE_LABEL_TAG),
+            tag.takeIf { it.contains(PREVIOUS_COBBLEMON_UNBATTLEABLE_TAG) }?.getBoolean(PREVIOUS_COBBLEMON_UNBATTLEABLE_TAG),
+            tag.takeIf { it.contains(PREVIOUS_COBBLEMON_SHOULD_RENDER_NAME_TAG) }?.getBoolean(PREVIOUS_COBBLEMON_SHOULD_RENDER_NAME_TAG),
             tag.getDouble(ANCHOR_X_TAG),
             tag.getDouble(ANCHOR_Y_TAG),
             tag.getDouble(ANCHOR_Z_TAG),
             VendorContractData.readLinks(tag),
+            readRevenue(tag),
         )
     }
 
@@ -409,13 +606,190 @@ object SellerData {
         entity.persistentData.remove(SELLER_TAG)
     }
 
+    fun setShopName(entity: Entity, name: String) {
+        val tag = entity.persistentData.getCompound(SELLER_TAG)
+        if (tag.isEmpty) return
+        tag.putString(SHOP_NAME_TAG, name.trim().take(48).ifBlank { "Vendor Shop" })
+        entity.persistentData.put(SELLER_TAG, tag)
+    }
+
+    fun addRevenue(entity: Entity, ownerId: UUID, amount: Long) {
+        if (amount <= 0L) return
+        val tag = entity.persistentData.getCompound(SELLER_TAG)
+        if (tag.isEmpty) return
+        val revenue = tag.getCompound(REVENUE_TAG)
+        val current = revenue.getLong(ownerId.toString())
+        val next = if (current > Long.MAX_VALUE - amount) Long.MAX_VALUE else current + amount
+        revenue.putLong(ownerId.toString(), next)
+        tag.put(REVENUE_TAG, revenue)
+        entity.persistentData.put(SELLER_TAG, tag)
+    }
+
+    fun collectRevenue(entity: Entity, ownerId: UUID): Long {
+        val tag = entity.persistentData.getCompound(SELLER_TAG)
+        if (tag.isEmpty) return 0L
+        val revenue = tag.getCompound(REVENUE_TAG)
+        val key = ownerId.toString()
+        val amount = revenue.getLong(key).coerceAtLeast(0L)
+        if (amount > 0L) revenue.remove(key)
+        tag.put(REVENUE_TAG, revenue)
+        entity.persistentData.put(SELLER_TAG, tag)
+        return amount
+    }
+
+    private fun readRevenue(tag: CompoundTag): Map<UUID, Long> {
+        val revenue = tag.getCompound(REVENUE_TAG)
+        return revenue.allKeys.mapNotNull { key ->
+            val id = runCatching { UUID.fromString(key) }.getOrNull() ?: return@mapNotNull null
+            id to revenue.getLong(key).coerceAtLeast(0L)
+        }.filter { (_, amount) -> amount > 0L }.toMap()
+    }
+
     private const val SELLER_TAG = "ChowkingdomVendorSeller"
     private const val OWNER_ID_TAG = "OwnerId"
     private const val OWNER_NAME_TAG = "OwnerName"
+    private const val SHOP_NAME_TAG = "ShopName"
     private const val PREVIOUS_NO_AI_TAG = "PreviousNoAi"
+    private const val PREVIOUS_COBBLEMON_HIDE_LABEL_TAG = "PreviousCobblemonHideLabel"
+    private const val PREVIOUS_COBBLEMON_UNBATTLEABLE_TAG = "PreviousCobblemonUnbattleable"
+    private const val PREVIOUS_COBBLEMON_SHOULD_RENDER_NAME_TAG = "PreviousCobblemonShouldRenderName"
     private const val ANCHOR_X_TAG = "AnchorX"
     private const val ANCHOR_Y_TAG = "AnchorY"
     private const val ANCHOR_Z_TAG = "AnchorZ"
+    private const val REVENUE_TAG = "Revenue"
+}
+
+object CobblemonVendorSupport {
+    private const val POKEMON_ENTITY_CLASS = "com.cobblemon.mod.common.entity.pokemon.PokemonEntity"
+    private var eventsRegistered = false
+    private val pokemonEntityClass: Class<*>? by lazy { runCatching { Class.forName(POKEMON_ENTITY_CLASS) }.getOrNull() }
+    private val hideLabelAccessor: Any? by lazy { pokemonEntityClass?.staticAccessor("HIDE_LABEL") }
+    private val unbattleableAccessor: Any? by lazy { pokemonEntityClass?.staticAccessor("UNBATTLEABLE") }
+    private val shouldRenderNameAccessor: Any? by lazy { pokemonEntityClass?.staticAccessor("SHOULD_RENDER_NAME") }
+
+    fun registerEvents() {
+        if (eventsRegistered) return
+        eventsRegistered = true
+        runCatching {
+            val eventsClass = Class.forName("com.cobblemon.mod.common.api.events.CobblemonEvents")
+            subscribeRaw(eventsClass, "BATTLE_STARTED_PRE", ::handleBattleStartedPre)
+        }.onFailure { exception ->
+            ChowKingdomMod.LOGGER.debug("Cobblemon vendor battle guard unavailable", exception)
+        }
+    }
+
+    fun canBecomeVendor(entity: Entity): Boolean {
+        if (!isPokemonEntity(entity)) return true
+        val ownerId = pokemonOwnerId(entity)
+        val pastured = isPastured(entity)
+        return ownerId == null || pastured
+    }
+
+    fun readVendorState(entity: Entity): CobblemonVendorState? {
+        if (!isPokemonEntity(entity)) return null
+        return CobblemonVendorState(
+            readEntityDataBoolean(entity, hideLabelAccessor) ?: false,
+            readEntityDataBoolean(entity, unbattleableAccessor) ?: false,
+            readEntityDataBoolean(entity, shouldRenderNameAccessor) ?: entity.shouldShowName(),
+        )
+    }
+
+    fun applyVendorState(entity: Entity) {
+        if (!isPokemonEntity(entity)) return
+        writeEntityDataBoolean(entity, hideLabelAccessor, true)
+        writeEntityDataBoolean(entity, unbattleableAccessor, true)
+        writeEntityDataBoolean(entity, shouldRenderNameAccessor, false)
+        runCatching { entity.javaClass.getMethod("hideNameRendering").invoke(entity) }
+        entity.isCustomNameVisible = false
+    }
+
+    fun restoreVendorState(entity: Entity, hideLabel: Boolean?, unbattleable: Boolean?, shouldRenderName: Boolean?) {
+        if (!isPokemonEntity(entity)) return
+        hideLabel?.let { writeEntityDataBoolean(entity, hideLabelAccessor, it) }
+        unbattleable?.let { writeEntityDataBoolean(entity, unbattleableAccessor, it) }
+        shouldRenderName?.let { writeEntityDataBoolean(entity, shouldRenderNameAccessor, it) }
+    }
+
+    private fun handleBattleStartedPre(event: Any) {
+        if (!battleContainsVendor(event)) return
+        runCatching { event.javaClass.getMethod("cancel").invoke(event) }
+        runCatching { event.javaClass.getMethod("setReason", net.minecraft.network.chat.MutableComponent::class.java).invoke(event, Component.literal("Vendor Pokemon cannot battle.")) }
+    }
+
+    private fun battleContainsVendor(event: Any): Boolean {
+        val battle = runCatching { event.javaClass.getMethod("getBattle").invoke(event) }.getOrNull() ?: return false
+        val activePokemon = runCatching { battle.javaClass.getMethod("getActivePokemon").invoke(battle) as? Iterable<*> }.getOrNull() ?: emptyList<Any?>()
+        if (activePokemon.any(::activeBattlePokemonIsVendor)) return true
+        val actors = runCatching { battle.javaClass.getMethod("getActors").invoke(battle) as? Iterable<*> }.getOrNull() ?: emptyList<Any?>()
+        return actors.any { actor ->
+            val pokemonList = runCatching { actor?.javaClass?.getMethod("getPokemonList")?.invoke(actor) as? Iterable<*> }.getOrNull() ?: emptyList<Any?>()
+            pokemonList.any(::battlePokemonIsVendor)
+        }
+    }
+
+    private fun activeBattlePokemonIsVendor(active: Any?): Boolean {
+        val battlePokemon = runCatching { active?.javaClass?.getMethod("getBattlePokemon")?.invoke(active) }.getOrNull()
+        return battlePokemonIsVendor(battlePokemon)
+    }
+
+    private fun battlePokemonIsVendor(battlePokemon: Any?): Boolean {
+        val entity = runCatching { battlePokemon?.javaClass?.getMethod("getEntity")?.invoke(battlePokemon) as? Entity }.getOrNull()
+        if (entity?.let(SellerData::isSeller) == true) return true
+        val originalPokemon = runCatching { battlePokemon?.javaClass?.getMethod("getOriginalPokemon")?.invoke(battlePokemon) }.getOrNull()
+        val originalEntity = runCatching { originalPokemon?.javaClass?.getMethod("getEntity")?.invoke(originalPokemon) as? Entity }.getOrNull()
+        return originalEntity?.let(SellerData::isSeller) == true
+    }
+
+    private fun isPokemonEntity(entity: Entity): Boolean =
+        pokemonEntityClass?.isInstance(entity) == true
+
+    private fun isPastured(entity: Entity): Boolean =
+        runCatching { entity.javaClass.getField("tethering").get(entity) != null }
+            .recoverCatching {
+                val method = entity.javaClass.getMethod("getTethering")
+                method.invoke(entity) != null
+            }
+            .getOrDefault(false)
+
+    private fun pokemonOwnerId(entity: Entity): UUID? {
+        val direct = runCatching { entity.javaClass.getMethod("getOwnerUUID").invoke(entity) as? UUID }.getOrNull()
+        if (direct != null) return direct
+        val pokemon = runCatching { entity.javaClass.getMethod("getPokemon").invoke(entity) }.getOrNull() ?: return null
+        return runCatching { pokemon.javaClass.getMethod("getOwnerUUID").invoke(pokemon) as? UUID }.getOrNull()
+    }
+
+    private fun subscribeRaw(eventsClass: Class<*>, fieldName: String, handler: (Any) -> Unit) {
+        val observable = eventsClass.getField(fieldName).get(null)
+        val subscribe = observable.javaClass.methods.first { method ->
+            method.name == "subscribe" && method.parameterTypes.size == 1 && method.parameterTypes[0] == Consumer::class.java
+        }
+        subscribe.invoke(observable, Consumer<Any> { event -> handler(event) })
+    }
+
+    private fun Class<*>.staticAccessor(name: String): Any? =
+        runCatching { getMethod("get$name").invoke(null) }.getOrNull()
+            ?: runCatching { getMethod("access\$get${name}\$cp").invoke(null) }.getOrNull()
+            ?: runCatching { getDeclaredField(name).also { it.isAccessible = true }.get(null) }.getOrNull()
+
+    private fun readEntityDataBoolean(entity: Entity, accessor: Any?): Boolean? {
+        accessor ?: return null
+        return runCatching {
+            val getMethod = entity.entityData.javaClass.methods.firstOrNull { method -> method.name == "get" && method.parameterCount == 1 }
+            getMethod?.invoke(entity.entityData, accessor) as? Boolean
+        }.getOrNull()
+    }
+
+    private fun writeEntityDataBoolean(entity: Entity, accessor: Any?, value: Boolean) {
+        accessor ?: return
+        runCatching {
+            val setMethod = entity.entityData.javaClass.methods.firstOrNull { method ->
+                method.name == "set" && method.parameterCount == 2 && method.parameterTypes[1] == Any::class.java
+            } ?: entity.entityData.javaClass.methods.firstOrNull { method -> method.name == "set" && method.parameterCount == 2 }
+            setMethod?.invoke(entity.entityData, accessor, value)
+        }
+    }
+
+    data class CobblemonVendorState(val hideLabel: Boolean, val unbattleable: Boolean, val shouldRenderName: Boolean)
 }
 
 data class VendorEntry(
@@ -424,10 +798,18 @@ data class VendorEntry(
     val stack: ItemStack,
     val stockCount: Int,
     val price: Long,
+    val ownerId: UUID,
     val ownerName: String,
 )
 
-data class VendorOpenPayload(val sellerId: UUID, val canVoid: Boolean, val entries: List<VendorEntry>) : CustomPacketPayload {
+data class VendorOpenPayload(
+    val sellerId: UUID,
+    val shopName: String,
+    val canVoid: Boolean,
+    val canManage: Boolean,
+    val claimableRevenue: Long,
+    val entries: List<VendorEntry>,
+) : CustomPacketPayload {
     override fun type(): CustomPacketPayload.Type<VendorOpenPayload> = TYPE
 
     companion object {
@@ -435,7 +817,10 @@ data class VendorOpenPayload(val sellerId: UUID, val canVoid: Boolean, val entri
         val STREAM_CODEC: StreamCodec<RegistryFriendlyByteBuf, VendorOpenPayload> = object : StreamCodec<RegistryFriendlyByteBuf, VendorOpenPayload> {
             override fun decode(buffer: RegistryFriendlyByteBuf): VendorOpenPayload {
                 val sellerId = buffer.readUUID()
+                val shopName = buffer.readUtf(64)
                 val canVoid = buffer.readBoolean()
+                val canManage = buffer.readBoolean()
+                val claimableRevenue = buffer.readVarLong()
                 val entries = List(buffer.readVarInt().coerceIn(0, VendorContractConfig.maxLinks())) {
                     VendorEntry(
                         buffer.readUtf(128),
@@ -443,15 +828,19 @@ data class VendorOpenPayload(val sellerId: UUID, val canVoid: Boolean, val entri
                         ItemStack.OPTIONAL_STREAM_CODEC.decode(buffer),
                         buffer.readVarInt(),
                         buffer.readVarLong(),
+                        buffer.readUUID(),
                         buffer.readUtf(64),
                     )
                 }
-                return VendorOpenPayload(sellerId, canVoid, entries)
+                return VendorOpenPayload(sellerId, shopName, canVoid, canManage, claimableRevenue, entries)
             }
 
             override fun encode(buffer: RegistryFriendlyByteBuf, value: VendorOpenPayload) {
                 buffer.writeUUID(value.sellerId)
+                buffer.writeUtf(value.shopName, 64)
                 buffer.writeBoolean(value.canVoid)
+                buffer.writeBoolean(value.canManage)
+                buffer.writeVarLong(value.claimableRevenue)
                 buffer.writeVarInt(value.entries.size)
                 value.entries.forEach { entry ->
                     buffer.writeUtf(entry.dimension, 128)
@@ -459,7 +848,37 @@ data class VendorOpenPayload(val sellerId: UUID, val canVoid: Boolean, val entri
                     ItemStack.OPTIONAL_STREAM_CODEC.encode(buffer, entry.stack.copyWithCount(1))
                     buffer.writeVarInt(entry.stockCount)
                     buffer.writeVarLong(entry.price)
+                    buffer.writeUUID(entry.ownerId)
                     buffer.writeUtf(entry.ownerName, 64)
+                }
+            }
+        }
+    }
+}
+
+data class VendorCartLine(val dimension: String, val pos: BlockPos, val quantity: Int)
+
+data class VendorCartBuyPayload(val sellerId: UUID, val lines: List<VendorCartLine>) : CustomPacketPayload {
+    override fun type(): CustomPacketPayload.Type<VendorCartBuyPayload> = TYPE
+
+    companion object {
+        val TYPE: CustomPacketPayload.Type<VendorCartBuyPayload> = CustomPacketPayload.Type(ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "shops/vendor_cart_buy"))
+        val STREAM_CODEC: StreamCodec<RegistryFriendlyByteBuf, VendorCartBuyPayload> = object : StreamCodec<RegistryFriendlyByteBuf, VendorCartBuyPayload> {
+            override fun decode(buffer: RegistryFriendlyByteBuf): VendorCartBuyPayload =
+                VendorCartBuyPayload(
+                    buffer.readUUID(),
+                    List(buffer.readVarInt().coerceIn(0, 100)) {
+                        VendorCartLine(buffer.readUtf(128), buffer.readBlockPos(), buffer.readVarInt())
+                    },
+                )
+
+            override fun encode(buffer: RegistryFriendlyByteBuf, value: VendorCartBuyPayload) {
+                buffer.writeUUID(value.sellerId)
+                buffer.writeVarInt(value.lines.size)
+                value.lines.forEach { line ->
+                    buffer.writeUtf(line.dimension, 128)
+                    buffer.writeBlockPos(line.pos)
+                    buffer.writeVarInt(line.quantity)
                 }
             }
         }
@@ -480,6 +899,35 @@ data class VendorBuyPayload(val sellerId: UUID, val dimension: String, val pos: 
                 buffer.writeUtf(value.dimension, 128)
                 buffer.writeBlockPos(value.pos)
                 buffer.writeVarInt(value.quantity)
+            }
+        }
+    }
+}
+
+data class VendorRenamePayload(val sellerId: UUID, val name: String) : CustomPacketPayload {
+    override fun type(): CustomPacketPayload.Type<VendorRenamePayload> = TYPE
+
+    companion object {
+        val TYPE: CustomPacketPayload.Type<VendorRenamePayload> = CustomPacketPayload.Type(ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "shops/vendor_rename"))
+        val STREAM_CODEC: StreamCodec<RegistryFriendlyByteBuf, VendorRenamePayload> = object : StreamCodec<RegistryFriendlyByteBuf, VendorRenamePayload> {
+            override fun decode(buffer: RegistryFriendlyByteBuf): VendorRenamePayload = VendorRenamePayload(buffer.readUUID(), buffer.readUtf(64))
+            override fun encode(buffer: RegistryFriendlyByteBuf, value: VendorRenamePayload) {
+                buffer.writeUUID(value.sellerId)
+                buffer.writeUtf(value.name, 64)
+            }
+        }
+    }
+}
+
+data class VendorCollectPayload(val sellerId: UUID) : CustomPacketPayload {
+    override fun type(): CustomPacketPayload.Type<VendorCollectPayload> = TYPE
+
+    companion object {
+        val TYPE: CustomPacketPayload.Type<VendorCollectPayload> = CustomPacketPayload.Type(ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "shops/vendor_collect"))
+        val STREAM_CODEC: StreamCodec<RegistryFriendlyByteBuf, VendorCollectPayload> = object : StreamCodec<RegistryFriendlyByteBuf, VendorCollectPayload> {
+            override fun decode(buffer: RegistryFriendlyByteBuf): VendorCollectPayload = VendorCollectPayload(buffer.readUUID())
+            override fun encode(buffer: RegistryFriendlyByteBuf, value: VendorCollectPayload) {
+                buffer.writeUUID(value.sellerId)
             }
         }
     }
@@ -511,6 +959,23 @@ data class VendorContractSelectionPayload(val positions: List<BlockPos>) : Custo
             override fun encode(buffer: RegistryFriendlyByteBuf, value: VendorContractSelectionPayload) {
                 buffer.writeVarInt(value.positions.size)
                 value.positions.forEach(buffer::writeBlockPos)
+            }
+        }
+    }
+}
+
+data class VendorSellerIdsPayload(val sellerIds: List<UUID>) : CustomPacketPayload {
+    override fun type(): CustomPacketPayload.Type<VendorSellerIdsPayload> = TYPE
+
+    companion object {
+        val TYPE: CustomPacketPayload.Type<VendorSellerIdsPayload> = CustomPacketPayload.Type(ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "shops/vendor_seller_ids"))
+        val STREAM_CODEC: StreamCodec<RegistryFriendlyByteBuf, VendorSellerIdsPayload> = object : StreamCodec<RegistryFriendlyByteBuf, VendorSellerIdsPayload> {
+            override fun decode(buffer: RegistryFriendlyByteBuf): VendorSellerIdsPayload =
+                VendorSellerIdsPayload(List(buffer.readVarInt().coerceIn(0, 256)) { buffer.readUUID() })
+
+            override fun encode(buffer: RegistryFriendlyByteBuf, value: VendorSellerIdsPayload) {
+                buffer.writeVarInt(value.sellerIds.size.coerceAtMost(256))
+                value.sellerIds.take(256).forEach(buffer::writeUUID)
             }
         }
     }
