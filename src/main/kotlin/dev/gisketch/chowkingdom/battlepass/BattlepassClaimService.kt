@@ -2,6 +2,11 @@ package dev.gisketch.chowkingdom.battlepass
 
 import dev.gisketch.chowkingdom.wallets.ChowcoinNetwork
 import dev.gisketch.chowkingdom.wallets.ChowcoinStore
+import dev.gisketch.chowkingdom.snackbar.SnackbarIcons
+import dev.gisketch.chowkingdom.snackbar.SnackbarNetwork
+import dev.gisketch.chowkingdom.snackbar.SnackbarNotification
+import dev.gisketch.chowkingdom.snackbar.SnackbarSounds
+import dev.gisketch.chowkingdom.snackbar.SnackbarType
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
@@ -34,6 +39,7 @@ object BattlepassClaimService {
 
         tier.rewards.forEach { reward -> giveReward(player, reward) }
         BattlepassXpStore.markClaimed(player, pass.id, tier.xp)
+        SnackbarNetwork.send(player, SnackbarNotification.item(rewardIcon(tier.rewards.firstOrNull()), "BATTLEPASS REWARD CLAIMED", "${pass.displayName} ${tier.xp} XP reward", SnackbarType.SUCCESS, SnackbarSounds.REWARD))
         player.displayClientMessage(Component.literal("Claimed ${pass.displayName} ${tier.xp} XP reward."), true)
         return true
     }
@@ -57,6 +63,7 @@ object BattlepassClaimService {
             tier.rewards.forEach { reward -> giveReward(player, reward) }
             BattlepassXpStore.markClaimed(player, pass.id, tier.xp)
         }
+        SnackbarNetwork.send(player, SnackbarNotification.item(SnackbarIcons.BATTLEPASS, "BATTLEPASS REWARDS CLAIMED", "Claimed ${claimableTiers.size} ${pass.displayName} reward(s)", SnackbarType.SUCCESS, SnackbarSounds.REWARD))
         player.displayClientMessage(Component.literal("Claimed ${claimableTiers.size} ${pass.displayName} reward(s)."), true)
         return claimableTiers.size
     }
@@ -85,4 +92,10 @@ object BattlepassClaimService {
     }
 
     private fun chowcoinAmount(reward: BattlepassRewardDefinition): Long = reward.data["amount"]?.toLongOrNull() ?: reward.quantity.toLong()
+
+    private fun rewardIcon(reward: BattlepassRewardDefinition?): String {
+        if (reward == null) return SnackbarIcons.BATTLEPASS
+        if (isChowcoinReward(reward)) return "minecraft:gold_ingot"
+        return reward.item.takeIf(String::isNotBlank) ?: SnackbarIcons.BATTLEPASS
+    }
 }

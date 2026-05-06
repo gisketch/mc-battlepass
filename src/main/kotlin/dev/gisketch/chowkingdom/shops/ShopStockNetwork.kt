@@ -4,9 +4,15 @@ import dev.gisketch.chowkingdom.ChowKingdomMod
 import dev.gisketch.chowkingdom.battlepass.BattlepassMissionEventBank
 import dev.gisketch.chowkingdom.battlepass.BattlepassNetwork
 import dev.gisketch.chowkingdom.commerce.CommerceAuditLog
+import dev.gisketch.chowkingdom.snackbar.SnackbarIcons
+import dev.gisketch.chowkingdom.snackbar.SnackbarNetwork
+import dev.gisketch.chowkingdom.snackbar.SnackbarNotification
+import dev.gisketch.chowkingdom.snackbar.SnackbarSounds
+import dev.gisketch.chowkingdom.snackbar.SnackbarType
 import dev.gisketch.chowkingdom.wallets.ChowcoinNetwork
 import dev.gisketch.chowkingdom.wallets.ChowcoinStore
 import net.minecraft.core.BlockPos
+import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.network.RegistryFriendlyByteBuf
 import net.minecraft.network.codec.StreamCodec
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload
@@ -89,7 +95,7 @@ object ShopStockNetwork {
         if (amount <= 0L) return
         ChowcoinStore.add(player, amount)
         ChowcoinNetwork.syncTo(player)
-        player.displayClientMessage(Component.literal("Collected $amount chowcoins."), true)
+        SnackbarNetwork.send(player, SnackbarNotification.texture(SnackbarIcons.CHOWCOIN_TEXTURE, "SHOP REVENUE COLLECTED", "$amount chowcoins", SnackbarType.SUCCESS, SnackbarSounds.SALE))
     }
 
     private fun handleBuy(payload: ShopBuyPayload, context: IPayloadContext) {
@@ -126,9 +132,12 @@ object ShopStockNetwork {
             ChowcoinNetwork.syncTo(owner)
             recordSaleMission(owner, total)
         }
-        player.displayClientMessage(Component.literal("Bought $quantity $itemName for $total chowcoins."), true)
+        SnackbarNetwork.send(player, SnackbarNotification.texture(SnackbarIcons.CHOWCOIN_TEXTURE, "BUY SUCCESSFUL", "Bought $boughtCount $itemName for $total chowcoins", SnackbarType.GENERIC, SnackbarSounds.GENERIC))
+        SnackbarNetwork.sendOrQueue(player.server, ownerId, SnackbarNotification.texture(SnackbarIcons.CHOWCOIN_TEXTURE, "ITEM SOLD", "${player.gameProfile.name} bought $boughtCount $itemName for $total chowcoins", SnackbarType.SUCCESS, SnackbarSounds.SALE))
         return true
     }
+
+    private fun itemIcon(stack: net.minecraft.world.item.ItemStack): String = BuiltInRegistries.ITEM.getKey(stack.item).toString()
 
     private fun recordSaleMission(owner: ServerPlayer, total: Long) {
         if (total <= 0L) return

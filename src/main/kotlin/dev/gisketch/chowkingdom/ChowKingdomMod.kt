@@ -24,6 +24,8 @@ import dev.gisketch.chowkingdom.profiles.ProfilesFeature
 import dev.gisketch.chowkingdom.shipping.ShippingBinFeature
 import dev.gisketch.chowkingdom.shops.ShopsClient
 import dev.gisketch.chowkingdom.shops.ShopsFeature
+import dev.gisketch.chowkingdom.snackbar.SnackbarClient
+import dev.gisketch.chowkingdom.snackbar.SnackbarFeature
 import dev.gisketch.chowkingdom.trading.TradingClient
 import dev.gisketch.chowkingdom.trading.TradingFeature
 import dev.gisketch.chowkingdom.wallets.WalletsFeature
@@ -56,6 +58,7 @@ class ChowKingdomMod(modBus: IEventBus, container: ModContainer) {
         ReviveFeature.register(modBus)
         TradingFeature.register(modBus)
         DiscordFeature.register()
+        SnackbarFeature.register(modBus)
         if (FMLEnvironment.dist == Dist.CLIENT) {
             container.registerExtensionPoint(IConfigScreenFactory::class.java) {
                 IConfigScreenFactory { _, modListScreen -> ChowKingdomConfigScreen(modListScreen) }
@@ -68,6 +71,7 @@ class ChowKingdomMod(modBus: IEventBus, container: ModContainer) {
             ShopsClient.register(modBus)
             ReviveClient.register(modBus)
             TradingClient.register(modBus)
+            SnackbarClient.register(modBus)
         }
     }
 

@@ -3,6 +3,11 @@ package dev.gisketch.chowkingdom.trading
 import com.mojang.brigadier.context.CommandContext
 import dev.gisketch.chowkingdom.ChatGlyphs
 import dev.gisketch.chowkingdom.commerce.CommerceAuditLog
+import dev.gisketch.chowkingdom.snackbar.SnackbarIcons
+import dev.gisketch.chowkingdom.snackbar.SnackbarNetwork
+import dev.gisketch.chowkingdom.snackbar.SnackbarNotification
+import dev.gisketch.chowkingdom.snackbar.SnackbarSounds
+import dev.gisketch.chowkingdom.snackbar.SnackbarType
 import dev.gisketch.chowkingdom.wallets.ChowcoinNetwork
 import dev.gisketch.chowkingdom.wallets.ChowcoinStore
 import net.minecraft.ChatFormatting
@@ -98,20 +103,20 @@ object TradingManager {
         val existing = pendingRequests[ownKey]
         if (existing != null) {
             clearRequest(existing)
-            requester.sendSystemMessage(Component.literal("Trade request cancelled.").withStyle(ChatFormatting.YELLOW))
-            target.sendSystemMessage(Component.literal("${requester.gameProfile.name} cancelled their trade request.").withStyle(ChatFormatting.GRAY))
+            SnackbarNetwork.send(requester, SnackbarNotification.player(target.uuid, target.gameProfile.name, "TRADE CANCELED", type = SnackbarType.ERROR, sound = SnackbarSounds.ERROR))
+            SnackbarNetwork.send(target, SnackbarNotification.player(requester.uuid, requester.gameProfile.name, "TRADE CANCELED", "${requester.gameProfile.name} canceled their request", SnackbarType.ERROR, SnackbarSounds.ERROR))
             return
         }
         if (isBusy(requester.uuid) || isBusy(target.uuid)) {
-            requester.sendSystemMessage(Component.literal("Trade unavailable: one player is already trading or has a pending request.").withStyle(ChatFormatting.RED))
+            SnackbarNetwork.send(requester, SnackbarNotification.item(SnackbarIcons.ERROR, "TRADE UNAVAILABLE", "One player is already trading", SnackbarType.ERROR, SnackbarSounds.ERROR))
             return
         }
         val request = TradeRequest(requester.uuid, requester.gameProfile.name, target.uuid, target.gameProfile.name, requester.server.tickCount + REQUEST_TTL_TICKS)
         pendingRequests[ownKey] = request
         TradingNetwork.setGlow(requester, target.uuid, true)
         TradingNetwork.setGlow(target, requester.uuid, true)
-        requester.sendSystemMessage(Component.literal("Trade request sent to ${target.gameProfile.name}.").withStyle(ChatFormatting.GREEN))
-        target.sendSystemMessage(Component.literal("${requester.gameProfile.name} wants to trade. Right-click them to accept, or /ck trade decline.").withStyle(ChatFormatting.AQUA))
+        SnackbarNetwork.send(requester, SnackbarNotification.player(target.uuid, target.gameProfile.name, "TRADE REQUEST SENT", target.gameProfile.name, SnackbarType.SUCCESS, SnackbarSounds.TRADE))
+        SnackbarNetwork.send(target, SnackbarNotification.player(requester.uuid, requester.gameProfile.name, "TRADE REQUEST", "${requester.gameProfile.name} wants to trade", SnackbarType.GENERIC, SnackbarSounds.TRADE))
     }
 
     private fun startSession(first: ServerPlayer, second: ServerPlayer, debug: Boolean) {
@@ -129,8 +134,8 @@ object TradingManager {
         if (!debug) sessionsByPlayer[second.uuid] = session.id
         openMenu(first, session)
         if (!debug) openMenu(second, session)
-        first.sendSystemMessage(Component.literal("Trade opened with ${session.secondName}.").withStyle(ChatFormatting.GREEN))
-        if (!debug) second.sendSystemMessage(Component.literal("Trade opened with ${session.firstName}.").withStyle(ChatFormatting.GREEN))
+        SnackbarNetwork.send(first, SnackbarNotification.player(session.secondId, session.secondName, "TRADE OPENED", session.secondName, SnackbarType.GENERIC, SnackbarSounds.TRADE))
+        if (!debug) SnackbarNetwork.send(second, SnackbarNotification.player(session.firstId, session.firstName, "TRADE OPENED", session.firstName, SnackbarType.GENERIC, SnackbarSounds.TRADE))
         sync(session)
     }
 
@@ -181,25 +186,25 @@ object TradingManager {
         val firstCoins = session.chowcoins[session.firstId] ?: 0L
         val secondCoins = session.chowcoins[session.secondId] ?: 0L
         if (ChowcoinStore.get(first) < firstCoins) {
-            first.sendSystemMessage(Component.literal("Trade blocked: not enough chowcoins.").withStyle(ChatFormatting.RED))
+            SnackbarNetwork.send(first, SnackbarNotification.item(SnackbarIcons.ERROR, "TRADE BLOCKED", "Not enough chowcoins", SnackbarType.ERROR, SnackbarSounds.ERROR))
             session.resetConsent(first.uuid)
             sync(session)
             return
         }
         if (second != null && ChowcoinStore.get(second) < secondCoins) {
-            second.sendSystemMessage(Component.literal("Trade blocked: not enough chowcoins.").withStyle(ChatFormatting.RED))
+            SnackbarNetwork.send(second, SnackbarNotification.item(SnackbarIcons.ERROR, "TRADE BLOCKED", "Not enough chowcoins", SnackbarType.ERROR, SnackbarSounds.ERROR))
             session.resetConsent(second.uuid)
             sync(session)
             return
         }
         if (!canFit(first.inventory, session.offeredItems(session.secondId))) {
-            first.sendSystemMessage(Component.literal("Trade blocked: your inventory cannot fit the offer.").withStyle(ChatFormatting.RED))
+            SnackbarNetwork.send(first, SnackbarNotification.item(SnackbarIcons.ERROR, "TRADE BLOCKED", "Your inventory cannot fit the offer", SnackbarType.ERROR, SnackbarSounds.ERROR))
             session.resetConsent(first.uuid)
             sync(session)
             return
         }
         if (second != null && !canFit(second.inventory, session.offeredItems(session.firstId))) {
-            second.sendSystemMessage(Component.literal("Trade blocked: ${second.gameProfile.name}'s inventory cannot fit your offer.").withStyle(ChatFormatting.RED))
+            SnackbarNetwork.send(second, SnackbarNotification.item(SnackbarIcons.ERROR, "TRADE BLOCKED", "Inventory cannot fit the offer", SnackbarType.ERROR, SnackbarSounds.ERROR))
             session.resetConsent(second.uuid)
             sync(session)
             return
@@ -217,10 +222,9 @@ object TradingManager {
         } else {
             returnOfferToPlayer(session.firstOffer, first)
             settleDebugChowcoins(first, firstCoins, secondCoins)
-            first.sendSystemMessage(Component.literal("Debug trade completed; your item offer was returned.").withStyle(ChatFormatting.YELLOW))
         }
         CommerceAuditLog.recordTrade(first.server, session.firstId, session.firstName, session.secondId, session.secondName, firstOfferedItems, secondOfferedItems, firstCoins, secondCoins, session.debug)
-        finishCompletedTrade(session)
+        finishCompletedTrade(session, secondOfferedItems, secondCoins, firstOfferedItems, firstCoins)
         ChowcoinNetwork.syncTo(first)
         second?.let(ChowcoinNetwork::syncTo)
     }
@@ -251,13 +255,13 @@ object TradingManager {
         session.suppressOfferChange = true
         player(session.firstId)?.let {
             returnOfferToPlayer(session.firstOffer, it)
-            it.sendSystemMessage(Component.literal(reason).withStyle(ChatFormatting.YELLOW))
+            SnackbarNetwork.send(it, SnackbarNotification.item(SnackbarIcons.TRADE, "TRADE CANCELED", reason, SnackbarType.ERROR, SnackbarSounds.ERROR))
             it.closeContainer()
         }
         if (!session.debug) {
             player(session.secondId)?.let {
                 returnOfferToPlayer(session.secondOffer, it)
-                it.sendSystemMessage(Component.literal(reason).withStyle(ChatFormatting.YELLOW))
+                SnackbarNetwork.send(it, SnackbarNotification.item(SnackbarIcons.TRADE, "TRADE CANCELED", reason, SnackbarType.ERROR, SnackbarSounds.ERROR))
                 it.closeContainer()
             }
         }
@@ -306,20 +310,30 @@ object TradingManager {
         }
     }
 
-    private fun finishCompletedTrade(session: TradingSession) {
+    private fun finishCompletedTrade(session: TradingSession, firstReceivedItems: List<ItemStack>, firstReceivedCoins: Long, secondReceivedItems: List<ItemStack>, secondReceivedCoins: Long) {
         val first = player(session.firstId)
         val second = if (session.debug) null else player(session.secondId)
         cleanup(session)
         first?.closeContainer()
         second?.closeContainer()
-        val message = ChatGlyphs.chowKingdomPrefix().append(Component.literal("Trade completed!").withStyle(ChatFormatting.GREEN))
         first?.let { player ->
             playCompletionSounds(player)
-            player.sendSystemMessage(message)
+            val title = if (session.debug) "DEBUG TRADE COMPLETE" else "TRADE COMPLETE"
+            SnackbarNetwork.send(player, SnackbarNotification.item(SnackbarIcons.TRADE, title, tradeReceivedContent(firstReceivedItems, firstReceivedCoins), SnackbarType.SUCCESS, SnackbarSounds.REWARD))
         }
         second?.let { player ->
             playCompletionSounds(player)
-            player.sendSystemMessage(message)
+            SnackbarNetwork.send(player, SnackbarNotification.item(SnackbarIcons.TRADE, "TRADE COMPLETE", tradeReceivedContent(secondReceivedItems, secondReceivedCoins), SnackbarType.SUCCESS, SnackbarSounds.REWARD))
+        }
+    }
+
+    private fun tradeReceivedContent(items: List<ItemStack>, chowcoins: Long): String {
+        val itemCount = items.sumOf { it.count }
+        return when {
+            itemCount > 0 && chowcoins > 0L -> "Received $itemCount items and $chowcoins chowcoins"
+            itemCount > 0 -> "Received $itemCount items"
+            chowcoins > 0L -> "Received $chowcoins chowcoins"
+            else -> "Trade completed"
         }
     }
 
@@ -331,8 +345,8 @@ object TradingManager {
     private fun expireRequests(tick: Int) {
         pendingRequests.values.filter { it.expiresAtTick <= tick }.forEach { request ->
             clearRequest(request)
-            player(request.fromId)?.sendSystemMessage(Component.literal("Trade request to ${request.toName} expired.").withStyle(ChatFormatting.YELLOW))
-            player(request.toId)?.sendSystemMessage(Component.literal("Trade request from ${request.fromName} expired.").withStyle(ChatFormatting.GRAY))
+            player(request.fromId)?.let { SnackbarNetwork.send(it, SnackbarNotification.player(request.toId, request.toName, "TRADE EXPIRED", request.toName, SnackbarType.ERROR, SnackbarSounds.ERROR)) }
+            player(request.toId)?.let { SnackbarNetwork.send(it, SnackbarNotification.player(request.fromId, request.fromName, "TRADE EXPIRED", request.fromName, SnackbarType.ERROR, SnackbarSounds.ERROR)) }
         }
     }
 
@@ -367,9 +381,9 @@ object TradingManager {
         val related = pendingRequests.values.filter { it.fromId == player.uuid || it.toId == player.uuid }
         related.forEach(::clearRequest)
         if (related.isEmpty()) {
-            player.sendSystemMessage(Component.literal("No pending trade request.").withStyle(ChatFormatting.GRAY))
+            SnackbarNetwork.send(player, SnackbarNotification.item(SnackbarIcons.TRADE, "NO TRADE REQUEST", type = SnackbarType.GENERIC, sound = SnackbarSounds.GENERIC))
         } else {
-            player.sendSystemMessage(Component.literal("Trade request declined.").withStyle(ChatFormatting.YELLOW))
+            SnackbarNetwork.send(player, SnackbarNotification.item(SnackbarIcons.TRADE, "TRADE DECLINED", type = SnackbarType.ERROR, sound = SnackbarSounds.ERROR))
         }
         return 1
     }
@@ -377,7 +391,7 @@ object TradingManager {
     private fun debugTrade(context: CommandContext<CommandSourceStack>): Int {
         val player = context.source.playerOrException
         if (isBusy(player.uuid)) {
-            player.sendSystemMessage(Component.literal("Finish your current trade first.").withStyle(ChatFormatting.RED))
+            SnackbarNetwork.send(player, SnackbarNotification.item(SnackbarIcons.ERROR, "TRADE UNAVAILABLE", "Finish your current trade first", SnackbarType.ERROR, SnackbarSounds.ERROR))
             return 0
         }
         startSession(player, player, debug = true)

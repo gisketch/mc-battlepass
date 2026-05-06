@@ -4,6 +4,11 @@ import com.google.gson.GsonBuilder
 import dev.gisketch.chowkingdom.ChatGlyphs
 import dev.gisketch.chowkingdom.ChowKingdomMod
 import dev.gisketch.chowkingdom.discord.DiscordRelay
+import dev.gisketch.chowkingdom.snackbar.SnackbarIcons
+import dev.gisketch.chowkingdom.snackbar.SnackbarNetwork
+import dev.gisketch.chowkingdom.snackbar.SnackbarNotification
+import dev.gisketch.chowkingdom.snackbar.SnackbarSounds
+import dev.gisketch.chowkingdom.snackbar.SnackbarType
 import net.minecraft.ChatFormatting
 import net.minecraft.network.chat.Component
 import net.minecraft.server.level.ServerPlayer
@@ -141,7 +146,7 @@ object BattlepassMissionProgressStore {
                         changed = true
                     }
                 } else if (entry.event.xp > 0) {
-                    BattlepassXpStore.addXp(player, pass.id, entry.event.xp)
+                    addXpAndNotifyRewardUnlock(player, pass, entry.event.xp)
                     changed = true
                 }
                 markCompleted(player.uuid, pass, entry)
@@ -213,7 +218,7 @@ object BattlepassMissionProgressStore {
                     val complete = recordCappedRepeating(player, pass, entry, signal.amount)
                     if (complete) markCompleted(player.uuid, pass, entry)
                 } else {
-                    if (entry.event.xp > 0) BattlepassXpStore.addXp(player, pass.id, entry.event.xp)
+                    if (entry.event.xp > 0) addXpAndNotifyRewardUnlock(player, pass, entry.event.xp)
                 }
             }
         }
@@ -232,7 +237,7 @@ object BattlepassMissionProgressStore {
 
         val possibleXp = event.xp * amount.coerceAtLeast(1)
         val awardedXp = possibleXp.coerceAtMost(event.xpCap - previous).coerceAtLeast(0)
-        if (awardedXp > 0) BattlepassXpStore.addXp(player, pass.id, awardedXp)
+        if (awardedXp > 0) addXpAndNotifyRewardUnlock(player, pass, awardedXp)
         val next = (previous + awardedXp).coerceAtMost(event.xpCap)
         passProgress[storageKey] = next
         val completed = next >= event.xpCap
@@ -260,7 +265,7 @@ object BattlepassMissionProgressStore {
             if (previous < goal && next >= goal) {
                 val xp = event.progressXp.getOrNull(index) ?: event.xp
                 if (xp > 0) {
-                    BattlepassXpStore.addXp(player, pass.id, xp)
+                    addXpAndNotifyRewardUnlock(player, pass, xp)
                 }
                 if (entry.scope == BattlepassMissionScope.PERMANENT && BattlepassMissionService.isProgressive(event)) {
                     val finalGoal = BattlepassMissionService.progressiveGoal(event)
@@ -279,7 +284,28 @@ object BattlepassMissionProgressStore {
     private fun activeEntries(pass: BattlepassPassDefinition): List<BattlepassMissionEntry> =
         BattlepassMissionService.permanentEntries(pass) + activeRotatingEntries(pass, BattlepassMissionScope.DAILY, pass.dailyEvents) + activeRotatingEntries(pass, BattlepassMissionScope.WEEKLY, pass.weeklyEvents)
 
+    private fun addXpAndNotifyRewardUnlock(player: ServerPlayer, pass: BattlepassPassDefinition, xp: Int) {
+        if (xp <= 0) return
+        val previousXp = BattlepassXpStore.getXp(player, pass.id)
+        BattlepassXpStore.addXp(player, pass.id, xp)
+        val currentXp = BattlepassXpStore.getXp(player, pass.id)
+        val newlyUnlocked = pass.progression.filter { tier -> previousXp < tier.xp && currentXp >= tier.xp && !BattlepassXpStore.isClaimed(player, pass.id, tier.xp) }
+        if (newlyUnlocked.isEmpty()) return
+        val unclaimedCount = pass.progression.count { tier -> currentXp >= tier.xp && !BattlepassXpStore.isClaimed(player, pass.id, tier.xp) }
+        val passName = pass.displayName.ifBlank { pass.id }
+        val rewardWord = if (unclaimedCount == 1) "reward" else "rewards"
+        val latestReward = newlyUnlocked.maxByOrNull { tier -> tier.xp }?.rewards?.firstOrNull()
+        SnackbarNetwork.send(
+            player,
+            SnackbarNotification.item(rewardIcon(latestReward), "NEW BATTLEPASS REWARD", "$unclaimedCount unclaimed $rewardWord in \"$passName\" pass", SnackbarType.SUCCESS, SnackbarSounds.REWARD),
+        )
+    }
+
     private fun broadcastMissionCompletion(player: ServerPlayer, pass: BattlepassPassDefinition, entry: BattlepassMissionEntry, title: String) {
+        SnackbarNetwork.send(
+            player,
+            SnackbarNotification.item(BattlepassMissionIcons.iconId(entry), missionSnackbarTitle(entry.scope), title, SnackbarType.SUCCESS, SnackbarSounds.REWARD),
+        )
         val message = ChatGlyphs.chowKingdomPrefix()
             .append(Component.literal(player.gameProfile.name).withStyle(ChatFormatting.YELLOW))
             .append(Component.literal(" completed ").withStyle(ChatFormatting.GRAY))
@@ -294,6 +320,23 @@ object BattlepassMissionProgressStore {
         BattlepassMissionScope.DAILY -> "Daily Mission"
         BattlepassMissionScope.WEEKLY -> "Weekly Mission"
         BattlepassMissionScope.PERMANENT -> "Chowkingdom Mission"
+    }
+
+    private fun missionSnackbarTitle(scope: BattlepassMissionScope): String = when (scope) {
+        BattlepassMissionScope.DAILY -> "DAILY MISSION COMPLETE"
+        BattlepassMissionScope.WEEKLY -> "WEEKLY MISSION COMPLETE"
+        BattlepassMissionScope.PERMANENT -> "CHOWKINGDOM MISSION COMPLETE"
+    }
+
+    private fun rewardIcon(reward: BattlepassRewardDefinition?): String {
+        if (reward == null) return SnackbarIcons.BATTLEPASS
+        if (isChowcoinReward(reward)) return "minecraft:gold_ingot"
+        return reward.item.takeIf(String::isNotBlank) ?: SnackbarIcons.BATTLEPASS
+    }
+
+    private fun isChowcoinReward(reward: BattlepassRewardDefinition): Boolean {
+        if (reward.type.equals("chowcoin", ignoreCase = true) || reward.type.equals("chowcoins", ignoreCase = true)) return true
+        return reward.type.equals("currency", ignoreCase = true) && reward.data["currency"]?.equals("chowcoin", ignoreCase = true) == true
     }
 
     private fun activeRotatingEntries(pass: BattlepassPassDefinition, scope: BattlepassMissionScope, definition: BattlepassRotatingMissionDefinition): List<BattlepassMissionEntry> {

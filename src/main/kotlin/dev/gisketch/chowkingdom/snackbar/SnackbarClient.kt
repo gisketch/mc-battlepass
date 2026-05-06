@@ -1,0 +1,322 @@
+package dev.gisketch.chowkingdom.snackbar
+
+import com.mojang.blaze3d.systems.RenderSystem
+import dev.gisketch.chowkingdom.ChowKingdomMod
+import net.minecraft.client.Minecraft
+import net.minecraft.client.gui.Font
+import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.components.PlayerFaceRenderer
+import net.minecraft.client.resources.sounds.SimpleSoundInstance
+import net.minecraft.core.registries.BuiltInRegistries
+import net.minecraft.network.chat.Component
+import net.minecraft.resources.ResourceLocation
+import net.minecraft.sounds.SoundEvents
+import net.minecraft.world.item.ItemStack
+import net.minecraft.world.item.Items
+import net.neoforged.bus.api.IEventBus
+import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent
+import net.neoforged.neoforge.client.gui.VanillaGuiLayers
+import java.util.Locale
+
+object SnackbarClient {
+    private val LAYER_ID: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "snackbar")
+    private val active = mutableListOf<ClientSnackbar>()
+    private val queued = mutableListOf<QueuedSnackbar>()
+    private var nextId = 0L
+
+    fun register(modBus: IEventBus) {
+        modBus.addListener(::registerGuiLayers)
+    }
+
+    @JvmStatic
+    fun show(payload: SnackbarPayload) {
+        queued += QueuedSnackbar(
+            SnackbarIconKind.fromId(payload.iconKind),
+            payload.icon,
+            payload.title,
+            payload.content,
+            SnackbarType.fromId(payload.type),
+            payload.sound,
+            payload.durationMs.coerceIn(1_000L, 60_000L),
+        )
+        promoteQueued(System.currentTimeMillis())
+    }
+
+    @JvmStatic
+    fun clearActive() {
+        active.clear()
+        promoteQueued(System.currentTimeMillis())
+    }
+
+    private fun promoteQueued(now: Long) {
+        while (active.size < MAX_ACTIVE && queued.isNotEmpty()) {
+            val next = queued.removeAt(0)
+            active += ClientSnackbar(
+                nextId++,
+                next.iconKind,
+                next.icon,
+                itemStack(next.icon),
+                next.title,
+                next.content,
+                next.type,
+                next.sound,
+                now,
+                next.durationMs,
+            )
+            playSound(next.sound)
+        }
+    }
+
+    private fun registerGuiLayers(event: RegisterGuiLayersEvent) {
+        event.registerAbove(VanillaGuiLayers.HOTBAR, LAYER_ID) { guiGraphics, _ -> render(guiGraphics) }
+    }
+
+    private fun render(guiGraphics: GuiGraphics) {
+        val minecraft = Minecraft.getInstance()
+        if (minecraft.options.hideGui || minecraft.gui.debugOverlay.showDebugScreen()) return
+        val now = System.currentTimeMillis()
+        active.removeIf { now - it.createdAtMs > it.durationMs + EXIT_MS }
+        promoteQueued(now)
+        if (active.isEmpty()) return
+
+        val font = minecraft.font
+        val screenWidth = minecraft.window.guiScaledWidth
+        val screenHeight = minecraft.window.guiScaledHeight
+        var bottom = screenHeight - HOTBAR_OFFSET_Y
+        active.asReversed().forEach { snackbar ->
+            val layout = layout(font, snackbar, screenWidth)
+            val x = (screenWidth - layout.width) / 2
+            val y = bottom - layout.height
+            renderSnackbar(guiGraphics, font, snackbar, layout, x, y, now)
+            bottom = y - STACK_GAP
+        }
+    }
+
+    private fun renderSnackbar(guiGraphics: GuiGraphics, font: Font, snackbar: ClientSnackbar, layout: SnackbarLayout, x: Int, y: Int, now: Long) {
+        val age = now - snackbar.createdAtMs
+        val entrance = easeOutCubic((age.toFloat() / ENTER_MS).coerceIn(0.0f, 1.0f))
+        val exit = if (age <= snackbar.durationMs) 1.0f else 1.0f - ((age - snackbar.durationMs).toFloat() / EXIT_MS).coerceIn(0.0f, 1.0f)
+        val alpha = entrance * exit
+        if (alpha <= 0.01f) return
+        val scale = 0.92f + 0.08f * entrance
+        val slideY = SLIDE_UP_OFFSET * (1.0f - entrance)
+        val pose = guiGraphics.pose()
+        pose.pushPose()
+        pose.translate((x + layout.width / 2.0f), (y + layout.height / 2.0f + slideY), 240.0f)
+        pose.scale(scale, scale, 1.0f)
+        pose.translate(-(x + layout.width / 2.0f), -(y + layout.height / 2.0f), 0.0f)
+        renderNineSlice(guiGraphics, Rect(x, y, layout.width, layout.height), alpha)
+        renderIcon(guiGraphics, snackbar, x + PAD, y + PAD + (layout.contentHeight - ICON_SIZE) / 2, alpha)
+        val titleY = if (layout.titleOnly) y + PAD + (layout.contentHeight - TITLE_HEIGHT) / 2 else y + PAD
+        drawTitle(guiGraphics, font, snackbar, layout, x + PAD + ICON_SLOT_WIDTH, titleY, alpha)
+        if (!layout.titleOnly) {
+            layout.contentLines.forEachIndexed { index, line ->
+                guiGraphics.drawString(font, line, x + PAD + ICON_SLOT_WIDTH, y + PAD + TITLE_HEIGHT + CONTENT_GAP + index * CONTENT_LINE_HEIGHT, colorAlpha(CONTENT_COLOR, alpha), false)
+            }
+        }
+        pose.popPose()
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f)
+    }
+
+    private fun drawTitle(guiGraphics: GuiGraphics, font: Font, snackbar: ClientSnackbar, layout: SnackbarLayout, x: Int, y: Int, alpha: Float) {
+        val component = Component.literal(fitText(font, snackbar.title.uppercase(Locale.ROOT), layout.textWidth)).withStyle { style -> style.withFont(CKDM_BOLD_FONT) }
+        guiGraphics.drawString(font, component, x + 1, y + 1, colorAlpha(TITLE_SHADOW, alpha), false)
+        guiGraphics.drawString(font, component, x, y, colorAlpha(titleColor(snackbar.type), alpha), false)
+    }
+
+    private fun renderIcon(guiGraphics: GuiGraphics, snackbar: ClientSnackbar, x: Int, y: Int, alpha: Float) {
+        RenderSystem.enableBlend()
+        RenderSystem.defaultBlendFunc()
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, alpha)
+        val pose = guiGraphics.pose()
+        pose.pushPose()
+        pose.translate(x.toFloat(), y.toFloat(), 10.0f)
+        when (snackbar.iconKind) {
+            SnackbarIconKind.ITEM -> {
+                pose.scale(ICON_SCALE, ICON_SCALE, 1.0f)
+                guiGraphics.renderItem(snackbar.itemIcon, 0, 0)
+            }
+            SnackbarIconKind.PLAYER -> renderPlayerIcon(guiGraphics, snackbar, alpha)
+            SnackbarIconKind.TEXTURE -> renderTextureIcon(guiGraphics, snackbar.icon, alpha)
+        }
+        pose.popPose()
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f)
+    }
+
+    private fun renderPlayerIcon(guiGraphics: GuiGraphics, snackbar: ClientSnackbar, alpha: Float) {
+        val minecraft = Minecraft.getInstance()
+        val playerId = snackbar.icon.substringBefore('|').let { raw -> runCatching { java.util.UUID.fromString(raw) }.getOrNull() }
+        val skin = playerId?.let { id -> minecraft.connection?.getPlayerInfo(id)?.skin }
+        if (skin != null) {
+            guiGraphics.setColor(1.0f, 1.0f, 1.0f, alpha)
+            PlayerFaceRenderer.draw(guiGraphics, skin, 0, 0, ICON_SIZE)
+            guiGraphics.setColor(1.0f, 1.0f, 1.0f, 1.0f)
+        } else {
+            guiGraphics.fill(0, 0, ICON_SIZE, ICON_SIZE, colorAlpha(PLAYER_FALLBACK_FILL, alpha))
+            val name = snackbar.icon.substringAfter('|', snackbar.title).trim()
+            if (name.isNotBlank()) guiGraphics.drawString(minecraft.font, name.take(1).uppercase(Locale.ROOT), 8, 7, colorAlpha(GENERIC_TITLE, alpha), false)
+        }
+    }
+
+    private fun renderTextureIcon(guiGraphics: GuiGraphics, icon: String, alpha: Float) {
+        val texture = runCatching { ResourceLocation.parse(icon) }.getOrNull() ?: return
+        guiGraphics.setColor(1.0f, 1.0f, 1.0f, alpha)
+        guiGraphics.blit(texture, 0, 0, ICON_SIZE, ICON_SIZE, 0.0f, 0.0f, TEXTURE_ICON_SOURCE_SIZE, TEXTURE_ICON_SOURCE_SIZE, TEXTURE_ICON_SOURCE_SIZE, TEXTURE_ICON_SOURCE_SIZE)
+        guiGraphics.setColor(1.0f, 1.0f, 1.0f, 1.0f)
+    }
+
+    private fun renderNineSlice(guiGraphics: GuiGraphics, rect: Rect, alpha: Float) {
+        RenderSystem.enableBlend()
+        RenderSystem.defaultBlendFunc()
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, alpha)
+        val edgeX = FRAME_WIDTH - FRAME_SOURCE_CORNER
+        val edgeY = FRAME_HEIGHT - FRAME_SOURCE_CORNER
+        val middleWidth = FRAME_WIDTH - FRAME_SOURCE_CORNER * 2
+        val middleHeight = FRAME_HEIGHT - FRAME_SOURCE_CORNER * 2
+        val innerWidth = (rect.width - FRAME_DEST_CORNER * 2).coerceAtLeast(0)
+        val innerHeight = (rect.height - FRAME_DEST_CORNER * 2).coerceAtLeast(0)
+        blit(guiGraphics, Rect(rect.x, rect.y, FRAME_DEST_CORNER, FRAME_DEST_CORNER), 0, 0, FRAME_SOURCE_CORNER, FRAME_SOURCE_CORNER)
+        blit(guiGraphics, Rect(rect.x + FRAME_DEST_CORNER, rect.y, innerWidth, FRAME_DEST_CORNER), FRAME_SOURCE_CORNER, 0, middleWidth, FRAME_SOURCE_CORNER)
+        blit(guiGraphics, Rect(rect.right - FRAME_DEST_CORNER, rect.y, FRAME_DEST_CORNER, FRAME_DEST_CORNER), edgeX, 0, FRAME_SOURCE_CORNER, FRAME_SOURCE_CORNER)
+        blit(guiGraphics, Rect(rect.x, rect.y + FRAME_DEST_CORNER, FRAME_DEST_CORNER, innerHeight), 0, FRAME_SOURCE_CORNER, FRAME_SOURCE_CORNER, middleHeight)
+        blit(guiGraphics, Rect(rect.x + FRAME_DEST_CORNER, rect.y + FRAME_DEST_CORNER, innerWidth, innerHeight), FRAME_SOURCE_CORNER, FRAME_SOURCE_CORNER, middleWidth, middleHeight)
+        blit(guiGraphics, Rect(rect.right - FRAME_DEST_CORNER, rect.y + FRAME_DEST_CORNER, FRAME_DEST_CORNER, innerHeight), edgeX, FRAME_SOURCE_CORNER, FRAME_SOURCE_CORNER, middleHeight)
+        blit(guiGraphics, Rect(rect.x, rect.bottom - FRAME_DEST_CORNER, FRAME_DEST_CORNER, FRAME_DEST_CORNER), 0, edgeY, FRAME_SOURCE_CORNER, FRAME_SOURCE_CORNER)
+        blit(guiGraphics, Rect(rect.x + FRAME_DEST_CORNER, rect.bottom - FRAME_DEST_CORNER, innerWidth, FRAME_DEST_CORNER), FRAME_SOURCE_CORNER, edgeY, middleWidth, FRAME_SOURCE_CORNER)
+        blit(guiGraphics, Rect(rect.right - FRAME_DEST_CORNER, rect.bottom - FRAME_DEST_CORNER, FRAME_DEST_CORNER, FRAME_DEST_CORNER), edgeX, edgeY, FRAME_SOURCE_CORNER, FRAME_SOURCE_CORNER)
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f)
+    }
+
+    private fun blit(guiGraphics: GuiGraphics, rect: Rect, sourceX: Int, sourceY: Int, sourceWidth: Int, sourceHeight: Int) {
+        if (rect.width <= 0 || rect.height <= 0) return
+        guiGraphics.blit(FRAME_TEXTURE, rect.x, rect.y, rect.width, rect.height, sourceX.toFloat(), sourceY.toFloat(), sourceWidth, sourceHeight, FRAME_WIDTH, FRAME_HEIGHT)
+    }
+
+    private fun layout(font: Font, snackbar: ClientSnackbar, screenWidth: Int): SnackbarLayout {
+        val width = screenWidth.coerceAtMost(MAX_WIDTH + PAD * 2).coerceAtLeast(MIN_WIDTH)
+        val textWidth = width - PAD * 2 - ICON_SLOT_WIDTH
+        val lines = wrap(font, snackbar.content, textWidth).take(MAX_CONTENT_LINES)
+        val titleOnly = lines.isEmpty()
+        val textHeight = if (titleOnly) TITLE_HEIGHT else TITLE_HEIGHT + CONTENT_GAP + lines.size * CONTENT_LINE_HEIGHT
+        val contentHeight = maxOf(ICON_SIZE, textHeight)
+        return SnackbarLayout(width, contentHeight + PAD * 2, contentHeight, textWidth, titleOnly, lines)
+    }
+
+    private fun wrap(font: Font, text: String, maxWidth: Int): List<String> {
+        val words = text.trim().split(Regex("\\s+")).filter(String::isNotBlank)
+        if (words.isEmpty()) return emptyList()
+        val lines = mutableListOf<String>()
+        var line = ""
+        words.forEach { word ->
+            if (font.width(word) > maxWidth) {
+                if (line.isNotBlank()) {
+                    lines += line
+                    line = ""
+                }
+                lines += splitLongWord(font, word, maxWidth)
+                return@forEach
+            }
+            val candidate = if (line.isBlank()) word else "$line $word"
+            if (font.width(candidate) <= maxWidth || line.isBlank()) line = candidate
+            else {
+                lines += line
+                line = word
+            }
+        }
+        if (line.isNotBlank()) lines += line
+        return lines
+    }
+
+    private fun splitLongWord(font: Font, word: String, maxWidth: Int): List<String> {
+        val lines = mutableListOf<String>()
+        var line = ""
+        word.forEach { character ->
+            val candidate = line + character
+            if (line.isNotEmpty() && font.width(candidate) > maxWidth) {
+                lines += line
+                line = character.toString()
+            } else {
+                line = candidate
+            }
+        }
+        if (line.isNotEmpty()) lines += line
+        return lines
+    }
+
+    private fun fitText(font: Font, text: String, maxWidth: Int): String {
+        if (font.width(text) <= maxWidth) return text
+        val suffix = "..."
+        var trimmed = text
+        while (trimmed.isNotEmpty() && font.width(trimmed + suffix) > maxWidth) trimmed = trimmed.dropLast(1)
+        return trimmed + suffix
+    }
+
+    private fun itemStack(raw: String): ItemStack {
+        val id = runCatching { ResourceLocation.parse(raw) }.getOrNull() ?: return ItemStack(Items.BARRIER)
+        val item = BuiltInRegistries.ITEM.getOptional(id).orElse(Items.BARRIER)
+        return ItemStack(item)
+    }
+
+    private fun playSound(raw: String) {
+        val sound = when (raw) {
+            SnackbarSounds.SUCCESS, SnackbarSounds.SALE -> SoundEvents.EXPERIENCE_ORB_PICKUP
+            SnackbarSounds.ERROR -> SoundEvents.VILLAGER_NO
+            SnackbarSounds.REWARD -> SoundEvents.PLAYER_LEVELUP
+            SnackbarSounds.TRADE -> SoundEvents.NOTE_BLOCK_CHIME.value()
+            SnackbarSounds.GENERIC -> SoundEvents.NOTE_BLOCK_PLING.value()
+            else -> null
+        } ?: return
+        Minecraft.getInstance().soundManager.play(SimpleSoundInstance.forUI(sound, 1.18f, 0.65f))
+    }
+
+    private fun titleColor(type: SnackbarType): Int = when (type) {
+        SnackbarType.ERROR -> ERROR_TITLE
+        SnackbarType.SUCCESS -> SUCCESS_TITLE
+        SnackbarType.GENERIC -> GENERIC_TITLE
+    }
+
+    private fun easeOutCubic(progress: Float): Float {
+        val inverse = 1.0f - progress.coerceIn(0.0f, 1.0f)
+        return 1.0f - inverse * inverse * inverse
+    }
+
+    private fun colorAlpha(color: Int, alphaFactor: Float): Int = ((((color ushr 24) and 0xFF) * alphaFactor).toInt().coerceIn(0, 255) shl 24) or (color and 0x00FFFFFF)
+
+    private data class QueuedSnackbar(val iconKind: SnackbarIconKind, val icon: String, val title: String, val content: String, val type: SnackbarType, val sound: String, val durationMs: Long)
+    private data class ClientSnackbar(val id: Long, val iconKind: SnackbarIconKind, val icon: String, val itemIcon: ItemStack, val title: String, val content: String, val type: SnackbarType, val sound: String, val createdAtMs: Long, val durationMs: Long)
+    private data class SnackbarLayout(val width: Int, val height: Int, val contentHeight: Int, val textWidth: Int, val titleOnly: Boolean, val contentLines: List<String>)
+    private data class Rect(val x: Int, val y: Int, val width: Int, val height: Int) {
+        val right: Int get() = x + width
+        val bottom: Int get() = y + height
+    }
+
+    private val FRAME_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_frame_2.png")
+    private val CKDM_BOLD_FONT = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "ckdm_bold")
+    private const val FRAME_WIDTH = 1646
+    private const val FRAME_HEIGHT = 256
+    private const val FRAME_SOURCE_CORNER = 75
+    private const val FRAME_DEST_CORNER = 14
+    private const val MIN_WIDTH = 190
+    private const val MAX_WIDTH = 270
+    private const val PAD = 10
+    private const val ICON_SIZE = 24
+    private const val ICON_SCALE = ICON_SIZE / 16.0f
+    private const val TEXTURE_ICON_SOURCE_SIZE = 16
+    private const val ICON_SLOT_WIDTH = 34
+    private const val TITLE_HEIGHT = 10
+    private const val CONTENT_GAP = 3
+    private const val CONTENT_LINE_HEIGHT = 10
+    private const val MAX_CONTENT_LINES = 3
+    private const val HOTBAR_OFFSET_Y = 54
+    private const val STACK_GAP = 6
+    private const val MAX_ACTIVE = 3
+    private const val ENTER_MS = 260L
+    private const val EXIT_MS = 180L
+    private const val SLIDE_UP_OFFSET = 14.0f
+    private const val GENERIC_TITLE = 0xFFFFFFFF.toInt()
+    private const val ERROR_TITLE = 0xFFFF5A52.toInt()
+    private const val SUCCESS_TITLE = 0xFFFFD56E.toInt()
+    private const val TITLE_SHADOW = 0xCC050505.toInt()
+    private const val CONTENT_COLOR = 0xFFEDE6DA.toInt()
+    private const val PLAYER_FALLBACK_FILL = 0xCC2F3545.toInt()
+}

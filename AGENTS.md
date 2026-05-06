@@ -34,6 +34,7 @@ Codex reads this file first. Keep it short. It is the map, not the manual.
 - Package manager: Gradle wrapper
 - Default caveman mode: full
 - Agent targets: Codex
+- Main gameplay notification path: reusable snackbar system in `dev.gisketch.chowkingdom.snackbar`; prefer snackbar over chat/actionbar for new player-facing feature events.
 
 ## Work Loop
 

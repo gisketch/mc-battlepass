@@ -51,17 +51,12 @@ object ChowKingdomHud {
         val minecraft = Minecraft.getInstance()
         val player = minecraft.player ?: return
         if (minecraft.options.hideGui || minecraft.gui.debugOverlay.showDebugScreen() || (minecraft.screen != null && minecraft.screen !is ChatScreen)) return
-        queueCompletionToasts(minecraft)
-        queueShippingSaleToasts(minecraft)
-
         val detailsVisible = GLFW.glfwGetKey(minecraft.window.window, GLFW.GLFW_KEY_TAB) == GLFW.GLFW_PRESS
 
         val passes = BattlepassClientState.passes().ifEmpty { BattlepassPassRegistry.all().toList() }
         val trackedMissions = BattlepassTrackedMissions.trackedMissions(passes)
         val selfId = BattlepassClientState.selfId() ?: player.uuid
         renderCompactHud(guiGraphics, minecraft, trackedMissions, selfId, detailsVisible)
-        renderShippingSaleToasts(guiGraphics, minecraft)
-        renderCompletionToasts(guiGraphics, minecraft)
     }
 
     private fun renderCompactHud(guiGraphics: GuiGraphics, minecraft: Minecraft, missions: List<BattlepassTrackedMissions.TrackedMission>, playerId: java.util.UUID, showGoal: Boolean) {

@@ -4,10 +4,16 @@ import com.google.gson.GsonBuilder
 import com.google.gson.annotations.SerializedName
 import dev.gisketch.chowkingdom.ChowKingdomMod
 import dev.gisketch.chowkingdom.commerce.CommerceAuditLog
+import dev.gisketch.chowkingdom.snackbar.SnackbarIcons
+import dev.gisketch.chowkingdom.snackbar.SnackbarNetwork
+import dev.gisketch.chowkingdom.snackbar.SnackbarNotification
+import dev.gisketch.chowkingdom.snackbar.SnackbarSounds
+import dev.gisketch.chowkingdom.snackbar.SnackbarType
 import dev.gisketch.chowkingdom.wallets.ChowcoinNetwork
 import dev.gisketch.chowkingdom.wallets.ChowcoinStore
 import net.minecraft.core.BlockPos
 import net.minecraft.core.component.DataComponents
+import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.core.registries.Registries
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.nbt.ListTag
@@ -263,6 +269,7 @@ object VendorContractFeature {
                 val boughtCount = removed.sumOf { it.count }
                 bought += removed
                 buy.shop.recordSale(boughtCount, buy.total, claimable = true)
+                SnackbarNetwork.sendOrQueue(player.server, buy.ownerId, SnackbarNotification.texture(SnackbarIcons.CHOWCOIN_TEXTURE, "ITEM SOLD", "${player.gameProfile.name} bought $boughtCount ${buy.itemName} for ${buy.total} chowcoins", SnackbarType.SUCCESS, SnackbarSounds.SALE))
                 CommerceAuditLog.recordVendorBuy(player, buy.ownerId, buy.ownerName, seller, buy.key.dimension, buy.key.pos, buy.itemName, boughtCount, buy.total)
             }
         }
@@ -274,7 +281,7 @@ object VendorContractFeature {
         ChowcoinStore.set(player, balance - totalCost)
         bought.forEach { stack -> if (!player.inventory.add(stack)) player.drop(stack, false) }
         ChowcoinNetwork.syncTo(player)
-        player.displayClientMessage(Component.literal("Bought $boughtCount items for $totalCost chowcoins."), true)
+        SnackbarNetwork.send(player, SnackbarNotification.texture(SnackbarIcons.CHOWCOIN_TEXTURE, "BUY SUCCESSFUL", "Bought $boughtCount items for $totalCost chowcoins", SnackbarType.GENERIC, SnackbarSounds.GENERIC))
     }
 
     private fun handleVoid(payload: VendorVoidPayload, context: IPayloadContext) {
@@ -308,8 +315,10 @@ object VendorContractFeature {
         if (amount <= 0L) return
         ChowcoinStore.add(player, amount)
         ChowcoinNetwork.syncTo(player)
-        player.displayClientMessage(Component.literal("Collected $amount chowcoins."), true)
+        SnackbarNetwork.send(player, SnackbarNotification.texture(SnackbarIcons.CHOWCOIN_TEXTURE, "VENDOR REVENUE COLLECTED", "$amount chowcoins", SnackbarType.SUCCESS, SnackbarSounds.SALE))
     }
+
+    private fun itemIcon(stack: ItemStack): String = BuiltInRegistries.ITEM.getKey(stack.item).toString()
 
     private fun handleOpenClient(payload: VendorOpenPayload, context: IPayloadContext) {
         if (!net.neoforged.fml.loading.FMLEnvironment.dist.isClient) return

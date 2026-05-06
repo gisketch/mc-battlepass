@@ -1,6 +1,11 @@
 package dev.gisketch.chowkingdom.shipping
 
 import dev.gisketch.chowkingdom.ChowKingdomMod
+import dev.gisketch.chowkingdom.snackbar.SnackbarIcons
+import dev.gisketch.chowkingdom.snackbar.SnackbarNetwork
+import dev.gisketch.chowkingdom.snackbar.SnackbarNotification
+import dev.gisketch.chowkingdom.snackbar.SnackbarSounds
+import dev.gisketch.chowkingdom.snackbar.SnackbarType
 import net.minecraft.network.RegistryFriendlyByteBuf
 import net.minecraft.network.codec.StreamCodec
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload
@@ -17,7 +22,7 @@ object ShippingBinNetwork {
     }
 
     fun notifySale(player: ServerPlayer, payout: ShippingBinPayout) {
-        PacketDistributor.sendToPlayer(player, ShippingBinSalePayload(payout.itemCount, payout.amount))
+        SnackbarNetwork.send(player, SnackbarNotification.item(SnackbarIcons.SHIPPING_BIN, "SHIPPING BIN PROFIT TODAY", "Sold ${payout.itemCount} items for ${payout.amount} chowcoins", SnackbarType.SUCCESS, SnackbarSounds.SALE))
     }
 
     private fun registerPayloads(event: RegisterPayloadHandlersEvent) {

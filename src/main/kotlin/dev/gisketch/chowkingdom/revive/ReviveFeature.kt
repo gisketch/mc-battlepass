@@ -1,6 +1,11 @@
 package dev.gisketch.chowkingdom.revive
 
 import dev.gisketch.chowkingdom.ChatGlyphs
+import dev.gisketch.chowkingdom.snackbar.SnackbarIcons
+import dev.gisketch.chowkingdom.snackbar.SnackbarNetwork
+import dev.gisketch.chowkingdom.snackbar.SnackbarNotification
+import dev.gisketch.chowkingdom.snackbar.SnackbarSounds
+import dev.gisketch.chowkingdom.snackbar.SnackbarType
 import net.minecraft.ChatFormatting
 import net.minecraft.network.chat.Component
 import net.minecraft.server.MinecraftServer
@@ -425,6 +430,9 @@ object ReviveFeature {
         applyIncapacitatedVisual(player, state)
         syncIncapacitatedClient(player, state)
         player.playNotifySound(SoundEvents.PLAYER_HURT, SoundSource.PLAYERS, 0.8f, 0.6f)
+        player.server.playerList.players.forEach { receiver ->
+            SnackbarNetwork.send(receiver, SnackbarNotification.player(player.uuid, player.gameProfile.name, "${player.gameProfile.name} NEEDS A REVIVE", causeText, SnackbarType.ERROR, SnackbarSounds.ERROR))
+        }
         player.server.playerList.broadcastSystemMessage(
             ChatGlyphs.chowKingdomPrefix()
                 .append(Component.literal("${player.gameProfile.name} is incapacitated. ").withStyle(ChatFormatting.RED))
@@ -496,6 +504,7 @@ object ReviveFeature {
         target.playNotifySound(SoundEvents.PLAYER_LEVELUP, SoundSource.PLAYERS, 0.7f, 1.4f)
         ReviveStore.recordRevived(target, reviverIds.mapNotNull { target.server.playerList.getPlayer(it) })
         ReviveNetwork.syncComplete(target, reviverIds, reviverNames)
+        sendRevivedSnackbar(target, reviverIds, reviverNames)
         target.server.playerList.broadcastSystemMessage(
             ChatGlyphs.chowKingdomPrefix()
                 .append(Component.literal("${target.gameProfile.name} was revived by ${formatReviverNames(reviverNames)}.").withStyle(ChatFormatting.GREEN)),
@@ -523,6 +532,17 @@ object ReviveFeature {
             player.die(deathSource)
             finishingDeaths.remove(player.uuid)
         }
+    }
+
+    private fun sendRevivedSnackbar(target: ServerPlayer, reviverIds: List<UUID>, reviverNames: List<String>) {
+        val realReviverId = reviverIds.firstOrNull { id -> id != target.uuid }
+        val realReviverName = realReviverId?.let { id -> target.server.playerList.getPlayer(id)?.gameProfile?.name ?: reviverNames.getOrNull(reviverIds.indexOf(id)) }
+        val notification = if (realReviverId != null && !realReviverName.isNullOrBlank()) {
+            SnackbarNotification.player(realReviverId, realReviverName, "$realReviverName REVIVED ${target.gameProfile.name}", type = SnackbarType.SUCCESS, sound = SnackbarSounds.REWARD)
+        } else {
+            SnackbarNotification.player(target.uuid, target.gameProfile.name, "REVIVED ${target.gameProfile.name}", type = SnackbarType.SUCCESS, sound = SnackbarSounds.REWARD)
+        }
+        target.server.playerList.players.forEach { receiver -> SnackbarNetwork.send(receiver, notification) }
     }
 
     private fun cleanupAfterDeath(player: ServerPlayer) {
@@ -557,10 +577,16 @@ object ReviveFeature {
             reviver.setShiftKeyDown(false)
             reviver.removeEffect(MobEffects.MOVEMENT_SLOWDOWN)
             reviver.removeEffect(MobEffects.DIG_SLOWDOWN)
-            reason?.let { reviver.sendSystemMessage(Component.literal(it).withStyle(ChatFormatting.YELLOW)) }
+            reason?.let {
+                SnackbarNetwork.send(reviver, SnackbarNotification.player(session.targetId, targetSession?.targetName ?: "Player", "REVIVE CANCELED", type = SnackbarType.ERROR, sound = SnackbarSounds.ERROR))
+                reviver.sendSystemMessage(Component.literal(it).withStyle(ChatFormatting.YELLOW))
+            }
         }
         reason?.let { message ->
-            if (!reviveSessionsByTarget.containsKey(session.targetId)) player(session.targetId)?.takeIf { it.uuid != session.reviverId }?.sendSystemMessage(Component.literal(message).withStyle(ChatFormatting.YELLOW))
+            if (!reviveSessionsByTarget.containsKey(session.targetId)) player(session.targetId)?.takeIf { it.uuid != session.reviverId }?.let { target ->
+                SnackbarNetwork.send(target, SnackbarNotification.player(session.targetId, target.gameProfile.name, "REVIVE CANCELED", type = SnackbarType.ERROR, sound = SnackbarSounds.ERROR))
+                target.sendSystemMessage(Component.literal(message).withStyle(ChatFormatting.YELLOW))
+            }
         }
     }
 
@@ -573,7 +599,10 @@ object ReviveFeature {
             reviver.setShiftKeyDown(false)
             reviver.removeEffect(MobEffects.MOVEMENT_SLOWDOWN)
             reviver.removeEffect(MobEffects.DIG_SLOWDOWN)
-            reason?.let { reviver.sendSystemMessage(Component.literal(it).withStyle(ChatFormatting.YELLOW)) }
+            reason?.let {
+                SnackbarNetwork.send(reviver, SnackbarNotification.item(SnackbarIcons.ERROR, "REVIVE CANCELED", type = SnackbarType.ERROR, sound = SnackbarSounds.ERROR))
+                reviver.sendSystemMessage(Component.literal(it).withStyle(ChatFormatting.YELLOW))
+            }
         }
     }
 
@@ -585,6 +614,7 @@ object ReviveFeature {
         }
         dummy.discard()
         reviver.playNotifySound(SoundEvents.PLAYER_LEVELUP, SoundSource.PLAYERS, 0.7f, 1.4f)
+        SnackbarNetwork.send(reviver, SnackbarNotification.item("minecraft:armor_stand", "REVIVED TEST DUMMY", type = SnackbarType.SUCCESS, sound = SnackbarSounds.REWARD))
         reviver.sendSystemMessage(Component.literal("Revive dummy completed.").withStyle(ChatFormatting.GREEN))
     }
 

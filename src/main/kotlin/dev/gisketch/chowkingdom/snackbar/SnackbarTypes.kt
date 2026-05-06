@@ -1,0 +1,69 @@
+package dev.gisketch.chowkingdom.snackbar
+
+enum class SnackbarType(val id: String) {
+    GENERIC("generic"),
+    ERROR("error"),
+    SUCCESS("success"),
+    ;
+
+    companion object {
+        val ids: List<String> = entries.map(SnackbarType::id)
+
+        fun fromId(raw: String): SnackbarType = entries.firstOrNull { it.id == raw.lowercase() } ?: GENERIC
+    }
+}
+
+enum class SnackbarIconKind(val id: String) {
+    ITEM("item"),
+    PLAYER("player"),
+    TEXTURE("texture"),
+    ;
+
+    companion object {
+        fun fromId(raw: String): SnackbarIconKind = entries.firstOrNull { it.id == raw.lowercase() } ?: ITEM
+    }
+}
+
+data class SnackbarNotification(
+    val iconKind: SnackbarIconKind,
+    val icon: String,
+    val title: String,
+    val content: String = "",
+    val type: SnackbarType = SnackbarType.GENERIC,
+    val sound: String = SnackbarSounds.forType(type),
+) {
+    companion object {
+        fun item(icon: String, title: String, content: String = "", type: SnackbarType = SnackbarType.GENERIC, sound: String = SnackbarSounds.forType(type)): SnackbarNotification =
+            SnackbarNotification(SnackbarIconKind.ITEM, icon, title, content, type, sound)
+
+        fun player(playerId: java.util.UUID, playerName: String, title: String, content: String = "", type: SnackbarType = SnackbarType.GENERIC, sound: String = SnackbarSounds.forType(type)): SnackbarNotification =
+            SnackbarNotification(SnackbarIconKind.PLAYER, "$playerId|$playerName", title, content, type, sound)
+
+        fun texture(texture: String, title: String, content: String = "", type: SnackbarType = SnackbarType.GENERIC, sound: String = SnackbarSounds.forType(type)): SnackbarNotification =
+            SnackbarNotification(SnackbarIconKind.TEXTURE, texture, title, content, type, sound)
+    }
+}
+
+object SnackbarSounds {
+    const val GENERIC = "minecraft:block.note_block.pling"
+    const val SUCCESS = "minecraft:entity.experience_orb.pickup"
+    const val ERROR = "minecraft:entity.villager.no"
+    const val REWARD = "minecraft:entity.player.levelup"
+    const val SALE = "minecraft:entity.experience_orb.pickup"
+    const val TRADE = "minecraft:block.note_block.chime"
+    const val NONE = ""
+
+    fun forType(type: SnackbarType): String = when (type) {
+        SnackbarType.ERROR -> ERROR
+        SnackbarType.SUCCESS -> SUCCESS
+        SnackbarType.GENERIC -> GENERIC
+    }
+}
+
+object SnackbarIcons {
+    const val CHOWCOIN_TEXTURE = "gisketchs_chowkingdom_mod:textures/gui/chowcoin.png"
+    const val SHIPPING_BIN = "gisketchs_chowkingdom_mod:shipping_bin"
+    const val BATTLEPASS = "minecraft:paper"
+    const val TRADE = "minecraft:emerald"
+    const val ERROR = "minecraft:barrier"
+}
