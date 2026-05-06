@@ -1,0 +1,29 @@
+{
+  "replace": false,
+  "values": [
+    "minecraft:wooden_sword",
+    "minecraft:stone_sword",
+    "minecraft:iron_sword",
+    "minecraft:golden_sword",
+    "minecraft:diamond_sword",
+    "minecraft:netherite_sword",
+    "minecraft:bow",
+    "minecraft:crossbow",
+    {
+      "id": "#rogues:daggers",
+      "required": false
+    },
+    {
+      "id": "#rogues:sickles",
+      "required": false
+    },
+    {
+      "id": "#rpg_series:weapon_type/dagger",
+      "required": false
+    },
+    {
+      "id": "#rpg_series:weapon_type/sickle",
+      "required": false
+    }
+  ]
+}

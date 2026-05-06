@@ -21,6 +21,7 @@ import dev.gisketch.chowkingdom.discord.DiscordFeature
 import dev.gisketch.chowkingdom.discord.DiscordScreenshotClient
 import dev.gisketch.chowkingdom.revive.ReviveClient
 import dev.gisketch.chowkingdom.revive.ReviveFeature
+import dev.gisketch.chowkingdom.roles.RolesFeature
 import dev.gisketch.chowkingdom.shipping.ShippingBinClient
 import dev.gisketch.chowkingdom.profiles.ProfilesFeature
 import dev.gisketch.chowkingdom.shipping.ShippingBinFeature
@@ -57,6 +58,7 @@ class ChowKingdomMod(modBus: IEventBus, container: ModContainer) {
         ShippingBinFeature.register(modBus)
         ShopsFeature.register(modBus)
         ProfilesFeature.register(modBus)
+        RolesFeature.register(modBus)
         ReviveFeature.register(modBus)
         TradingFeature.register(modBus)
         DiscordFeature.register()

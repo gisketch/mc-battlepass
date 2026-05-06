@@ -17,6 +17,7 @@
 - [Shipping Bin](SHIPPING_BIN.md)
 - [Trading](TRADING.md)
 - [Revive](REVIVE.md)
+- [Jobs And Classes](ROLES.md)
 - [Harness Workflow](HARNESS.md)
 
 ## Harness Context
