@@ -54,9 +54,11 @@ Grant battlepass-style locked test tokens with:
 
 - `/relicroulette give-token <targets> <pool> [count]`
 - `/relicroulette simulate-bp <targets> <pool> [count]`
+- `/relicroulette clear-unlocks <targets> [pool]`
 - Same commands are available under `/ck relicroulette ...` and `/chowkingdom relicroulette ...`.
 
 `simulate-bp` uses the same locking helper as battlepass claim rewards, so it is the quickest in-game test path for token ownership and roulette behavior.
+`clear-unlocks` removes a player's won-item history for one pool or every pool, so the same rewards can be rolled again during testing.
 
 ## Battlepass Rewards
 

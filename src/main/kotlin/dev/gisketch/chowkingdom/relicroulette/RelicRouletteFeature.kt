@@ -201,6 +201,7 @@ object RelicRouletteFeature {
         .then(Commands.literal("reload").requires { source -> source.hasPermission(2) }.executes(::reloadCommand))
         .then(giveTokenNode("give-token"))
         .then(giveTokenNode("simulate-bp"))
+        .then(clearUnlocksNode())
 
     private fun giveTokenNode(name: String): LiteralArgumentBuilder<CommandSourceStack> = Commands.literal(name)
         .requires { source -> source.hasPermission(2) }
@@ -211,6 +212,18 @@ object RelicRouletteFeature {
                         .suggests { _, builder -> SharedSuggestionProvider.suggest(RelicRouletteConfig.pools().map { pool -> pool.id }, builder) }
                         .executes { context -> giveTokenCommand(context, 1) }
                         .then(Commands.argument("count", IntegerArgumentType.integer(1, 64)).executes { context -> giveTokenCommand(context, IntegerArgumentType.getInteger(context, "count")) }),
+                ),
+        )
+
+    private fun clearUnlocksNode(): LiteralArgumentBuilder<CommandSourceStack> = Commands.literal("clear-unlocks")
+        .requires { source -> source.hasPermission(2) }
+        .then(
+            Commands.argument("targets", EntityArgument.players())
+                .executes { context -> clearUnlocksCommand(context, null) }
+                .then(
+                    Commands.argument("pool", StringArgumentType.word())
+                        .suggests { _, builder -> SharedSuggestionProvider.suggest(RelicRouletteConfig.pools().map { pool -> pool.id }, builder) }
+                        .executes { context -> clearUnlocksCommand(context, StringArgumentType.getString(context, "pool")) },
                 ),
         )
 
@@ -237,6 +250,26 @@ object RelicRouletteFeature {
         }
         context.source.sendSuccess({ Component.literal("Granted $given ${pool.displayName} locked token(s) to ${targets.size} player(s).") }, true)
         return given
+    }
+
+    private fun clearUnlocksCommand(context: CommandContext<CommandSourceStack>, poolId: String?): Int {
+        RelicRouletteConfig.load()
+        RelicRouletteStore.load()
+        if (poolId != null && RelicRouletteConfig.pool(poolId) == null) {
+            context.source.sendFailure(Component.literal("Unknown relic pool '$poolId'."))
+            return 0
+        }
+        val targets = EntityArgument.getPlayers(context, "targets")
+        var removed = 0
+        val icon = poolId?.let { id -> RelicRouletteConfig.pool(id)?.ticket } ?: "${ChowKingdomMod.MOD_ID}:common_relic_token"
+        targets.forEach { target ->
+            val targetRemoved = RelicRouletteStore.clearUnlocked(target.uuid, poolId)
+            removed += targetRemoved
+            SnackbarNetwork.send(target, SnackbarNotification.item(icon, "RELIC UNLOCKS CLEARED", "$targetRemoved unlock(s) cleared", SnackbarType.SUCCESS, SnackbarSounds.REWARD))
+        }
+        val scope = poolId ?: "all pools"
+        context.source.sendSuccess({ Component.literal("Cleared $removed relic unlock(s) from ${targets.size} player(s) for $scope.") }, true)
+        return removed
     }
 
     private fun onRightClickItem(event: PlayerInteractEvent.RightClickItem) {

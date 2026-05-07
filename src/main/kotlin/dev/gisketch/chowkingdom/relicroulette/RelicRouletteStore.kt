@@ -55,6 +55,21 @@ object RelicRouletteStore {
         return true
     }
 
+    fun clearUnlocked(playerId: UUID, poolId: String?): Int {
+        if (!loaded) load()
+        val playerKey = playerId.toString()
+        val pools = data.players[playerKey] ?: return 0
+        val removed = if (poolId == null) {
+            pools.values.sumOf { items -> items.size }
+        } else {
+            pools.remove(poolId)?.size ?: 0
+        }
+        if (poolId == null) data.players.remove(playerKey)
+        if (pools.isEmpty()) data.players.remove(playerKey)
+        if (removed > 0) save()
+        return removed
+    }
+
     private fun save() {
         file.parent.createDirectories()
         Files.createTempFile(file.parent, "relic_roulette", ".json.tmp").also { temp ->

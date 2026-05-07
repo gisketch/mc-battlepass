@@ -264,7 +264,7 @@ private class RelicRouletteScreen(private var payload: RelicRouletteOpenPayload)
         return Rect((width - panelWidth) / 2, (height - panelHeight) / 2, panelWidth, panelHeight)
     }
 
-    private fun slotRect(panel: Rect): Rect = Rect(panel.x + (panel.width - 166) / 2, panel.y + 58, 166, 86)
+    private fun slotRect(panel: Rect): Rect = Rect(panel.x + (panel.width - 86) / 2, panel.y + 58, 86, 86)
 
     private fun buttonRect(panel: Rect): Rect = Rect(panel.x + (panel.width - 120) / 2, panel.bottom - 36, 120, 24)
 
@@ -351,7 +351,7 @@ private class RelicRouletteScreen(private var payload: RelicRouletteOpenPayload)
         private const val ENTER_ANIMATION_MS = 240L
         private const val EXIT_ANIMATION_MS = 160L
         private const val ITEM_SIZE = 46
-        private const val ITEM_SPACING = 70
+        private const val ITEM_SPACING = 128
         private const val ROLL_TRACK_ITEMS = 64
         private const val IDLE_TRACK_SPEED = 34.0f
         private const val PENDING_TRACK_SPEED = 150.0f
