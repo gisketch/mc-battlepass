@@ -1,5 +1,6 @@
 package dev.gisketch.chowkingdom.shops
 
+import dev.gisketch.chowkingdom.relicroulette.RelicRouletteFeature
 import net.minecraft.core.BlockPos
 import net.minecraft.core.HolderLookup
 import net.minecraft.core.NonNullList
@@ -69,7 +70,7 @@ class ShopBlockEntity(pos: BlockPos, state: BlockState) : BlockEntity(ShopsFeatu
         return if (template.isEmpty) ItemStack.EMPTY else template.copyWithCount(minOf(storedStockCount, template.maxStackSize))
     }
 
-    override fun canPlaceItem(slot: Int, stack: ItemStack): Boolean = slot == DISPLAY_SLOT
+    override fun canPlaceItem(slot: Int, stack: ItemStack): Boolean = slot == DISPLAY_SLOT && !RelicRouletteFeature.isTransferBlocked(stack)
 
     override fun removeItem(slot: Int, amount: Int): ItemStack {
         if (slot != DISPLAY_SLOT || amount <= 0 || storedStockCount <= 0) return ItemStack.EMPTY
@@ -94,6 +95,7 @@ class ShopBlockEntity(pos: BlockPos, state: BlockState) : BlockEntity(ShopsFeatu
 
     override fun setItem(slot: Int, stack: ItemStack) {
         if (slot != DISPLAY_SLOT) return
+        if (RelicRouletteFeature.isTransferBlocked(stack)) return
         storedStockCount = stack.count.coerceIn(0, MAX_STOCK)
         items[slot] = if (!stack.isEmpty) stack.copyWithCount(1) else ItemStack.EMPTY
         if (items[slot].isEmpty) clearClaim()
@@ -115,6 +117,7 @@ class ShopBlockEntity(pos: BlockPos, state: BlockState) : BlockEntity(ShopsFeatu
 
     fun addStock(player: Player, stack: ItemStack): Int {
         if (stack.isEmpty || isClaimedByOther(player)) return 0
+        if (RelicRouletteFeature.isTransferBlocked(stack)) return 0
         val current = displayItem
         if (!current.isEmpty && !ItemStack.isSameItemSameComponents(current, stack)) return 0
         val remaining = MAX_STOCK - storedStockCount

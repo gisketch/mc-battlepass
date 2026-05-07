@@ -3,6 +3,7 @@ package dev.gisketch.chowkingdom.trading
 import com.mojang.brigadier.context.CommandContext
 import dev.gisketch.chowkingdom.ChatGlyphs
 import dev.gisketch.chowkingdom.commerce.CommerceAuditLog
+import dev.gisketch.chowkingdom.relicroulette.RelicRouletteFeature
 import dev.gisketch.chowkingdom.snackbar.SnackbarIcons
 import dev.gisketch.chowkingdom.snackbar.SnackbarNetwork
 import dev.gisketch.chowkingdom.snackbar.SnackbarNotification
@@ -193,6 +194,18 @@ object TradingManager {
         }
         if (second != null && ChowcoinStore.get(second) < secondCoins) {
             SnackbarNetwork.send(second, SnackbarNotification.item(SnackbarIcons.ERROR, "TRADE BLOCKED", "Not enough chowcoins", SnackbarType.ERROR, SnackbarSounds.ERROR))
+            session.resetConsent(second.uuid)
+            sync(session)
+            return
+        }
+        if (session.offeredItems(session.firstId).any(RelicRouletteFeature::isTransferBlocked)) {
+            SnackbarNetwork.send(first, SnackbarNotification.item(SnackbarIcons.ERROR, "TRADE BLOCKED", "Locked relics cannot be traded", SnackbarType.ERROR, SnackbarSounds.ERROR))
+            session.resetConsent(first.uuid)
+            sync(session)
+            return
+        }
+        if (second != null && session.offeredItems(session.secondId).any(RelicRouletteFeature::isTransferBlocked)) {
+            SnackbarNetwork.send(second, SnackbarNotification.item(SnackbarIcons.ERROR, "TRADE BLOCKED", "Locked relics cannot be traded", SnackbarType.ERROR, SnackbarSounds.ERROR))
             session.resetConsent(second.uuid)
             sync(session)
             return

@@ -4,6 +4,7 @@ import com.google.gson.GsonBuilder
 import dev.gisketch.chowkingdom.ChatGlyphs
 import dev.gisketch.chowkingdom.ChowKingdomMod
 import dev.gisketch.chowkingdom.discord.DiscordRelay
+import dev.gisketch.chowkingdom.relicroulette.RelicRouletteFeature
 import dev.gisketch.chowkingdom.snackbar.SnackbarIcons
 import dev.gisketch.chowkingdom.snackbar.SnackbarNetwork
 import dev.gisketch.chowkingdom.snackbar.SnackbarNotification
@@ -331,6 +332,7 @@ object BattlepassMissionProgressStore {
     private fun rewardIcon(reward: BattlepassRewardDefinition?): String {
         if (reward == null) return SnackbarIcons.BATTLEPASS
         if (isChowcoinReward(reward)) return "minecraft:gold_ingot"
+        if (RelicRouletteFeature.isRelicTokenReward(reward.type)) return RelicRouletteFeature.tokenItemIdForReward(reward.item, reward.data["pool"]).takeIf(String::isNotBlank) ?: SnackbarIcons.BATTLEPASS
         return reward.item.takeIf(String::isNotBlank) ?: SnackbarIcons.BATTLEPASS
     }
 

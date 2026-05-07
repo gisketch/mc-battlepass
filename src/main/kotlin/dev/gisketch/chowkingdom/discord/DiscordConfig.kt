@@ -55,6 +55,7 @@ class DiscordWebhookConfig(
     @SerializedName("relay_join_leave") var relayJoinLeave: Boolean = false,
     @SerializedName("relay_deaths") var relayDeaths: Boolean = true,
     @SerializedName("relay_battlepass_completions") var relayBattlepassCompletions: Boolean = true,
+    @SerializedName("relay_relic_rolls") var relayRelicRolls: Boolean = true,
     @SerializedName("relay_status") var relayStatus: Boolean = false,
     @SerializedName("status_interval_seconds") var statusIntervalSeconds: Int = 300,
     @SerializedName("discord_to_minecraft") var discordToMinecraft: DiscordInboundConfig = DiscordInboundConfig(),
@@ -122,6 +123,9 @@ class DiscordFormattingConfig(
     @SerializedName("battlepass_title") var battlepassTitle: String = "[[{battlepass}]] {scope} Mission Complete",
     @SerializedName("battlepass_description") var battlepassDescription: String = "{player} completed \"{mission}\" {scope_lower} mission. {player_raw} now has {xp} XP.",
     @SerializedName("battlepass_color") var battlepassColor: String = "#FEE75C",
+    @SerializedName("relic_title") var relicTitle: String = "Relic Unsealed",
+    @SerializedName("relic_description") var relicDescription: String = "{player} rolled a {relic} and got a {item}.",
+    @SerializedName("relic_color") var relicColor: String = "#FEE75C",
     @SerializedName("status_message") var statusMessage: String = "Server status: {online}/{max} players online | TPS {tps}",
 ) {
     fun normalize(): DiscordFormattingConfig = apply {
@@ -139,6 +143,9 @@ class DiscordFormattingConfig(
         battlepassTitle = battlepassTitle.trim().ifBlank { "[[{battlepass}]] {scope} Mission Complete" }
         battlepassDescription = battlepassDescription.trim().ifBlank { "{player} completed \"{mission}\" {scope_lower} mission. {player_raw} now has {xp} XP." }
         battlepassColor = battlepassColor.trim().ifBlank { "#FEE75C" }
+        relicTitle = relicTitle.trim().ifBlank { "Relic Unsealed" }
+        relicDescription = relicDescription.trim().ifBlank { "{player} rolled a {relic} and got a {item}." }
+        relicColor = relicColor.trim().ifBlank { "#FEE75C" }
         statusMessage = statusMessage.trim().ifBlank { "Server status: {online}/{max} players online | TPS {tps}" }
     }
 }

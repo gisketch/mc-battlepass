@@ -1,5 +1,6 @@
 package dev.gisketch.chowkingdom.shops
 
+import dev.gisketch.chowkingdom.relicroulette.RelicRouletteFeature
 import net.minecraft.core.BlockPos
 import net.minecraft.network.RegistryFriendlyByteBuf
 import net.minecraft.world.Container
@@ -49,6 +50,7 @@ class ShopStockMenu private constructor(
             }
             in PLAYER_INV_START until PLAYER_SLOT_END -> {
                 val activeShop = shop ?: return ItemStack.EMPTY
+                if (player is net.minecraft.server.level.ServerPlayer && RelicRouletteFeature.rejectTransfer(player, original, "shops")) return ItemStack.EMPTY
                 val added = activeShop.addStock(player, original)
                 if (added <= 0) return ItemStack.EMPTY
             }
@@ -74,6 +76,7 @@ class ShopStockMenu private constructor(
         val activeShop = shop ?: return
         val carried = carried
         if (!carried.isEmpty) {
+            if (player is net.minecraft.server.level.ServerPlayer && RelicRouletteFeature.rejectTransfer(player, carried, "shops")) return
             val requested = if (button == 1) 1 else carried.count
             val stack = carried.copyWithCount(requested.coerceAtMost(carried.count))
             val added = activeShop.addStock(player, stack)
@@ -106,6 +109,7 @@ class ShopStockMenu private constructor(
 
         override fun mayPlace(stack: ItemStack): Boolean {
             if (stack.isEmpty) return false
+            if (RelicRouletteFeature.isTransferBlocked(stack)) return false
             val current = item
             return current.isEmpty || ItemStack.isSameItemSameComponents(current, stack)
         }

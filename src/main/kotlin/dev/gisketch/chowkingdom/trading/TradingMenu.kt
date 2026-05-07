@@ -1,5 +1,6 @@
 package dev.gisketch.chowkingdom.trading
 
+import dev.gisketch.chowkingdom.relicroulette.RelicRouletteFeature
 import net.minecraft.network.RegistryFriendlyByteBuf
 import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.Container
@@ -98,7 +99,9 @@ class TradingMenu private constructor(
     private fun createSlot(kind: Class<out Slot>, container: Container, index: Int, x: Int, y: Int): Slot =
         if (kind == ReadOnlySlot::class.java) ReadOnlySlot(container, index, x, y) else OwnOfferSlot(container, index, x, y)
 
-    class OwnOfferSlot(container: Container, index: Int, x: Int, y: Int) : Slot(container, index, x, y)
+    class OwnOfferSlot(container: Container, index: Int, x: Int, y: Int) : Slot(container, index, x, y) {
+        override fun mayPlace(stack: ItemStack): Boolean = !RelicRouletteFeature.isTransferBlocked(stack)
+    }
 
     class ReadOnlySlot(container: Container, index: Int, x: Int, y: Int) : Slot(container, index, x, y) {
         override fun mayPlace(stack: ItemStack): Boolean = false

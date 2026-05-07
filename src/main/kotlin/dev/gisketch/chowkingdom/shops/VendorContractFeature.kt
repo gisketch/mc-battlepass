@@ -4,6 +4,7 @@ import com.google.gson.GsonBuilder
 import com.google.gson.annotations.SerializedName
 import dev.gisketch.chowkingdom.ChowKingdomMod
 import dev.gisketch.chowkingdom.commerce.CommerceAuditLog
+import dev.gisketch.chowkingdom.relicroulette.RelicRouletteFeature
 import dev.gisketch.chowkingdom.snackbar.SnackbarIcons
 import dev.gisketch.chowkingdom.snackbar.SnackbarNetwork
 import dev.gisketch.chowkingdom.snackbar.SnackbarNotification
@@ -437,7 +438,7 @@ object VendorContractFeature {
         ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(raw))
 
     private fun isValidLinkedShop(shop: ShopBlockEntity): Boolean =
-        shop.ownerUuid != null && shop.hasDisplayItem && shop.price > 0L
+        shop.ownerUuid != null && shop.hasDisplayItem && shop.price > 0L && !RelicRouletteFeature.isTransferBlocked(shop.displayItem)
 
     private fun isContract(stack: ItemStack): Boolean = !stack.isEmpty && stack.item === ShopsFeature.VENDOR_CONTRACT_ITEM.get()
 

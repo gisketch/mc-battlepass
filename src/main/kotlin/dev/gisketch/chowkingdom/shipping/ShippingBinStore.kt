@@ -3,6 +3,7 @@ package dev.gisketch.chowkingdom.shipping
 import com.google.gson.GsonBuilder
 import dev.gisketch.chowkingdom.ChowKingdomMod
 import dev.gisketch.chowkingdom.integrations.QualityFoodSupport
+import dev.gisketch.chowkingdom.relicroulette.RelicRouletteFeature
 import dev.gisketch.chowkingdom.wallets.ChowcoinNetwork
 import dev.gisketch.chowkingdom.wallets.ChowcoinStore
 import net.minecraft.core.registries.BuiltInRegistries
@@ -68,6 +69,7 @@ object ShippingBinStore {
         if (!loaded) load()
         return object : SimpleContainer(SLOT_COUNT) {
             private var hydrating = true
+            private var sanitizing = false
 
             init {
                 bins[playerId.toString()].orEmpty().forEach { stack ->
@@ -78,7 +80,10 @@ object ShippingBinStore {
 
             override fun setChanged() {
                 super.setChanged()
-                if (hydrating) return
+                if (hydrating || sanitizing) return
+                sanitizing = true
+                RelicRouletteFeature.removeTransferBlockedFromContainer(playerId, this)
+                sanitizing = false
                 saveContainer(playerId, this)
             }
         }
@@ -149,6 +154,10 @@ object ShippingBinStore {
         val remaining = mutableListOf<StoredStack>()
         stacks.forEach { stored ->
             val stack = stored.toItemStack()
+            if (RelicRouletteFeature.isTransferBlocked(stack)) {
+                remaining += stored
+                return@forEach
+            }
             val price = ShippingBinConfig.priceFor(stack)
             if (price > 0L) {
                 val stackTotal = price * stack.count.toLong()
@@ -184,7 +193,10 @@ object ShippingBinStore {
     }
 
     private fun saveContainer(playerId: UUID, container: SimpleContainer) {
-        bins[playerId.toString()] = (0 until SLOT_COUNT).map { slot -> StoredStack.from(slot, container.getItem(slot)) }.toMutableList()
+        bins[playerId.toString()] = (0 until SLOT_COUNT)
+            .map { slot -> container.getItem(slot) }
+            .mapIndexedNotNull { slot, stack -> if (RelicRouletteFeature.isTransferBlocked(stack)) null else StoredStack.from(slot, stack) }
+            .toMutableList()
         save()
     }
 

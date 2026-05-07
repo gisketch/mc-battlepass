@@ -79,6 +79,29 @@ object DiscordRelay {
         )
     }
 
+    fun relicRolled(player: ServerPlayer, relic: String, itemName: String, itemId: String) {
+        val config = DiscordConfig.current()
+        if (!config.enabled || !config.relayRelicRolls) return
+        val values = playerValues(player) + mapOf(
+            "relic" to DiscordText.cleanContent(relic),
+            "item" to DiscordText.cleanContent(itemName),
+            "item_id" to itemId,
+        )
+        DiscordWebhookClient.send(
+            DiscordWebhookMessage(
+                embeds = listOf(
+                    DiscordEmbed(
+                        title = DiscordText.applyTemplate(config.formatting.relicTitle, values),
+                        description = DiscordText.applyTemplate(config.formatting.relicDescription, values),
+                        color = DiscordText.parseColor(config.formatting.relicColor),
+                        authorName = NicknameStore.displayName(player),
+                        authorIconUrl = DiscordQuickSkinSupport.avatarUrl(player, config),
+                    ),
+                ),
+            ),
+        )
+    }
+
     private fun embedMessage(title: String, description: String, color: String, values: Map<String, String>): DiscordWebhookMessage = DiscordWebhookMessage(
         embeds = listOf(
             DiscordEmbed(

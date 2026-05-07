@@ -4,6 +4,7 @@ import dev.gisketch.chowkingdom.ChowKingdomMod
 import dev.gisketch.chowkingdom.battlepass.BattlepassMissionEventBank
 import dev.gisketch.chowkingdom.battlepass.BattlepassNetwork
 import dev.gisketch.chowkingdom.commerce.CommerceAuditLog
+import dev.gisketch.chowkingdom.relicroulette.RelicRouletteFeature
 import dev.gisketch.chowkingdom.snackbar.SnackbarIcons
 import dev.gisketch.chowkingdom.snackbar.SnackbarNetwork
 import dev.gisketch.chowkingdom.snackbar.SnackbarNotification
@@ -109,6 +110,7 @@ object ShopStockNetwork {
         if (requireOtherOwner && !shop.isClaimedByOther(player)) return false
         val quantity = requestedQuantity.coerceIn(0, shop.stockCount)
         if (quantity <= 0 || shop.stock.isEmpty) return false
+        if (RelicRouletteFeature.rejectTransfer(player, shop.stock, "shops")) return false
         val price = shop.price.coerceAtLeast(0L)
         val total = price.saturatingMultiply(quantity.toLong())
         val balance = ChowcoinStore.get(player)

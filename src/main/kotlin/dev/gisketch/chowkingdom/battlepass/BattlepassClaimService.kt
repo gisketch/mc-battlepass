@@ -2,6 +2,7 @@ package dev.gisketch.chowkingdom.battlepass
 
 import dev.gisketch.chowkingdom.wallets.ChowcoinNetwork
 import dev.gisketch.chowkingdom.wallets.ChowcoinStore
+import dev.gisketch.chowkingdom.relicroulette.RelicRouletteFeature
 import dev.gisketch.chowkingdom.snackbar.SnackbarIcons
 import dev.gisketch.chowkingdom.snackbar.SnackbarNetwork
 import dev.gisketch.chowkingdom.snackbar.SnackbarNotification
@@ -72,13 +73,22 @@ object BattlepassClaimService {
             ChowcoinNetwork.syncTo(player)
             return
         }
+        if (RelicRouletteFeature.isRelicTokenReward(reward.type)) {
+            val stack = RelicRouletteFeature.createBattlepassTokenStack(player, reward.item, reward.data["pool"], reward.quantity) ?: return
+            RelicRouletteFeature.giveLockedStack(player, stack)
+            return
+        }
         if (reward.type != "item") return
         val item = runCatching { ResourceLocation.parse(reward.item) }.getOrNull()
             ?.let { id -> BuiltInRegistries.ITEM.getOptional(id).orElse(Items.AIR) }
             ?: Items.AIR
         if (item == Items.AIR) return
 
-        val stack = ItemStack(item, reward.quantity.coerceAtLeast(1))
+        val stack = RelicRouletteFeature.prepareBattlepassItemReward(player, ItemStack(item, reward.quantity.coerceAtLeast(1)))
+        if (RelicRouletteFeature.isTransferBlocked(stack)) {
+            RelicRouletteFeature.giveLockedStack(player, stack)
+            return
+        }
         if (!player.inventory.add(stack)) {
             player.drop(stack, false)
         }
@@ -94,6 +104,7 @@ object BattlepassClaimService {
     private fun rewardIcon(reward: BattlepassRewardDefinition?): String {
         if (reward == null) return SnackbarIcons.BATTLEPASS
         if (isChowcoinReward(reward)) return "minecraft:gold_ingot"
+        if (RelicRouletteFeature.isRelicTokenReward(reward.type)) return RelicRouletteFeature.tokenItemIdForReward(reward.item, reward.data["pool"]).takeIf(String::isNotBlank) ?: SnackbarIcons.BATTLEPASS
         return reward.item.takeIf(String::isNotBlank) ?: SnackbarIcons.BATTLEPASS
     }
 }

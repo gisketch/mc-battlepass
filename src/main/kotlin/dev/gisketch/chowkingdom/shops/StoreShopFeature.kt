@@ -8,6 +8,7 @@ import com.mojang.brigadier.context.CommandContext
 import dev.gisketch.chowkingdom.ChowKingdomMod
 import dev.gisketch.chowkingdom.battlepass.BattlepassMissionEventBank
 import dev.gisketch.chowkingdom.battlepass.BattlepassNetwork
+import dev.gisketch.chowkingdom.relicroulette.RelicRouletteFeature
 import dev.gisketch.chowkingdom.snackbar.SnackbarIcons
 import dev.gisketch.chowkingdom.snackbar.SnackbarNetwork
 import dev.gisketch.chowkingdom.snackbar.SnackbarNotification
@@ -285,6 +286,7 @@ object StoreShopFeature {
             ?.let { id -> BuiltInRegistries.ITEM.getOptional(id).orElse(Items.AIR) }
             ?: Items.AIR
         if (item == Items.AIR) return ItemStack.EMPTY
+        if (RelicRouletteFeature.isTokenItem(item)) return ItemStack.EMPTY
         return ItemStack(item, count.coerceAtLeast(1))
     }
 

@@ -35,6 +35,7 @@ Default config is generated disabled:
   "relay_join_leave": false,
   "relay_deaths": true,
   "relay_battlepass_completions": true,
+  "relay_relic_rolls": true,
   "relay_status": false,
   "status_interval_seconds": 300,
   "discord_to_minecraft": {
@@ -65,6 +66,9 @@ Default config is generated disabled:
     "battlepass_title": "[[{battlepass}]] {scope} Mission Complete",
     "battlepass_description": "{player} completed \"{mission}\" {scope_lower} mission. {player_raw} now has {xp} XP.",
     "battlepass_color": "#FEE75C",
+    "relic_title": "Relic Unsealed",
+    "relic_description": "{player} rolled a {relic} and got a {item}.",
+    "relic_color": "#FEE75C",
     "status_message": "Server status: {online}/{max} players online | TPS {tps}"
   }
 }
@@ -118,6 +122,7 @@ Screenshot message tokens:
 - Discord mentions are disabled through `allowed_mentions` and `@` is zero-width escaped.
 - Join, leave, and death relay use Discord embeds with configurable titles, descriptions, and colors.
 - Battlepass mission completions use Discord embeds with player avatar author icons.
+- Relic roulette rolls use Discord embeds with player avatar author icons after the roll animation completes.
 - Player chat remains normal webhook content so dynamic username/avatar still behaves like chat.
 - Bot presence updates show online count and smoothed TPS without posting status messages into the Discord channel.
 - Join/leave posts use the configured `webhook_username` and `avatar_url`, such as `Chow Kingdom`.
@@ -138,6 +143,9 @@ Formatting template tokens:
 {scope_lower}   mission scope label lowercased
 {mission}       completed mission title
 {xp}            player's total XP in that battlepass after reward
+{relic}         relic pool display label, such as COMMON RELIC
+{item}          relic reward item display name
+{item_id}       relic reward item id
 {online}        online player count
 {max}           max player count
 {tps}           smoothed TPS

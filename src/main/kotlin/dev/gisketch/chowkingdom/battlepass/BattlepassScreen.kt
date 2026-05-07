@@ -2,6 +2,7 @@ package dev.gisketch.chowkingdom.battlepass
 
 import com.mojang.blaze3d.systems.RenderSystem
 import dev.gisketch.chowkingdom.ChowKingdomMod
+import dev.gisketch.chowkingdom.relicroulette.RelicRouletteFeature
 import dev.gisketch.chowkingdom.discord.DiscordQuickSkinSupport
 import com.mojang.blaze3d.platform.NativeImage
 import net.minecraft.ChatFormatting
@@ -1229,7 +1230,8 @@ class BattlepassScreen(initialPassId: String? = null) : Screen(Component.transla
 
     private fun rewardStack(reward: BattlepassRewardDefinition): ItemStack {
         if (isChowcoinReward(reward)) return ItemStack(Items.GOLD_NUGGET, reward.quantity.coerceIn(1, 64))
-        val item = runCatching { ResourceLocation.parse(reward.item) }.getOrNull()?.let { id -> BuiltInRegistries.ITEM.getOptional(id).orElse(Items.BARRIER) } ?: Items.BARRIER
+        val itemId = if (RelicRouletteFeature.isRelicTokenReward(reward.type)) RelicRouletteFeature.tokenItemIdForReward(reward.item, reward.data["pool"]) else reward.item
+        val item = runCatching { ResourceLocation.parse(itemId) }.getOrNull()?.let { id -> BuiltInRegistries.ITEM.getOptional(id).orElse(Items.BARRIER) } ?: Items.BARRIER
         return ItemStack(item, reward.quantity.coerceIn(1, 64))
     }
 

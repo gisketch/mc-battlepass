@@ -35,6 +35,7 @@ Registered server features:
 - Unified stamina compatibility.
 - Revive / incapacitation.
 - Player trading.
+- Relic roulette tokens and locked relic rewards.
 - Discord relay and Discord account linking.
 - Snackbar notification system.
 
@@ -48,6 +49,7 @@ Registered client features:
 - Discord screenshot keybind.
 - Shipping-bin chest overlay and price tooltips.
 - Shop, store, vendor, revive, trade, role onboarding, and snackbar UI.
+- Relic roulette screen with rolling item animation.
 
 ## Dependency Map
 
@@ -155,6 +157,57 @@ What can be added:
 - New mission icon mappings in Kotlin when automatic item icons are not enough.
 - New event sources in Kotlin by recording `BattlepassMissionEventBank.record(...)` with event id, amount, attributes, and aliases.
 - New reward types in Kotlin through `BattlepassClaimService`, plus client reward rendering.
+
+### Relic Roulette
+
+Purpose: battlepass-earned token items open a short roulette UI and grant unique, player-locked relic rewards from JSON pools.
+
+Items:
+
+- `gisketchs_chowkingdom_mod:common_relic_token`.
+- `gisketchs_chowkingdom_mod:rare_relic_token`.
+
+Config:
+
+- Pool definitions: `config/gisketchs_chowkingdom_mod/relic_roulette/pools/*.json`.
+- World unlock state: `<world>/data/gisketchs_chowkingdom_mod/relic_roulette/player_unlocks.json`.
+
+Pool JSON fields:
+
+- `id`: stable pool key.
+- `display_name`: roulette UI title.
+- `ticket`: token item id consumed for this pool.
+- `rarity`: UI style, currently `common` or `rare`.
+- `pool`: item ids that can be rolled.
+
+Battlepass reward forms:
+
+- Token item reward: `{ "type": "item", "item": "gisketchs_chowkingdom_mod:common_relic_token", "quantity": 1 }`.
+- Pool reward: `{ "type": "relic_token", "data": { "pool": "common_relics" }, "quantity": 1 }`.
+
+Current behavior:
+
+- Battlepass-claimed tokens are locked to the claiming player.
+- Right-clicking an owned locked token opens the roulette screen.
+- Rolling lasts five seconds client-side; the server decides the reward before animation starts.
+- Each player can win each pool item once.
+- Rolled rewards are locked to the player.
+- Discord relay posts a relic roll embed after the roll animation completes when `relay_relic_rolls` is enabled.
+- Locked relics/tokens are blocked from trading, player shops, vendor shops, shipping payouts, server store token sales, and non-owner use/equip.
+- Locked relics/tokens can be dropped and picked up, and their tooltip shows the owner lock.
+
+Command:
+
+- `/relicroulette reload`, `/ck relicroulette reload`, or `/chowkingdom relicroulette reload` reloads pool JSON. Permission level `2`.
+- `/relicroulette give-token <targets> <pool> [count]` grants locked test tokens.
+- `/relicroulette simulate-bp <targets> <pool> [count]` grants locked tokens through the same helper used by battlepass reward claims.
+
+What can be added:
+
+- More pools by adding JSON files.
+- More token rarities/items by registering token items and pointing pool `ticket` at them.
+- Weighted rewards, quantities, or custom reward metadata by extending pool schema and roll logic.
+- Direct optional hooks for Accessories, Trinkets, or Curios if a server pack needs mod-specific slot rejection.
 
 ### Wallets / Chowcoins
 
