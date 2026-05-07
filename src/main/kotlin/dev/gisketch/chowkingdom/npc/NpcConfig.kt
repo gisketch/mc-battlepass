@@ -23,9 +23,11 @@ object NpcConfig {
     fun load() {
         dir.createDirectories()
         writeDefaultIfMissing()
+        val friendshipDefaults = loadFriendshipDefaults()
         val loaded = linkedMapOf<String, NpcDefinition>()
         Files.list(dir).use { files ->
             files.filter { path -> path.extension.equals("json", ignoreCase = true) }
+                .filter { path -> path.fileName.toString() != FRIENDSHIP_MESSAGES_FILE }
                 .sorted(Comparator.comparing { path -> path.fileName.toString() })
                 .forEach { path ->
                     val fallbackId = path.nameWithoutExtension
@@ -34,7 +36,7 @@ object NpcConfig {
                     } catch (exception: Exception) {
                         ChowKingdomMod.LOGGER.warn("Failed to load NPC definition {}", path, exception)
                         NpcDefinition(id = fallbackId)
-                    }.normalized(fallbackId)
+                    }.normalized(fallbackId, friendshipDefaults)
                     loaded[definition.id] = definition
                 }
         }
@@ -49,11 +51,29 @@ object NpcConfig {
 
     private fun writeDefaultIfMissing() {
         val file = dir.resolve("finn.json")
-        if (file.exists()) return
-        Files.createTempFile(dir, "finn", ".json.tmp").also { temp ->
-            temp.bufferedWriter().use { writer -> gson.toJson(defaultFinn(), writer) }
-            Files.move(temp, file, StandardCopyOption.REPLACE_EXISTING)
+        if (!file.exists()) {
+            Files.createTempFile(dir, "finn", ".json.tmp").also { temp ->
+                temp.bufferedWriter().use { writer -> gson.toJson(defaultFinn(), writer) }
+                Files.move(temp, file, StandardCopyOption.REPLACE_EXISTING)
+            }
         }
+        val friendshipFile = dir.resolve(FRIENDSHIP_MESSAGES_FILE)
+        if (!friendshipFile.exists()) {
+            Files.createTempFile(dir, "friendship_messages", ".json.tmp").also { temp ->
+                temp.bufferedWriter().use { writer -> gson.toJson(NpcFriendshipMessagesDefinition.default().normalized(), writer) }
+                Files.move(temp, friendshipFile, StandardCopyOption.REPLACE_EXISTING)
+            }
+        }
+    }
+
+    private fun loadFriendshipDefaults(): NpcFriendshipMessagesDefinition {
+        val file = dir.resolve(FRIENDSHIP_MESSAGES_FILE)
+        return try {
+            file.bufferedReader().use { reader -> gson.fromJson(reader, NpcFriendshipMessagesDefinition::class.java) } ?: NpcFriendshipMessagesDefinition.default()
+        } catch (exception: Exception) {
+            ChowKingdomMod.LOGGER.warn("Failed to load NPC friendship messages {}", file, exception)
+            NpcFriendshipMessagesDefinition.default()
+        }.normalized(NpcFriendshipMessagesDefinition.default())
     }
 
     private fun defaultFinn(): NpcDefinition = NpcDefinition(
@@ -92,6 +112,7 @@ object NpcConfig {
                 neutral = mutableListOf("Thanks for {item}.", "I'll keep {item} safe."),
             ),
         ),
+        friendshipMessages = NpcFriendshipMessagesDefinition().normalized(),
         hurtMessages = mutableListOf(
             "Hey, watch it, {player}!",
             "Ouch. That's not very heroic.",
@@ -105,3 +126,5 @@ object NpcConfig {
         workTargetBlocks = mutableListOf("minecraft:campfire", "minecraft:crafting_table", "minecraft:barrel"),
     )
 }
+
+private const val FRIENDSHIP_MESSAGES_FILE = "friendship_messages.json"

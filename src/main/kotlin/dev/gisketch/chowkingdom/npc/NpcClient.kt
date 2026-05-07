@@ -88,23 +88,27 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         renderNineSlice(guiGraphics, PANEL_TEXTURE, x, y, panelWidth, panelHeight, PANEL_TEXTURE_WIDTH, PANEL_TEXTURE_HEIGHT, PANEL_SOURCE_CORNER, PANEL_DEST_CORNER)
         renderAvatar(guiGraphics, payload.npcId, x + PAD, y + PAD)
 
-        val textX = x + PAD + AVATAR_SIZE + TEXT_GAP
+        val nameX = x + PAD + AVATAR_SIZE + TEXT_GAP
         val buttonX = x + panelWidth - PAD - BUTTON_WIDTH
-        val textWidth = buttonX - textX - TEXT_GAP
+        val dialogX = x + PAD
+        val dialogY = y + PAD + AVATAR_SIZE + 10
+        val dialogWidth = buttonX - dialogX - TEXT_GAP
+        val buttonTop = buttonTop(panelHeight)
         val name = ckdmText(payload.name)
-        guiGraphics.drawString(font, name, textX + 1, y + NAME_Y + 1, NAME_SHADOW, false)
-        guiGraphics.drawString(font, name, textX, y + NAME_Y, NAME_COLOR, false)
+        guiGraphics.drawString(font, name, nameX + 1, y + NAME_Y + 1, NAME_SHADOW, false)
+        guiGraphics.drawString(font, name, nameX, y + NAME_Y, NAME_COLOR, false)
+        renderFriendship(guiGraphics, nameX, y + FRIENDSHIP_Y, payload.friendshipLevel)
 
         val visibleMessage = payload.message.take(visibleDialogCharacters())
-        val lines = font.split(Component.literal(visibleMessage), textWidth)
-        var lineY = y + 34
+        val lines = font.split(ckdmDialogText(visibleMessage), dialogWidth)
+        var lineY = dialogY
         lines.take(MAX_DIALOG_LINES).forEach { line ->
-            guiGraphics.drawString(font, line, textX, lineY, DIALOG_COLOR, false)
+            guiGraphics.drawString(font, line, dialogX, lineY, DIALOG_COLOR, false)
             lineY += LINE_HEIGHT
         }
-        if (payload.contractGranted && visibleMessage.length >= payload.message.length) guiGraphics.drawString(font, "Rent Contract received", textX, y + panelHeight - 22, CONTRACT_COLOR, false)
+        if (payload.contractGranted && visibleMessage.length >= payload.message.length) guiGraphics.drawString(font, "Rent Contract received", dialogX, y + panelHeight - 16, CONTRACT_COLOR, false)
         val hoveredAction = actionAt(localMouse.first, localMouse.second)
-        renderActionButtons(guiGraphics, localMouse.first, localMouse.second, buttonX, y + BUTTON_TOP)
+        renderActionButtons(guiGraphics, localMouse.first, localMouse.second, buttonX, y + buttonTop)
         pose.popPose()
         renderActionTooltip(guiGraphics, mouseX, mouseY, hoveredAction)
     }
@@ -136,7 +140,7 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
 
     private fun renderActionButtons(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, x: Int, y: Int) {
         val giftStack = giftStack()
-        DialogAction.entries.forEachIndexed { index, action ->
+        actions().forEachIndexed { index, action ->
             val buttonY = y + index * BUTTON_STEP
             val hovered = mouseX in x until x + BUTTON_WIDTH && mouseY in buttonY until buttonY + BUTTON_HEIGHT
             val enabled = action != DialogAction.Gift || !giftStack.isEmpty
@@ -147,10 +151,24 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
             val textColor = if (enabled) NAME_COLOR else DISABLED_COLOR
             renderNineSlice(guiGraphics, texture, x, buttonY, BUTTON_WIDTH, BUTTON_HEIGHT, sourceSize, sourceSize, sourceCorner, BUTTON_DEST_CORNER)
             guiGraphics.blit(action.icon, x + 6, buttonY + 3, ICON_SIZE, ICON_SIZE, 0.0f, 0.0f, ICON_SOURCE_SIZE, ICON_SOURCE_SIZE, ICON_SOURCE_SIZE, ICON_SOURCE_SIZE)
-            guiGraphics.drawString(font, ckdmSmallText(action.label), x + 25, buttonY + 6, textColor, false)
+            guiGraphics.drawString(font, ckdmSmallText(actionLabel(action)), x + 25, buttonY + 6, textColor, false)
             if (action == DialogAction.Gift && hovered && !giftStack.isEmpty) guiGraphics.renderItem(giftStack.copyWithCount(1), x + BUTTON_WIDTH - 19, buttonY + 2)
         }
     }
+
+    private fun renderFriendship(guiGraphics: GuiGraphics, x: Int, y: Int, level: Int) {
+        val clamped = level.coerceIn(-10, 10)
+        repeat(FRIENDSHIP_ICON_COUNT) { index ->
+            val texture = when {
+                clamped > 0 && index < clamped -> HEART_TEXTURE
+                clamped < 0 && index < -clamped -> ANGRY_TEXTURE
+                else -> HEART_EMPTY_TEXTURE
+            }
+            guiGraphics.blit(texture, x + index * FRIENDSHIP_ICON_STEP, y, FRIENDSHIP_ICON_SIZE, FRIENDSHIP_ICON_SIZE, 0.0f, 0.0f, ICON_SOURCE_SIZE, ICON_SOURCE_SIZE, ICON_SOURCE_SIZE, ICON_SOURCE_SIZE)
+        }
+    }
+
+    private fun actionLabel(action: DialogAction): String = if (action == DialogAction.Bye && payload.closeOnly) payload.closeLabel else action.label
 
     private fun renderActionTooltip(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, action: DialogAction?) {
         if (action != DialogAction.Gift) return
@@ -174,12 +192,16 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         val x = (width - panelWidth) / 2
         val y = height - panelHeight - 34
         val buttonX = x + panelWidth - PAD - BUTTON_WIDTH
-        val buttonY = y + BUTTON_TOP
-        return DialogAction.entries.firstOrNull { action ->
-            val top = buttonY + action.ordinal * BUTTON_STEP
+        val buttonY = y + buttonTop(panelHeight)
+        return actions().firstOrNull { action ->
+            val top = buttonY + actions().indexOf(action) * BUTTON_STEP
             mouseX in buttonX until buttonX + BUTTON_WIDTH && mouseY in top until top + BUTTON_HEIGHT
         }
     }
+
+    private fun actions(): List<DialogAction> = if (payload.closeOnly) listOf(DialogAction.Bye) else DialogAction.entries
+
+    private fun buttonTop(panelHeight: Int): Int = if (payload.closeOnly) (panelHeight - BUTTON_HEIGHT) / 2 else BUTTON_TOP
 
     private fun renderAvatar(guiGraphics: GuiGraphics, npcId: String, x: Int, y: Int) {
         val texture = if (npcId == "finn") FINN_TEXTURE else STEVE_TEXTURE
@@ -216,6 +238,8 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
 
     private fun ckdmSmallText(text: String): Component = Component.literal(text.uppercase(Locale.ROOT)).withStyle { style -> style.withFont(CKDM_SMALL_FONT) }
 
+    private fun ckdmDialogText(text: String): Component = Component.literal(text.uppercase(Locale.ROOT)).withStyle { style -> style.withFont(CKDM_SMALL_FONT) }
+
     private fun entranceProgress(): Float {
         val progress = ((System.currentTimeMillis() - openedAtMs).toFloat() / ENTRANCE_DURATION_MS).coerceIn(0.0f, 1.0f)
         return 1.0f - (1.0f - progress) * (1.0f - progress) * (1.0f - progress)
@@ -235,6 +259,9 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         private val BUTTON_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_btn_gray.png")
         private val BUTTON_HOVER_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_btn_green_hover.png")
         private val RED_BUTTON_HOVER_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_btn_red_hover.png")
+        private val HEART_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/heart.png")
+        private val HEART_EMPTY_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/heart_empty.png")
+        private val ANGRY_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/angry.png")
         private const val PANEL_TEXTURE_WIDTH = 1646
         private const val PANEL_TEXTURE_HEIGHT = 256
         private const val PANEL_SOURCE_CORNER = 75
@@ -245,6 +272,7 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         private const val TEXT_GAP = 12
         private const val LINE_HEIGHT = 11
         private const val NAME_Y = 15
+        private const val FRIENDSHIP_Y = 33
         private const val MAX_DIALOG_LINES = 4
         private const val BUTTON_WIDTH = 74
         private const val BUTTON_HEIGHT = 20
@@ -257,12 +285,15 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         private const val BUTTON_DEST_CORNER = 4
         private const val ICON_SIZE = 14
         private const val ICON_SOURCE_SIZE = 16
+        private const val FRIENDSHIP_ICON_COUNT = 10
+        private const val FRIENDSHIP_ICON_SIZE = 8
+        private const val FRIENDSHIP_ICON_STEP = 9
         private const val ENTRANCE_DURATION_MS = 180.0f
         private const val TYPEWRITER_DELAY_MS = 110L
         private const val TYPEWRITER_CHARS_PER_SECOND = 68.0
         private const val NAME_COLOR = 0xFFFFFFFF.toInt()
         private const val NAME_SHADOW = 0xCC050505.toInt()
-        private const val DIALOG_COLOR = 0xFFEFE7CE.toInt()
+        private const val DIALOG_COLOR = 0xBFFFFFFF.toInt()
         private const val CONTRACT_COLOR = 0xFF83F28F.toInt()
         private const val DISABLED_COLOR = 0xFF8C8778.toInt()
     }

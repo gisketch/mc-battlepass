@@ -6,6 +6,7 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder
 import com.mojang.brigadier.context.CommandContext
 import dev.gisketch.chowkingdom.ChowKingdomMod
 import dev.gisketch.chowkingdom.discord.DiscordRelay
+import dev.gisketch.chowkingdom.relicroulette.RelicRouletteFeature
 import dev.gisketch.chowkingdom.shops.StoreShopFeature
 import dev.gisketch.chowkingdom.snackbar.SnackbarNetwork
 import dev.gisketch.chowkingdom.snackbar.SnackbarNotification
@@ -113,6 +114,7 @@ object NpcFeature {
         npc.homePos = validHome
         val hasHome = validHome != null
         val wasSleeping = npc.isSleeping
+        val friendship = NpcStore.friendshipSnapshot(definition.id, player)
         if (wasSleeping) npc.stopSleeping()
         val contractGranted = definition.housing.canMoveIn && !hasHome && !hasRentContract(player, definition.id)
         if (contractGranted) {
@@ -120,16 +122,16 @@ object NpcFeature {
             NpcStore.markContractGiven(definition.id)
         }
         val message = if (wasSleeping) {
-            definition.wakeMessages[npc.random.nextInt(definition.wakeMessages.size)].replace("{player}", player.gameProfile.name)
+            friendshipMessage(definition.friendshipMessages.wake, friendship, player, definition)
         } else if (hasHome) {
-            "${definition.personality.catchphrases.firstOrNull().orEmpty()} Thanks for the home. I'll keep an eye on the camp."
+            friendshipMessage(definition.friendshipMessages.interact, friendship, player, definition)
         } else {
             "Hi, I'm ${definition.name}. I'm an ${definition.job} looking for a place to stay. If it's okay, use this rent contract on a bed and I'll call it home."
         }
         npc.startTalkingTo(player, NPC_DIALOG_DURATION_TICKS)
         NpcStore.recordConversation(definition.id, player, player.gameProfile.name, "interacts with ${definition.name}", "player_interact")
         NpcStore.recordConversation(definition.id, player, definition.name, message, "npc_message")
-        NpcNetwork.openDialog(player, NpcDialogPayload(definition.id, definition.name, definition.title, message, contractGranted))
+        NpcNetwork.openDialog(player, NpcDialogPayload(definition.id, definition.name, definition.title, message, contractGranted, friendshipLevel = friendship.level))
         relayNpcDialog(player, npc, definition, message)
     }
 
@@ -156,6 +158,7 @@ object NpcFeature {
             player.displayClientMessage(Component.literal("Hold an item to gift."), true)
             return
         }
+        if (RelicRouletteFeature.rejectTransfer(player, stack, "gifts")) return
         val limit = definition.gifts.dailyLimit
         val period = giftPeriod(player.level().dayTime, definition.gifts.resetHour)
         if (!NpcStore.recordGiftIfAllowed(definition.id, player, period, limit)) {
@@ -164,11 +167,12 @@ object NpcFeature {
         }
         val itemName = stack.hoverName.string
         val mood = giftMood(definition, stack)
-        val message = giftReaction(definition, mood, player, itemName)
+        val friendship = NpcStore.adjustFriendship(definition.id, player, giftFriendshipDelta(mood), "gift_$mood")
+        val message = friendshipMessage(definition.friendshipMessages.gift, friendship, player, definition, itemName, mood)
         if (!player.abilities.instabuild) stack.shrink(1)
         NpcStore.recordConversation(definition.id, player, player.gameProfile.name, "gifts $itemName to ${definition.name}", "player_gift")
         NpcStore.recordConversation(definition.id, player, definition.name, message, "npc_gift_$mood")
-        NpcNetwork.openDialog(player, NpcDialogPayload(definition.id, definition.name, definition.title, message, false))
+        NpcNetwork.openDialog(player, NpcDialogPayload(definition.id, definition.name, definition.title, message, false, closeOnly = true, closeLabel = "OKAY", friendshipLevel = friendship.level))
         relayNpcDialog(player, npc, definition, message)
     }
 
@@ -190,16 +194,22 @@ object NpcFeature {
         }
     }
 
-    private fun giftReaction(definition: NpcDefinition, mood: String, player: ServerPlayer, itemName: String): String {
-        val pool = when (mood) {
-            "loved" -> definition.gifts.reactions.loved
-            "liked" -> definition.gifts.reactions.liked
-            "disliked" -> definition.gifts.reactions.disliked
-            else -> definition.gifts.reactions.neutral
-        }
+    private fun giftFriendshipDelta(mood: String): Int = when (mood) {
+        "loved" -> 50
+        "liked" -> 25
+        "disliked" -> -50
+        else -> 5
+    }
+
+    private fun friendshipMessage(set: NpcFriendshipMessageSet, friendship: NpcFriendshipSnapshot, player: ServerPlayer, definition: NpcDefinition, itemName: String = "", mood: String = ""): String {
+        val pool = set.forCategory(friendship.category)
         return pool[player.random.nextInt(pool.size)]
             .replace("{player}", player.gameProfile.name)
+            .replace("{npc}", definition.name)
             .replace("{item}", itemName)
+            .replace("{mood}", mood)
+            .replace("{friendship_level}", friendship.level.toString())
+            .replace("{friendship_points}", friendship.points.toString())
     }
 
     private fun giftPeriod(dayTime: Long, resetHour: Int): Long = Math.floorDiv(dayTime - (resetHour - 6) * TICKS_PER_HOUR, MINECRAFT_DAY_TICKS)
@@ -216,8 +226,8 @@ object NpcFeature {
     }
 
     private fun relayNpcHurtMessage(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition) {
-        val messages = definition.hurtMessages.ifEmpty { listOf("Hey, watch it, {player}!") }
-        val message = messages[npc.random.nextInt(messages.size)].replace("{player}", player.gameProfile.name)
+        val friendship = NpcStore.friendshipSnapshot(definition.id, player)
+        val message = friendshipMessage(definition.friendshipMessages.hurt, friendship, player, definition)
         NpcStore.recordConversation(definition.id, player, definition.name, message, "npc_hurt_message")
         val chatLine = Component.literal("${definition.name} > ${player.gameProfile.name} : $message").withStyle(ChatFormatting.GRAY)
         val level = npc.level() as? ServerLevel ?: return
@@ -308,6 +318,7 @@ object NpcFeature {
         val player = event.source.entity as? ServerPlayer ?: return
         val definition = NpcConfig.get(npc.npcId) ?: return
         val hitCount = NpcStore.recordHurt(definition.id, player, System.currentTimeMillis())
+        NpcStore.adjustFriendship(definition.id, player, FRIENDSHIP_HIT_DELTA, "hit")
         NpcStore.recordConversation(definition.id, player, player.gameProfile.name, "hurts ${definition.name}", "player_hurt")
         if (hitCount % HURT_MESSAGE_INTERVAL == 0) relayNpcHurtMessage(player, npc, definition)
     }
@@ -319,7 +330,10 @@ object NpcFeature {
             val killer = event.source.entity as? ServerPlayer
             val deathText = killer?.let { "${definition.name} died, killed by ${it.gameProfile.name}" } ?: "${definition.name} died"
             NpcStore.recordGlobalEvent("npc_death", deathText)
-            killer?.let { player -> NpcStore.recordConversation(definition.id, player, definition.name, deathText, "npc_death") }
+            killer?.let { player ->
+                NpcStore.adjustFriendship(definition.id, player, FRIENDSHIP_KILL_DELTA, "kill")
+                NpcStore.recordConversation(definition.id, player, definition.name, deathText, "npc_death")
+            }
             NpcStore.markDead(definition.id, nextRespawnDay(npc.level().dayTime))
             return
         }
@@ -680,6 +694,8 @@ object NpcFeature {
     private const val NPC_DIALOG_HEAR_RADIUS = 30.0
     private const val NPC_DIALOG_ACTION_DISTANCE_SQR = 64.0
     private const val HURT_MESSAGE_INTERVAL = 3
+    private const val FRIENDSHIP_HIT_DELTA = -10
+    private const val FRIENDSHIP_KILL_DELTA = -300
     private const val RESPAWN_SCAN_INTERVAL_TICKS = 20
     private const val NPC_RESPAWN_HOUR = 5
     private const val TICKS_PER_HOUR = 1000L

@@ -17,6 +17,7 @@ private const val MAX_NPC_NAME_LENGTH = 96
 private const val MAX_NPC_TITLE_LENGTH = 96
 private const val MAX_NPC_DIALOG_LENGTH = 512
 private const val MAX_NPC_ACTION_LENGTH = 16
+private const val MAX_NPC_CLOSE_LABEL_LENGTH = 24
 
 object NpcNetwork {
     fun register(modBus: IEventBus) {
@@ -58,6 +59,9 @@ data class NpcDialogPayload(
     val title: String,
     val message: String,
     val contractGranted: Boolean,
+    val closeOnly: Boolean = false,
+    val closeLabel: String = "BYE",
+    val friendshipLevel: Int = 0,
 ) : CustomPacketPayload {
     override fun type(): CustomPacketPayload.Type<NpcDialogPayload> = TYPE
 
@@ -70,6 +74,9 @@ data class NpcDialogPayload(
                 buffer.readUtf(MAX_NPC_TITLE_LENGTH),
                 buffer.readUtf(MAX_NPC_DIALOG_LENGTH),
                 buffer.readBoolean(),
+                buffer.readBoolean(),
+                buffer.readUtf(MAX_NPC_CLOSE_LABEL_LENGTH),
+                buffer.readVarInt(),
             )
 
             override fun encode(buffer: RegistryFriendlyByteBuf, value: NpcDialogPayload) {
@@ -78,6 +85,9 @@ data class NpcDialogPayload(
                 buffer.writeUtf(value.title.take(MAX_NPC_TITLE_LENGTH), MAX_NPC_TITLE_LENGTH)
                 buffer.writeUtf(value.message.take(MAX_NPC_DIALOG_LENGTH), MAX_NPC_DIALOG_LENGTH)
                 buffer.writeBoolean(value.contractGranted)
+                buffer.writeBoolean(value.closeOnly)
+                buffer.writeUtf(value.closeLabel.take(MAX_NPC_CLOSE_LABEL_LENGTH), MAX_NPC_CLOSE_LABEL_LENGTH)
+                buffer.writeVarInt(value.friendshipLevel.coerceIn(-10, 10))
             }
         }
     }

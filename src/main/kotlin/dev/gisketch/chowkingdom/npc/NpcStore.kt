@@ -114,6 +114,21 @@ object NpcStore {
         return true
     }
 
+    fun friendshipSnapshot(npcId: String, player: ServerPlayer): NpcFriendshipSnapshot {
+        val friendship = state(npcId).friendships.getOrPut(player.stringUUID) { NpcFriendshipState() }
+        return NpcFriendshipSnapshot.from(friendship.points)
+    }
+
+    fun adjustFriendship(npcId: String, player: ServerPlayer, delta: Int, reason: String): NpcFriendshipSnapshot {
+        val state = state(npcId)
+        val friendship = state.friendships.getOrPut(player.stringUUID) { NpcFriendshipState() }
+        friendship.points = (friendship.points + delta).coerceIn(NpcFriendshipLevels.MIN_POINTS, NpcFriendshipLevels.MAX_POINTS)
+        friendship.lastChangedAt = System.currentTimeMillis()
+        friendship.lastReason = reason
+        save()
+        return NpcFriendshipSnapshot.from(friendship.points)
+    }
+
     fun recordGlobalEvent(type: String, text: String) {
         if (!loaded) load()
         data.globalEvents += NpcGlobalEvent(System.currentTimeMillis(), type, text)
@@ -129,6 +144,7 @@ object NpcStore {
         val state = state(npcId)
         return NpcLlmContext(
             currentHour = currentHour,
+            friendship = friendshipSnapshot(npcId, player),
             globalEvents = data.globalEvents.takeLast(MAX_GLOBAL_EVENTS),
             conversation = state.conversations[player.stringUUID].orEmpty().takeLast(MAX_CONVERSATION_HISTORY),
         )
@@ -194,9 +210,30 @@ class NpcResidentState(
     var hurtHistory: MutableList<NpcHurtRecord> = mutableListOf(),
     var conversations: MutableMap<String, MutableList<NpcConversationRecord>> = linkedMapOf(),
     var giftLimits: MutableMap<String, NpcGiftLimitState> = linkedMapOf(),
+    var friendships: MutableMap<String, NpcFriendshipState> = linkedMapOf(),
     var dead: Boolean = false,
     var respawnDay: Long = -1L,
 )
+
+class NpcFriendshipState(
+    var points: Int = NpcFriendshipLevels.DEFAULT_POINTS,
+    var lastChangedAt: Long = 0L,
+    var lastReason: String = "",
+)
+
+class NpcFriendshipSnapshot(
+    val points: Int,
+    val level: Int,
+    val category: NpcFriendshipCategory,
+) {
+    companion object {
+        fun from(points: Int): NpcFriendshipSnapshot {
+            val clamped = points.coerceIn(NpcFriendshipLevels.MIN_POINTS, NpcFriendshipLevels.MAX_POINTS)
+            val level = NpcFriendshipLevels.level(clamped)
+            return NpcFriendshipSnapshot(clamped, level, NpcFriendshipLevels.category(level))
+        }
+    }
+}
 
 class NpcGiftLimitState(
     var period: Long = Long.MIN_VALUE,
@@ -226,6 +263,7 @@ class NpcGlobalEvent(
 
 class NpcLlmContext(
     val currentHour: Int,
+    val friendship: NpcFriendshipSnapshot,
     val globalEvents: List<NpcGlobalEvent>,
     val conversation: List<NpcConversationRecord>,
 )

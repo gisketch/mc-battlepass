@@ -15,11 +15,12 @@ class NpcDefinition(
     var personality: NpcPersonalityDefinition = NpcPersonalityDefinition(),
     var housing: NpcHousingDefinition = NpcHousingDefinition(),
     var gifts: NpcGiftsDefinition = NpcGiftsDefinition(),
+    @SerializedName("friendship_messages") var friendshipMessages: NpcFriendshipMessagesDefinition = NpcFriendshipMessagesDefinition(),
     @SerializedName("hurt_messages") var hurtMessages: MutableList<String> = mutableListOf(),
     @SerializedName("wake_messages") var wakeMessages: MutableList<String> = mutableListOf(),
     @SerializedName("work_target_blocks") var workTargetBlocks: MutableList<String> = mutableListOf(),
 ) {
-    fun normalized(fallbackId: String): NpcDefinition = apply {
+    fun normalized(fallbackId: String, friendshipDefaults: NpcFriendshipMessagesDefinition = NpcFriendshipMessagesDefinition.default()): NpcDefinition = apply {
         id = id.trim().ifBlank { fallbackId }
         name = name.trim().ifBlank { id.replace('_', ' ').replaceFirstChar { it.titlecase() } }
         title = title.trim()
@@ -32,6 +33,7 @@ class NpcDefinition(
         personality = personality.normalized()
         housing = housing.normalized()
         gifts = gifts.normalized()
+        friendshipMessages = friendshipMessages.normalized(friendshipDefaults)
         hurtMessages = hurtMessages.map(String::trim).filter(String::isNotBlank).ifEmpty { defaultHurtMessages() }.toMutableList()
         wakeMessages = wakeMessages.map(String::trim).filter(String::isNotBlank).ifEmpty { defaultWakeMessages() }.toMutableList()
         workTargetBlocks = workTargetBlocks.map(String::trim).filter(String::isNotBlank).distinct().toMutableList()
@@ -49,6 +51,129 @@ class NpcDefinition(
         "Mmph... {player}? I was sleeping.",
         "I'm awake. Is everything okay?",
         "You woke me up, but I'm listening.",
+    )
+}
+
+enum class NpcFriendshipCategory(val id: String) {
+    Hatred("hatred"),
+    Enemy("enemy"),
+    Dislike("dislike"),
+    Neutral("neutral"),
+    Okay("okay"),
+    GoodFriends("good_friends"),
+    BestFriends("best_friends"),
+}
+
+object NpcFriendshipLevels {
+    const val MIN_POINTS = -1000
+    const val MAX_POINTS = 1000
+    const val DEFAULT_POINTS = 100
+    private const val POINTS_PER_LEVEL = 100
+
+    fun level(points: Int): Int = (points.coerceIn(MIN_POINTS, MAX_POINTS) / POINTS_PER_LEVEL).coerceIn(-10, 10)
+
+    fun category(level: Int): NpcFriendshipCategory = when {
+        level <= -10 -> NpcFriendshipCategory.Hatred
+        level <= -6 -> NpcFriendshipCategory.Enemy
+        level <= -3 -> NpcFriendshipCategory.Dislike
+        level <= 2 -> NpcFriendshipCategory.Neutral
+        level <= 5 -> NpcFriendshipCategory.Okay
+        level <= 9 -> NpcFriendshipCategory.GoodFriends
+        else -> NpcFriendshipCategory.BestFriends
+    }
+}
+
+class NpcFriendshipMessagesDefinition(
+    var interact: NpcFriendshipMessageSet = NpcFriendshipMessageSet(),
+    var gift: NpcFriendshipMessageSet = NpcFriendshipMessageSet(),
+    var hurt: NpcFriendshipMessageSet = NpcFriendshipMessageSet(),
+    var wake: NpcFriendshipMessageSet = NpcFriendshipMessageSet(),
+) {
+    fun normalized(defaults: NpcFriendshipMessagesDefinition = default()): NpcFriendshipMessagesDefinition = apply {
+        interact = interact.normalized(defaults.interact)
+        gift = gift.normalized(defaults.gift)
+        hurt = hurt.normalized(defaults.hurt)
+        wake = wake.normalized(defaults.wake)
+    }
+
+    companion object {
+        fun default(): NpcFriendshipMessagesDefinition = NpcFriendshipMessagesDefinition(
+            interact = FinnFriendshipMessages.interact,
+            gift = FinnFriendshipMessages.gift,
+            hurt = FinnFriendshipMessages.hurt,
+            wake = FinnFriendshipMessages.wake,
+        )
+    }
+}
+
+class NpcFriendshipMessageSet(
+    var hatred: MutableList<String> = mutableListOf(),
+    var enemy: MutableList<String> = mutableListOf(),
+    var dislike: MutableList<String> = mutableListOf(),
+    var neutral: MutableList<String> = mutableListOf(),
+    var okay: MutableList<String> = mutableListOf(),
+    @SerializedName("good_friends") var goodFriends: MutableList<String> = mutableListOf(),
+    @SerializedName("best_friends") var bestFriends: MutableList<String> = mutableListOf(),
+) {
+    fun normalized(defaults: NpcFriendshipMessageSet): NpcFriendshipMessageSet = apply {
+        hatred = clean(hatred, defaults.hatred)
+        enemy = clean(enemy, defaults.enemy)
+        dislike = clean(dislike, defaults.dislike)
+        neutral = clean(neutral, defaults.neutral)
+        okay = clean(okay, defaults.okay)
+        goodFriends = clean(goodFriends, defaults.goodFriends)
+        bestFriends = clean(bestFriends, defaults.bestFriends)
+    }
+
+    fun forCategory(category: NpcFriendshipCategory): MutableList<String> = when (category) {
+        NpcFriendshipCategory.Hatred -> hatred
+        NpcFriendshipCategory.Enemy -> enemy
+        NpcFriendshipCategory.Dislike -> dislike
+        NpcFriendshipCategory.Neutral -> neutral
+        NpcFriendshipCategory.Okay -> okay
+        NpcFriendshipCategory.GoodFriends -> goodFriends
+        NpcFriendshipCategory.BestFriends -> bestFriends
+    }
+
+    private fun clean(values: List<String>, fallback: List<String>): MutableList<String> = values.map(String::trim).filter(String::isNotBlank).ifEmpty { fallback }.toMutableList()
+}
+
+private object FinnFriendshipMessages {
+    val interact = NpcFriendshipMessageSet(
+        hatred = mutableListOf("Stay back, {player}. I have not forgotten.", "No heroic welcome for you today.", "Make it quick. I do not trust you.", "You again. What now?", "I would rather face a dungeon than this conversation."),
+        enemy = mutableListOf("Careful, {player}. We are not allies yet.", "I am listening, but barely.", "Say what you came to say.", "This had better be important.", "I am keeping my sword hand ready."),
+        dislike = mutableListOf("Hi, {player}. I am still sore about before.", "I can talk, but I am not thrilled.", "Alright, what do you need?", "I will hear you out.", "Let us keep this simple."),
+        neutral = mutableListOf("Hey, {player}. Adventure calls.", "What is the plan today?", "Got a quest, a snack, or both?", "I am ready if you are.", "Mathematical timing. What is up?"),
+        okay = mutableListOf("Good to see you, {player}.", "You have been pretty solid lately.", "I trust your instincts more these days.", "What adventure are we chasing?", "I am glad you stopped by."),
+        goodFriends = mutableListOf("There is my adventure partner.", "I knew you would show up, {player}.", "Together, we can handle anything weird.", "Tell me the plan and I am in.", "You make this camp feel like home."),
+        bestFriends = mutableListOf("Best friend alert! What are we doing first?", "With you here, this day is already legendary.", "Name the quest. I am beside you.", "You and me, {player}. Totally mathematical.", "I trust you with my sword, my snacks, and my story."),
+    )
+    val gift = NpcFriendshipMessageSet(
+        hatred = mutableListOf("A gift does not erase everything, but I will take {item}.", "Fine. {item} is accepted.", "This is suspicious, but useful.", "I am not smiling. Still, thanks for {item}.", "One gift is not peace, {player}."),
+        enemy = mutableListOf("{item}? Hm. Maybe you are trying.", "I will accept this, but we are not even yet.", "That is... better than another hit.", "Thanks. I think.", "This helps, even if I am still wary."),
+        dislike = mutableListOf("Thanks for {item}. That helps a bit.", "Alright, {player}. I appreciate it.", "Not bad. I can use {item}.", "This is a decent peace offering.", "I am still cautious, but thank you."),
+        neutral = mutableListOf("Thanks for {item}, {player}.", "Nice. I can use {item} on the road.", "A gift? That is kind of you.", "I will keep {item} safe.", "Appreciated. Adventure supplies matter."),
+        okay = mutableListOf("You remembered me. Thanks for {item}.", "This is great, {player}. Thank you.", "I like your style. {item} is useful.", "You keep surprising me in good ways.", "This makes the day brighter."),
+        goodFriends = mutableListOf("You know me too well. {item} is perfect.", "That is a real friend gift.", "I am lucky you are around, {player}.", "This belongs in the legendary supplies pile.", "Thank you. Seriously."),
+        bestFriends = mutableListOf("Best gift from my best friend.", "You are incredible, {player}. Thank you for {item}.", "I will treasure this one.", "Mathematical friendship moment!", "This is going in the story of us."),
+    )
+    val hurt = NpcFriendshipMessageSet(
+        hatred = mutableListOf("That is exactly why I hate you.", "Back off, {player}!", "I knew you would do that.", "Touch me again and we have a problem.", "You make enemies too easily."),
+        enemy = mutableListOf("I expected better. Barely.", "Stop pushing your luck.", "Careful, {player}.", "That did not help your case.", "I am watching you."),
+        dislike = mutableListOf("Hey, watch it.", "Not cool, {player}.", "Ouch. We were already shaky.", "Do not make this worse.", "I am trying to be patient."),
+        neutral = mutableListOf("Hey, watch it, {player}!", "Ouch. That is not very heroic.", "Careful! I am on your side.", "Friendly fire is still fire.", "Let us not make hitting me a habit."),
+        okay = mutableListOf("Hey, easy. We are good, remember?", "Careful, friend.", "Ow. I know you can aim better than that.", "Let us keep the swords pointed outward.", "That stung more because I trust you."),
+        goodFriends = mutableListOf("Buddy, that hurt.", "I know it was an accident. Please be careful.", "We are still good, but ouch.", "Save that swing for monsters.", "I trust you. Do not make me regret it."),
+        bestFriends = mutableListOf("Best friend, worst swing.", "I forgive you. Also: ow.", "Please do not bonk your favorite adventurer.", "We are fine, but my ribs disagree.", "That one goes in the blooper scroll."),
+    )
+    val wake = NpcFriendshipMessageSet(
+        hatred = mutableListOf("You woke me up? Of course you did.", "This better matter.", "I was safer asleep.", "Speak fast, {player}.", "Even my dreams had better company."),
+        enemy = mutableListOf("I am awake. Why are you here?", "You picked a bold time to bother me.", "This had better not be another trick.", "Fine. I am listening.", "Do not make me regret opening my eyes."),
+        dislike = mutableListOf("Mmph. What do you need?", "I was sleeping, {player}.", "This is not my favorite wake-up call.", "Alright. I am up.", "Say it quick before I fall back asleep."),
+        neutral = mutableListOf("Mmph... {player}? I was sleeping.", "I am awake. Is everything okay?", "You woke me up, but I am listening.", "Adventure emergency?", "Give me one second to remember how standing works."),
+        okay = mutableListOf("For you, I can wake up.", "Hey, {player}. Everything alright?", "Sleep can wait if this matters.", "You look like you have a plan.", "I am up. What is happening?"),
+        goodFriends = mutableListOf("If you woke me, it must matter.", "I trust you. What do we need?", "Good friends get emergency wake-up rights.", "I am sleepy, but I am here.", "Lead the way once my boots exist again."),
+        bestFriends = mutableListOf("Best friend wake-up protocol accepted.", "For you, always. What is wrong?", "I was dreaming of adventure anyway.", "You get unlimited emergency knocks.", "Sleep later. Friendship now."),
     )
 }
 
