@@ -29,6 +29,12 @@
     "can_move_in": true,
     "requires_bed": true
   },
+  "voice": {
+    "animalese_pitch": "low",
+    "pitch": 0.95,
+    "volume": 0.38,
+    "radius": 12.0
+  },
   "gifts": {
     "loved": ["minecraft:diamond_sword", "#minecraft:swords"],
     "liked": ["minecraft:cooked_beef", "minecraft:iron_sword"],
@@ -40,6 +46,35 @@
       "liked": ["Thanks, {player}. I like {item}.", "Nice gift. {item} will come in handy."],
       "disliked": ["Oh. {item}. Thanks, I guess.", "I don't really like {item}, but I appreciate the thought."],
       "neutral": ["Thanks for {item}.", "I'll keep {item} safe."]
+    }
+  },
+  "shop_messages": {
+    "single": {
+      "hatred": ["Here's your {item}."],
+      "enemy": ["Take your {item} and go."],
+      "dislike": ["Here's your {item}.", "One {item}, just like you asked."],
+      "neutral": ["Thanks! Here's your {item}.", "One {item}, ready to go."],
+      "okay": ["Thanks, {player}! Here's your {item}.", "Good choice. One {item} for you."],
+      "good_friends": ["Nice pick, {player}. Here's your {item}!", "Adventure supply delivery: one {item}."],
+      "best_friends": ["For my best customer, one {item}!", "Mathematical choice, {player}. Here's your {item}!"]
+    },
+    "normal": {
+      "hatred": ["You bought {quantity} {item}. Done."],
+      "enemy": ["{quantity} {item}. Don't waste them."],
+      "dislike": ["Here's your {quantity} {item}.", "That'll be {total} chowcoins."],
+      "neutral": ["Thanks for shopping. Enjoy the {quantity} {item}.", "Here you go: {quantity} {item}."],
+      "okay": ["Good haul, {player}. {quantity} {item} for the road.", "Thanks! That is {quantity} {item} packed up."],
+      "good_friends": ["That gear suits you, {player}. {quantity} {item} ready.", "Solid buy. {quantity} {item} coming right up!"],
+      "best_friends": ["Big adventure energy. {quantity} {item} for you!", "Mathematical shopping, {player}. {quantity} {item} secured!"]
+    },
+    "bulk": {
+      "hatred": ["Whoa, that's a lot."],
+      "enemy": ["That's a lot. Planning something?"],
+      "dislike": ["Whoa, that's a lot of {item}.", "You really need {quantity} {item}? Fine."],
+      "neutral": ["Whoa, that's a lot of {item}.", "Stocking up with {quantity} {item}, huh?"],
+      "okay": ["Whoa, that's a lot, {player}!", "Big haul: {quantity} {item}. Nice."],
+      "good_friends": ["Whoa, that's a lot! Adventure prep mode!", "Huge haul, {player}. {quantity} {item} ready."],
+      "best_friends": ["Legendary haul! {quantity} {item} for my favorite adventurer.", "Whoa, that's a lot. Best-friend discount vibes, even if the price is still {total}."]
     }
   },
   "hurt_messages": [

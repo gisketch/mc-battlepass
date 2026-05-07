@@ -8,6 +8,7 @@ import com.mojang.brigadier.context.CommandContext
 import dev.gisketch.chowkingdom.ChowKingdomMod
 import dev.gisketch.chowkingdom.battlepass.BattlepassMissionEventBank
 import dev.gisketch.chowkingdom.battlepass.BattlepassNetwork
+import dev.gisketch.chowkingdom.npc.NpcFeature
 import dev.gisketch.chowkingdom.relicroulette.RelicRouletteFeature
 import dev.gisketch.chowkingdom.snackbar.SnackbarIcons
 import dev.gisketch.chowkingdom.snackbar.SnackbarNetwork
@@ -191,6 +192,8 @@ object StoreShopFeature {
         saveState()
         recordBuyMission(player, totalCost)
         SnackbarNetwork.send(player, SnackbarNotification.texture(SnackbarIcons.CHOWCOIN_TEXTURE, "BUY SUCCESSFUL", "Bought $boughtCount items for $totalCost chowcoins", SnackbarType.GENERIC, SnackbarSounds.GENERIC))
+        val itemName = if (purchases.size == 1) purchases.single().stack.hoverName.string else "items"
+        NpcFeature.onStorePurchase(player, storeId, boughtCount, itemName, totalCost)
     }
 
     private fun view(definition: StoreDefinition): ShopViewModel {

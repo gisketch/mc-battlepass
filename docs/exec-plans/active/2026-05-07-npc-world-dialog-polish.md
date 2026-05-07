@@ -34,8 +34,12 @@ Polish the restored NPC screen dialog and relay NPC speech to nearby players plu
 - Hitting an NPC applies -10 friendship, killing applies -300, and shared `friendship_messages.json` provides generic message banks for all NPCs.
 - NPC dialog action denials use snackbars, gift tooltip hover no longer renders the extra item icon, and snackbars stack from the top while the NPC dialog screen is open.
 - NPC respawn no longer depends on hitting the exact 05:00 scan tick, and OP commands can inspect respawn state, force respawn, and edit friendship points.
-- NPC brain overrides can temporarily hijack schedule navigation for hurt retaliation and fire/campfire avoidance, with NPC held items rendered client-side and attack-back using scripted swing/damage/knockback pulses.
+- NPC brain overrides can temporarily hijack schedule navigation for hurt retaliation and fire/campfire avoidance, with NPC held items rendered client-side and attack-back using synced custom animation plus damage/knockback pulses.
+- NPC rendering is back on the vanilla player model, with item-in-hand rendering, outer skin layer transforms copied during attack animation, and faster synced swing timing.
+- Jade hover support shows NPC display name plus the hovering player's friendship category with real sprite icons.
 - NPC Discord relay keeps NPC webhook identity, moves NPC message/player context into an embed, and renders friendship as footer emojis only.
+- Successful NPC store purchases open a configurable friendship-aware follow-up dialog.
+- NPC dialog typewriter playback can use configurable proximity-faded animalese voice sounds.
 
 ## Plan
 
@@ -60,6 +64,8 @@ Polish the restored NPC screen dialog and relay NPC speech to nearby players plu
 19. Add respawn diagnostics, force respawn, and friendship admin commands.
 20. Add scalable NPC brain overrides for reactive behavior.
 21. Polish NPC Discord dialog rendering.
+22. Trial GeckoLib NPC attack rendering, then revert to vanilla player model with layer fix.
+23. Add post-shopping NPC replies and animalese dialog voice playback.
 
 ## Progress
 
@@ -84,5 +90,9 @@ Polish the restored NPC screen dialog and relay NPC speech to nearby players plu
 - 2026-05-07: Added -10 hit and -300 kill friendship deltas, plus shared `friendship_messages.json` fallback loading for reusable NPC message banks.
 - 2026-05-07: Routed NPC buy/gift denial text through snackbars, moved snackbars to top-down rendering during NPC dialog, and removed the gift tooltip item preview icon.
 - 2026-05-07: Made NPC respawn tolerant of debug-time skips, added `/npc respawn status <id>`, `/npc respawn <id>`, and `/npc friendship get|set|add` admin commands.
-- 2026-05-07: Added `NpcBrainOverrides` with third-hit attack-back and fire/campfire run-away behavior, plus client rendering for temporary held weapons and scripted attack-back pulses.
+- 2026-05-07: Added `NpcBrainOverrides` with third-hit attack-back and fire/campfire run-away behavior, plus client rendering for temporary held weapons and synced custom attack-back animation pulses.
 - 2026-05-07: Changed NPC Discord output to an embed with message description, talked-to player author, and friendship emoji-only footer.
+- 2026-05-07: Trialed GeckoLib NPC rendering but reverted after playtest; kept vanilla player model renderer with held-item layer and sleeve/jacket transform fix.
+- 2026-05-07: Added NPC Jade entity tooltip and sped up the scripted attack animation/cadence.
+- 2026-05-08: Removed Patchouli runtime dependency and switched NPC Jade friendship markers to sprite icons.
+- 2026-05-08: Added NPC store follow-up dialogs, per-NPC animalese voice config, converted reference voice assets to OGG resources, and wired typewriter-only voice playback.

@@ -18,13 +18,13 @@ Place a camping block to spawn the first available NPC if none exists. Right-cli
 
 NPC dialog opens as a local screen panel near the bottom of the screen. The panel uses `textures/gui/9slice_container_grey.png`, shows the NPC head avatar, renders the NPC name in the CKDM bold font, renders dialog body copy with the normal Minecraft font, and shows right-side action buttons for Talk, Buy, Gift, and Bye. The panel enters with a bottom-anchored scale/slide animation, the dialog body types in, and the vanilla hotbar is hidden while the dialog screen is open.
 
-Buy opens the store configured on the NPC definition. Gift is disabled unless the player is holding an item, shows a hover hint, consumes one held item on success, and plays a reaction dialog with a single OKAY close button. Locked relic/player-locked items are rejected by the existing relic transfer guard. Bye closes the normal screen. Talk is reserved for a future conversation input flow.
+Buy opens the store configured on the NPC definition. After a successful NPC store purchase, the owning NPC opens a close-only follow-up dialog chosen from `shop_messages` by friendship category and quantity bucket. Gift is disabled unless the player is holding an item, shows a hover hint, consumes one held item on success, and plays a reaction dialog with a single OKAY close button. Locked relic/player-locked items are rejected by the existing relic transfer guard. Bye closes the normal screen. Talk is reserved for a future conversation input flow.
 
 The dialog header shows the NPC avatar, name, and a 10-icon friendship row. Positive levels render filled hearts, negative levels render angry icons, and remaining slots render empty hearts. Dialog body text uses the CKDM small bold font at 75% white opacity.
 
 In multiplayer, the interacting player sees the dialog screen only. Other players within 30 blocks of the NPC receive a chat line in the form `NPC > Player : message`. Discord receives every NPC dialog through the webhook, with the NPC name/avatar as the webhook identity and a linked Discord user mention when the interacting player has an account link.
 
-While talking, the NPC briefly stops navigating and looks at the interacting player.
+While talking, the NPC briefly stops navigating and looks at the interacting player. During the local dialog typewriter reveal, NPCs play proximity-faded animalese sounds using the configured voice pitch. Nearby world chat relay and hurt messages do not play animalese.
 
 ## Definition Fields
 
@@ -41,8 +41,10 @@ Each NPC is one JSON file:
 - `store`: Fixed custom store id opened by the dialog Buy button.
 - `personality`: Future dialog/LLM seed fields: `llm_prompt`, `traits`, `speech_style`, `catchphrases`.
 - `housing`: Move-in rules: `can_move_in`, `requires_bed`.
+- `voice`: Animalese dialog voice settings: `animalese_pitch` (`high`, `med`, `low`, `lowest`), `pitch`, `volume`, and `radius`.
 - `gifts`: Gift ids/tags grouped by `loved`, `liked`, `disliked`, plus `daily_limit`, `reset_hour`, and reaction message pools for `loved`, `liked`, `disliked`, and `neutral`.
 - `friendship_messages`: Optional per-NPC category message overrides for `interact`, `gift`, `hurt`, and `wake`. Categories are `hatred`, `enemy`, `dislike`, `neutral`, `okay`, `good_friends`, and `best_friends`. If omitted, the shared `friendship_messages.json` fallback is used.
+- `shop_messages`: Optional post-purchase message overrides with `single`, `normal`, and `bulk` buckets. Each bucket has the same friendship categories as `friendship_messages`. Supports `{player}`, `{npc}`, `{item}`, `{quantity}`, `{total}`, `{friendship_level}`, and `{friendship_points}`.
 - `hurt_messages`: NPC speech pool used every third hit from the same player. Supports `{player}`.
 - `wake_messages`: NPC speech pool used when a sleeping NPC is right-clicked. Supports `{player}`.
 - `work_target_blocks`: Block ids/tags the job can path toward while roaming.
@@ -91,7 +93,9 @@ Right-clicking a sleeping NPC wakes it, opens wake-specific dialog, pauses sleep
 
 When the same player hits an NPC three times in a row, the NPC speaks a random `hurt_messages` line in nearby world chat. Those third-hit events are persisted in `NpcResidentState` with timestamp and player identity.
 
-The third same-player hit also starts a short brain override. The NPC equips a temporary random weapon, chases the attacker, then runs two scripted attack pulses with swing animation, attack sound, direct mob-attack damage, and knockback when in range. NPCs also run away for 3 seconds when they step on fire, soul fire, campfire, or soul campfire. Overrides pause normal schedule/job navigation and then fall back to the regular brain.
+The third same-player hit also starts a short brain override. The NPC equips a temporary random weapon, chases the attacker, then runs two scripted attack pulses with synced custom arm animation, attack sound, direct damage, and knockback when in range. The NPC renderer uses the vanilla player model plus an item-in-hand layer, and the custom animation copies transforms to the sleeve/jacket layer so the outer skin follows the swing. NPCs also run away for 3 seconds when they step on fire, soul fire, campfire, or soul campfire. Overrides pause normal schedule/job navigation and then fall back to the regular brain.
+
+When Jade is installed, hovering an NPC shows the NPC display name and the hovering player's friendship category for that NPC with a small heart, empty heart, or angry icon.
 
 Gift limits are per NPC/player and reset by in-game schedule period. Finn defaults to one gift per in-game day, resetting at 05:00. Gifts adjust friendship only: neutral `+5`, liked `+25`, loved `+50`, disliked `-50`. Hitting an NPC changes friendship by `-10`; killing one changes friendship by `-300`. No extra friendship mechanics or rewards exist yet.
 

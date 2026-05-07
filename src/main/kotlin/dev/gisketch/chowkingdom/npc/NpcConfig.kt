@@ -99,6 +99,7 @@ object NpcConfig {
             catchphrases = mutableListOf("Mathematical!", "Adventure time!"),
         ),
         housing = NpcHousingDefinition(canMoveIn = true, requiresBed = true),
+        voice = NpcVoiceDefinition(animalesePitch = "low", pitch = 0.95f, volume = 0.38f, radius = 12.0f),
         gifts = NpcGiftsDefinition(
             loved = mutableListOf("minecraft:diamond_sword", "#minecraft:swords"),
             liked = mutableListOf("minecraft:cooked_beef", "minecraft:iron_sword"),
@@ -113,6 +114,7 @@ object NpcConfig {
             ),
         ),
         friendshipMessages = NpcFriendshipMessagesDefinition().normalized(),
+        shopMessages = NpcShopMessagesDefinition.default().normalized(),
         hurtMessages = mutableListOf(
             "Hey, watch it, {player}!",
             "Ouch. That's not very heroic.",

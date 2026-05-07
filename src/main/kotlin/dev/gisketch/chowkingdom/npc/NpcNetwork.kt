@@ -18,6 +18,7 @@ private const val MAX_NPC_TITLE_LENGTH = 96
 private const val MAX_NPC_DIALOG_LENGTH = 512
 private const val MAX_NPC_ACTION_LENGTH = 16
 private const val MAX_NPC_CLOSE_LABEL_LENGTH = 24
+private const val MAX_NPC_VOICE_PITCH_LENGTH = 16
 
 object NpcNetwork {
     fun register(modBus: IEventBus) {
@@ -62,6 +63,11 @@ data class NpcDialogPayload(
     val closeOnly: Boolean = false,
     val closeLabel: String = "BYE",
     val friendshipLevel: Int = 0,
+    val npcEntityId: Int = -1,
+    val animalesePitch: String = "med",
+    val animalesePitchMultiplier: Float = 1.0f,
+    val animaleseVolume: Float = 0.75f,
+    val animaleseRadius: Float = 12.0f,
 ) : CustomPacketPayload {
     override fun type(): CustomPacketPayload.Type<NpcDialogPayload> = TYPE
 
@@ -77,6 +83,11 @@ data class NpcDialogPayload(
                 buffer.readBoolean(),
                 buffer.readUtf(MAX_NPC_CLOSE_LABEL_LENGTH),
                 buffer.readVarInt(),
+                buffer.readVarInt(),
+                buffer.readUtf(MAX_NPC_VOICE_PITCH_LENGTH),
+                buffer.readFloat(),
+                buffer.readFloat(),
+                buffer.readFloat(),
             )
 
             override fun encode(buffer: RegistryFriendlyByteBuf, value: NpcDialogPayload) {
@@ -88,6 +99,11 @@ data class NpcDialogPayload(
                 buffer.writeBoolean(value.closeOnly)
                 buffer.writeUtf(value.closeLabel.take(MAX_NPC_CLOSE_LABEL_LENGTH), MAX_NPC_CLOSE_LABEL_LENGTH)
                 buffer.writeVarInt(value.friendshipLevel.coerceIn(-10, 10))
+                buffer.writeVarInt(value.npcEntityId)
+                buffer.writeUtf(value.animalesePitch.take(MAX_NPC_VOICE_PITCH_LENGTH), MAX_NPC_VOICE_PITCH_LENGTH)
+                buffer.writeFloat(value.animalesePitchMultiplier.coerceIn(0.5f, 2.0f))
+                buffer.writeFloat(value.animaleseVolume.coerceIn(0.0f, 1.0f))
+                buffer.writeFloat(value.animaleseRadius.coerceIn(1.0f, 48.0f))
             }
         }
     }

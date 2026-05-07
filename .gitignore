@@ -14,3 +14,4 @@ logs/
 .github/
 openspec/
 src/generated/resources/.cache/
+refs/**

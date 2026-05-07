@@ -25,6 +25,9 @@ class ChowNpcEntity(entityType: EntityType<out PathfinderMob>, level: Level) : P
     var bodyType: String
         get() = entityData.get(BODY_TYPE_DATA)
         set(value) = entityData.set(BODY_TYPE_DATA, NpcBodyTypes.normalize(value))
+    var scriptedAttackTicks: Int
+        get() = entityData.get(SCRIPTED_ATTACK_TICKS_DATA)
+        private set(value) = entityData.set(SCRIPTED_ATTACK_TICKS_DATA, value.coerceAtLeast(0))
     var campPos: BlockPos? = null
     var homePos: BlockPos? = null
     var debugActivity: String = "idle"
@@ -41,6 +44,7 @@ class ChowNpcEntity(entityType: EntityType<out PathfinderMob>, level: Level) : P
         super.defineSynchedData(builder)
         builder.define(NPC_ID_DATA, "finn")
         builder.define(BODY_TYPE_DATA, NpcBodyTypes.NORMAL)
+        builder.define(SCRIPTED_ATTACK_TICKS_DATA, 0)
     }
 
     fun configure(definition: NpcDefinition, camp: BlockPos) {
@@ -71,8 +75,13 @@ class ChowNpcEntity(entityType: EntityType<out PathfinderMob>, level: Level) : P
 
     fun isTalking(): Boolean = talkingTarget != null && tickCount <= talkingUntilTick
 
+    fun startScriptedAttackAnimation() {
+        scriptedAttackTicks = SCRIPTED_ATTACK_ANIMATION_TICKS
+    }
+
     override fun aiStep() {
         super.aiStep()
+        if (scriptedAttackTicks > 0) scriptedAttackTicks = scriptedAttackTicks - 1
         if (!level().isClientSide) tickTalking()
         if (!level().isClientSide) NpcFeature.tickNpc(this)
     }
@@ -117,9 +126,11 @@ class ChowNpcEntity(entityType: EntityType<out PathfinderMob>, level: Level) : P
     companion object {
         private val NPC_ID_DATA: EntityDataAccessor<String> = SynchedEntityData.defineId(ChowNpcEntity::class.java, EntityDataSerializers.STRING)
         private val BODY_TYPE_DATA: EntityDataAccessor<String> = SynchedEntityData.defineId(ChowNpcEntity::class.java, EntityDataSerializers.STRING)
+        private val SCRIPTED_ATTACK_TICKS_DATA: EntityDataAccessor<Int> = SynchedEntityData.defineId(ChowNpcEntity::class.java, EntityDataSerializers.INT)
         private const val NPC_ID_TAG = "NpcId"
         private const val BODY_TYPE_TAG = "BodyType"
         private const val CAMP_POS_TAG = "CampPos"
         private const val HOME_POS_TAG = "HomePos"
+        private const val SCRIPTED_ATTACK_ANIMATION_TICKS = 9
     }
 }

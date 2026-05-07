@@ -15,7 +15,9 @@ class NpcDefinition(
     var personality: NpcPersonalityDefinition = NpcPersonalityDefinition(),
     var housing: NpcHousingDefinition = NpcHousingDefinition(),
     var gifts: NpcGiftsDefinition = NpcGiftsDefinition(),
+    @SerializedName("voice") var voice: NpcVoiceDefinition = NpcVoiceDefinition(),
     @SerializedName("friendship_messages") var friendshipMessages: NpcFriendshipMessagesDefinition = NpcFriendshipMessagesDefinition(),
+    @SerializedName("shop_messages") var shopMessages: NpcShopMessagesDefinition = NpcShopMessagesDefinition(),
     @SerializedName("hurt_messages") var hurtMessages: MutableList<String> = mutableListOf(),
     @SerializedName("wake_messages") var wakeMessages: MutableList<String> = mutableListOf(),
     @SerializedName("work_target_blocks") var workTargetBlocks: MutableList<String> = mutableListOf(),
@@ -33,7 +35,9 @@ class NpcDefinition(
         personality = personality.normalized()
         housing = housing.normalized()
         gifts = gifts.normalized()
+        voice = voice.normalized()
         friendshipMessages = friendshipMessages.normalized(friendshipDefaults)
+        shopMessages = shopMessages.normalized()
         hurtMessages = hurtMessages.map(String::trim).filter(String::isNotBlank).ifEmpty { defaultHurtMessages() }.toMutableList()
         wakeMessages = wakeMessages.map(String::trim).filter(String::isNotBlank).ifEmpty { defaultWakeMessages() }.toMutableList()
         workTargetBlocks = workTargetBlocks.map(String::trim).filter(String::isNotBlank).distinct().toMutableList()
@@ -52,6 +56,24 @@ class NpcDefinition(
         "I'm awake. Is everything okay?",
         "You woke me up, but I'm listening.",
     )
+}
+
+class NpcVoiceDefinition(
+    @SerializedName("animalese_pitch") var animalesePitch: String = "med",
+    @SerializedName("pitch") var pitch: Float = 1.0f,
+    @SerializedName("volume") var volume: Float = 0.38f,
+    @SerializedName("radius") var radius: Float = 12.0f,
+) {
+    fun normalized(): NpcVoiceDefinition = apply {
+        animalesePitch = animalesePitch.trim().lowercase().let { value -> if (value in ANIMALESE_PITCHES) value else "med" }
+        pitch = pitch.coerceIn(0.5f, 2.0f)
+        volume = volume.coerceIn(0.0f, 1.0f)
+        radius = radius.coerceIn(1.0f, 48.0f)
+    }
+
+    companion object {
+        private val ANIMALESE_PITCHES = setOf("high", "med", "low", "lowest")
+    }
 }
 
 enum class NpcFriendshipCategory(val id: String) {
@@ -102,6 +124,43 @@ class NpcFriendshipMessagesDefinition(
             gift = FinnFriendshipMessages.gift,
             hurt = FinnFriendshipMessages.hurt,
             wake = FinnFriendshipMessages.wake,
+        )
+    }
+}
+
+class NpcShopMessagesDefinition(
+    var single: NpcFriendshipMessageSet = NpcFriendshipMessageSet(),
+    var normal: NpcFriendshipMessageSet = NpcFriendshipMessageSet(),
+    var bulk: NpcFriendshipMessageSet = NpcFriendshipMessageSet(),
+) {
+    fun normalized(): NpcShopMessagesDefinition = apply {
+        val defaults = default()
+        single = single.normalized(defaults.single)
+        normal = normal.normalized(defaults.normal)
+        bulk = bulk.normalized(defaults.bulk)
+    }
+
+    fun forQuantity(quantity: Int): NpcFriendshipMessageSet = when {
+        quantity <= 1 -> single
+        quantity > 10 -> bulk
+        else -> normal
+    }
+
+    companion object {
+        fun default(): NpcShopMessagesDefinition = NpcShopMessagesDefinition(
+            single = defaultShopSet("Thanks! Here's your {item}.", "Here you go, {player}. One {item}, ready for adventure."),
+            normal = defaultShopSet("Thanks for shopping, {player}. Enjoy the {quantity} {item}.", "Good pick. Those {item} should help."),
+            bulk = defaultShopSet("Whoa, that's a lot of {item}. Stocking up, huh?", "Big haul, {player}. {quantity} {item} coming right up."),
+        )
+
+        private fun defaultShopSet(vararg messages: String): NpcFriendshipMessageSet = NpcFriendshipMessageSet(
+            hatred = messages.toMutableList(),
+            enemy = messages.toMutableList(),
+            dislike = messages.toMutableList(),
+            neutral = messages.toMutableList(),
+            okay = messages.toMutableList(),
+            goodFriends = messages.toMutableList(),
+            bestFriends = messages.toMutableList(),
         )
     }
 }

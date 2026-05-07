@@ -133,7 +133,7 @@ object NpcFeature {
         npc.startTalkingTo(player, NPC_DIALOG_DURATION_TICKS)
         NpcStore.recordConversation(definition.id, player, player.gameProfile.name, "interacts with ${definition.name}", "player_interact")
         NpcStore.recordConversation(definition.id, player, definition.name, message, "npc_message")
-        NpcNetwork.openDialog(player, NpcDialogPayload(definition.id, definition.name, definition.title, message, contractGranted, friendshipLevel = friendship.level))
+        NpcNetwork.openDialog(player, dialogPayload(definition, npc, message, contractGranted, friendship.level))
         relayNpcDialog(player, npc, definition, message)
     }
 
@@ -152,6 +152,19 @@ object NpcFeature {
         if (storeId.isBlank() || !StoreShopFeature.openStore(player, storeId)) {
             npcSnackbar(player, definition.name, "No shop ready.", SnackbarType.ERROR)
         }
+    }
+
+    fun onStorePurchase(player: ServerPlayer, storeId: String, quantity: Int, itemName: String, totalCost: Long) {
+        val definition = NpcConfig.all().firstOrNull { npc -> npc.store.equals(storeId, ignoreCase = true) } ?: return
+        val npc = existingNpc(player.server, definition.id) ?: return
+        if (npc.level() != player.level()) return
+        if (player.distanceToSqr(npc) > NPC_DIALOG_ACTION_DISTANCE_SQR) return
+        val friendship = NpcStore.friendshipSnapshot(definition.id, player)
+        val message = friendshipMessage(definition.shopMessages.forQuantity(quantity), friendship, player, definition, itemName, quantity = quantity, totalCost = totalCost)
+        npc.startTalkingTo(player, NPC_DIALOG_DURATION_TICKS)
+        NpcStore.recordConversation(definition.id, player, player.gameProfile.name, "buys $quantity $itemName from ${definition.name}", "player_shop_buy")
+        NpcStore.recordConversation(definition.id, player, definition.name, message, "npc_shop_message")
+        NpcNetwork.openDialog(player, dialogPayload(definition, npc, message, false, friendship.level, closeOnly = true, closeLabel = "OKAY"))
     }
 
     private fun giftToNpc(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition) {
@@ -174,7 +187,7 @@ object NpcFeature {
         if (!player.abilities.instabuild) stack.shrink(1)
         NpcStore.recordConversation(definition.id, player, player.gameProfile.name, "gifts $itemName to ${definition.name}", "player_gift")
         NpcStore.recordConversation(definition.id, player, definition.name, message, "npc_gift_$mood")
-        NpcNetwork.openDialog(player, NpcDialogPayload(definition.id, definition.name, definition.title, message, false, closeOnly = true, closeLabel = "OKAY", friendshipLevel = friendship.level))
+        NpcNetwork.openDialog(player, dialogPayload(definition, npc, message, false, friendship.level, closeOnly = true, closeLabel = "OKAY"))
         relayNpcDialog(player, npc, definition, message)
     }
 
@@ -207,13 +220,31 @@ object NpcFeature {
         SnackbarNetwork.send(player, SnackbarNotification.item(SnackbarIcons.ERROR, title, content, type, SnackbarSounds.forType(type)))
     }
 
-    private fun friendshipMessage(set: NpcFriendshipMessageSet, friendship: NpcFriendshipSnapshot, player: ServerPlayer, definition: NpcDefinition, itemName: String = "", mood: String = ""): String {
+    private fun dialogPayload(definition: NpcDefinition, npc: ChowNpcEntity, message: String, contractGranted: Boolean, friendshipLevel: Int, closeOnly: Boolean = false, closeLabel: String = "BYE"): NpcDialogPayload = NpcDialogPayload(
+        definition.id,
+        definition.name,
+        definition.title,
+        message,
+        contractGranted,
+        closeOnly = closeOnly,
+        closeLabel = closeLabel,
+        friendshipLevel = friendshipLevel,
+        npcEntityId = npc.id,
+        animalesePitch = definition.voice.animalesePitch,
+        animalesePitchMultiplier = definition.voice.pitch,
+        animaleseVolume = definition.voice.volume,
+        animaleseRadius = definition.voice.radius,
+    )
+
+    private fun friendshipMessage(set: NpcFriendshipMessageSet, friendship: NpcFriendshipSnapshot, player: ServerPlayer, definition: NpcDefinition, itemName: String = "", mood: String = "", quantity: Int = 0, totalCost: Long = 0L): String {
         val pool = set.forCategory(friendship.category)
         return pool[player.random.nextInt(pool.size)]
             .replace("{player}", player.gameProfile.name)
             .replace("{npc}", definition.name)
             .replace("{item}", itemName)
             .replace("{mood}", mood)
+            .replace("{quantity}", quantity.toString())
+            .replace("{total}", totalCost.toString())
             .replace("{friendship_level}", friendship.level.toString())
             .replace("{friendship_points}", friendship.points.toString())
     }

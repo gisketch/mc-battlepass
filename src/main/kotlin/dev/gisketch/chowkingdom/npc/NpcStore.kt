@@ -115,7 +115,11 @@ object NpcStore {
     }
 
     fun friendshipSnapshot(npcId: String, player: ServerPlayer): NpcFriendshipSnapshot {
-        val friendship = state(npcId).friendships.getOrPut(player.stringUUID) { NpcFriendshipState() }
+        return friendshipSnapshot(npcId, player.stringUUID)
+    }
+
+    fun friendshipSnapshot(npcId: String, playerId: String): NpcFriendshipSnapshot {
+        val friendship = state(npcId).friendships.getOrPut(playerId) { NpcFriendshipState() }
         return NpcFriendshipSnapshot.from(friendship.points)
     }
 

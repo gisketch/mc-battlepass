@@ -9,12 +9,17 @@ import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.model.HumanoidModel
 import net.minecraft.client.model.PlayerModel
 import net.minecraft.client.model.geom.ModelLayers
+import net.minecraft.client.model.geom.ModelPart
 import net.minecraft.client.renderer.MultiBufferSource
 import net.minecraft.client.renderer.entity.EntityRendererProvider
 import net.minecraft.client.renderer.entity.MobRenderer
 import net.minecraft.client.renderer.entity.layers.ItemInHandLayer
+import net.minecraft.client.resources.sounds.SimpleSoundInstance
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
+import net.minecraft.sounds.SoundEvent
+import net.minecraft.sounds.SoundSource
+import net.minecraft.util.RandomSource
 import net.minecraft.world.item.ItemStack
 import net.neoforged.bus.api.IEventBus
 import net.neoforged.neoforge.client.event.EntityRenderersEvent
@@ -22,6 +27,8 @@ import net.neoforged.neoforge.client.event.RenderGuiLayerEvent
 import net.neoforged.neoforge.client.gui.VanillaGuiLayers
 import net.neoforged.neoforge.common.NeoForge
 import java.util.Locale
+import kotlin.math.PI
+import kotlin.math.sin
 
 object NpcClient {
     @JvmStatic
@@ -46,9 +53,9 @@ object NpcClient {
     }
 }
 
-private class ChowNpcRenderer(context: EntityRendererProvider.Context) : MobRenderer<ChowNpcEntity, PlayerModel<ChowNpcEntity>>(context, PlayerModel(context.bakeLayer(ModelLayers.PLAYER), false), 0.5f) {
-    private val normalModel = PlayerModel<ChowNpcEntity>(context.bakeLayer(ModelLayers.PLAYER), false)
-    private val slimModel = PlayerModel<ChowNpcEntity>(context.bakeLayer(ModelLayers.PLAYER_SLIM), true)
+private class ChowNpcRenderer(context: EntityRendererProvider.Context) : MobRenderer<ChowNpcEntity, PlayerModel<ChowNpcEntity>>(context, ChowNpcModel(context.bakeLayer(ModelLayers.PLAYER), false), 0.5f) {
+    private val normalModel = ChowNpcModel(context.bakeLayer(ModelLayers.PLAYER), false)
+    private val slimModel = ChowNpcModel(context.bakeLayer(ModelLayers.PLAYER_SLIM), true)
 
     init {
         addLayer(ItemInHandLayer(this, context.itemInHandRenderer))
@@ -68,8 +75,36 @@ private class ChowNpcRenderer(context: EntityRendererProvider.Context) : MobRend
     }
 }
 
+private class ChowNpcModel(root: ModelPart, slim: Boolean) : PlayerModel<ChowNpcEntity>(root, slim) {
+    override fun setupAnim(entity: ChowNpcEntity, limbSwing: Float, limbSwingAmount: Float, ageInTicks: Float, netHeadYaw: Float, headPitch: Float) {
+        super.setupAnim(entity, limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch)
+        if (entity.scriptedAttackTicks <= 0) return
+        val partialTick = (ageInTicks - entity.tickCount.toFloat()).coerceIn(0.0f, 1.0f)
+        val remainingTicks = (entity.scriptedAttackTicks.toFloat() - partialTick).coerceAtLeast(0.0f)
+        val progress = 1.0f - (remainingTicks / SCRIPTED_ATTACK_TICKS).coerceIn(0.0f, 1.0f)
+        val windup = easeInOut((progress / 0.4f).coerceIn(0.0f, 1.0f))
+        val slash = easeInOut(((progress - 0.4f) / 0.6f).coerceIn(0.0f, 1.0f))
+        val followThrough = sin(progress * PI).toFloat()
+        rightArm.xRot = lerp(lerp(-0.72f, -2.25f, windup), -0.5f, slash)
+        rightArm.yRot = lerp(-0.08f, 0.36f, slash)
+        rightArm.zRot = lerp(0.16f, -0.28f, followThrough)
+        body.yRot = followThrough * 0.1f
+        rightSleeve.copyFrom(rightArm)
+        jacket.copyFrom(body)
+    }
+
+    private fun easeInOut(progress: Float): Float = progress * progress * (3.0f - 2.0f * progress)
+
+    private fun lerp(start: Float, end: Float, progress: Float): Float = start + (end - start) * progress
+
+    companion object {
+        private const val SCRIPTED_ATTACK_TICKS = 9.0f
+    }
+}
+
 private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Component.literal(payload.name)) {
     private val openedAtMs: Long = System.currentTimeMillis()
+    private var lastAnimaleseIndex: Int = 0
 
     override fun isPauseScreen(): Boolean = false
 
@@ -109,7 +144,9 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         guiGraphics.drawString(font, name, nameX, y + NAME_Y, NAME_COLOR, false)
         renderFriendship(guiGraphics, nameX, y + FRIENDSHIP_Y, payload.friendshipLevel)
 
-        val visibleMessage = payload.message.take(visibleDialogCharacters())
+        val visibleCharacters = visibleDialogCharacters()
+        playAnimalese(visibleCharacters)
+        val visibleMessage = payload.message.take(visibleCharacters)
         val lines = font.split(ckdmDialogText(visibleMessage), dialogWidth)
         var lineY = dialogY
         lines.take(MAX_DIALOG_LINES).forEach { line ->
@@ -259,6 +296,57 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         return ((elapsed / 1000.0) * TYPEWRITER_CHARS_PER_SECOND).toInt().coerceIn(0, payload.message.length)
     }
 
+    private fun playAnimalese(visibleCharacters: Int) {
+        if (visibleCharacters <= lastAnimaleseIndex) return
+        val minecraft = Minecraft.getInstance()
+        val player = minecraft.player ?: return
+        val level = minecraft.level ?: return
+        val npc = level.getEntity(payload.npcEntityId)
+        val x = npc?.x ?: player.x
+        val y = npc?.y ?: player.y
+        val z = npc?.z ?: player.z
+        val distance = npc?.distanceTo(player) ?: 0.0f
+        val radius = payload.animaleseRadius.coerceAtLeast(1.0f)
+        if (distance > radius) {
+            lastAnimaleseIndex = visibleCharacters
+            return
+        }
+        val distanceVolume = (1.0f - distance / radius).coerceIn(0.0f, 1.0f)
+        val volume = payload.animaleseVolume.coerceIn(0.0f, 1.0f) * distanceVolume
+        if (volume <= 0.01f) {
+            lastAnimaleseIndex = visibleCharacters
+            return
+        }
+        val end = visibleCharacters.coerceAtMost(payload.message.length)
+        for (index in lastAnimaleseIndex until end) {
+            val soundIndex = animaleseSoundIndex(payload.message, index) ?: continue
+            val sound = SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "npc.animalese.${animalesePitch()}.sound${soundIndex.toString().padStart(2, '0')}"))
+            val pitch = (payload.animalesePitchMultiplier * (0.96f + player.random.nextFloat() * 0.08f)).coerceIn(0.5f, 2.0f)
+            minecraft.soundManager.play(SimpleSoundInstance(sound, SoundSource.VOICE, volume, pitch, RandomSource.create(), x, y, z))
+        }
+        lastAnimaleseIndex = visibleCharacters
+    }
+
+    private fun animalesePitch(): String = payload.animalesePitch.lowercase(Locale.ROOT).let { value -> if (value in ANIMALESE_PITCHES) value else "med" }
+
+    private fun animaleseSoundIndex(message: String, index: Int): Int? {
+        val char = message[index].lowercaseChar()
+        if (index > 0 && char == message[index - 1].lowercaseChar()) return null
+        if (char == 's' && index + 1 < message.length && message[index + 1].lowercaseChar() == 'h') return 28
+        if (char == 't' && index + 1 < message.length && message[index + 1].lowercaseChar() == 'h') return 27
+        if (char == 'h' && index > 0) {
+            return when (message[index - 1].lowercaseChar()) {
+                't', 's' -> null
+                else -> null
+            }
+        }
+        if (char in 'a'..'z') return char - 'a' + 1
+        return when (char) {
+            '.', ',', '?' -> 30
+            else -> null
+        }
+    }
+
     companion object {
         private val PANEL_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_container_grey.png")
         private val CKDM_BOLD_FONT = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "ckdm_bold")
@@ -305,6 +393,7 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         private const val DIALOG_COLOR = 0xBFFFFFFF.toInt()
         private const val CONTRACT_COLOR = 0xFF83F28F.toInt()
         private const val DISABLED_COLOR = 0xFF8C8778.toInt()
+        private val ANIMALESE_PITCHES = setOf("high", "med", "low", "lowest")
     }
 }
 

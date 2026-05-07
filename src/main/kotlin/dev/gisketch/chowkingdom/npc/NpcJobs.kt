@@ -96,7 +96,8 @@ object NpcBrainOverrides {
     private fun tickAttackBack(entity: ChowNpcEntity, override: ActiveOverride): Boolean {
         val level = entity.level() as? ServerLevel ?: return false
         val player = override.targetId?.let(level::getPlayerByUUID) as? ServerPlayer ?: return false
-        if (!player.isAlive || override.attacksRemaining <= 0) return false
+        if (!player.isAlive) return false
+        if (override.attacksRemaining <= 0) return entity.tickCount < override.nextActionTick
         entity.debugActivity = "override"
         entity.debugGoal = "attack_back"
         entity.debugTargetPos = player.blockPosition().immutable()
@@ -110,18 +111,20 @@ object NpcBrainOverrides {
         if (entity.tickCount >= override.nextActionTick) {
             scriptedAttack(entity, player)
             override.attacksRemaining -= 1
-            override.nextActionTick = entity.tickCount + ATTACK_COOLDOWN_TICKS
+            override.nextActionTick = entity.tickCount + if (override.attacksRemaining <= 0) ATTACK_FINISH_HOLD_TICKS else ATTACK_COOLDOWN_TICKS
         }
         return true
     }
 
     private fun scriptedAttack(entity: ChowNpcEntity, player: ServerPlayer) {
         val level = entity.level() as? ServerLevel ?: return
+        entity.startScriptedAttackAnimation()
         entity.swing(InteractionHand.MAIN_HAND, true)
         level.broadcastEntityEvent(entity, ATTACK_ANIMATION_EVENT)
         level.playSound(null, entity.x, entity.y, entity.z, SoundEvents.PLAYER_ATTACK_STRONG, SoundSource.HOSTILE, 1.0f, 0.9f + entity.random.nextFloat() * 0.2f)
         player.invulnerableTime = 0
-        player.hurt(entity.damageSources().mobAttack(entity), ATTACK_DAMAGE)
+        val damaged = player.hurt(entity.damageSources().mobAttack(entity), ATTACK_DAMAGE)
+        if (!damaged && !player.abilities.invulnerable) player.hurt(player.damageSources().generic(), ATTACK_DAMAGE)
         player.knockback(ATTACK_KNOCKBACK, entity.x - player.x, entity.z - player.z)
     }
 
@@ -184,7 +187,8 @@ object NpcBrainOverrides {
     private const val ATTACK_CHASE_SPEED = 1.05
     private const val ATTACK_DAMAGE = 4.0f
     private const val ATTACK_KNOCKBACK = 0.35
-    private const val ATTACK_COOLDOWN_TICKS = 20
+    private const val ATTACK_COOLDOWN_TICKS = 13
+    private const val ATTACK_FINISH_HOLD_TICKS = 12
     private const val ATTACK_ANIMATION_EVENT: Byte = 4
 }
 
