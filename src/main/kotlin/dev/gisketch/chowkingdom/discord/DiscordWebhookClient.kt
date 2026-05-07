@@ -31,7 +31,10 @@ object DiscordWebhookClient {
             addProperty("username", effectiveUsername.take(DISCORD_USERNAME_LIMIT))
             if (effectiveAvatarUrl.isNotBlank()) addProperty("avatar_url", effectiveAvatarUrl)
             if (message.embeds.isNotEmpty()) add("embeds", JsonArray().apply { message.embeds.take(DISCORD_EMBED_LIMIT).forEach { add(it.toJson()) } })
-            add("allowed_mentions", JsonObject().apply { add("parse", JsonArray()) })
+            add("allowed_mentions", JsonObject().apply {
+                add("parse", JsonArray())
+                if (message.allowedUserMentions.isNotEmpty()) add("users", JsonArray().apply { message.allowedUserMentions.take(DISCORD_ALLOWED_MENTION_LIMIT).forEach { add(it) } })
+            })
         }
 
         val request = runCatching {
@@ -60,6 +63,7 @@ object DiscordWebhookClient {
     private const val DISCORD_CONTENT_LIMIT = 2000
     private const val DISCORD_USERNAME_LIMIT = 80
     private const val DISCORD_EMBED_LIMIT = 10
+    private const val DISCORD_ALLOWED_MENTION_LIMIT = 10
 
     private fun DiscordEmbed.toJson(): JsonObject = JsonObject().apply {
         if (title.isNotBlank()) addProperty("title", title.take(DISCORD_EMBED_TITLE_LIMIT))

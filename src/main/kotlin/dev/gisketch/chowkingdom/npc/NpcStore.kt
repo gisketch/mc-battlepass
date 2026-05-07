@@ -1,0 +1,248 @@
+package dev.gisketch.chowkingdom.npc
+
+import com.google.gson.GsonBuilder
+import dev.gisketch.chowkingdom.ChowKingdomMod
+import net.minecraft.core.BlockPos
+import net.minecraft.server.level.ServerPlayer
+import net.minecraft.world.level.storage.LevelResource
+import net.neoforged.fml.loading.FMLPaths
+import net.neoforged.neoforge.server.ServerLifecycleHooks
+import java.nio.file.Files
+import java.nio.file.Path
+import java.nio.file.StandardCopyOption
+import java.util.UUID
+import kotlin.io.path.bufferedReader
+import kotlin.io.path.bufferedWriter
+import kotlin.io.path.createDirectories
+import kotlin.io.path.exists
+
+object NpcStore {
+    private val gson = GsonBuilder().setPrettyPrinting().create()
+    private var data = NpcWorldData()
+    private var loaded = false
+
+    private val file: Path
+        get() {
+            val server = ServerLifecycleHooks.getCurrentServer()
+            val root = if (server != null) server.getWorldPath(LevelResource.ROOT).resolve("data") else FMLPaths.CONFIGDIR.get()
+            return root.resolve(ChowKingdomMod.MOD_ID).resolve("npcs").resolve("state.json")
+        }
+
+    fun load() {
+        file.parent.createDirectories()
+        data = if (file.exists()) {
+            try {
+                file.bufferedReader().use { reader -> gson.fromJson(reader, NpcWorldData::class.java) } ?: NpcWorldData()
+            } catch (exception: Exception) {
+                ChowKingdomMod.LOGGER.warn("Failed to load NPC state {}", file, exception)
+                NpcWorldData()
+            }
+        } else NpcWorldData()
+        loaded = true
+    }
+
+    fun state(npcId: String): NpcResidentState {
+        if (!loaded) load()
+        return data.npcs.getOrPut(npcId) { NpcResidentState() }
+    }
+
+    fun setEntity(npcId: String, entityId: UUID, campPos: BlockPos) {
+        val state = state(npcId)
+        state.entityUuid = entityId.toString()
+        state.camp = NpcBlockPosData.from(campPos)
+        save()
+    }
+
+    fun setHome(npcId: String, homePos: BlockPos) {
+        val state = state(npcId)
+        state.home = NpcBlockPosData.from(homePos)
+        save()
+    }
+
+    fun clearHome(npcId: String) {
+        val state = state(npcId)
+        if (state.home == null) return
+        state.home = null
+        save()
+    }
+
+    fun markContractGiven(npcId: String) {
+        val state = state(npcId)
+        if (state.contractGiven) return
+        state.contractGiven = true
+        save()
+    }
+
+    fun recordHurt(npcId: String, player: ServerPlayer, timestamp: Long): Int {
+        val state = state(npcId)
+        if (state.lastHurtPlayerUuid == player.stringUUID) {
+            state.hurtStreak += 1
+        } else {
+            state.lastHurtPlayerUuid = player.stringUUID
+            state.lastHurtPlayerName = player.gameProfile.name
+            state.hurtStreak = 1
+        }
+        state.lastHurtAt = timestamp
+        if (state.hurtStreak % HURT_HISTORY_RECORD_INTERVAL == 0) {
+            state.hurtHistory += NpcHurtRecord(timestamp, player.stringUUID, player.gameProfile.name)
+            if (state.hurtHistory.size > MAX_HURT_HISTORY) state.hurtHistory = state.hurtHistory.takeLast(MAX_HURT_HISTORY).toMutableList()
+        }
+        save()
+        return state.hurtStreak
+    }
+
+    fun recordConversation(npcId: String, player: ServerPlayer, speaker: String, text: String, type: String) {
+        val state = state(npcId)
+        val key = player.stringUUID
+        val history = state.conversations.getOrPut(key) { mutableListOf() }
+        history += NpcConversationRecord(System.currentTimeMillis(), type, speaker, text, player.stringUUID, player.gameProfile.name)
+        state.conversations[key] = history.takeLast(MAX_CONVERSATION_HISTORY).toMutableList()
+        save()
+    }
+
+    fun recordGiftIfAllowed(npcId: String, player: ServerPlayer, period: Long, limit: Int): Boolean {
+        if (limit <= 0) return false
+        val state = state(npcId)
+        val gift = state.giftLimits.getOrPut(player.stringUUID) { NpcGiftLimitState() }
+        if (gift.period != period) {
+            gift.period = period
+            gift.count = 0
+        }
+        if (gift.count >= limit) return false
+        gift.count += 1
+        save()
+        return true
+    }
+
+    fun recordGlobalEvent(type: String, text: String) {
+        if (!loaded) load()
+        data.globalEvents += NpcGlobalEvent(System.currentTimeMillis(), type, text)
+        if (data.globalEvents.size > MAX_GLOBAL_EVENTS) data.globalEvents = data.globalEvents.takeLast(MAX_GLOBAL_EVENTS).toMutableList()
+        save()
+    }
+
+    fun llmContext(npcId: String, player: ServerPlayer): NpcLlmContext {
+        return llmContext(npcId, player, -1)
+    }
+
+    fun llmContext(npcId: String, player: ServerPlayer, currentHour: Int): NpcLlmContext {
+        val state = state(npcId)
+        return NpcLlmContext(
+            currentHour = currentHour,
+            globalEvents = data.globalEvents.takeLast(MAX_GLOBAL_EVENTS),
+            conversation = state.conversations[player.stringUUID].orEmpty().takeLast(MAX_CONVERSATION_HISTORY),
+        )
+    }
+
+    fun markDead(npcId: String, respawnDay: Long) {
+        val state = state(npcId)
+        state.dead = true
+        state.respawnDay = respawnDay
+        save()
+    }
+
+    fun clearDead(npcId: String) {
+        val state = state(npcId)
+        state.dead = false
+        state.respawnDay = -1L
+        save()
+    }
+
+    fun deadNpcIds(): List<String> {
+        if (!loaded) load()
+        return data.npcs.entries.filter { (_, state) -> state.dead }.map { (npcId, _) -> npcId }
+    }
+
+    fun respawnDay(npcId: String): Long = state(npcId).respawnDay
+
+    fun campPos(npcId: String): BlockPos? = state(npcId).camp?.toBlockPos()
+
+    fun homePos(npcId: String): BlockPos? = state(npcId).home?.toBlockPos()
+
+    fun homeOwnerAt(pos: BlockPos): String? {
+        if (!loaded) load()
+        return data.npcs.entries.firstOrNull { (_, state) -> state.home?.toBlockPos() == pos }?.key
+    }
+
+    fun entityUuid(npcId: String): UUID? = runCatching { UUID.fromString(state(npcId).entityUuid) }.getOrNull()
+
+    fun contractGiven(npcId: String): Boolean = state(npcId).contractGiven
+
+    private fun save() {
+        file.parent.createDirectories()
+        Files.createTempFile(file.parent, "npc_state", ".json.tmp").also { temp ->
+            temp.bufferedWriter().use { writer -> gson.toJson(data, writer) }
+            Files.move(temp, file, StandardCopyOption.REPLACE_EXISTING)
+        }
+    }
+}
+
+class NpcWorldData(
+    var npcs: MutableMap<String, NpcResidentState> = linkedMapOf(),
+    var globalEvents: MutableList<NpcGlobalEvent> = mutableListOf(),
+)
+
+class NpcResidentState(
+    var entityUuid: String = "",
+    var camp: NpcBlockPosData? = null,
+    var home: NpcBlockPosData? = null,
+    var contractGiven: Boolean = false,
+    var lastHurtAt: Long = 0L,
+    var lastHurtPlayerUuid: String = "",
+    var lastHurtPlayerName: String = "",
+    var hurtStreak: Int = 0,
+    var hurtHistory: MutableList<NpcHurtRecord> = mutableListOf(),
+    var conversations: MutableMap<String, MutableList<NpcConversationRecord>> = linkedMapOf(),
+    var giftLimits: MutableMap<String, NpcGiftLimitState> = linkedMapOf(),
+    var dead: Boolean = false,
+    var respawnDay: Long = -1L,
+)
+
+class NpcGiftLimitState(
+    var period: Long = Long.MIN_VALUE,
+    var count: Int = 0,
+)
+
+class NpcHurtRecord(
+    var timestamp: Long = 0L,
+    var playerUuid: String = "",
+    var playerName: String = "",
+)
+
+class NpcConversationRecord(
+    var timestamp: Long = 0L,
+    var type: String = "",
+    var speaker: String = "",
+    var text: String = "",
+    var playerUuid: String = "",
+    var playerName: String = "",
+)
+
+class NpcGlobalEvent(
+    var timestamp: Long = 0L,
+    var type: String = "",
+    var text: String = "",
+)
+
+class NpcLlmContext(
+    val currentHour: Int,
+    val globalEvents: List<NpcGlobalEvent>,
+    val conversation: List<NpcConversationRecord>,
+)
+
+class NpcBlockPosData(
+    var x: Int = 0,
+    var y: Int = 0,
+    var z: Int = 0,
+) {
+    fun toBlockPos(): BlockPos = BlockPos(x, y, z)
+
+    companion object {
+        fun from(pos: BlockPos): NpcBlockPosData = NpcBlockPosData(pos.x, pos.y, pos.z)
+    }
+}
+
+private const val MAX_HURT_HISTORY = 10
+private const val HURT_HISTORY_RECORD_INTERVAL = 3
+private const val MAX_CONVERSATION_HISTORY = 30
+private const val MAX_GLOBAL_EVENTS = 30

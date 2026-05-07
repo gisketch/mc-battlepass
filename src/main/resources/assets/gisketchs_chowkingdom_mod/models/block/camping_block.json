@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:block/cube_all",
+  "textures": {
+    "all": "gisketchs_chowkingdom_mod:block/dense_wood_block"
+  }
+}

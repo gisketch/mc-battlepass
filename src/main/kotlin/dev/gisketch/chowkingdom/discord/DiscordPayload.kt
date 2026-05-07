@@ -5,6 +5,7 @@ data class DiscordWebhookMessage(
     val username: String? = null,
     val avatarUrl: String? = null,
     val embeds: List<DiscordEmbed> = emptyList(),
+    val allowedUserMentions: List<String> = emptyList(),
 )
 
 data class DiscordEmbed(

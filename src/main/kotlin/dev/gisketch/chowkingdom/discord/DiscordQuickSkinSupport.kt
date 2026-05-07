@@ -73,6 +73,20 @@ object DiscordQuickSkinSupport {
         return quickSkinHeadResult(playerId, null).image
     }
 
+    fun npcAvatarUrl(npcId: String, config: DiscordWebhookConfig): String {
+        val publicBaseUrl = usablePublicBaseUrl(config.quickSkinAvatarServer.publicBaseUrl)
+        if (config.quickSkinAvatarServer.enabled && publicBaseUrl != null) {
+            return "$publicBaseUrl/npc/avatar/${encode(npcId)}.png"
+        }
+        return config.avatarUrl
+    }
+
+    fun npcHeadPng(npcId: String): ByteArray? {
+        val path = "assets/${ChowKingdomMod.MOD_ID}/textures/entity/npc/${npcId.lowercase()}.png"
+        val bytes = DiscordQuickSkinSupport::class.java.classLoader.getResourceAsStream(path)?.use { input -> input.readBytes() } ?: return null
+        return renderHead(bytes)
+    }
+
     fun quickSkinHeadResult(playerId: UUID, skinIdOverride: String?): QuickSkinHeadResult {
         val skinId = skinIdOverride?.takeIf(String::isNotBlank) ?: quickSkinSkinId(playerId)
             ?: return QuickSkinHeadResult(null, "missing Quick Skin skin_id for uuid=$playerId")

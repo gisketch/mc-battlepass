@@ -1,0 +1,56 @@
+{
+  "id": "finn",
+  "name": "Finn",
+  "title": "The Adventurer",
+  "skin": "gisketchs_chowkingdom_mod:npc/finn",
+  "body_type": "normal",
+  "job": "adventurer",
+  "job_definition": {
+    "id": "adventurer",
+    "scan_interval_ticks": 60,
+    "roam_radius": 7,
+    "work_scan_radius": 9
+  },
+  "schedule": {
+    "activities": [
+      { "from_hour": 6, "to_hour": 20, "activity": "work" },
+      { "from_hour": 20, "to_hour": 22, "activity": "home" },
+      { "from_hour": 22, "to_hour": 6, "activity": "sleep" }
+    ]
+  },
+  "store": "cosmetics",
+  "personality": {
+    "llm_prompt": "Finn is brave, friendly, direct, and hungry for adventure. He wants a home near players and talks like an energetic hero.",
+    "traits": ["brave", "friendly", "reckless"],
+    "speech_style": "energetic hero",
+    "catchphrases": ["Mathematical!", "Adventure time!"]
+  },
+  "housing": {
+    "can_move_in": true,
+    "requires_bed": true
+  },
+  "gifts": {
+    "loved": ["minecraft:diamond_sword", "#minecraft:swords"],
+    "liked": ["minecraft:cooked_beef", "minecraft:iron_sword"],
+    "disliked": ["minecraft:rotten_flesh"],
+    "daily_limit": 1,
+    "reset_hour": 5,
+    "reactions": {
+      "loved": ["Whoa, {player}! {item} is amazing. Thank you!", "This is perfect. I love {item}!"],
+      "liked": ["Thanks, {player}. I like {item}.", "Nice gift. {item} will come in handy."],
+      "disliked": ["Oh. {item}. Thanks, I guess.", "I don't really like {item}, but I appreciate the thought."],
+      "neutral": ["Thanks for {item}.", "I'll keep {item} safe."]
+    }
+  },
+  "hurt_messages": [
+    "Hey, watch it, {player}!",
+    "Ouch. That's not very heroic.",
+    "Careful! I'm on your side."
+  ],
+  "wake_messages": [
+    "Mmph... {player}? I was sleeping.",
+    "I'm awake. Is everything okay?",
+    "You woke me up, but I'm listening."
+  ],
+  "work_target_blocks": ["minecraft:campfire", "minecraft:crafting_table", "minecraft:barrel"]
+}

@@ -114,6 +114,10 @@
   "item.gisketchs_chowkingdom_mod.shelf_shop_jungle": "Jungle Shelf Shop",
   "item.gisketchs_chowkingdom_mod.contract_scroll": "Contract Scroll",
   "item.gisketchs_chowkingdom_mod.vendor_contract": "Vendor Contract",
+  "block.gisketchs_chowkingdom_mod.camping_block": "Camping Block",
+  "item.gisketchs_chowkingdom_mod.camping_block": "Camping Block",
+  "item.gisketchs_chowkingdom_mod.rent_contract": "Rent Contract",
+  "entity.gisketchs_chowkingdom_mod.npc": "Chow Kingdom NPC",
   "item.gisketchs_chowkingdom_mod.common_relic_token": "Common Relic Token",
   "item.gisketchs_chowkingdom_mod.rare_relic_token": "Rare Relic Token",
   "item.gisketchs_chowkingdom_mod.shop_acacia_red": "Acacia Red Shop",
@@ -294,6 +298,7 @@
   "item.gisketchs_chowkingdom_mod.shop_oak_pink": "Oak Pink Shop",
   "config.jade.plugin_gisketchs_chowkingdom_mod.shop_stock": "Shop Stock",
   "config.jade.plugin_gisketchs_chowkingdom_mod.vendor": "Vendor Shop",
+  "config.jade.plugin_gisketchs_chowkingdom_mod.npc_bed": "NPC Bed",
   "jade.gisketchs_chowkingdom_mod.seller": "Seller: %s",
   "jade.gisketchs_chowkingdom_mod.quantity": "Quantity: %s"
 }

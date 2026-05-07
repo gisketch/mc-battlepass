@@ -37,6 +37,7 @@ object DiscordQuickSkinAvatarServer {
         }
 
         startedServer.createContext("/quickskin/avatar") { exchange -> handleAvatarRequest(exchange) }
+        startedServer.createContext("/npc/avatar") { exchange -> handleNpcAvatarRequest(exchange) }
         startedServer.executor = Executors.newCachedThreadPool { runnable ->
             Thread(runnable, "chowkingdom-discord-avatar").apply { isDaemon = true }
         }
@@ -96,10 +97,40 @@ object DiscordQuickSkinAvatarServer {
         }
     }
 
+    private fun handleNpcAvatarRequest(exchange: HttpExchange) {
+        runCatching {
+            if (exchange.requestMethod != "GET") {
+                exchange.sendPlain(405, "method not allowed")
+                return
+            }
+            val npcId = requestNpcId(exchange.requestURI.path) ?: run {
+                exchange.sendPlain(400, "bad npc")
+                return
+            }
+            val image = DiscordQuickSkinSupport.npcHeadPng(npcId) ?: run {
+                exchange.sendPlain(404, "missing npc avatar")
+                return
+            }
+            exchange.responseHeaders.add("Content-Type", "image/png")
+            exchange.responseHeaders.add("Cache-Control", "no-cache")
+            exchange.sendResponseHeaders(200, image.size.toLong())
+            exchange.responseBody.use { output -> output.write(image) }
+        }.onFailure { exception ->
+            ChowKingdomMod.LOGGER.warn("NPC avatar request failed", exception)
+            runCatching { exchange.sendPlain(500, "server error") }
+        }.also {
+            exchange.close()
+        }
+    }
+
     private fun requestUuid(path: String): UUID? {
         val raw = path.removePrefix("/quickskin/avatar/").removeSuffix(".png")
         return runCatching { UUID.fromString(raw) }.getOrNull()
     }
+
+    private fun requestNpcId(path: String): String? = URLDecoder.decode(path.removePrefix("/npc/avatar/").removeSuffix(".png"), StandardCharsets.UTF_8)
+        .trim()
+        .takeIf { value -> value.matches(Regex("[a-z0-9_\\-]{1,64}")) }
 
     private fun queryParameter(rawQuery: String?, key: String): String? = rawQuery
         ?.split('&')

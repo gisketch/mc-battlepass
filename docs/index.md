@@ -17,6 +17,7 @@
 - [Shipping Bin](SHIPPING_BIN.md)
 - [Trading](TRADING.md)
 - [Relic Roulette](RELIC_ROULETTE.md)
+- [NPCs](NPCS.md)
 - [Revive](REVIVE.md)
 - [Jobs And Classes](ROLES.md)
 - [Jobs And Classes Creation Guide](ROLE_CONFIGURATION_GUIDE.md)

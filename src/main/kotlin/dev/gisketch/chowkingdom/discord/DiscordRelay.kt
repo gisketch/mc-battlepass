@@ -102,6 +102,21 @@ object DiscordRelay {
         )
     }
 
+    fun npcDialog(player: ServerPlayer, npcId: String, npcName: String, message: String) {
+        val config = DiscordConfig.current()
+        if (!config.enabled) return
+        val link = DiscordAccountLinkStore.linkFor(player)
+        val mention = link?.discordId?.takeIf(String::isNotBlank)?.let { id -> "<@$id>" } ?: "@${player.gameProfile.name}"
+        DiscordWebhookClient.send(
+            DiscordWebhookMessage(
+                content = "$mention, \"${DiscordText.cleanContent(message)}\"",
+                username = npcName,
+                avatarUrl = DiscordQuickSkinSupport.npcAvatarUrl(npcId, config),
+                allowedUserMentions = link?.discordId?.takeIf(String::isNotBlank)?.let(::listOf).orEmpty(),
+            ),
+        )
+    }
+
     private fun embedMessage(title: String, description: String, color: String, values: Map<String, String>): DiscordWebhookMessage = DiscordWebhookMessage(
         embeds = listOf(
             DiscordEmbed(

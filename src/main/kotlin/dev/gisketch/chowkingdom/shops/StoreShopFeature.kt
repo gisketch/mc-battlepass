@@ -144,7 +144,7 @@ object StoreShopFeature {
         buy(player, payload.storeId.lowercase(Locale.ROOT), payload.lines)
     }
 
-    private fun openStore(player: ServerPlayer, storeId: String): Boolean {
+    fun openStore(player: ServerPlayer, storeId: String): Boolean {
         reloadDefinitions()
         val definition = definitions[storeId] ?: return false
         ensureActive(definition)
