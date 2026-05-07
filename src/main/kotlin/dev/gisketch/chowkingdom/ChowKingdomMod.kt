@@ -20,7 +20,6 @@ import dev.gisketch.chowkingdom.client.PlayerListHudClient
 import dev.gisketch.chowkingdom.compat.UnifiedStaminaFeature
 import dev.gisketch.chowkingdom.discord.DiscordFeature
 import dev.gisketch.chowkingdom.discord.DiscordScreenshotClient
-import dev.gisketch.chowkingdom.relicroulette.RelicRouletteClient
 import dev.gisketch.chowkingdom.relicroulette.RelicRouletteFeature
 import dev.gisketch.chowkingdom.revive.ReviveClient
 import dev.gisketch.chowkingdom.revive.ReviveFeature
@@ -83,7 +82,6 @@ class ChowKingdomMod(modBus: IEventBus, container: ModContainer) {
             ReviveClient.register(modBus)
             TradingClient.register(modBus)
             SnackbarClient.register(modBus)
-            RelicRouletteClient.register()
         }
     }
 

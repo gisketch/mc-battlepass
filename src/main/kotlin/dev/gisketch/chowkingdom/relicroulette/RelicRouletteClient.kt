@@ -14,17 +14,10 @@ import net.minecraft.sounds.SoundEvents
 import net.minecraft.util.Mth
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
-import net.neoforged.neoforge.client.event.RenderGuiLayerEvent
-import net.neoforged.neoforge.client.gui.VanillaGuiLayers
-import net.neoforged.neoforge.common.NeoForge
 import java.util.Locale
 import kotlin.random.Random
 
 object RelicRouletteClient {
-    fun register() {
-        NeoForge.EVENT_BUS.addListener(::hideCrosshairBehindRelicScreen)
-    }
-
     @JvmStatic
     fun open(payload: RelicRouletteOpenPayload) {
         Minecraft.getInstance().setScreen(RelicRouletteScreen(payload))
@@ -47,10 +40,6 @@ object RelicRouletteClient {
         unlockedCount,
         totalCount,
     )
-
-    private fun hideCrosshairBehindRelicScreen(event: RenderGuiLayerEvent.Pre) {
-        if (event.name == VanillaGuiLayers.CROSSHAIR && Minecraft.getInstance().screen is RelicRouletteScreen) event.isCanceled = true
-    }
 }
 
 private class RelicRouletteScreen(private var payload: RelicRouletteOpenPayload) : Screen(Component.literal(payload.displayName)) {

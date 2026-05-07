@@ -141,6 +141,12 @@ object ReviveFeature {
         return true
     }
 
+    fun cancelHeldRevive(player: ServerPlayer): Boolean {
+        if (!hasActiveRevive(player.uuid)) return false
+        cancelActiveRevive(player.uuid, "Revive cancelled.")
+        return true
+    }
+
     fun spawnDebugDummy(player: ServerPlayer): UUID {
         val level = player.level() as ServerLevel
         val look = player.lookAngle
@@ -255,8 +261,6 @@ object ReviveFeature {
         if (target == null) return
         if (hasActiveRevive(player.uuid)) {
             cancel()
-            if (isDuplicateReviveInteract(player, target)) return
-            cancelActiveRevive(player.uuid, "Revive cancelled.")
             return
         }
         if (incapacitated.containsKey(player.uuid)) {
@@ -293,7 +297,6 @@ object ReviveFeature {
         if (!isActionBlocked(player.uuid)) return
         event.isCanceled = true
         event.cancellationResult = InteractionResult.SUCCESS
-        if (isActionLocked(player.uuid)) cancelActiveRevive(player.uuid, "Revive cancelled.")
     }
 
     private fun onRightClickItem(event: PlayerInteractEvent.RightClickItem) {
@@ -301,7 +304,6 @@ object ReviveFeature {
         if (!isActionBlocked(player.uuid)) return
         event.isCanceled = true
         event.cancellationResult = InteractionResult.SUCCESS
-        if (isActionLocked(player.uuid)) cancelActiveRevive(player.uuid, "Revive cancelled.")
     }
 
     private fun onLeftClickBlock(event: PlayerInteractEvent.LeftClickBlock) {
@@ -460,7 +462,7 @@ object ReviveFeature {
         reviver.closeContainer()
         reviver.stopUsingItem()
         lockReviver(reviver, session)
-        reviver.sendSystemMessage(Component.literal("Reviving ${target.gameProfile.name}. Right-click again to cancel.").withStyle(ChatFormatting.YELLOW))
+        reviver.sendSystemMessage(Component.literal("Reviving ${target.gameProfile.name}. Hold use to continue; release to cancel.").withStyle(ChatFormatting.YELLOW))
         if (reviver.uuid != target.uuid) target.sendSystemMessage(Component.literal("${reviver.gameProfile.name} is reviving you.").withStyle(ChatFormatting.GREEN))
         state.lastReviverName = reviver.gameProfile.name
         syncReviveProgress(target, targetSession)
@@ -484,7 +486,7 @@ object ReviveFeature {
         reviver.closeContainer()
         reviver.stopUsingItem()
         lockReviver(reviver, session)
-        reviver.sendSystemMessage(Component.literal("Reviving test dummy. Right-click again to cancel.").withStyle(ChatFormatting.YELLOW))
+        reviver.sendSystemMessage(Component.literal("Reviving test dummy. Hold use to continue; release to cancel.").withStyle(ChatFormatting.YELLOW))
         syncDummyReviveProgress(reviver.server, dummy, session)
     }
 

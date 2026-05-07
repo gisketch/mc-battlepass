@@ -43,12 +43,17 @@ object ReviveNetwork {
         runCatching { PacketDistributor.sendToServer(ReviveGiveUpPayload) }
     }
 
+    fun sendHoldReleased() {
+        runCatching { PacketDistributor.sendToServer(ReviveHoldPayload(false)) }
+    }
+
     private fun registerPayloads(event: RegisterPayloadHandlersEvent) {
         val registrar = event.registrar("1")
         registrar.playToClient(ReviveSelfStatePayload.TYPE, ReviveSelfStatePayload.STREAM_CODEC, ::handleSelfState)
         registrar.playToClient(ReviveProgressPayload.TYPE, ReviveProgressPayload.STREAM_CODEC, ::handleProgress)
         registrar.playToClient(ReviveCompletePayload.TYPE, ReviveCompletePayload.STREAM_CODEC, ::handleComplete)
         registrar.playToServer(ReviveGiveUpPayload.TYPE, ReviveGiveUpPayload.STREAM_CODEC, ::handleGiveUp)
+        registrar.playToServer(ReviveHoldPayload.TYPE, ReviveHoldPayload.STREAM_CODEC, ::handleHold)
     }
 
     private fun handleSelfState(payload: ReviveSelfStatePayload, context: IPayloadContext) {
@@ -66,6 +71,11 @@ object ReviveNetwork {
     private fun handleGiveUp(payload: ReviveGiveUpPayload, context: IPayloadContext) {
         val player = context.player() as? ServerPlayer ?: return
         ReviveFeature.giveUp(player)
+    }
+
+    private fun handleHold(payload: ReviveHoldPayload, context: IPayloadContext) {
+        val player = context.player() as? ServerPlayer ?: return
+        if (!payload.holding) ReviveFeature.cancelHeldRevive(player)
     }
 }
 
@@ -134,6 +144,21 @@ object ReviveGiveUpPayload : CustomPacketPayload {
         override fun decode(buffer: RegistryFriendlyByteBuf): ReviveGiveUpPayload = ReviveGiveUpPayload
 
         override fun encode(buffer: RegistryFriendlyByteBuf, value: ReviveGiveUpPayload) = Unit
+    }
+}
+
+data class ReviveHoldPayload(val holding: Boolean) : CustomPacketPayload {
+    override fun type(): CustomPacketPayload.Type<ReviveHoldPayload> = TYPE
+
+    companion object {
+        val TYPE: CustomPacketPayload.Type<ReviveHoldPayload> = CustomPacketPayload.Type(ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "revive/hold"))
+        val STREAM_CODEC: StreamCodec<RegistryFriendlyByteBuf, ReviveHoldPayload> = object : StreamCodec<RegistryFriendlyByteBuf, ReviveHoldPayload> {
+            override fun decode(buffer: RegistryFriendlyByteBuf): ReviveHoldPayload = ReviveHoldPayload(buffer.readBoolean())
+
+            override fun encode(buffer: RegistryFriendlyByteBuf, value: ReviveHoldPayload) {
+                buffer.writeBoolean(value.holding)
+            }
+        }
     }
 }
 

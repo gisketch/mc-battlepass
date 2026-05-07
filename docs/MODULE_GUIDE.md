@@ -159,7 +159,7 @@ Rules:
 - Payout time uses in-game day time, not wall-clock time.
 - Payout scans all saved bins. Offline players are credited in world data and notified on next login.
 - `/shippingbin sell` is op-only and sells the command runner's bin immediately for testing.
-- Sample configs: [docs/samples/shipping_bin_prices.json](samples/shipping_bin_prices.json) and [docs/samples/shipping_bin_quality_food_multipliers.json](samples/shipping_bin_quality_food_multipliers.json).
+- Sample configs: [docs/samples/shipping_bin_prices.json](samples/shipping_bin_prices.json), [docs/samples/shipping_bin_quality_food_multipliers.json](samples/shipping_bin_quality_food_multipliers.json), and [docs/samples/cosmetics.json](samples/cosmetics.json).
 - Sale notifications use `ShippingBinNetwork` and `ChowKingdomHud` for top-center animated feedback.
 - Inventory title overlay lives in `ShippingBinClient` and computes live preview from the first 54 chest slots.
 - Hover tooltips append a `coins.png <amount>` custom tooltip row for items priced by config.

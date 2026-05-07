@@ -1,0 +1,104 @@
+{
+  "id": "cosmetics",
+  "display_name": "Cosmetics Shop",
+  "time_zone": "GMT+8",
+  "reset_hour": 5,
+  "reset_minute": 0,
+  "categories": [
+    {
+      "id": "headwear",
+      "item_types_to_sell": 2,
+      "daily_items": [
+        { "id": "headwear_daily_leather_cap", "item": "minecraft:leather_helmet", "price_amount": 120, "stock_count": 8, "weight": 3 },
+        { "id": "headwear_daily_chain_hood", "item": "minecraft:chainmail_helmet", "price_amount": 180, "stock_count": 6, "weight": 2 },
+        { "id": "headwear_daily_gold_crown", "item": "minecraft:golden_helmet", "price_amount": 260, "stock_count": 4, "weight": 1 },
+        { "id": "headwear_daily_turtle_shell", "item": "minecraft:turtle_helmet", "price_amount": 420, "stock_count": 2, "weight": 1 },
+        { "id": "headwear_daily_carved_pumpkin", "item": "minecraft:carved_pumpkin", "price_amount": 90, "stock_count": 10, "weight": 4 }
+      ],
+      "weekly_items": [
+        { "id": "headwear_weekly_dragon_head", "item": "minecraft:dragon_head", "price_amount": 2400, "stock_count": 1, "weight": 1 },
+        { "id": "headwear_weekly_piglin_head", "item": "minecraft:piglin_head", "price_amount": 900, "stock_count": 2, "weight": 1 },
+        { "id": "headwear_weekly_creeper_head", "item": "minecraft:creeper_head", "price_amount": 1200, "stock_count": 2, "weight": 1 },
+        { "id": "headwear_weekly_zombie_head", "item": "minecraft:zombie_head", "price_amount": 950, "stock_count": 2, "weight": 2 },
+        { "id": "headwear_weekly_skeleton_skull", "item": "minecraft:skeleton_skull", "price_amount": 950, "stock_count": 2, "weight": 2 }
+      ],
+      "all_items": []
+    },
+    {
+      "id": "dyes_and_trims",
+      "item_types_to_sell": 2,
+      "daily_items": [
+        { "id": "dyes_daily_red", "item": "minecraft:red_dye", "price_amount": 18, "stock_count": 64, "weight": 4 },
+        { "id": "dyes_daily_blue", "item": "minecraft:blue_dye", "price_amount": 18, "stock_count": 64, "weight": 4 },
+        { "id": "dyes_daily_green", "item": "minecraft:green_dye", "price_amount": 22, "stock_count": 48, "weight": 3 },
+        { "id": "dyes_daily_black", "item": "minecraft:black_dye", "price_amount": 24, "stock_count": 48, "weight": 3 },
+        { "id": "dyes_daily_pink", "item": "minecraft:pink_dye", "price_amount": 20, "stock_count": 48, "weight": 3 }
+      ],
+      "weekly_items": [
+        { "id": "trims_weekly_sentry", "item": "minecraft:sentry_armor_trim_smithing_template", "price_amount": 850, "stock_count": 2, "weight": 2 },
+        { "id": "trims_weekly_vex", "item": "minecraft:vex_armor_trim_smithing_template", "price_amount": 1200, "stock_count": 1, "weight": 1 },
+        { "id": "trims_weekly_wild", "item": "minecraft:wild_armor_trim_smithing_template", "price_amount": 900, "stock_count": 2, "weight": 2 },
+        { "id": "trims_weekly_coast", "item": "minecraft:coast_armor_trim_smithing_template", "price_amount": 900, "stock_count": 2, "weight": 2 },
+        { "id": "trims_weekly_dune", "item": "minecraft:dune_armor_trim_smithing_template", "price_amount": 950, "stock_count": 2, "weight": 2 }
+      ],
+      "all_items": []
+    },
+    {
+      "id": "decor_blocks",
+      "item_types_to_sell": 2,
+      "daily_items": [
+        { "id": "decor_daily_lantern", "item": "minecraft:lantern", "price_amount": 35, "stock_count": 32, "weight": 4 },
+        { "id": "decor_daily_soul_lantern", "item": "minecraft:soul_lantern", "price_amount": 48, "stock_count": 24, "weight": 3 },
+        { "id": "decor_daily_flower_pot", "item": "minecraft:flower_pot", "price_amount": 22, "stock_count": 40, "weight": 4 },
+        { "id": "decor_daily_bookshelf", "item": "minecraft:bookshelf", "price_amount": 65, "stock_count": 18, "weight": 3 },
+        { "id": "decor_daily_note_block", "item": "minecraft:note_block", "price_amount": 70, "stock_count": 16, "weight": 2 }
+      ],
+      "weekly_items": [
+        { "id": "decor_weekly_beacon", "item": "minecraft:beacon", "price_amount": 3200, "stock_count": 1, "weight": 1 },
+        { "id": "decor_weekly_end_rod", "item": "minecraft:end_rod", "price_amount": 130, "stock_count": 24, "weight": 3 },
+        { "id": "decor_weekly_sea_lantern", "item": "minecraft:sea_lantern", "price_amount": 150, "stock_count": 24, "weight": 3 },
+        { "id": "decor_weekly_shroomlight", "item": "minecraft:shroomlight", "price_amount": 120, "stock_count": 24, "weight": 3 },
+        { "id": "decor_weekly_respawn_anchor", "item": "minecraft:respawn_anchor", "price_amount": 1100, "stock_count": 2, "weight": 1 }
+      ],
+      "all_items": []
+    },
+    {
+      "id": "pets_and_toys",
+      "item_types_to_sell": 2,
+      "daily_items": [
+        { "id": "toys_daily_lead", "item": "minecraft:lead", "price_amount": 45, "stock_count": 24, "weight": 4 },
+        { "id": "toys_daily_name_tag", "item": "minecraft:name_tag", "price_amount": 180, "stock_count": 8, "weight": 2 },
+        { "id": "toys_daily_bell", "item": "minecraft:bell", "price_amount": 160, "stock_count": 8, "weight": 2 },
+        { "id": "toys_daily_brush", "item": "minecraft:brush", "price_amount": 95, "stock_count": 10, "weight": 3 },
+        { "id": "toys_daily_goat_horn", "item": "minecraft:goat_horn", "price_amount": 260, "stock_count": 5, "weight": 1 }
+      ],
+      "weekly_items": [
+        { "id": "pets_weekly_allay_spawn_egg", "item": "minecraft:allay_spawn_egg", "price_amount": 2500, "stock_count": 1, "weight": 1 },
+        { "id": "pets_weekly_axolotl_spawn_egg", "item": "minecraft:axolotl_spawn_egg", "price_amount": 1800, "stock_count": 1, "weight": 1 },
+        { "id": "pets_weekly_cat_spawn_egg", "item": "minecraft:cat_spawn_egg", "price_amount": 1500, "stock_count": 1, "weight": 2 },
+        { "id": "pets_weekly_parrot_spawn_egg", "item": "minecraft:parrot_spawn_egg", "price_amount": 1600, "stock_count": 1, "weight": 2 },
+        { "id": "pets_weekly_wolf_spawn_egg", "item": "minecraft:wolf_spawn_egg", "price_amount": 1600, "stock_count": 1, "weight": 2 }
+      ],
+      "all_items": []
+    },
+    {
+      "id": "rare_collectibles",
+      "item_types_to_sell": 2,
+      "daily_items": [
+        { "id": "collectibles_daily_disc_13", "item": "minecraft:music_disc_13", "price_amount": 420, "stock_count": 3, "weight": 3 },
+        { "id": "collectibles_daily_disc_cat", "item": "minecraft:music_disc_cat", "price_amount": 460, "stock_count": 3, "weight": 3 },
+        { "id": "collectibles_daily_disc_blocks", "item": "minecraft:music_disc_blocks", "price_amount": 520, "stock_count": 2, "weight": 2 },
+        { "id": "collectibles_daily_disc_chirp", "item": "minecraft:music_disc_chirp", "price_amount": 520, "stock_count": 2, "weight": 2 },
+        { "id": "collectibles_daily_disc_far", "item": "minecraft:music_disc_far", "price_amount": 560, "stock_count": 2, "weight": 2 }
+      ],
+      "weekly_items": [
+        { "id": "collectibles_weekly_disc_pigstep", "item": "minecraft:music_disc_pigstep", "price_amount": 1800, "stock_count": 1, "weight": 1 },
+        { "id": "collectibles_weekly_disc_relic", "item": "minecraft:music_disc_relic", "price_amount": 1800, "stock_count": 1, "weight": 1 },
+        { "id": "collectibles_weekly_totem", "item": "minecraft:totem_of_undying", "price_amount": 2200, "stock_count": 1, "weight": 1 },
+        { "id": "collectibles_weekly_heart_of_the_sea", "item": "minecraft:heart_of_the_sea", "price_amount": 1600, "stock_count": 1, "weight": 1 },
+        { "id": "collectibles_weekly_recovery_compass", "item": "minecraft:recovery_compass", "price_amount": 1400, "stock_count": 1, "weight": 2 }
+      ],
+      "all_items": []
+    }
+  ]
+}

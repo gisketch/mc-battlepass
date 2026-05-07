@@ -62,4 +62,3 @@ Add a battlepass-earned relic token system where locked common/rare tokens open 
 - 2026-05-07: Reworked client roulette screen with scale/fade modal transitions and a clipped horizontal item strip that idles before roll and decelerates into the result.
 - 2026-05-07: Added client roll-strip tick sounds per item-distance step and a reward pickup sound when the result lands.
 - 2026-05-07: Added `/relicroulette clear-unlocks <targets> [pool]` for resetting test roll history.
-- 2026-05-07: Hid the vanilla crosshair while the relic roulette dialog is open.

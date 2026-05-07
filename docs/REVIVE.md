@@ -9,12 +9,12 @@ Revive turns lethal player damage into an incapacitated state.
 - Incapacitated players cannot be damaged and are ignored as AI attack targets; only revive interactions should matter while downed.
 - KO permits camera, movement keys, and chat only; item use, right-click actions, attack, block break/place, item tossing, jump, and sprint are blocked.
 - The incapacitated player sees a faint full red world overlay with the cause title and revive countdown while normal HUD and chat remain usable.
-- Another player right-clicks the incapacitated player to start reviving.
+- Another player holds right-click/use on the incapacitated player to revive.
 - The reviver is crouch/action locked for `revive_seconds`.
 - Additional revivers can help the same target; each extra reviver doubles revive speed, halving the remaining revive time again.
 - Active revives render `REVIVING X.XX SECONDS` above the reviver hotbar for real targets and debug dummies.
 - Revive countdown packets send remaining duration, not server wall-clock time, so multiplayer client clock skew does not offset the HUD timer.
-- Right-clicking again cancels the revive.
+- Releasing right-click/use cancels the revive.
 - If the revive completes, the target returns to normal at configured minimum health and food.
 - Completing or ending incapacitation clears the red glow.
 - If `incapacitated_seconds` expires, the player dies from the original damage source with revive-failure context appended to the death message.
@@ -112,13 +112,13 @@ Aliases:
 6. Run `/revive debug expire <player>` to test final death and appended revive-failure message.
 7. Run `/revive debug dummy spawn`, then right-click the red-glowing dummy to test reviving another target in singleplayer.
 8. Confirm the dummy revive shows the hotbar `REVIVING X.XX SECONDS` countdown.
-9. Right-click again during the dummy revive to test cancel.
+9. Release right-click/use during the dummy revive to test cancel.
 10. Run `/revive debug dummy clear` to remove test dummies.
 
 Normal multiplayer testing:
 
 1. Down one player through damage.
-2. Have another player right-click them.
-3. Have more players right-click the same target to verify each helper halves the remaining revive time again.
-4. Right-click again before the timer ends to verify cancel.
+2. Have another player hold right-click/use on them.
+3. Have more players hold right-click/use on the same target to verify each helper halves the remaining revive time again.
+4. Release right-click/use before the timer ends to verify cancel.
 5. Repeat and wait for completion to verify revive and the revived-by avatar line.

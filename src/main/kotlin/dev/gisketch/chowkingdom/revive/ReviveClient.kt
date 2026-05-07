@@ -31,6 +31,7 @@ object ReviveClient {
     private var wasIncapacitated = false
     private var previousButtonHover = false
     private var giveUpSent = false
+    private var wasUseKeyDown = false
 
     fun register(modBus: IEventBus) {
         modBus.addListener(::registerGuiLayers)
@@ -58,8 +59,12 @@ object ReviveClient {
         if (minecraft.player == null || minecraft.level == null) {
             ReviveClientState.clearAll()
             wasIncapacitated = false
+            wasUseKeyDown = false
             return
         }
+        val useKeyDown = minecraft.options.keyUse.isDown
+        if (wasUseKeyDown && !useKeyDown) ReviveNetwork.sendHoldReleased()
+        wasUseKeyDown = useKeyDown
         if (ReviveClientState.selfState() != null) minecraft.player?.isSprinting = false
     }
 
