@@ -40,26 +40,16 @@ object RoleStore {
         loaded = true
     }
 
-    fun ensureDefaults(player: ServerPlayer): PlayerRoleRecord {
+    fun ensureRecord(player: ServerPlayer): PlayerRoleRecord {
         if (!loaded) load()
         val record = players.getOrPut(player.uuid.toString()) { PlayerRoleRecord() }
         var changed = false
-        val defaultJob = RolesConfig.defaultJobId()
-        val defaultClass = RolesConfig.defaultClassId()
         if (record.jobId.isBlank() && record.activeJobIds.isNotEmpty()) {
             record.jobId = record.activeJobIds.first()
             changed = true
         }
         if (record.classId.isBlank() && record.activeClassIds.isNotEmpty()) {
             record.classId = record.activeClassIds.first()
-            changed = true
-        }
-        if (record.jobId.isBlank() && defaultJob.isNotBlank()) {
-            record.jobId = defaultJob
-            changed = true
-        }
-        if (record.classId.isBlank() && defaultClass.isNotBlank()) {
-            record.classId = defaultClass
             changed = true
         }
         if (record.activeJobIds.isEmpty() && record.jobId.isNotBlank()) changed = record.activeJobIds.add(record.jobId) || changed
@@ -72,7 +62,7 @@ object RoleStore {
         return record
     }
 
-    fun role(player: ServerPlayer): PlayerRoleRecord = ensureDefaults(player)
+    fun role(player: ServerPlayer): PlayerRoleRecord = ensureRecord(player)
 
     fun jobId(player: ServerPlayer): String = role(player).jobId
 
@@ -88,7 +78,7 @@ object RoleStore {
     }
 
     fun setJob(player: ServerPlayer, jobId: String) {
-        val record = ensureDefaults(player)
+        val record = ensureRecord(player)
         record.jobId = jobId
         record.activeJobIds.clear()
         record.activeJobIds.add(jobId)
@@ -97,7 +87,7 @@ object RoleStore {
     }
 
     fun setClass(player: ServerPlayer, classId: String) {
-        val record = ensureDefaults(player)
+        val record = ensureRecord(player)
         record.classId = classId
         record.activeClassIds.clear()
         record.activeClassIds.add(classId)
@@ -105,8 +95,21 @@ object RoleStore {
         save()
     }
 
+    fun setPrimaryRoles(player: ServerPlayer, jobId: String, classId: String) {
+        val record = ensureRecord(player)
+        record.jobId = jobId
+        record.classId = classId
+        record.activeJobIds.clear()
+        record.activeJobIds.add(jobId)
+        record.activeClassIds.clear()
+        record.activeClassIds.add(classId)
+        record.unlockedJobs.add(jobId)
+        record.unlockedClasses.add(classId)
+        save()
+    }
+
     fun addJob(player: ServerPlayer, jobId: String): Boolean {
-        val record = ensureDefaults(player)
+        val record = ensureRecord(player)
         if (record.jobId.isBlank()) record.jobId = jobId
         val changed = record.activeJobIds.add(jobId)
         record.unlockedJobs.add(jobId)
@@ -115,7 +118,7 @@ object RoleStore {
     }
 
     fun addClass(player: ServerPlayer, classId: String): Boolean {
-        val record = ensureDefaults(player)
+        val record = ensureRecord(player)
         if (record.classId.isBlank()) record.classId = classId
         val changed = record.activeClassIds.add(classId)
         record.unlockedClasses.add(classId)
@@ -124,19 +127,27 @@ object RoleStore {
     }
 
     fun removeJob(player: ServerPlayer, jobId: String): Boolean {
-        val record = ensureDefaults(player)
-        if (record.activeJobIds.size <= 1 || !record.activeJobIds.remove(jobId)) return false
+        val record = ensureRecord(player)
+        if (!record.activeJobIds.remove(jobId)) return false
         if (record.jobId == jobId) record.jobId = record.activeJobIds.firstOrNull().orEmpty()
         save()
         return true
     }
 
     fun removeClass(player: ServerPlayer, classId: String): Boolean {
-        val record = ensureDefaults(player)
-        if (record.activeClassIds.size <= 1 || !record.activeClassIds.remove(classId)) return false
+        val record = ensureRecord(player)
+        if (!record.activeClassIds.remove(classId)) return false
         if (record.classId == classId) record.classId = record.activeClassIds.firstOrNull().orEmpty()
         save()
         return true
+    }
+
+    fun needsOnboarding(player: ServerPlayer): Boolean {
+        val record = ensureRecord(player)
+        return record.jobId.isBlank() &&
+            record.classId.isBlank() &&
+            record.activeJobIds.isEmpty() &&
+            record.activeClassIds.isEmpty()
     }
 
     fun markStartingItemsGranted(playerId: UUID, classId: String): Boolean {

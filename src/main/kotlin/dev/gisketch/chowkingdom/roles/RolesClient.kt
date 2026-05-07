@@ -1,0 +1,537 @@
+package dev.gisketch.chowkingdom.roles
+
+import com.mojang.blaze3d.systems.RenderSystem
+import dev.gisketch.chowkingdom.ChowKingdomMod
+import net.minecraft.Util
+import net.minecraft.client.Minecraft
+import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.screens.Screen
+import net.minecraft.client.gui.screens.inventory.InventoryScreen
+import net.minecraft.client.resources.sounds.SimpleSoundInstance
+import net.minecraft.core.registries.BuiltInRegistries
+import net.minecraft.network.chat.Component
+import net.minecraft.resources.ResourceLocation
+import net.minecraft.sounds.SoundEvents
+import net.minecraft.util.Mth
+import net.minecraft.world.item.ItemStack
+import net.minecraft.world.item.Items
+import java.util.Locale
+import kotlin.math.max
+
+object RolesClient {
+    @JvmStatic
+    fun sync(payload: RolesSyncPayload) {
+        val minecraft = Minecraft.getInstance()
+        val current = minecraft.screen as? RolesOnboardingScreen
+        current?.updatePayload(payload)
+        if (payload.openOnboarding && current == null) {
+            minecraft.setScreen(RolesOnboardingScreen(payload))
+        }
+    }
+}
+
+private class RolesOnboardingScreen(private var payload: RolesSyncPayload) : Screen(Component.literal("Roles Onboarding")) {
+    private enum class Step { WELCOME, JOB, CLASS }
+
+    private data class Rect(val x: Int, val y: Int, val width: Int, val height: Int) {
+        val right: Int get() = x + width
+        val bottom: Int get() = y + height
+        fun contains(pointX: Int, pointY: Int): Boolean = pointX >= x && pointX < right && pointY >= y && pointY < bottom
+        fun contains(pointX: Double, pointY: Double): Boolean = pointX >= x && pointX < right && pointY >= y && pointY < bottom
+        fun inset(amount: Int): Rect = Rect(x + amount, y + amount, (width - amount * 2).coerceAtLeast(0), (height - amount * 2).coerceAtLeast(0))
+    }
+
+    private data class Layout(val left: Rect, val center: Rect, val right: Rect, val grid: Rect)
+    private data class RoleSlot(val rect: Rect, val role: RoleUiDefinitionPayload?)
+    private data class EntranceStyle(
+        val delayMs: Int,
+        val offsetX: Int = 0,
+        val offsetY: Int = 0,
+        val scaleFrom: Float = 1.0f,
+        val durationMs: Int = 260,
+    )
+
+    private var step = Step.WELCOME
+    private var selectedJobId: String? = payload.activeJobIds.firstOrNull()
+    private var selectedClassId: String? = payload.activeClassIds.firstOrNull()
+    private var hoveredRoleId: String? = null
+    private var jobScroll = 0
+    private var classScroll = 0
+    private var renderedSlots: List<RoleSlot> = emptyList()
+    private var openedAtMs = Util.getMillis()
+    private var stepStartedAtMs = openedAtMs
+    private var renderAlpha = 1.0f
+    private var backgroundParallaxX = 0.0f
+    private var backgroundParallaxY = 0.0f
+    private var skipPanelEntrance = false
+
+    fun updatePayload(next: RolesSyncPayload) {
+        payload = next
+        if (!next.openOnboarding && Minecraft.getInstance().screen === this) {
+            Minecraft.getInstance().setScreen(null)
+        }
+    }
+
+    override fun init() {
+        openedAtMs = Util.getMillis()
+        stepStartedAtMs = openedAtMs
+    }
+
+    override fun shouldCloseOnEsc(): Boolean = false
+
+    override fun isPauseScreen(): Boolean = false
+
+    override fun render(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) {
+        renderAlpha = 1.0f
+        if (step == Step.WELCOME) renderWelcome(guiGraphics, mouseX, mouseY) else renderRoleStep(guiGraphics, mouseX, mouseY)
+    }
+
+    override fun renderBackground(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) {
+        guiGraphics.fill(0, 0, width, height, BLACK)
+    }
+
+    override fun mouseClicked(mouseX: Double, mouseY: Double, button: Int): Boolean {
+        if (button != 0) return super.mouseClicked(mouseX, mouseY, button)
+        val x = mouseX.toInt()
+        val y = mouseY.toInt()
+        if (step == Step.WELCOME) {
+            if (welcomeContinueRect().contains(x, y)) {
+                playClick()
+                goTo(Step.JOB)
+                return true
+            }
+            return true
+        }
+
+        renderedSlots.firstOrNull { slot -> slot.rect.contains(x, y) }?.let { slot ->
+            setSelectedRole(slot.role?.id)
+            playClick()
+            return true
+        }
+
+        val canContinue = selectedRoleId() != null
+        if (continueRect().contains(x, y)) {
+            if (!canContinue) return true
+            playClick()
+            if (step == Step.JOB) {
+                goTo(Step.CLASS)
+            } else {
+                val jobId = selectedJobId ?: return true
+                val classId = selectedClassId ?: return true
+                RolesNetwork.choose(jobId, classId)
+                minecraft?.setScreen(null)
+            }
+            return true
+        }
+
+        return true
+    }
+
+    override fun mouseScrolled(mouseX: Double, mouseY: Double, scrollX: Double, scrollY: Double): Boolean {
+        if (step == Step.WELCOME) return true
+        val grid = selectionLayout().grid
+        if (!grid.contains(mouseX, mouseY)) return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY)
+        val roles = currentRoles()
+        val maxScroll = maxGridScroll(roles, grid)
+        val delta = if (scrollY > 0.0) -1 else 1
+        if (step == Step.JOB) jobScroll = (jobScroll + delta).coerceIn(0, maxScroll) else classScroll = (classScroll + delta).coerceIn(0, maxScroll)
+        return true
+    }
+
+    private fun renderWelcome(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
+        renderBackground(guiGraphics, mouseX, mouseY, 0.0f)
+        val panel = welcomePanel()
+        withEntrance(guiGraphics, EntranceStyle(0, offsetY = 12, scaleFrom = 0.96f), panel.x + panel.width / 2, panel.y + panel.height / 2) {
+            renderNineSlice(guiGraphics, GOLD_CONTAINER_TEXTURE, panel, CONTAINER_TEXTURE_WIDTH, CONTAINER_TEXTURE_HEIGHT, CONTAINER_SOURCE_CORNER, CONTAINER_DEST_CORNER, 1.0f)
+            drawCenteredCkdm(guiGraphics, fitText("Welcome to Chowkingdom", panel.width - 32, CKDM_LARGE), panel.x, panel.y + 24, panel.width, WHITE, CKDM_LARGE)
+            drawWrapped(guiGraphics, payload.welcomeContent, panel.x + 28, panel.y + 62, panel.width - 56, WHITE_MUTED, maxLines = 5)
+        }
+        withEntrance(guiGraphics, EntranceStyle(90, offsetY = 10, scaleFrom = 0.98f), width / 2, welcomeContinueRect().y + welcomeContinueRect().height / 2) {
+            renderButton(guiGraphics, welcomeContinueRect(), "CONTINUE", GREEN_BUTTON_TEXTURE, GREEN_BUTTON_HOVER_TEXTURE, mouseX, mouseY, active = true)
+        }
+    }
+
+    private fun renderRoleStep(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
+        renderParallaxBackground(guiGraphics, mouseX, mouseY)
+        val layout = selectionLayout()
+        val roles = currentRoles()
+        val maxScroll = maxGridScroll(roles, layout.grid)
+        if (step == Step.JOB) jobScroll = jobScroll.coerceIn(0, maxScroll) else classScroll = classScroll.coerceIn(0, maxScroll)
+        val slots = roleSlots(roles, layout.grid, currentScroll())
+        renderedSlots = slots
+        hoveredRoleId = slots.firstOrNull { slot -> slot.rect.contains(mouseX, mouseY) }?.role?.id
+
+        withEntrance(guiGraphics, EntranceStyle(0, offsetY = -10, scaleFrom = 0.98f), width / 2, 20) {
+            drawCenteredCkdm(guiGraphics, stepTitle(), 0, TITLE_Y, width, WHITE, CKDM_LARGE)
+        }
+        if (skipPanelEntrance) {
+            renderLeftColumn(guiGraphics, layout.left)
+            renderPaperDoll(guiGraphics, layout.center, mouseX, mouseY)
+            renderRightColumn(guiGraphics, layout.right, layout.grid, slots, mouseX, mouseY)
+        } else {
+            withEntrance(guiGraphics, EntranceStyle(50, offsetX = -18, scaleFrom = 0.98f), layout.left.x + layout.left.width / 2, layout.left.y + layout.left.height / 2) {
+                renderLeftColumn(guiGraphics, layout.left)
+            }
+            withEntrance(guiGraphics, EntranceStyle(90, offsetY = 14, scaleFrom = 0.98f), layout.center.x + layout.center.width / 2, layout.center.y + layout.center.height / 2) {
+                renderPaperDoll(guiGraphics, layout.center, mouseX, mouseY)
+            }
+            withEntrance(guiGraphics, EntranceStyle(110, offsetX = 18, scaleFrom = 0.98f), layout.right.x + layout.right.width / 2, layout.right.y + layout.right.height / 2) {
+                renderRightColumn(guiGraphics, layout.right, layout.grid, slots, mouseX, mouseY)
+            }
+        }
+        withEntrance(guiGraphics, EntranceStyle(170, offsetY = 10, scaleFrom = 0.98f), width / 2, continueRect().y + continueRect().height / 2) {
+            renderButton(guiGraphics, continueRect(), "CONTINUE", GREEN_BUTTON_TEXTURE, GREEN_BUTTON_HOVER_TEXTURE, mouseX, mouseY, active = selectedRoleId() != null)
+        }
+    }
+
+    private fun renderParallaxBackground(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
+        guiGraphics.fill(0, 0, width, height, BLACK)
+        val targetX = if (width == 0) 0.0f else ((mouseX - width / 2.0f) / (width / 2.0f)).coerceIn(-1.0f, 1.0f) * BACKGROUND_PARALLAX
+        val targetY = if (height == 0) 0.0f else ((mouseY - height / 2.0f) / (height / 2.0f)).coerceIn(-1.0f, 1.0f) * BACKGROUND_PARALLAX
+        backgroundParallaxX = Mth.lerp(PARALLAX_LERP, backgroundParallaxX, targetX)
+        backgroundParallaxY = Mth.lerp(PARALLAX_LERP, backgroundParallaxY, targetY)
+        val pad = BACKGROUND_PADDING
+        val drawScale = max((width + pad * 2) / BG_TEXTURE_WIDTH.toFloat(), (height + pad * 2) / BG_TEXTURE_HEIGHT.toFloat())
+        val drawWidth = (BG_TEXTURE_WIDTH * drawScale).toInt()
+        val drawHeight = (BG_TEXTURE_HEIGHT * drawScale).toInt()
+        val x = (width - drawWidth) / 2 - backgroundParallaxX.toInt()
+        val y = (height - drawHeight) / 2 - backgroundParallaxY.toInt()
+        RenderSystem.enableBlend()
+        RenderSystem.defaultBlendFunc()
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, BACKGROUND_ALPHA)
+        guiGraphics.blit(BACKGROUND_TEXTURE, x, y, drawWidth, drawHeight, 0.0f, 0.0f, BG_TEXTURE_WIDTH, BG_TEXTURE_HEIGHT, BG_TEXTURE_WIDTH, BG_TEXTURE_HEIGHT)
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f)
+    }
+
+    private fun renderLeftColumn(guiGraphics: GuiGraphics, rect: Rect) {
+        renderNineSlice(guiGraphics, GREY_CONTAINER_TEXTURE, rect, CONTAINER_TEXTURE_WIDTH, CONTAINER_TEXTURE_HEIGHT, CONTAINER_SOURCE_CORNER, CONTAINER_DEST_CORNER, 0.96f)
+        val preview = previewRole()
+        val title = preview?.displayName ?: noSelectionLabel()
+        val description = preview?.description ?: noSelectionDescription()
+        drawCenteredCkdm(guiGraphics, fitText(title, rect.width - PAD * 2, CKDM_BOLD), rect.x + PAD, rect.y + 22, rect.width - PAD * 2, WHITE, CKDM_BOLD)
+        drawWrapped(guiGraphics, description, rect.x + PAD + 2, rect.y + 56, rect.width - PAD * 2 - 4, WHITE_MUTED, maxLines = ((rect.height - 72) / 12).coerceAtLeast(1))
+    }
+
+    private fun renderRightColumn(guiGraphics: GuiGraphics, rect: Rect, grid: Rect, slots: List<RoleSlot>, mouseX: Int, mouseY: Int) {
+        renderNineSlice(guiGraphics, YELLOW_CONTAINER_TEXTURE, rect, CONTAINER_TEXTURE_WIDTH, CONTAINER_TEXTURE_HEIGHT, CONTAINER_SOURCE_CORNER, CONTAINER_DEST_CORNER, 0.96f)
+        drawCenteredCkdm(guiGraphics, rightHeader(), rect.x + PAD, rect.y + 18, rect.width - PAD * 2, WHITE, CKDM_BOLD)
+        guiGraphics.enableScissor(grid.x, grid.y, grid.right, grid.bottom)
+        slots.forEachIndexed { index, slot ->
+            withEntrance(guiGraphics, EntranceStyle(170 + index * 24, offsetY = 8, scaleFrom = 0.96f), slot.rect.x + slot.rect.width / 2, slot.rect.y + slot.rect.height / 2) {
+                renderRoleSlot(guiGraphics, slot, mouseX, mouseY)
+            }
+        }
+        guiGraphics.disableScissor()
+    }
+
+    private fun renderRoleSlot(guiGraphics: GuiGraphics, slot: RoleSlot, mouseX: Int, mouseY: Int) {
+        val selected = selectedRoleId() == slot.role?.id || (selectedRoleId() == null && slot.role == null)
+        val hovered = slot.rect.contains(mouseX, mouseY)
+        val texture = when {
+            selected -> GOLD_CONTAINER_TEXTURE
+            hovered -> YELLOW_CONTAINER_TEXTURE
+            else -> GREY_CONTAINER_TEXTURE
+        }
+        renderNineSlice(guiGraphics, texture, slot.rect, CONTAINER_TEXTURE_WIDTH, CONTAINER_TEXTURE_HEIGHT, CONTAINER_SOURCE_CORNER, TILE_DEST_CORNER, if (hovered || selected) 1.0f else 0.86f)
+        val role = slot.role
+        if (role == null) {
+            drawCenteredCkdm(guiGraphics, fitText(noSelectionLabel(), slot.rect.width - 10, CKDM_SMALL), slot.rect.x + 5, slot.rect.y + slot.rect.height / 2 - 4, slot.rect.width - 10, if (selected || hovered) WHITE else WHITE_MUTED, CKDM_SMALL)
+            return
+        }
+        renderRoleIcon(guiGraphics, role.icon, Rect(slot.rect.x + (slot.rect.width - ROLE_ICON_SIZE) / 2, slot.rect.y + 9, ROLE_ICON_SIZE, ROLE_ICON_SIZE))
+        drawCenteredCkdm(guiGraphics, fitText(role.displayName, slot.rect.width - 10, CKDM_SMALL), slot.rect.x + 5, slot.rect.bottom - 18, slot.rect.width - 10, WHITE, CKDM_SMALL)
+    }
+
+    private fun renderPaperDoll(guiGraphics: GuiGraphics, rect: Rect, mouseX: Int, mouseY: Int) {
+        val player = Minecraft.getInstance().player ?: return
+        val dollHeight = (rect.height - 16).coerceAtLeast(120)
+        val scale = (dollHeight / 2.25f).toInt().coerceIn(42, 116)
+        InventoryScreen.renderEntityInInventoryFollowsMouse(
+            guiGraphics,
+            rect.x + 4,
+            rect.y + 6,
+            rect.right - 4,
+            rect.bottom - 8,
+            scale,
+            0.04f,
+            (rect.x + rect.right) / 2.0f,
+            (rect.y + rect.bottom) / 2.0f,
+            player,
+        )
+    }
+
+    private fun renderRoleIcon(guiGraphics: GuiGraphics, rawIcon: String, rect: Rect) {
+        val stack = itemStack(rawIcon)
+        if (!stack.isEmpty) {
+            renderScaledItem(guiGraphics, stack, rect)
+            return
+        }
+        val texture = iconTexture(rawIcon) ?: return
+        RenderSystem.enableBlend()
+        RenderSystem.defaultBlendFunc()
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, renderAlpha)
+        guiGraphics.blit(texture, rect.x, rect.y, rect.width, rect.height, 0.0f, 0.0f, ICON_TEXTURE_SIZE, ICON_TEXTURE_SIZE, ICON_TEXTURE_SIZE, ICON_TEXTURE_SIZE)
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f)
+    }
+
+    private fun renderScaledItem(guiGraphics: GuiGraphics, stack: ItemStack, rect: Rect) {
+        val scale = rect.width / VANILLA_ITEM_SIZE.toFloat()
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, renderAlpha)
+        val pose = guiGraphics.pose()
+        pose.pushPose()
+        pose.translate(rect.x + rect.width / 2.0f, rect.y + rect.height / 2.0f, 0.0f)
+        pose.scale(scale, scale, 1.0f)
+        pose.translate(-VANILLA_ITEM_SIZE / 2.0f, -VANILLA_ITEM_SIZE / 2.0f, 0.0f)
+        guiGraphics.renderItem(stack, 0, 0)
+        pose.popPose()
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f)
+    }
+
+    private fun renderButton(guiGraphics: GuiGraphics, rect: Rect, label: String, texture: ResourceLocation, hoverTexture: ResourceLocation, mouseX: Int, mouseY: Int, active: Boolean) {
+        val hovered = active && rect.contains(mouseX, mouseY)
+        val buttonTexture = when {
+            !active -> GRAY_BUTTON_TEXTURE
+            hovered -> hoverTexture
+            else -> texture
+        }
+        val textureSize = if (hovered) BUTTON_HOVER_TEXTURE_SIZE else BUTTON_TEXTURE_SIZE
+        val sourceCorner = if (hovered) BUTTON_HOVER_SOURCE_CORNER else BUTTON_SOURCE_CORNER
+        renderNineSlice(guiGraphics, buttonTexture, rect, textureSize, textureSize, sourceCorner, BUTTON_DEST_CORNER, if (active) 1.0f else 0.52f)
+        drawCenteredCkdm(guiGraphics, label, rect.x, rect.y + (rect.height - font.lineHeight) / 2 + 1, rect.width, if (active) WHITE else DISABLED, CKDM_BOLD)
+    }
+
+    private fun renderNineSlice(guiGraphics: GuiGraphics, texture: ResourceLocation, rect: Rect, textureWidth: Int, textureHeight: Int, sourceCorner: Int, destinationCorner: Int, alpha: Float) {
+        RenderSystem.enableBlend()
+        RenderSystem.defaultBlendFunc()
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, alpha * renderAlpha)
+        val edgeX = textureWidth - sourceCorner
+        val edgeY = textureHeight - sourceCorner
+        val middleWidth = textureWidth - sourceCorner * 2
+        val middleHeight = textureHeight - sourceCorner * 2
+        val innerWidth = (rect.width - destinationCorner * 2).coerceAtLeast(0)
+        val innerHeight = (rect.height - destinationCorner * 2).coerceAtLeast(0)
+        blit(guiGraphics, texture, Rect(rect.x, rect.y, destinationCorner, destinationCorner), 0, 0, sourceCorner, sourceCorner, textureWidth, textureHeight)
+        blit(guiGraphics, texture, Rect(rect.x + destinationCorner, rect.y, innerWidth, destinationCorner), sourceCorner, 0, middleWidth, sourceCorner, textureWidth, textureHeight)
+        blit(guiGraphics, texture, Rect(rect.right - destinationCorner, rect.y, destinationCorner, destinationCorner), edgeX, 0, sourceCorner, sourceCorner, textureWidth, textureHeight)
+        blit(guiGraphics, texture, Rect(rect.x, rect.y + destinationCorner, destinationCorner, innerHeight), 0, sourceCorner, sourceCorner, middleHeight, textureWidth, textureHeight)
+        blit(guiGraphics, texture, Rect(rect.x + destinationCorner, rect.y + destinationCorner, innerWidth, innerHeight), sourceCorner, sourceCorner, middleWidth, middleHeight, textureWidth, textureHeight)
+        blit(guiGraphics, texture, Rect(rect.right - destinationCorner, rect.y + destinationCorner, destinationCorner, innerHeight), edgeX, sourceCorner, sourceCorner, middleHeight, textureWidth, textureHeight)
+        blit(guiGraphics, texture, Rect(rect.x, rect.bottom - destinationCorner, destinationCorner, destinationCorner), 0, edgeY, sourceCorner, sourceCorner, textureWidth, textureHeight)
+        blit(guiGraphics, texture, Rect(rect.x + destinationCorner, rect.bottom - destinationCorner, innerWidth, destinationCorner), sourceCorner, edgeY, middleWidth, sourceCorner, textureWidth, textureHeight)
+        blit(guiGraphics, texture, Rect(rect.right - destinationCorner, rect.bottom - destinationCorner, destinationCorner, destinationCorner), edgeX, edgeY, sourceCorner, sourceCorner, textureWidth, textureHeight)
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f)
+    }
+
+    private fun blit(guiGraphics: GuiGraphics, texture: ResourceLocation, rect: Rect, sourceX: Int, sourceY: Int, sourceWidth: Int, sourceHeight: Int, textureWidth: Int, textureHeight: Int) {
+        if (rect.width <= 0 || rect.height <= 0) return
+        guiGraphics.blit(texture, rect.x, rect.y, rect.width, rect.height, sourceX.toFloat(), sourceY.toFloat(), sourceWidth, sourceHeight, textureWidth, textureHeight)
+    }
+
+    private fun withEntrance(guiGraphics: GuiGraphics, style: EntranceStyle, anchorX: Int, anchorY: Int, render: () -> Unit) {
+        val eased = entranceProgress(style)
+        val previousAlpha = renderAlpha
+        renderAlpha *= eased
+        RenderSystem.enableBlend()
+        RenderSystem.defaultBlendFunc()
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, renderAlpha)
+        val pose = guiGraphics.pose()
+        pose.pushPose()
+        pose.translate(style.offsetX * (1.0f - eased), style.offsetY * (1.0f - eased), 0.0f)
+        if (style.scaleFrom != 1.0f) {
+            val scale = style.scaleFrom + (1.0f - style.scaleFrom) * eased
+            pose.translate(anchorX.toFloat(), anchorY.toFloat(), 0.0f)
+            pose.scale(scale, scale, 1.0f)
+            pose.translate(-anchorX.toFloat(), -anchorY.toFloat(), 0.0f)
+        }
+        render()
+        pose.popPose()
+        renderAlpha = previousAlpha
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, renderAlpha)
+    }
+
+    private fun entranceProgress(style: EntranceStyle): Float {
+        val elapsed = (Util.getMillis() - stepStartedAtMs - style.delayMs).toFloat()
+        val linear = (elapsed / style.durationMs.coerceAtLeast(1)).coerceIn(0.0f, 1.0f)
+        val inverse = 1.0f - linear
+        return 1.0f - inverse * inverse * inverse
+    }
+
+    private fun roleSlots(roles: List<RoleUiDefinitionPayload>, grid: Rect, scrollRows: Int): List<RoleSlot> {
+        val items = listOf<RoleUiDefinitionPayload?>(null) + roles
+        val visibleRows = visibleGridRows(grid)
+        val startIndex = scrollRows * GRID_COLUMNS
+        val endIndex = (startIndex + visibleRows * GRID_COLUMNS).coerceAtMost(items.size)
+        val cellWidth = (grid.width - GRID_GAP * (GRID_COLUMNS - 1)) / GRID_COLUMNS
+        return (startIndex until endIndex).map { index ->
+            val localIndex = index - startIndex
+            val col = localIndex % GRID_COLUMNS
+            val row = localIndex / GRID_COLUMNS
+            val x = grid.x + col * (cellWidth + GRID_GAP)
+            val y = grid.y + row * (TILE_HEIGHT + GRID_GAP)
+            RoleSlot(Rect(x, y, cellWidth, TILE_HEIGHT), items[index])
+        }
+    }
+
+    private fun maxGridScroll(roles: List<RoleUiDefinitionPayload>, grid: Rect): Int {
+        val rows = (roles.size + 1 + GRID_COLUMNS - 1) / GRID_COLUMNS
+        return (rows - visibleGridRows(grid)).coerceAtLeast(0)
+    }
+
+    private fun visibleGridRows(grid: Rect): Int = ((grid.height + GRID_GAP) / (TILE_HEIGHT + GRID_GAP)).coerceAtLeast(1)
+
+    private fun selectionLayout(): Layout {
+        val margin = 12
+        val gap = 10
+        val top = 48
+        val bottom = 46
+        val totalWidth = (width - margin * 2 - gap * 2).coerceAtLeast(300)
+        val side = (totalWidth * 0.31f).toInt().coerceAtLeast(116)
+        val center = (totalWidth - side * 2).coerceAtLeast(80)
+        val columnHeight = (height - top - bottom).coerceAtLeast(160)
+        val left = Rect(margin, top, side, columnHeight)
+        val centerRect = Rect(left.right + gap, top, center, columnHeight)
+        val right = Rect(centerRect.right + gap, top, width - margin - (centerRect.right + gap), columnHeight)
+        val grid = Rect(right.x + PAD, right.y + 48, right.width - PAD * 2, right.height - 62)
+        return Layout(left, centerRect, right, grid)
+    }
+
+    private fun welcomePanel(): Rect {
+        val panelWidth = (width * 0.58f).toInt().coerceIn(260, 520).coerceAtMost((width - 32).coerceAtLeast(240))
+        val panelHeight = 164.coerceAtMost((height - 92).coerceAtLeast(132))
+        return Rect((width - panelWidth) / 2, (height - panelHeight) / 2 - 16, panelWidth, panelHeight)
+    }
+
+    private fun welcomeContinueRect(): Rect = welcomePanel().let { panel -> Rect(panel.x + (panel.width - 150) / 2, panel.bottom + 12, 150, 26) }
+
+    private fun continueRect(): Rect = Rect((width - 168) / 2, height - 38, 168, 26)
+
+    private fun stepTitle(): String = if (step == Step.JOB) "CHOOSE YOUR JOB" else "CHOOSE YOUR CLASS"
+
+    private fun rightHeader(): String = if (step == Step.JOB) "CHOOSE YOUR JOB" else "CHOOSE YOUR CLASS"
+
+    private fun noSelectionLabel(): String = if (step == Step.JOB) "NO JOB SELECTED" else "NO CLASS SELECTED"
+
+    private fun noSelectionDescription(): String =
+        if (step == Step.JOB) "No job is selected yet." else "No class is selected yet."
+
+    private fun currentRoles(): List<RoleUiDefinitionPayload> = if (step == Step.JOB) payload.jobs else payload.classes
+
+    private fun selectedRoleId(): String? = if (step == Step.JOB) selectedJobId else selectedClassId
+
+    private fun setSelectedRole(roleId: String?) {
+        if (step == Step.JOB) selectedJobId = roleId else selectedClassId = roleId
+    }
+
+    private fun currentScroll(): Int = if (step == Step.JOB) jobScroll else classScroll
+
+    private fun previewRole(): RoleUiDefinitionPayload? {
+        val roles = currentRoles()
+        return hoveredRoleId?.let { id -> roles.firstOrNull { role -> role.id == id } }
+            ?: selectedRoleId()?.let { id -> roles.firstOrNull { role -> role.id == id } }
+    }
+
+    private fun selectedRole(): RoleUiDefinitionPayload? {
+        val selectedId = selectedRoleId() ?: return null
+        return currentRoles().firstOrNull { role -> role.id == selectedId }
+    }
+
+    private fun goTo(next: Step) {
+        skipPanelEntrance = step == Step.JOB && next == Step.CLASS
+        step = next
+        stepStartedAtMs = Util.getMillis()
+        hoveredRoleId = null
+        renderedSlots = emptyList()
+    }
+
+    private fun drawCenteredCkdm(guiGraphics: GuiGraphics, text: String, x: Int, y: Int, width: Int, color: Int, fontId: ResourceLocation) {
+        if (renderAlpha <= MIN_TEXT_RENDER_ALPHA) return
+        val component = ckdmText(text, fontId)
+        guiGraphics.drawString(font, component, x + (width - font.width(component)) / 2, y, colorWithRenderAlpha(color), false)
+    }
+
+    private fun drawWrapped(guiGraphics: GuiGraphics, text: String, x: Int, y: Int, width: Int, color: Int, maxLines: Int) {
+        if (renderAlpha <= MIN_TEXT_RENDER_ALPHA) return
+        font.split(Component.literal(text), width).take(maxLines).forEachIndexed { index, line ->
+            guiGraphics.drawString(font, line, x, y + index * WRAPPED_LINE_HEIGHT, colorWithRenderAlpha(color), false)
+        }
+    }
+
+    private fun ckdmText(text: String, fontId: ResourceLocation): Component =
+        Component.literal(text.uppercase(Locale.ROOT)).withStyle { style -> style.withFont(fontId) }
+
+    private fun fitText(text: String, maxWidth: Int, fontId: ResourceLocation): String {
+        if (font.width(ckdmText(text, fontId)) <= maxWidth) return text
+        var value = text
+        while (value.isNotEmpty() && font.width(ckdmText("$value...", fontId)) > maxWidth) value = value.dropLast(1)
+        return "$value..."
+    }
+
+    private fun colorWithRenderAlpha(color: Int): Int =
+        ((((color ushr 24) and 0xFF) * renderAlpha).toInt().coerceIn(0, 255) shl 24) or (color and 0x00FFFFFF)
+
+    private fun itemStack(raw: String): ItemStack {
+        val id = runCatching { ResourceLocation.parse(raw.trim()) }.getOrNull() ?: return ItemStack.EMPTY
+        val item = BuiltInRegistries.ITEM.getOptional(id).orElse(Items.AIR)
+        return if (item == Items.AIR) ItemStack.EMPTY else ItemStack(item)
+    }
+
+    private fun iconTexture(raw: String): ResourceLocation? {
+        val icon = raw.trim()
+        if (icon.isBlank()) return null
+        return runCatching {
+            when {
+                icon.contains(":") -> ResourceLocation.parse(icon)
+                icon.startsWith("textures/") -> ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, icon)
+                icon.endsWith(".png") -> ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/$icon")
+                else -> ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/$icon.png")
+            }
+        }.getOrNull()
+    }
+
+    private fun playClick() {
+        Minecraft.getInstance().soundManager.play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK.value(), 1.0f, 0.5f))
+    }
+
+    companion object {
+        private const val BLACK = 0xFF000000.toInt()
+        private const val WHITE = 0xFFFFFFFF.toInt()
+        private const val WHITE_MUTED = 0xFFD8D0B8.toInt()
+        private const val DISABLED = 0xFF817865.toInt()
+        private const val PAD = 14
+        private const val TITLE_Y = 14
+        private const val GRID_COLUMNS = 4
+        private const val GRID_GAP = 6
+        private const val TILE_HEIGHT = 66
+        private const val ROLE_ICON_SIZE = 28
+        private const val ICON_TEXTURE_SIZE = 16
+        private const val VANILLA_ITEM_SIZE = 16
+        private const val WRAPPED_LINE_HEIGHT = 12
+        private const val MIN_TEXT_RENDER_ALPHA = 0.004f
+        private const val CONTAINER_TEXTURE_WIDTH = 1646
+        private const val CONTAINER_TEXTURE_HEIGHT = 256
+        private const val CONTAINER_SOURCE_CORNER = 75
+        private const val CONTAINER_DEST_CORNER = 14
+        private const val TILE_DEST_CORNER = 9
+        private const val BUTTON_TEXTURE_SIZE = 8
+        private const val BUTTON_HOVER_TEXTURE_SIZE = 10
+        private const val BUTTON_SOURCE_CORNER = 2
+        private const val BUTTON_HOVER_SOURCE_CORNER = 3
+        private const val BUTTON_DEST_CORNER = 4
+        private const val BG_TEXTURE_WIDTH = 1919
+        private const val BG_TEXTURE_HEIGHT = 1080
+        private const val BACKGROUND_PADDING = 36
+        private const val BACKGROUND_PARALLAX = 18.0f
+        private const val BACKGROUND_ALPHA = 0.5f
+        private const val PARALLAX_LERP = 0.12f
+        private val GOLD_CONTAINER_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_container_gold.png")
+        private val GREY_CONTAINER_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_container_grey.png")
+        private val YELLOW_CONTAINER_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_container_yellow.png")
+        private val GREEN_BUTTON_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_btn_green.png")
+        private val GREEN_BUTTON_HOVER_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_btn_green_hover.png")
+        private val GRAY_BUTTON_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_btn_gray.png")
+        private val BACKGROUND_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/bg_onboarding.png")
+        private val CKDM_BOLD = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "ckdm_bold")
+        private val CKDM_SMALL = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "ckdm_bold_small")
+        private val CKDM_LARGE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "ckdm_bold_large")
+    }
+}

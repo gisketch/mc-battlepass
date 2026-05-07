@@ -6,8 +6,14 @@ data class RoleDefinition(
     var id: String = "",
     @SerializedName(value = "display_name", alternate = ["displayName"])
     var displayName: String = "",
-    var icon: String = "minecraft:paper",
+    var icon: String = "minecraft:grass_block",
+    var description: String = "",
     var perks: MutableList<RolePerkDefinition> = mutableListOf(),
+)
+
+data class RolesOnboardingDefinition(
+    @SerializedName(value = "welcome_content", alternate = ["welcomeContent"])
+    var welcomeContent: MutableList<String> = mutableListOf(),
 )
 
 data class RolePerkDefinition(

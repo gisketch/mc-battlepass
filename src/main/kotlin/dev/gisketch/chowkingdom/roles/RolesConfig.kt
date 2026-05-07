@@ -10,11 +10,13 @@ import kotlin.io.path.bufferedWriter
 import kotlin.io.path.createDirectories
 import kotlin.io.path.exists
 import kotlin.io.path.extension
+import kotlin.random.Random
 
 object RolesConfig {
     private val gson = GsonBuilder().setPrettyPrinting().create()
     private var jobsById: Map<String, RoleDefinition> = emptyMap()
     private var classesById: Map<String, RoleDefinition> = emptyMap()
+    private var onboardingDefinition = RolesOnboardingDefinition()
 
     private val root: Path
         get() = FMLPaths.CONFIGDIR.get().resolve(ChowKingdomMod.MOD_ID).resolve("roles")
@@ -22,9 +24,11 @@ object RolesConfig {
     fun load() {
         root.resolve("jobs").createDirectories()
         root.resolve("classes").createDirectories()
+        writeDefaultIfMissing(root.resolve("onboarding.json"), defaultOnboarding())
         writeDefaultIfMissing(root.resolve("jobs").resolve("farmer.json"), defaultFarmer())
         writeDefaultIfMissing(root.resolve("classes").resolve("rogue.json"), defaultRogue())
         writeDefaultIfMissing(root.resolve("classes").resolve("warrior.json"), defaultWarrior())
+        onboardingDefinition = readOnboarding(root.resolve("onboarding.json"))
         jobsById = loadDefinitions(root.resolve("jobs"))
         classesById = loadDefinitions(root.resolve("classes"))
     }
@@ -41,6 +45,11 @@ object RolesConfig {
 
     fun defaultClassId(): String = roleClass("rogue")?.id ?: classesById.keys.firstOrNull().orEmpty()
 
+    fun welcomeContent(): String {
+        val lines = onboardingDefinition.welcomeContent.map(String::trim).filter(String::isNotBlank)
+        return lines.getOrNull(Random.nextInt(lines.size.coerceAtLeast(1))) ?: DEFAULT_WELCOME_CONTENT
+    }
+
     private fun loadDefinitions(directory: Path): Map<String, RoleDefinition> = Files.list(directory).use { stream ->
         stream.filter { path -> path.extension.equals("json", ignoreCase = true) }
             .map { path -> readDefinition(path) }
@@ -56,7 +65,14 @@ object RolesConfig {
         RoleDefinition()
     }
 
-    private fun writeDefaultIfMissing(file: Path, definition: RoleDefinition) {
+    private fun readOnboarding(path: Path): RolesOnboardingDefinition = try {
+        path.bufferedReader().use { reader -> gson.fromJson(reader, RolesOnboardingDefinition::class.java) } ?: defaultOnboarding()
+    } catch (exception: Exception) {
+        ChowKingdomMod.LOGGER.warn("Failed to load role onboarding config {}", path, exception)
+        defaultOnboarding()
+    }
+
+    private fun writeDefaultIfMissing(file: Path, definition: Any) {
         if (file.exists()) return
         file.parent.createDirectories()
         Files.createTempFile(file.parent, file.fileName.toString(), ".tmp").also { temp ->
@@ -68,7 +84,8 @@ object RolesConfig {
     private fun defaultFarmer(): RoleDefinition = RoleDefinition(
         id = "farmer",
         displayName = "Farmer",
-        icon = "minecraft:wheat",
+        icon = "minecraft:grass_block",
+        description = "Tend crops, protect farmland, and coax better harvests from the kingdom soil.",
         perks = mutableListOf(
             RolePerkDefinition(type = "prevent_crop_trample"),
             RolePerkDefinition(type = "cobblemon_catch_rate", pokemonType = "grass", multiplier = 1.5),
@@ -80,7 +97,8 @@ object RolesConfig {
     private fun defaultRogue(): RoleDefinition = RoleDefinition(
         id = "rogue",
         displayName = "Rogue",
-        icon = "minecraft:iron_sword",
+        icon = "minecraft:grass_block",
+        description = "Move light, hit hard, and favor quick gear built for sharp openings.",
         perks = mutableListOf(
             RolePerkDefinition(
                 type = "starting_items",
@@ -105,7 +123,8 @@ object RolesConfig {
     private fun defaultWarrior(): RoleDefinition = RoleDefinition(
         id = "warrior",
         displayName = "Warrior",
-        icon = "minecraft:wooden_sword",
+        icon = "minecraft:grass_block",
+        description = "Stand in the front line with sturdy weapons, heavier armor, and simple force.",
         perks = mutableListOf(
             RolePerkDefinition(
                 type = "starting_items",
@@ -126,4 +145,14 @@ object RolesConfig {
             ),
         ),
     )
+
+    private fun defaultOnboarding(): RolesOnboardingDefinition = RolesOnboardingDefinition(
+        welcomeContent = mutableListOf(
+            DEFAULT_WELCOME_CONTENT,
+            "Pick your place in the kingdom before the road opens.",
+            "Every story starts with work to do and a way to fight.",
+        ),
+    )
+
+    private const val DEFAULT_WELCOME_CONTENT = "A new chapter begins in Chowkingdom. Choose how you work, then choose how you fight."
 }

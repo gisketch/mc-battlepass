@@ -16,6 +16,7 @@ Runtime config files are loaded from the run folder:
 
 - Jobs: `runs/client/config/gisketchs_chowkingdom_mod/roles/jobs/*.json`
 - Classes: `runs/client/config/gisketchs_chowkingdom_mod/roles/classes/*.json`
+- Onboarding copy: `runs/client/config/gisketchs_chowkingdom_mod/roles/onboarding.json`
 
 Source defaults live in Kotlin and only create runtime config files when missing:
 
@@ -26,6 +27,8 @@ Class item tags are data files:
 - [src/main/resources/data/gisketchs_chowkingdom_mod/tags/item/class](../src/main/resources/data/gisketchs_chowkingdom_mod/tags/item/class)
 
 Important: existing runtime JSON is not overwritten by source defaults. If a new field is added later, update the existing runtime JSON or delete that role JSON so it regenerates.
+
+Brand-new players are not auto-assigned default roles. If their player record has no active job and no active class, the onboarding screen opens on login and persists the choices they make.
 
 ## Commands
 
@@ -49,7 +52,8 @@ Create `runs/client/config/gisketchs_chowkingdom_mod/roles/jobs/<id>.json`.
 {
   "id": "farmer",
   "display_name": "Farmer",
-  "icon": "minecraft:wheat",
+  "icon": "minecraft:grass_block",
+  "description": "Tend crops, protect farmland, and coax better harvests from the kingdom soil.",
   "perks": [
     {
       "type": "prevent_crop_trample"
@@ -77,7 +81,8 @@ Create `runs/client/config/gisketchs_chowkingdom_mod/roles/classes/<id>.json`.
 {
   "id": "rogue",
   "display_name": "Rogue",
-  "icon": "minecraft:diamond_axe",
+  "icon": "minecraft:grass_block",
+  "description": "Move light, hit hard, and favor quick gear built for sharp openings.",
   "perks": [
     {
       "type": "starting_items",
@@ -104,6 +109,26 @@ Current class perk types:
 
 - `starting_items`: grants inventory items once per class.
 - `equipment_affinity`: controls allowed weapons/armor and wrong-equipment penalties.
+
+## Role UI Metadata
+
+- `description`: shown in onboarding when the role is hovered or selected.
+- `icon`: item id first, texture resource id second. Use item ids like `minecraft:grass_block` for quick testing. Texture ids can point at bundled assets, for example `gisketchs_chowkingdom_mod:textures/gui/icons/star.png`.
+
+## Onboarding JSON Shape
+
+Create or edit `runs/client/config/gisketchs_chowkingdom_mod/roles/onboarding.json`.
+
+```json
+{
+  "welcome_content": [
+    "A new chapter begins in Chowkingdom. Choose how you work, then choose how you fight.",
+    "Pick your place in the kingdom before the road opens."
+  ]
+}
+```
+
+One non-empty line is chosen when the onboarding screen is opened.
 
 ## Starting Items
 

@@ -8,8 +8,15 @@ For step-by-step creation and tuning, see [Jobs And Classes Creation Guide](ROLE
 
 - Job definitions: `config/gisketchs_chowkingdom_mod/roles/jobs/*.json`
 - Class definitions: `config/gisketchs_chowkingdom_mod/roles/classes/*.json`
+- Onboarding copy: `config/gisketchs_chowkingdom_mod/roles/onboarding.json`
 - Player state: `<world>/data/gisketchs_chowkingdom_mod/roles/players.json`
 - Class item tags: `src/main/resources/data/gisketchs_chowkingdom_mod/tags/item/class/`
+
+## First Login Onboarding
+
+Players with no active job and no active class keep an empty role record and get a fullscreen onboarding stepper on login. They pick one job, then one class. The server validates the selected ids, persists them, and grants configured class starter items.
+
+The source defaults create editable job/class JSON, but they no longer auto-assign those roles to brand-new players.
 
 ## Commands
 
@@ -30,6 +37,8 @@ Commands require permission level 2.
 - `farmer`: prevents farmland trampling. Also defines data-only hooks for Grass catch rate, Grass mount speed, and Quality Food harvest bonus.
 - `rogue`: starts with a book, diamond axe, and leather boots. Only Rogue-tagged equipment avoids class penalties.
 - `warrior`: starts with a book, wooden sword, and iron boots. Only Warrior-tagged equipment avoids class penalties.
+
+Role definitions include `icon` and `description` for onboarding UI. `icon` accepts an item id first, then falls back to a texture resource id. Current defaults use `minecraft:grass_block` as a placeholder test icon.
 
 ## Class Equipment
 

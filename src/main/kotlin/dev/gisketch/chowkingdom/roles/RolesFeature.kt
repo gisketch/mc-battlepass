@@ -48,6 +48,7 @@ object RolesFeature {
     fun register(modBus: IEventBus) {
         RolesConfig.load()
         RoleStore.load()
+        RolesNetwork.register(modBus)
         NeoForge.EVENT_BUS.addListener(::onRegisterCommands)
         NeoForge.EVENT_BUS.addListener(::onServerStarted)
         NeoForge.EVENT_BUS.addListener(::onPlayerLoggedIn)
@@ -61,16 +62,34 @@ object RolesFeature {
     private fun onServerStarted(event: ServerStartedEvent) {
         RolesConfig.load()
         RoleStore.load()
-        event.server.playerList.players.forEach { player -> ensureAndGrant(player) }
+        event.server.playerList.players.forEach { player -> syncAndMaybeOpenOnboarding(player) }
     }
 
     private fun onPlayerLoggedIn(event: PlayerEvent.PlayerLoggedInEvent) {
-        ensureAndGrant(event.entity as? ServerPlayer ?: return)
+        syncAndMaybeOpenOnboarding(event.entity as? ServerPlayer ?: return)
     }
 
-    private fun ensureAndGrant(player: ServerPlayer) {
-        RoleStore.ensureDefaults(player)
+    private fun syncAndMaybeOpenOnboarding(player: ServerPlayer) {
+        RoleStore.ensureRecord(player)
         grantStartingItems(player)
+        RolesNetwork.syncTo(player, openOnboarding = RoleStore.needsOnboarding(player))
+    }
+
+    fun applyOnboardingChoice(player: ServerPlayer, jobId: String, classId: String): Boolean {
+        if (!RoleStore.needsOnboarding(player)) {
+            RolesNetwork.syncTo(player, openOnboarding = false)
+            return false
+        }
+        val job = RolesConfig.job(jobId)
+        val roleClass = RolesConfig.roleClass(classId)
+        if (job == null || roleClass == null) {
+            RolesNetwork.syncTo(player, openOnboarding = true)
+            return false
+        }
+        RoleStore.setPrimaryRoles(player, job.id, roleClass.id)
+        grantStartingItems(player, roleClass.id)
+        RolesNetwork.syncTo(player, openOnboarding = false)
+        return true
     }
 
     private fun onRegisterCommands(event: RegisterCommandsEvent) {
@@ -143,7 +162,7 @@ object RolesFeature {
     private fun reloadRoles(context: CommandContext<CommandSourceStack>): Int {
         RolesConfig.load()
         RoleStore.load()
-        context.source.server.playerList.players.forEach { player -> ensureAndGrant(player) }
+        context.source.server.playerList.players.forEach { player -> syncAndMaybeOpenOnboarding(player) }
         context.source.sendSuccess({ Component.literal("Reloaded ${RolesConfig.jobs().size} jobs and ${RolesConfig.classes().size} classes.") }, true)
         return 1
     }
@@ -172,6 +191,7 @@ object RolesFeature {
             return 0
         }
         RoleStore.setJob(player, role.id)
+        RolesNetwork.syncTo(player, openOnboarding = false)
         context.source.sendSuccess({ Component.literal("Set ${player.gameProfile.name} job to ${role.displayName.ifBlank { role.id }}.") }, true)
         return 1
     }
@@ -185,6 +205,7 @@ object RolesFeature {
         }
         RoleStore.setClass(player, role.id)
         grantStartingItems(player, role.id)
+        RolesNetwork.syncTo(player, openOnboarding = false)
         context.source.sendSuccess({ Component.literal("Set ${player.gameProfile.name} class to ${role.displayName.ifBlank { role.id }}.") }, true)
         return 1
     }
@@ -197,6 +218,7 @@ object RolesFeature {
             return 0
         }
         val changed = RoleStore.addJob(player, role.id)
+        RolesNetwork.syncTo(player, openOnboarding = false)
         val message = if (changed) "Added" else "Already has"
         context.source.sendSuccess({ Component.literal("$message ${role.displayName.ifBlank { role.id }} job for ${player.gameProfile.name}.") }, true)
         return if (changed) 1 else 0
@@ -211,6 +233,7 @@ object RolesFeature {
         }
         val changed = RoleStore.addClass(player, role.id)
         grantStartingItems(player, role.id)
+        RolesNetwork.syncTo(player, openOnboarding = false)
         val message = if (changed) "Added" else "Already has"
         context.source.sendSuccess({ Component.literal("$message ${role.displayName.ifBlank { role.id }} class for ${player.gameProfile.name}.") }, true)
         return if (changed) 1 else 0
@@ -224,9 +247,10 @@ object RolesFeature {
             return 0
         }
         if (!RoleStore.removeJob(player, jobId)) {
-            context.source.sendFailure(Component.literal("Cannot remove $jobId from ${player.gameProfile.name}; player must keep at least one active job."))
+            context.source.sendFailure(Component.literal("${player.gameProfile.name} does not have job $jobId active."))
             return 0
         }
+        RolesNetwork.syncTo(player, openOnboarding = false)
         context.source.sendSuccess({ Component.literal("Removed $jobId job from ${player.gameProfile.name}.") }, true)
         return 1
     }
@@ -239,9 +263,10 @@ object RolesFeature {
             return 0
         }
         if (!RoleStore.removeClass(player, classId)) {
-            context.source.sendFailure(Component.literal("Cannot remove $classId from ${player.gameProfile.name}; player must keep at least one active class."))
+            context.source.sendFailure(Component.literal("${player.gameProfile.name} does not have class $classId active."))
             return 0
         }
+        RolesNetwork.syncTo(player, openOnboarding = false)
         context.source.sendSuccess({ Component.literal("Removed $classId class from ${player.gameProfile.name}.") }, true)
         return 1
     }
