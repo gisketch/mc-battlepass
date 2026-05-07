@@ -17,6 +17,7 @@ import dev.gisketch.chowkingdom.client.ChowDeathScreenClient
 import dev.gisketch.chowkingdom.client.ChowKingdomHud
 import dev.gisketch.chowkingdom.client.InventoryMenuClient
 import dev.gisketch.chowkingdom.client.PlayerListHudClient
+import dev.gisketch.chowkingdom.compat.UnifiedStaminaFeature
 import dev.gisketch.chowkingdom.discord.DiscordFeature
 import dev.gisketch.chowkingdom.discord.DiscordScreenshotClient
 import dev.gisketch.chowkingdom.revive.ReviveClient
@@ -59,6 +60,7 @@ class ChowKingdomMod(modBus: IEventBus, container: ModContainer) {
         ShopsFeature.register(modBus)
         ProfilesFeature.register(modBus)
         RolesFeature.register(modBus)
+        UnifiedStaminaFeature.register()
         ReviveFeature.register(modBus)
         TradingFeature.register(modBus)
         DiscordFeature.register()
