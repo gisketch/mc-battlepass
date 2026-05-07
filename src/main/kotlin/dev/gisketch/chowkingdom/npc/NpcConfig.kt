@@ -135,7 +135,14 @@ object NpcConfig {
                 neutral = mutableListOf("Thanks for {item}.", "I'll keep {item} safe."),
             ),
         ),
-        friendshipMessages = NpcFriendshipMessagesDefinition().normalized(),
+        friendshipMessages = NpcFriendshipMessagesDefinition(
+            interact = FinnFriendshipMessages.interact,
+            gift = FinnFriendshipMessages.gift,
+            hurt = FinnFriendshipMessages.hurt,
+            wake = FinnFriendshipMessages.wake,
+            greeting = FinnFriendshipMessages.greeting,
+            firstDailyChat = FinnFriendshipMessages.firstDailyChat,
+        ).normalized(),
         shopMessages = NpcShopMessagesDefinition.default().normalized(),
         hurtMessages = mutableListOf(
             "Hey, watch it, {player}!",
