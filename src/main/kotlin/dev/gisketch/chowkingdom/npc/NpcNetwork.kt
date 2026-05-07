@@ -16,6 +16,7 @@ private const val MAX_NPC_ID_LENGTH = 64
 private const val MAX_NPC_NAME_LENGTH = 96
 private const val MAX_NPC_TITLE_LENGTH = 96
 private const val MAX_NPC_DIALOG_LENGTH = 512
+private const val MAX_NPC_BALLOON_LENGTH = 256
 private const val MAX_NPC_ACTION_LENGTH = 16
 private const val MAX_NPC_CLOSE_LABEL_LENGTH = 24
 private const val MAX_NPC_VOICE_PITCH_LENGTH = 16
@@ -29,6 +30,10 @@ object NpcNetwork {
         PacketDistributor.sendToPlayer(player, payload)
     }
 
+    fun showBalloon(player: ServerPlayer, npcEntityId: Int, message: String, durationTicks: Int = 90) {
+        PacketDistributor.sendToPlayer(player, NpcBalloonPayload(npcEntityId, message, durationTicks))
+    }
+
     fun sendAction(npcId: String, action: String) {
         runCatching { PacketDistributor.sendToServer(NpcDialogActionPayload(npcId, action)) }
     }
@@ -36,6 +41,7 @@ object NpcNetwork {
     private fun registerPayloads(event: RegisterPayloadHandlersEvent) {
         val registrar = event.registrar("1")
         registrar.playToClient(NpcDialogPayload.TYPE, NpcDialogPayload.STREAM_CODEC, ::handleDialog)
+        registrar.playToClient(NpcBalloonPayload.TYPE, NpcBalloonPayload.STREAM_CODEC, ::handleBalloon)
         registrar.playToServer(NpcDialogActionPayload.TYPE, NpcDialogActionPayload.STREAM_CODEC, ::handleAction)
     }
 
@@ -51,6 +57,15 @@ object NpcNetwork {
     private fun handleAction(payload: NpcDialogActionPayload, context: IPayloadContext) {
         val player = context.player() as? ServerPlayer ?: return
         NpcFeature.handleDialogAction(player, payload.npcId, payload.action)
+    }
+
+    private fun handleBalloon(payload: NpcBalloonPayload, context: IPayloadContext) {
+        if (FMLEnvironment.dist.isClient) {
+            context.enqueueWork {
+                val client = Class.forName("dev.gisketch.chowkingdom.npc.NpcClient")
+                client.getMethod("showBalloon", NpcBalloonPayload::class.java).invoke(null, payload)
+            }
+        }
     }
 }
 
@@ -104,6 +119,31 @@ data class NpcDialogPayload(
                 buffer.writeFloat(value.animalesePitchMultiplier.coerceIn(0.5f, 2.0f))
                 buffer.writeFloat(value.animaleseVolume.coerceIn(0.0f, 1.0f))
                 buffer.writeFloat(value.animaleseRadius.coerceIn(1.0f, 48.0f))
+            }
+        }
+    }
+}
+
+data class NpcBalloonPayload(
+    val npcEntityId: Int,
+    val message: String,
+    val durationTicks: Int,
+) : CustomPacketPayload {
+    override fun type(): CustomPacketPayload.Type<NpcBalloonPayload> = TYPE
+
+    companion object {
+        val TYPE: CustomPacketPayload.Type<NpcBalloonPayload> = CustomPacketPayload.Type(ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "npc/balloon"))
+        val STREAM_CODEC: StreamCodec<RegistryFriendlyByteBuf, NpcBalloonPayload> = object : StreamCodec<RegistryFriendlyByteBuf, NpcBalloonPayload> {
+            override fun decode(buffer: RegistryFriendlyByteBuf): NpcBalloonPayload = NpcBalloonPayload(
+                buffer.readVarInt(),
+                buffer.readUtf(MAX_NPC_BALLOON_LENGTH),
+                buffer.readVarInt(),
+            )
+
+            override fun encode(buffer: RegistryFriendlyByteBuf, value: NpcBalloonPayload) {
+                buffer.writeVarInt(value.npcEntityId)
+                buffer.writeUtf(value.message.take(MAX_NPC_BALLOON_LENGTH), MAX_NPC_BALLOON_LENGTH)
+                buffer.writeVarInt(value.durationTicks.coerceIn(20, 240))
             }
         }
     }

@@ -58,6 +58,14 @@ class NpcDefinition(
     )
 }
 
+class NpcSettingsDefinition(
+    var greetings: NpcGreetingsDefinition = NpcGreetingsDefinition(),
+) {
+    fun normalized(): NpcSettingsDefinition = apply {
+        greetings = greetings.normalized()
+    }
+}
+
 class NpcVoiceDefinition(
     @SerializedName("animalese_pitch") var animalesePitch: String = "med",
     @SerializedName("pitch") var pitch: Float = 1.0f,
@@ -73,6 +81,18 @@ class NpcVoiceDefinition(
 
     companion object {
         private val ANIMALESE_PITCHES = setOf("high", "med", "low", "lowest")
+    }
+}
+
+class NpcGreetingsDefinition(
+    var radius: Double = 5.0,
+    @SerializedName("cooldown_seconds") var cooldownSeconds: Int = 60,
+    @SerializedName("balloon_duration_seconds") var balloonDurationSeconds: Int = 5,
+) {
+    fun normalized(): NpcGreetingsDefinition = apply {
+        radius = radius.coerceIn(1.0, 24.0)
+        cooldownSeconds = cooldownSeconds.coerceIn(10, 600)
+        balloonDurationSeconds = balloonDurationSeconds.coerceIn(2, 20)
     }
 }
 
@@ -110,12 +130,16 @@ class NpcFriendshipMessagesDefinition(
     var gift: NpcFriendshipMessageSet = NpcFriendshipMessageSet(),
     var hurt: NpcFriendshipMessageSet = NpcFriendshipMessageSet(),
     var wake: NpcFriendshipMessageSet = NpcFriendshipMessageSet(),
+    var greeting: NpcFriendshipMessageSet = NpcFriendshipMessageSet(),
+    @SerializedName("first_daily_chat") var firstDailyChat: NpcFriendshipMessageSet = NpcFriendshipMessageSet(),
 ) {
     fun normalized(defaults: NpcFriendshipMessagesDefinition = default()): NpcFriendshipMessagesDefinition = apply {
         interact = interact.normalized(defaults.interact)
         gift = gift.normalized(defaults.gift)
         hurt = hurt.normalized(defaults.hurt)
         wake = wake.normalized(defaults.wake)
+        greeting = greeting.normalized(defaults.greeting)
+        firstDailyChat = firstDailyChat.normalized(defaults.firstDailyChat)
     }
 
     companion object {
@@ -124,6 +148,8 @@ class NpcFriendshipMessagesDefinition(
             gift = FinnFriendshipMessages.gift,
             hurt = FinnFriendshipMessages.hurt,
             wake = FinnFriendshipMessages.wake,
+            greeting = FinnFriendshipMessages.greeting,
+            firstDailyChat = FinnFriendshipMessages.firstDailyChat,
         )
     }
 }
@@ -194,7 +220,11 @@ class NpcFriendshipMessageSet(
         NpcFriendshipCategory.BestFriends -> bestFriends
     }
 
-    private fun clean(values: List<String>, fallback: List<String>): MutableList<String> = values.map(String::trim).filter(String::isNotBlank).ifEmpty { fallback }.toMutableList()
+    private fun clean(values: List<String>, fallback: List<String>): MutableList<String> {
+        val fallbackValues = fallback.map(String::trim).filter(String::isNotBlank)
+        val ownValues = values.map(String::trim).filter(String::isNotBlank)
+        return if (ownValues.isEmpty()) fallbackValues.toMutableList() else (fallbackValues + ownValues + ownValues).toMutableList()
+    }
 }
 
 private object FinnFriendshipMessages {
@@ -233,6 +263,24 @@ private object FinnFriendshipMessages {
         okay = mutableListOf("For you, I can wake up.", "Hey, {player}. Everything alright?", "Sleep can wait if this matters.", "You look like you have a plan.", "I am up. What is happening?"),
         goodFriends = mutableListOf("If you woke me, it must matter.", "I trust you. What do we need?", "Good friends get emergency wake-up rights.", "I am sleepy, but I am here.", "Lead the way once my boots exist again."),
         bestFriends = mutableListOf("Best friend wake-up protocol accepted.", "For you, always. What is wrong?", "I was dreaming of adventure anyway.", "You get unlimited emergency knocks.", "Sleep later. Friendship now."),
+    )
+    val greeting = NpcFriendshipMessageSet(
+        hatred = mutableListOf("Do not start trouble, {player}.", "I see you, {player}. Keep moving."),
+        enemy = mutableListOf("Careful, {player}.", "You are close enough."),
+        dislike = mutableListOf("Hi, {player}.", "I noticed you."),
+        neutral = mutableListOf("Hi, {player}!", "Hey, {player}."),
+        okay = mutableListOf("Good to see you, {player}.", "Hey, friend."),
+        goodFriends = mutableListOf("There you are, {player}!", "Adventure partner spotted."),
+        bestFriends = mutableListOf("Best friend!", "This day just got better, {player}!"),
+    )
+    val firstDailyChat = NpcFriendshipMessageSet(
+        hatred = mutableListOf("First talk of the day, huh? I am listening, but not smiling.", "You came back. Say what you need."),
+        enemy = mutableListOf("First words today. Make them count, {player}.", "I will hear you out today."),
+        dislike = mutableListOf("Morning, {player}. Let us keep today better than yesterday.", "Fresh day. Fresh start, maybe."),
+        neutral = mutableListOf("Hey, {player}. Good to see you today.", "First adventure check-in of the day."),
+        okay = mutableListOf("Good morning, {player}. I am glad you stopped by.", "Nice way to start the day."),
+        goodFriends = mutableListOf("There is my favorite daily check-in.", "I was hoping I would see you today, {player}."),
+        bestFriends = mutableListOf("Best friend first thing today. Perfect.", "The day is already mathematical with you here."),
     )
 }
 

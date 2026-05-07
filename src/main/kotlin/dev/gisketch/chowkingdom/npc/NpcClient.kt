@@ -2,8 +2,11 @@ package dev.gisketch.chowkingdom.npc
 
 import com.mojang.blaze3d.systems.RenderSystem
 import com.mojang.blaze3d.vertex.PoseStack
+import com.mojang.math.Axis
 import dev.gisketch.chowkingdom.ChowKingdomMod
+import dev.gisketch.chowkingdom.mixin.GuiGraphicsAccessor
 import net.minecraft.client.Minecraft
+import net.minecraft.client.gui.Font
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.model.HumanoidModel
@@ -16,10 +19,12 @@ import net.minecraft.client.renderer.entity.MobRenderer
 import net.minecraft.client.renderer.entity.layers.ItemInHandLayer
 import net.minecraft.client.resources.sounds.SimpleSoundInstance
 import net.minecraft.network.chat.Component
+import net.minecraft.network.chat.FormattedText
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.sounds.SoundEvent
 import net.minecraft.sounds.SoundSource
 import net.minecraft.util.RandomSource
+import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.item.ItemStack
 import net.neoforged.bus.api.IEventBus
 import net.neoforged.neoforge.client.event.EntityRenderersEvent
@@ -27,13 +32,69 @@ import net.neoforged.neoforge.client.event.RenderGuiLayerEvent
 import net.neoforged.neoforge.client.gui.VanillaGuiLayers
 import net.neoforged.neoforge.common.NeoForge
 import java.util.Locale
+import kotlin.math.abs
+import kotlin.math.asin
+import kotlin.math.atan2
 import kotlin.math.PI
 import kotlin.math.sin
+import org.joml.Quaternionf
+import org.joml.Vector3f
 
 object NpcClient {
+    private val activeBalloons = mutableMapOf<Int, NpcBalloonLine>()
+
     @JvmStatic
     fun openDialog(payload: NpcDialogPayload) {
         Minecraft.getInstance().setScreen(NpcDialogScreen(payload))
+    }
+
+    @JvmStatic
+    fun showBalloon(payload: NpcBalloonPayload) {
+        activeBalloons[payload.npcEntityId] = NpcBalloonLine(payload.message, System.currentTimeMillis() + payload.durationTicks.coerceIn(20, 240) * 50L)
+    }
+
+    @JvmStatic
+    fun renderBalloon(entity: LivingEntity, poseStack: PoseStack, bufferSource: MultiBufferSource, font: Font, packedLight: Int) {
+        if (entity !is ChowNpcEntity || entity.isInvisible || !entity.isAlive) return
+        val now = System.currentTimeMillis()
+        val balloon = activeBalloons[entity.id] ?: return
+        if (balloon.expiresAtMs <= now) {
+            activeBalloons.remove(entity.id)
+            return
+        }
+
+        val minecraft = Minecraft.getInstance()
+        val guiGraphics = GuiGraphicsAccessor.`chowkingdom$create`(minecraft, poseStack, minecraft.renderBuffers().bufferSource())
+        val rotation = Axis.YP.rotationDegrees(toEulerXyzDegrees(minecraft.entityRenderDispatcher.cameraOrientation()).y + 180.0f)
+        val lines = font.split(FormattedText.of(balloon.message), BALLOON_MAX_TEXT_WIDTH)
+        if (lines.isEmpty()) return
+        val greatestTextWidth = lines.maxOf { font.width(it) }
+        val balloonWidth = (greatestTextWidth + BALLOON_PADDING * 2).coerceAtLeast(BALLOON_MIN_WIDTH)
+        val balloonHeight = lines.size * BALLOON_LINE_HEIGHT + BALLOON_PADDING * 2
+        val balloonX = -balloonWidth / 2
+        val balloonY = -balloonHeight
+
+        poseStack.pushPose()
+        poseStack.translate(0.0, entity.bbHeight + BALLOON_ENTITY_Y_OFFSET, 0.0)
+        poseStack.mulPose(rotation)
+        poseStack.scale(-BALLOON_SCALE, -BALLOON_SCALE, BALLOON_SCALE)
+
+        RenderSystem.enableBlend()
+        RenderSystem.enableDepthTest()
+        RenderSystem.enablePolygonOffset()
+        RenderSystem.polygonOffset(3.0f, 3.0f)
+        renderBalloonNineSlice(guiGraphics, balloonX, balloonY, balloonWidth, balloonHeight)
+        RenderSystem.polygonOffset(0.0f, 0.0f)
+        RenderSystem.disablePolygonOffset()
+        RenderSystem.disableBlend()
+
+        var textY = balloonY + BALLOON_PADDING
+        lines.forEach { line ->
+            guiGraphics.drawString(font, line, -font.width(line) / 2, textY, BALLOON_TEXT_COLOR, false)
+            textY += BALLOON_LINE_HEIGHT
+        }
+        guiGraphics.flush()
+        poseStack.popPose()
     }
 
     fun register(modBus: IEventBus) {
@@ -51,6 +112,54 @@ object NpcClient {
     private fun hideHotbarDuringDialog(event: RenderGuiLayerEvent.Pre) {
         if (event.name == VanillaGuiLayers.HOTBAR && Minecraft.getInstance().screen is NpcDialogScreen) event.isCanceled = true
     }
+
+    private data class NpcBalloonLine(val message: String, val expiresAtMs: Long)
+
+    private fun renderBalloonNineSlice(guiGraphics: GuiGraphics, x: Int, y: Int, width: Int, height: Int) {
+        val middleWidth = (width - BALLOON_CORNER * 2).coerceAtLeast(0)
+        val middleHeight = (height - BALLOON_CORNER * 2).coerceAtLeast(0)
+        guiGraphics.blit(BALLOON_TEXTURE, x, y, BALLOON_CORNER, BALLOON_CORNER, 0.0f, 0.0f, BALLOON_CORNER, BALLOON_CORNER, BALLOON_TEXTURE_SIZE, BALLOON_TEXTURE_SIZE)
+        guiGraphics.blit(BALLOON_TEXTURE, x + BALLOON_CORNER, y, middleWidth, BALLOON_CORNER, BALLOON_CORNER.toFloat(), 0.0f, BALLOON_TEXTURE_SIZE - BALLOON_CORNER * 2, BALLOON_CORNER, BALLOON_TEXTURE_SIZE, BALLOON_TEXTURE_SIZE)
+        guiGraphics.blit(BALLOON_TEXTURE, x + width - BALLOON_CORNER, y, BALLOON_CORNER, BALLOON_CORNER, (BALLOON_TEXTURE_SIZE - BALLOON_CORNER).toFloat(), 0.0f, BALLOON_CORNER, BALLOON_CORNER, BALLOON_TEXTURE_SIZE, BALLOON_TEXTURE_SIZE)
+        guiGraphics.blit(BALLOON_TEXTURE, x, y + BALLOON_CORNER, BALLOON_CORNER, middleHeight, 0.0f, BALLOON_CORNER.toFloat(), BALLOON_CORNER, BALLOON_TEXTURE_SIZE - BALLOON_CORNER * 2, BALLOON_TEXTURE_SIZE, BALLOON_TEXTURE_SIZE)
+        guiGraphics.blit(BALLOON_TEXTURE, x + BALLOON_CORNER, y + BALLOON_CORNER, middleWidth, middleHeight, BALLOON_CORNER.toFloat(), BALLOON_CORNER.toFloat(), BALLOON_TEXTURE_SIZE - BALLOON_CORNER * 2, BALLOON_TEXTURE_SIZE - BALLOON_CORNER * 2, BALLOON_TEXTURE_SIZE, BALLOON_TEXTURE_SIZE)
+        guiGraphics.blit(BALLOON_TEXTURE, x + width - BALLOON_CORNER, y + BALLOON_CORNER, BALLOON_CORNER, middleHeight, (BALLOON_TEXTURE_SIZE - BALLOON_CORNER).toFloat(), BALLOON_CORNER.toFloat(), BALLOON_CORNER, BALLOON_TEXTURE_SIZE - BALLOON_CORNER * 2, BALLOON_TEXTURE_SIZE, BALLOON_TEXTURE_SIZE)
+        guiGraphics.blit(BALLOON_TEXTURE, x, y + height - BALLOON_CORNER, BALLOON_CORNER, BALLOON_CORNER, 0.0f, (BALLOON_TEXTURE_SIZE - BALLOON_CORNER).toFloat(), BALLOON_CORNER, BALLOON_CORNER, BALLOON_TEXTURE_SIZE, BALLOON_TEXTURE_SIZE)
+        guiGraphics.blit(BALLOON_TEXTURE, x + BALLOON_CORNER, y + height - BALLOON_CORNER, middleWidth, BALLOON_CORNER, BALLOON_CORNER.toFloat(), (BALLOON_TEXTURE_SIZE - BALLOON_CORNER).toFloat(), BALLOON_TEXTURE_SIZE - BALLOON_CORNER * 2, BALLOON_CORNER, BALLOON_TEXTURE_SIZE, BALLOON_TEXTURE_SIZE)
+        guiGraphics.blit(BALLOON_TEXTURE, x + width - BALLOON_CORNER, y + height - BALLOON_CORNER, BALLOON_CORNER, BALLOON_CORNER, (BALLOON_TEXTURE_SIZE - BALLOON_CORNER).toFloat(), (BALLOON_TEXTURE_SIZE - BALLOON_CORNER).toFloat(), BALLOON_CORNER, BALLOON_CORNER, BALLOON_TEXTURE_SIZE, BALLOON_TEXTURE_SIZE)
+    }
+
+    private fun toEulerXyz(quaternion: Quaternionf): Vector3f {
+        val w = quaternion.w() * quaternion.w()
+        val x = quaternion.x() * quaternion.x()
+        val y = quaternion.y() * quaternion.y()
+        val z = quaternion.z() * quaternion.z()
+        val sum = w + x + y + z
+        val pitchSin = 2.0f * quaternion.w() * quaternion.x() - 2.0f * quaternion.y() * quaternion.z()
+        val pitch = asin((pitchSin / sum).toDouble()).toFloat()
+        if (abs(pitchSin) > 0.999f * sum) return Vector3f(pitch, 2.0f * atan2(quaternion.y().toDouble(), quaternion.w().toDouble()).toFloat(), 0.0f)
+        return Vector3f(
+            pitch,
+            atan2((2.0f * quaternion.x() * quaternion.z() + 2.0f * quaternion.y() * quaternion.w()).toDouble(), (w - x - y + z).toDouble()).toFloat(),
+            atan2((2.0f * quaternion.x() * quaternion.y() + 2.0f * quaternion.w() * quaternion.z()).toDouble(), (w - x + y - z).toDouble()).toFloat(),
+        )
+    }
+
+    private fun toEulerXyzDegrees(quaternion: Quaternionf): Vector3f {
+        val radians = toEulerXyz(quaternion)
+        return Vector3f(Math.toDegrees(radians.x().toDouble()).toFloat(), Math.toDegrees(radians.y().toDouble()).toFloat(), Math.toDegrees(radians.z().toDouble()).toFloat())
+    }
+
+    private val BALLOON_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/chat_bubble.png")
+    private const val BALLOON_SCALE = 0.025f
+    private const val BALLOON_ENTITY_Y_OFFSET = 0.9
+    private const val BALLOON_MAX_TEXT_WIDTH = 118
+    private const val BALLOON_MIN_WIDTH = 45
+    private const val BALLOON_PADDING = 6
+    private const val BALLOON_CORNER = 4
+    private const val BALLOON_TEXTURE_SIZE = 16
+    private const val BALLOON_LINE_HEIGHT = 9
+    private const val BALLOON_TEXT_COLOR = 0xFF24201C.toInt()
 }
 
 private class ChowNpcRenderer(context: EntityRendererProvider.Context) : MobRenderer<ChowNpcEntity, PlayerModel<ChowNpcEntity>>(context, ChowNpcModel(context.bakeLayer(ModelLayers.PLAYER), false), 0.5f) {

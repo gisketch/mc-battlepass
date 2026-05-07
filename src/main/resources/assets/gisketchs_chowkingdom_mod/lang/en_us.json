@@ -118,6 +118,7 @@
   "item.gisketchs_chowkingdom_mod.camping_block": "Camping Block",
   "item.gisketchs_chowkingdom_mod.rent_contract": "Rent Contract",
   "entity.gisketchs_chowkingdom_mod.npc": "Chow Kingdom NPC",
+  "config.jade.plugin_gisketchs_chowkingdom_mod.npc_friendship": "NPC Friendship",
   "item.gisketchs_chowkingdom_mod.common_relic_token": "Common Relic Token",
   "item.gisketchs_chowkingdom_mod.rare_relic_token": "Rare Relic Token",
   "item.gisketchs_chowkingdom_mod.shop_acacia_red": "Acacia Red Shop",

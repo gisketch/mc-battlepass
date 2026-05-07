@@ -85,6 +85,70 @@ Optional integrations used without hard metadata dependency:
 
 ## Feature Inventory
 
+### NPCs
+
+Purpose: config-driven world NPCs with housing, schedules, dialog, shop/gift actions, friendship, Discord relay, Jade hover info, animalese dialog voice, and world-space speech balloons.
+
+Runtime config:
+
+- NPC definitions: `<game config>/gisketchs_chowkingdom_mod/npcs/*.json`; in local `runClient`, use `runs/client/config/gisketchs_chowkingdom_mod/npcs`.
+- Global NPC settings: `<game config>/gisketchs_chowkingdom_mod/npcs/settings.json`.
+- Shared generic friendship lines: `<game config>/gisketchs_chowkingdom_mod/npcs/friendship_messages.json`.
+- World NPC state: `<world>/data/gisketchs_chowkingdom_mod/npcs/state.json`.
+
+Current behavior:
+
+- Placing the camping block introduces the first available NPC, currently Finn by default.
+- Rent contracts assign an NPC home bed. Missing beds clear home state and allow contract regrant.
+- Schedules use 24-hour `work`, `home`, and `sleep` activity windows.
+- Right-clicking opens the NPC dialog. Buy opens the configured store, Gift consumes one held item if allowed, and Bye closes the dialog.
+- Per NPC/player friendship ranges from `-1000` to `1000`, maps to levels `-10..10`, and chooses message categories: `hatred`, `enemy`, `dislike`, `neutral`, `okay`, `good_friends`, `best_friends`.
+- Greeting microinteractions use global `settings.json` values: `greetings.radius`, `cooldown_seconds`, and `balloon_duration_seconds`. If a player comes close before first daily chat, the NPC pauses, looks at the player, and shows a greeting balloon. Ignoring the greeting starts the cooldown; leaving the radius resets that cooldown. First daily chat gives `+25` friendship and can use `first_daily_chat` lines.
+
+Friendship message pools:
+
+- Shared `friendship_messages.json` affects all NPCs.
+- Each NPC can also define its own `friendship_messages` block with the same keys: `interact`, `gift`, `hurt`, `wake`, `greeting`, and `first_daily_chat`.
+- Pools join in order: built-in defaults, shared generic config, then NPC-specific config.
+- Each configured layer is inserted twice when it joins the inherited pool, so local NPC-specific lines have about 2:1 weight against the inherited generic pool.
+
+Example shared message config:
+
+```json
+{
+	"greeting": {
+		"neutral": ["Hi, {player}!"],
+		"good_friends": ["Good to see you, {player}."]
+	},
+	"first_daily_chat": {
+		"neutral": ["First check-in of the day, {player}."]
+	}
+}
+```
+
+Example NPC-only message addition:
+
+```json
+{
+	"friendship_messages": {
+		"greeting": {
+			"neutral": ["Adventure time, {player}?"]
+		},
+		"first_daily_chat": {
+			"neutral": ["First quest check-in today. What are we doing, {player}?"]
+		}
+	}
+}
+```
+
+NPC commands:
+
+- `/npc reload` reloads NPC config.
+- `/npc spawn <id>` spawns an NPC at the command source player.
+- `/npc debug`, `/npc debug time <multiplier>`, and `/npc debug balloon <id> <message>` inspect or test NPC behavior.
+- `/npc respawn status <id>` and `/npc respawn <id>` inspect or force respawn.
+- `/npc friendship get <id> <player>`, `/npc friendship set <id> <player> <points>`, and `/npc friendship add <id> <player> <delta>` inspect or edit friendship.
+
 ### Battlepass
 
 Purpose: data-driven passes, mission progress, rotating daily/weekly quests, permanent milestones, XP, reward claiming, and HUD/screen display.

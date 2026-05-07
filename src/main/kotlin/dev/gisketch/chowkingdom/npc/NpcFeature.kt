@@ -69,6 +69,7 @@ object NpcFeature {
     private val ITEMS: DeferredRegister<Item> = DeferredRegister.create(Registries.ITEM, ChowKingdomMod.MOD_ID)
     private val ENTITIES: DeferredRegister<EntityType<*>> = DeferredRegister.create(Registries.ENTITY_TYPE, ChowKingdomMod.MOD_ID)
     private val realtimeDebugTargets: MutableMap<UUID, UUID> = linkedMapOf()
+    private val greetingRadiusPlayers: MutableMap<UUID, MutableSet<String>> = linkedMapOf()
     private var debugTimeMultiplier: Int = 1
 
     val CAMPING_BLOCK: DeferredHolder<Block, CampingBlock> = BLOCKS.register("camping_block", Supplier { CampingBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.OAK_PLANKS).strength(1.5f)) })
@@ -116,7 +117,9 @@ object NpcFeature {
         npc.homePos = validHome
         val hasHome = validHome != null
         val wasSleeping = npc.isSleeping
-        val friendship = NpcStore.friendshipSnapshot(definition.id, player)
+        val currentDay = player.level().dayTime / MINECRAFT_DAY_TICKS
+        val firstChatToday = NpcStore.markFirstChatIfNeeded(definition.id, player, currentDay)
+        val friendship = if (firstChatToday) NpcStore.adjustFriendship(definition.id, player, FIRST_DAILY_CHAT_FRIENDSHIP_DELTA, "first_daily_chat") else NpcStore.friendshipSnapshot(definition.id, player)
         if (wasSleeping) npc.stopSleeping()
         val contractGranted = definition.housing.canMoveIn && !hasHome && !hasRentContract(player, definition.id)
         if (contractGranted) {
@@ -125,6 +128,8 @@ object NpcFeature {
         }
         val message = if (wasSleeping) {
             friendshipMessage(definition.friendshipMessages.wake, friendship, player, definition)
+        } else if (hasHome && firstChatToday) {
+            friendshipMessage(definition.friendshipMessages.firstDailyChat, friendship, player, definition)
         } else if (hasHome) {
             friendshipMessage(definition.friendshipMessages.interact, friendship, player, definition)
         } else {
@@ -252,13 +257,8 @@ object NpcFeature {
     private fun giftPeriod(dayTime: Long, resetHour: Int): Long = Math.floorDiv(dayTime - (resetHour - 6) * TICKS_PER_HOUR, MINECRAFT_DAY_TICKS)
 
     private fun relayNpcDialog(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, message: String) {
-        val chatLine = Component.literal("${definition.name} > ${player.gameProfile.name} : $message").withStyle(ChatFormatting.GRAY)
         val level = npc.level() as? ServerLevel ?: return
-        level.players().forEach { listener ->
-            if (listener.uuid != player.uuid && listener.distanceToSqr(npc.x, npc.y, npc.z) <= NPC_DIALOG_HEAR_RADIUS * NPC_DIALOG_HEAR_RADIUS) {
-                listener.sendSystemMessage(chatLine)
-            }
-        }
+        sendNpcBalloon(level, npc, message, excludePlayer = player.uuid)
         DiscordRelay.npcDialog(player, definition.id, definition.name, message)
     }
 
@@ -266,11 +266,19 @@ object NpcFeature {
         val friendship = NpcStore.friendshipSnapshot(definition.id, player)
         val message = friendshipMessage(definition.friendshipMessages.hurt, friendship, player, definition)
         NpcStore.recordConversation(definition.id, player, definition.name, message, "npc_hurt_message")
-        val chatLine = Component.literal("${definition.name} > ${player.gameProfile.name} : $message").withStyle(ChatFormatting.GRAY)
         val level = npc.level() as? ServerLevel ?: return
+        sendNpcBalloon(level, npc, message)
+    }
+
+    private fun sendNpcBalloon(level: ServerLevel, npc: ChowNpcEntity, message: String, durationTicks: Int = 90, excludePlayer: UUID? = null): Int {
+        var recipients = 0
         level.players().forEach { listener ->
-            if (listener.distanceToSqr(npc.x, npc.y, npc.z) <= NPC_DIALOG_HEAR_RADIUS * NPC_DIALOG_HEAR_RADIUS) listener.sendSystemMessage(chatLine)
+            if (listener.uuid != excludePlayer && listener.distanceToSqr(npc.x, npc.y, npc.z) <= NPC_DIALOG_HEAR_RADIUS * NPC_DIALOG_HEAR_RADIUS) {
+                NpcNetwork.showBalloon(listener, npc.id, message, durationTicks)
+                recipients++
+            }
         }
+        return recipients
     }
 
     fun assignHome(player: ServerPlayer, npcId: String, bedPos: BlockPos, stack: ItemStack): Boolean {
@@ -299,8 +307,42 @@ object NpcFeature {
         entity.homePos = validHomePos(entity.level(), definition.id)
         entity.campPos = entity.campPos ?: NpcStore.campPos(definition.id)
         if (NpcBrainOverrides.tick(entity, definition)) return
+        if (tryGreetNearbyPlayer(entity, definition)) return
         if (entity.isTalking()) return
         NpcBrain.tick(entity, definition)
+    }
+
+    private fun tryGreetNearbyPlayer(npc: ChowNpcEntity, definition: NpcDefinition): Boolean {
+        val level = npc.level() as? ServerLevel ?: return false
+        val greeting = NpcConfig.settings().greetings
+        val radiusSqr = greeting.radius * greeting.radius
+        val playersInRadius = level.players()
+            .filter { player -> player.isAlive && !player.isSpectator && player.distanceToSqr(npc.x, npc.y, npc.z) <= radiusSqr }
+        updateGreetingRadiusState(npc, definition, playersInRadius)
+        if (npc.isTalking() || npc.isSleeping) return false
+        val player = playersInRadius
+            .asSequence()
+            .minByOrNull { player -> player.distanceToSqr(npc.x, npc.y, npc.z) }
+            ?: return false
+        val day = level.dayTime / MINECRAFT_DAY_TICKS
+        val nowMs = System.currentTimeMillis()
+        if (!NpcStore.canShowGreeting(definition.id, player, day, nowMs)) return false
+        val friendship = NpcStore.friendshipSnapshot(definition.id, player)
+        val message = friendshipMessage(definition.friendshipMessages.greeting, friendship, player, definition)
+        val durationTicks = greeting.balloonDurationSeconds * 20
+        NpcStore.markGreetingShown(definition.id, player, day, nowMs + greeting.cooldownSeconds * 1000L)
+        sendNpcBalloon(level, npc, message, durationTicks)
+        npc.startTalkingTo(player, durationTicks)
+        NpcStore.recordConversation(definition.id, player, definition.name, message, "npc_greeting_balloon")
+        return true
+    }
+
+    private fun updateGreetingRadiusState(npc: ChowNpcEntity, definition: NpcDefinition, playersInRadius: List<ServerPlayer>) {
+        val current = playersInRadius.map { player -> player.stringUUID }.toSet()
+        val previous = greetingRadiusPlayers.getOrPut(npc.uuid) { linkedSetOf() }
+        previous.filter { playerId -> playerId !in current }.forEach { playerId -> NpcStore.clearGreetingCooldown(definition.id, playerId) }
+        previous.clear()
+        previous.addAll(current)
     }
 
     fun moveToActivityTarget(entity: ChowNpcEntity, definition: NpcDefinition, activity: String) {
@@ -471,6 +513,14 @@ object NpcFeature {
                 .then(
                     Commands.literal("time")
                         .then(Commands.argument("multiplier", IntegerArgumentType.integer(1, 240)).executes(::debugTimeCommand)),
+                )
+                .then(
+                    Commands.literal("balloon")
+                        .then(
+                            Commands.argument("id", StringArgumentType.word())
+                                .suggests(::suggestNpcIds)
+                                .then(Commands.argument("message", StringArgumentType.greedyString()).executes(::debugBalloonCommand)),
+                        ),
                 ),
         )
         .then(
@@ -504,24 +554,38 @@ object NpcFeature {
                 .requires { source -> source.hasPermission(2) }
                 .then(
                     Commands.literal("get")
-                        .then(friendshipTargetArgument().executes(::friendshipGetCommand)),
+                        .then(
+                            Commands.argument("id", StringArgumentType.word())
+                                .suggests(::suggestNpcIds)
+                                .then(Commands.argument("player", EntityArgument.player()).executes(::friendshipGetCommand)),
+                        ),
                 )
                 .then(
                     Commands.literal("set")
-                        .then(friendshipTargetArgument().then(Commands.argument("points", IntegerArgumentType.integer(NpcFriendshipLevels.MIN_POINTS, NpcFriendshipLevels.MAX_POINTS)).executes(::friendshipSetCommand))),
+                        .then(
+                            Commands.argument("id", StringArgumentType.word())
+                                .suggests(::suggestNpcIds)
+                                .then(
+                                    Commands.argument("player", EntityArgument.player())
+                                        .then(Commands.argument("points", IntegerArgumentType.integer(NpcFriendshipLevels.MIN_POINTS, NpcFriendshipLevels.MAX_POINTS)).executes(::friendshipSetCommand)),
+                                ),
+                        ),
                 )
                 .then(
                     Commands.literal("add")
-                        .then(friendshipTargetArgument().then(Commands.argument("delta", IntegerArgumentType.integer(-2000, 2000)).executes(::friendshipAddCommand))),
+                        .then(
+                            Commands.argument("id", StringArgumentType.word())
+                                .suggests(::suggestNpcIds)
+                                .then(
+                                    Commands.argument("player", EntityArgument.player())
+                                        .then(Commands.argument("delta", IntegerArgumentType.integer(-2000, 2000)).executes(::friendshipAddCommand)),
+                                ),
+                        ),
                 )
         )
 
     private fun suggestNpcIds(context: CommandContext<CommandSourceStack>, builder: com.mojang.brigadier.suggestion.SuggestionsBuilder) =
         SharedSuggestionProvider.suggest(NpcConfig.all().map { definition -> definition.id }, builder)
-
-    private fun friendshipTargetArgument() = Commands.argument("id", StringArgumentType.word())
-        .suggests(::suggestNpcIds)
-        .then(Commands.argument("player", EntityArgument.player()))
 
     private fun reloadCommand(context: CommandContext<CommandSourceStack>): Int {
         NpcConfig.load()
@@ -564,6 +628,27 @@ object NpcFeature {
         val message = if (debugTimeMultiplier == 1) "NPC debug time speed reset." else "NPC debug time speed set to ${debugTimeMultiplier}x."
         context.source.sendSuccess({ Component.literal(message) }, true)
         return debugTimeMultiplier
+    }
+
+    private fun debugBalloonCommand(context: CommandContext<CommandSourceStack>): Int {
+        val id = StringArgumentType.getString(context, "id")
+        val message = StringArgumentType.getString(context, "message")
+        val definition = NpcConfig.get(id) ?: run {
+            context.source.sendFailure(Component.literal("Unknown NPC '$id'."))
+            return 0
+        }
+        val npc = existingNpc(context.source.server, id) ?: run {
+            context.source.sendFailure(Component.literal("${definition.displayName()} is not currently spawned."))
+            return 0
+        }
+        val level = npc.level() as? ServerLevel ?: return 0
+        val recipients = sendNpcBalloon(level, npc, message, 120)
+        if (recipients == 0) {
+            context.source.sendFailure(Component.literal("No players are within ${NPC_DIALOG_HEAR_RADIUS.toInt()} blocks of ${definition.displayName()}."))
+            return 0
+        }
+        context.source.sendSuccess({ Component.literal("Sent ${definition.displayName()} balloon to $recipients nearby player(s).") }, true)
+        return recipients
     }
 
     private fun respawnStatusCommand(context: CommandContext<CommandSourceStack>): Int {
@@ -866,6 +951,7 @@ object NpcFeature {
     private const val HURT_MESSAGE_INTERVAL = 3
     private const val FRIENDSHIP_HIT_DELTA = -10
     private const val FRIENDSHIP_KILL_DELTA = -300
+    private const val FIRST_DAILY_CHAT_FRIENDSHIP_DELTA = 25
     private const val RESPAWN_SCAN_INTERVAL_TICKS = 20
     private const val NPC_RESPAWN_HOUR = 5
     private const val TICKS_PER_HOUR = 1000L

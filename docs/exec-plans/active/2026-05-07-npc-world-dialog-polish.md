@@ -11,7 +11,7 @@ Polish the restored NPC screen dialog and relay NPC speech to nearby players plu
 - Panel has an entrance animation.
 - Dialog body uses typewriter reveal.
 - Vanilla hotbar hides while dialog is open.
-- Other nearby players hear NPC dialog in Minecraft chat within 30 blocks.
+- Other nearby players see NPC dialog as a world-space balloon within 30 blocks.
 - Discord always receives NPC dialog through the webhook, with linked Discord mentions allowed.
 - `/npc debug` toggles realtime actionbar display of NPC activity, task, navigation, and target.
 - NPC behavior has a small static/runtime split: definition, job definition, schedule definition, resident state, brain, entity.
@@ -40,6 +40,10 @@ Polish the restored NPC screen dialog and relay NPC speech to nearby players plu
 - NPC Discord relay keeps NPC webhook identity, moves NPC message/player context into an embed, and renders friendship as footer emojis only.
 - Successful NPC store purchases open a configurable friendship-aware follow-up dialog.
 - NPC dialog typewriter playback can use configurable proximity-faded animalese voice sounds.
+- NPC hurt and overheard dialog speech render as timed world-space balloons above the NPC.
+- `/npc debug balloon <id> <message>` can force a nearby test balloon for visual checks.
+- NPCs greet nearby players with globally configurable radius/timing and friendship-category balloons until that player has the first chat of the in-game day.
+- First NPC chat of the in-game day grants +25 friendship and can use configurable friendship-category first-chat dialog.
 
 ## Plan
 
@@ -66,6 +70,9 @@ Polish the restored NPC screen dialog and relay NPC speech to nearby players plu
 21. Polish NPC Discord dialog rendering.
 22. Trial GeckoLib NPC attack rendering, then revert to vanilla player model with layer fix.
 23. Add post-shopping NPC replies and animalese dialog voice playback.
+24. Replace nearby NPC chat relay with NPC world balloons.
+25. Add a direct debug command for balloon testing.
+26. Add NPC greeting microinteractions and daily first-chat friendship reward.
 
 ## Progress
 
@@ -96,3 +103,6 @@ Polish the restored NPC screen dialog and relay NPC speech to nearby players plu
 - 2026-05-07: Added NPC Jade entity tooltip and sped up the scripted attack animation/cadence.
 - 2026-05-08: Removed Patchouli runtime dependency and switched NPC Jade friendship markers to sprite icons.
 - 2026-05-08: Added NPC store follow-up dialogs, per-NPC animalese voice config, converted reference voice assets to OGG resources, and wired typewriter-only voice playback.
+- 2026-05-08: Added NPC balloon payloads, renderer hook, original balloon texture, and routed NPC hurt/eavesdrop speech out of chat into timed world balloons.
+- 2026-05-08: Added `/npc debug balloon <id> <message>` to test the exact balloon payload/render path near a spawned NPC.
+- 2026-05-08: Added globally configurable proximity greeting balloons, per-player greeting state with radius-leave cooldown reset, and first daily chat +25 friendship reward with special dialog messages.

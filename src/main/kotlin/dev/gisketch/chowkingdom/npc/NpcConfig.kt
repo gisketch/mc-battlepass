@@ -16,6 +16,7 @@ import kotlin.io.path.nameWithoutExtension
 object NpcConfig {
     private val gson = GsonBuilder().setPrettyPrinting().create()
     private var definitions: Map<String, NpcDefinition> = linkedMapOf()
+    private var settings: NpcSettingsDefinition = NpcSettingsDefinition().normalized()
 
     private val dir: Path
         get() = FMLPaths.CONFIGDIR.get().resolve(ChowKingdomMod.MOD_ID).resolve("npcs")
@@ -23,11 +24,13 @@ object NpcConfig {
     fun load() {
         dir.createDirectories()
         writeDefaultIfMissing()
+        settings = loadSettings()
         val friendshipDefaults = loadFriendshipDefaults()
         val loaded = linkedMapOf<String, NpcDefinition>()
         Files.list(dir).use { files ->
             files.filter { path -> path.extension.equals("json", ignoreCase = true) }
                 .filter { path -> path.fileName.toString() != FRIENDSHIP_MESSAGES_FILE }
+                .filter { path -> path.fileName.toString() != NPC_SETTINGS_FILE }
                 .sorted(Comparator.comparing { path -> path.fileName.toString() })
                 .forEach { path ->
                     val fallbackId = path.nameWithoutExtension
@@ -47,6 +50,8 @@ object NpcConfig {
 
     fun get(id: String): NpcDefinition? = definitions[id]
 
+    fun settings(): NpcSettingsDefinition = settings
+
     fun firstIntroducible(): NpcDefinition? = definitions["finn"] ?: definitions.values.firstOrNull()
 
     private fun writeDefaultIfMissing() {
@@ -64,6 +69,23 @@ object NpcConfig {
                 Files.move(temp, friendshipFile, StandardCopyOption.REPLACE_EXISTING)
             }
         }
+        val settingsFile = dir.resolve(NPC_SETTINGS_FILE)
+        if (!settingsFile.exists()) {
+            Files.createTempFile(dir, "npc_settings", ".json.tmp").also { temp ->
+                temp.bufferedWriter().use { writer -> gson.toJson(NpcSettingsDefinition().normalized(), writer) }
+                Files.move(temp, settingsFile, StandardCopyOption.REPLACE_EXISTING)
+            }
+        }
+    }
+
+    private fun loadSettings(): NpcSettingsDefinition {
+        val file = dir.resolve(NPC_SETTINGS_FILE)
+        return try {
+            file.bufferedReader().use { reader -> gson.fromJson(reader, NpcSettingsDefinition::class.java) } ?: NpcSettingsDefinition()
+        } catch (exception: Exception) {
+            ChowKingdomMod.LOGGER.warn("Failed to load NPC settings {}", file, exception)
+            NpcSettingsDefinition()
+        }.normalized()
     }
 
     private fun loadFriendshipDefaults(): NpcFriendshipMessagesDefinition {
@@ -130,3 +152,4 @@ object NpcConfig {
 }
 
 private const val FRIENDSHIP_MESSAGES_FILE = "friendship_messages.json"
+private const val NPC_SETTINGS_FILE = "settings.json"

@@ -9,6 +9,7 @@
   "client": [
     "ClientPacketListenerMixin",
     "EntityRendererMixin",
+    "GuiGraphicsAccessor",
     "KeyboardHandlerMixin",
     "LivingEntityRendererMixin"
   ],

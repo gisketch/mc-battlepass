@@ -114,6 +114,34 @@ object NpcStore {
         return true
     }
 
+    fun canShowGreeting(npcId: String, player: ServerPlayer, day: Long, nowMs: Long): Boolean {
+        val greeting = state(npcId).greetings.getOrPut(player.stringUUID) { NpcGreetingState() }
+        return greeting.firstChatDay != day && nowMs >= greeting.cooldownUntilMs
+    }
+
+    fun markGreetingShown(npcId: String, player: ServerPlayer, day: Long, cooldownUntilMs: Long) {
+        val greeting = state(npcId).greetings.getOrPut(player.stringUUID) { NpcGreetingState() }
+        greeting.lastGreetDay = day
+        greeting.cooldownUntilMs = cooldownUntilMs
+        save()
+    }
+
+    fun clearGreetingCooldown(npcId: String, playerId: String) {
+        val greeting = state(npcId).greetings[playerId] ?: return
+        if (greeting.cooldownUntilMs == 0L) return
+        greeting.cooldownUntilMs = 0L
+        save()
+    }
+
+    fun markFirstChatIfNeeded(npcId: String, player: ServerPlayer, day: Long): Boolean {
+        val greeting = state(npcId).greetings.getOrPut(player.stringUUID) { NpcGreetingState() }
+        if (greeting.firstChatDay == day) return false
+        greeting.firstChatDay = day
+        greeting.cooldownUntilMs = 0L
+        save()
+        return true
+    }
+
     fun friendshipSnapshot(npcId: String, player: ServerPlayer): NpcFriendshipSnapshot {
         return friendshipSnapshot(npcId, player.stringUUID)
     }
@@ -226,6 +254,7 @@ class NpcResidentState(
     var hurtHistory: MutableList<NpcHurtRecord> = mutableListOf(),
     var conversations: MutableMap<String, MutableList<NpcConversationRecord>> = linkedMapOf(),
     var giftLimits: MutableMap<String, NpcGiftLimitState> = linkedMapOf(),
+    var greetings: MutableMap<String, NpcGreetingState> = linkedMapOf(),
     var friendships: MutableMap<String, NpcFriendshipState> = linkedMapOf(),
     var dead: Boolean = false,
     var respawnDay: Long = -1L,
@@ -254,6 +283,12 @@ class NpcFriendshipSnapshot(
 class NpcGiftLimitState(
     var period: Long = Long.MIN_VALUE,
     var count: Int = 0,
+)
+
+class NpcGreetingState(
+    var lastGreetDay: Long = Long.MIN_VALUE,
+    var cooldownUntilMs: Long = 0L,
+    var firstChatDay: Long = Long.MIN_VALUE,
 )
 
 class NpcHurtRecord(
