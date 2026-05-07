@@ -137,6 +137,12 @@ object NpcFeature {
         }
         npc.startTalkingTo(player, NPC_DIALOG_DURATION_TICKS)
         NpcStore.recordConversation(definition.id, player, player.gameProfile.name, "interacts with ${definition.name}", "player_interact")
+        val useLlmInteract = NpcConfig.settings().llm.enabled && NpcConfig.settings().llmMessageUsage.interact && hasHome && !wasSleeping && !contractGranted
+        if (useLlmInteract) {
+            NpcNetwork.openDialog(player, dialogPayload(definition, npc, "...", contractGranted, friendship.level))
+            NpcLlmService.interact(player, npc, definition, message)
+            return
+        }
         NpcStore.recordConversation(definition.id, player, definition.name, message, "npc_message")
         NpcNetwork.openDialog(player, dialogPayload(definition, npc, message, contractGranted, friendship.level))
         relayNpcDialog(player, npc, definition, message)
@@ -239,6 +245,7 @@ object NpcFeature {
         animalesePitchMultiplier = definition.voice.pitch,
         animaleseVolume = definition.voice.volume,
         animaleseRadius = definition.voice.radius,
+        talkEnabled = NpcConfig.settings().llm.enabled,
     )
 
     private fun friendshipMessage(set: NpcFriendshipMessageSet, friendship: NpcFriendshipSnapshot, player: ServerPlayer, definition: NpcDefinition, itemName: String = "", mood: String = "", quantity: Int = 0, totalCost: Long = 0L): String {
@@ -259,6 +266,10 @@ object NpcFeature {
     private fun relayNpcDialog(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, message: String) {
         val level = npc.level() as? ServerLevel ?: return
         sendNpcBalloon(level, npc, message, excludePlayer = player.uuid)
+        relayNpcDialogToDiscord(player, definition, message)
+    }
+
+    fun relayNpcDialogToDiscord(player: ServerPlayer, definition: NpcDefinition, message: String) {
         DiscordRelay.npcDialog(player, definition.id, definition.name, message)
     }
 
@@ -269,6 +280,8 @@ object NpcFeature {
         val level = npc.level() as? ServerLevel ?: return
         sendNpcBalloon(level, npc, message)
     }
+
+    fun showBalloonToNearby(level: ServerLevel, npc: ChowNpcEntity, message: String, durationTicks: Int = 90, excludePlayer: UUID? = null): Int = sendNpcBalloon(level, npc, message, durationTicks, excludePlayer)
 
     private fun sendNpcBalloon(level: ServerLevel, npc: ChowNpcEntity, message: String, durationTicks: Int = 90, excludePlayer: UUID? = null): Int {
         var recipients = 0
@@ -864,7 +877,7 @@ object NpcFeature {
         if (!working.isEmpty) player.drop(working, false)
     }
 
-    private fun existingNpc(server: MinecraftServer, npcId: String): ChowNpcEntity? {
+    fun existingNpc(server: MinecraftServer, npcId: String): ChowNpcEntity? {
         val storedId = NpcStore.entityUuid(npcId)
         val byStore = storedId?.let { uuid -> findNpc(server, uuid) }
         if (byStore != null && byStore.isAlive) return byStore

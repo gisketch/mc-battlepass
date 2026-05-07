@@ -60,10 +60,59 @@ class NpcDefinition(
 
 class NpcSettingsDefinition(
     var greetings: NpcGreetingsDefinition = NpcGreetingsDefinition(),
+    var llm: NpcLlmSettingsDefinition = NpcLlmSettingsDefinition(),
+    @SerializedName("llm_message_usage") var llmMessageUsage: NpcLlmMessageUsageDefinition = NpcLlmMessageUsageDefinition(),
 ) {
     fun normalized(): NpcSettingsDefinition = apply {
         greetings = greetings.normalized()
+        llm = llm.normalized()
+        llmMessageUsage = llmMessageUsage.normalized()
     }
+}
+
+class NpcLlmSettingsDefinition(
+    var enabled: Boolean = false,
+    var provider: String = "openai_compatible",
+    @SerializedName("base_url") var baseUrl: String = "https://api.deepseek.com",
+    var model: String = "deepseek-chat",
+    @SerializedName("api_key") var apiKey: String = "",
+    @SerializedName("cooldown_seconds") var cooldownSeconds: Int = 4,
+    @SerializedName("max_reply_chars") var maxReplyChars: Int = 280,
+    @SerializedName("max_recent_turns") var maxRecentTurns: Int = 8,
+    @SerializedName("request_timeout_seconds") var requestTimeoutSeconds: Int = 20,
+    @SerializedName("rate_limited_message") var rateLimitedMessage: String = "Give me a second to gather my thoughts.",
+    @SerializedName("error_message") var errorMessage: String = "Sorry, my thoughts wandered for a second. What were we talking about?",
+    @SerializedName("fallback_message") var fallbackMessage: String = "Sorry, my thoughts wandered for a second. What were we talking about?",
+) {
+    fun normalized(): NpcLlmSettingsDefinition = apply {
+        provider = provider.trim().lowercase().ifBlank { "openai_compatible" }
+        baseUrl = baseUrl.trim().ifBlank { "https://api.deepseek.com" }
+        model = model.trim().ifBlank { "deepseek-chat" }
+        apiKey = apiKey.trim()
+        cooldownSeconds = cooldownSeconds.coerceIn(1, 60)
+        maxReplyChars = maxReplyChars.coerceIn(40, 1000)
+        maxRecentTurns = maxRecentTurns.coerceIn(0, 30)
+        requestTimeoutSeconds = requestTimeoutSeconds.coerceIn(3, 60)
+        rateLimitedMessage = cleanMessage(rateLimitedMessage, "Give me a second to gather my thoughts.")
+        errorMessage = cleanMessage(errorMessage, "Sorry, my thoughts wandered for a second. What were we talking about?")
+        fallbackMessage = cleanMessage(fallbackMessage, errorMessage)
+    }
+
+    private fun cleanMessage(value: String, fallback: String): String = value.trim().ifBlank { fallback }.take(maxReplyChars)
+}
+
+class NpcLlmMessageUsageDefinition(
+    var interact: Boolean = true,
+    var gift: Boolean = false,
+    var hurt: Boolean = false,
+    var wake: Boolean = false,
+    var greeting: Boolean = false,
+    @SerializedName("first_daily_chat") var firstDailyChat: Boolean = false,
+    @SerializedName("shop_single") var shopSingle: Boolean = false,
+    @SerializedName("shop_normal") var shopNormal: Boolean = false,
+    @SerializedName("shop_bulk") var shopBulk: Boolean = false,
+) {
+    fun normalized(): NpcLlmMessageUsageDefinition = this
 }
 
 class NpcVoiceDefinition(

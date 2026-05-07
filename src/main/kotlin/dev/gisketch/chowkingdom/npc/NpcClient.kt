@@ -8,6 +8,7 @@ import dev.gisketch.chowkingdom.mixin.GuiGraphicsAccessor
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.Font
 import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.components.EditBox
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.model.HumanoidModel
 import net.minecraft.client.model.PlayerModel
@@ -51,6 +52,11 @@ object NpcClient {
     @JvmStatic
     fun showBalloon(payload: NpcBalloonPayload) {
         activeBalloons[payload.npcEntityId] = NpcBalloonLine(payload.message, System.currentTimeMillis() + payload.durationTicks.coerceIn(20, 240) * 50L)
+    }
+
+    @JvmStatic
+    fun receiveTalkResponse(payload: NpcTalkResponsePayload) {
+        (Minecraft.getInstance().screen as? NpcDialogScreen)?.receiveTalkResponse(payload)
     }
 
     @JvmStatic
@@ -213,7 +219,12 @@ private class ChowNpcModel(root: ModelPart, slim: Boolean) : PlayerModel<ChowNpc
 
 private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Component.literal(payload.name)) {
     private val openedAtMs: Long = System.currentTimeMillis()
+    private var messageStartedAtMs: Long = openedAtMs
+    private var displayMessage: String = payload.message
     private var lastAnimaleseIndex: Int = 0
+    private var talkMode: Boolean = false
+    private var waitingForTalk: Boolean = false
+    private var talkInput: EditBox? = null
 
     override fun isPauseScreen(): Boolean = false
 
@@ -222,6 +233,19 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
     override fun renderTransparentBackground(guiGraphics: GuiGraphics) = Unit
 
     override fun renderBlurredBackground(partialTick: Float) = Unit
+
+    override fun init() {
+        val panelWidth = 356.coerceAtMost(width - 24)
+        val panelHeight = 112.coerceAtMost(height - 24)
+        val x = (width - panelWidth) / 2
+        val y = height - panelHeight - 34
+        talkInput = EditBox(font, x + PAD, y + panelHeight - 26, panelWidth - PAD * 2 - BUTTON_WIDTH - TEXT_GAP, 18, Component.literal("Message ${payload.name}...")).apply {
+            setMaxLength(280)
+            setHint(Component.literal("Message ${payload.name}..."))
+            visible = talkMode
+        }
+        talkInput?.let(::addRenderableWidget)
+    }
 
     override fun render(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) {
         val panelWidth = 356.coerceAtMost(width - 24)
@@ -253,16 +277,18 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         guiGraphics.drawString(font, name, nameX, y + NAME_Y, NAME_COLOR, false)
         renderFriendship(guiGraphics, nameX, y + FRIENDSHIP_Y, payload.friendshipLevel)
 
+        talkInput?.visible = talkMode
         val visibleCharacters = visibleDialogCharacters()
         playAnimalese(visibleCharacters)
-        val visibleMessage = payload.message.take(visibleCharacters)
+        val visibleMessage = currentRenderMessage().take(visibleCharacters)
         val lines = font.split(ckdmDialogText(visibleMessage), dialogWidth)
         var lineY = dialogY
         lines.take(MAX_DIALOG_LINES).forEach { line ->
             guiGraphics.drawString(font, line, dialogX, lineY, DIALOG_COLOR, false)
             lineY += LINE_HEIGHT
         }
-        if (payload.contractGranted && visibleMessage.length >= payload.message.length) guiGraphics.drawString(font, "Rent Contract received", dialogX, y + panelHeight - 16, CONTRACT_COLOR, false)
+        if (!talkMode && payload.contractGranted && visibleMessage.length >= displayMessage.length) guiGraphics.drawString(font, "Rent Contract received", dialogX, y + panelHeight - 16, CONTRACT_COLOR, false)
+        if (talkMode) talkInput?.render(guiGraphics, localMouse.first, localMouse.second, partialTick)
         val hoveredAction = actionAt(localMouse.first, localMouse.second)
         renderActionButtons(guiGraphics, localMouse.first, localMouse.second, buttonX, y + buttonTop)
         pose.popPose()
@@ -279,14 +305,31 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         val scale = 0.92f + progress * 0.08f
         val slideY = 18.0f * (1.0f - progress)
         val localMouse = localMouse(mouseX.toInt(), mouseY.toInt(), x + panelWidth / 2.0f, y + panelHeight.toFloat(), slideY, scale)
+        if (talkMode && talkInput?.mouseClicked(localMouse.first.toDouble(), localMouse.second.toDouble(), button) == true) return true
         val action = actionAt(localMouse.first, localMouse.second) ?: return true
         when (action) {
-            DialogAction.Buy -> NpcNetwork.sendAction(payload.npcId, "buy")
-            DialogAction.Gift -> if (!giftStack().isEmpty) NpcNetwork.sendAction(payload.npcId, "gift")
+            DialogAction.Buy -> if (talkMode) exitTalkMode() else NpcNetwork.sendAction(payload.npcId, "buy")
+            DialogAction.Gift -> if (!talkMode && !giftStack().isEmpty) NpcNetwork.sendAction(payload.npcId, "gift")
             DialogAction.Bye -> onClose()
-            DialogAction.Talk -> Unit
+            DialogAction.Talk -> if (payload.talkEnabled) {
+                if (talkMode) sendTalkMessage() else enterTalkMode()
+            }
         }
         return true
+    }
+
+    override fun keyPressed(keyCode: Int, scanCode: Int, modifiers: Int): Boolean {
+        if (talkMode && keyCode == 257) {
+            sendTalkMessage()
+            return true
+        }
+        return super.keyPressed(keyCode, scanCode, modifiers)
+    }
+
+    fun receiveTalkResponse(response: NpcTalkResponsePayload) {
+        if (response.npcId != payload.npcId) return
+        waitingForTalk = false
+        updateDisplayMessage(response.message)
     }
 
     private fun localMouse(mouseX: Int, mouseY: Int, anchorX: Float, anchorY: Float, slideY: Float, scale: Float): Pair<Int, Int> = Pair(
@@ -299,7 +342,11 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         actions().forEachIndexed { index, action ->
             val buttonY = y + index * BUTTON_STEP
             val hovered = mouseX in x until x + BUTTON_WIDTH && mouseY in buttonY until buttonY + BUTTON_HEIGHT
-            val enabled = action != DialogAction.Gift || !giftStack.isEmpty
+            val enabled = when (action) {
+                DialogAction.Gift -> !talkMode && !giftStack.isEmpty
+                DialogAction.Talk -> payload.talkEnabled && !waitingForTalk
+                else -> true
+            }
             val activeHover = hovered && enabled
             val texture = if (activeHover && action == DialogAction.Bye) RED_BUTTON_HOVER_TEXTURE else if (activeHover) BUTTON_HOVER_TEXTURE else BUTTON_TEXTURE
             val sourceSize = if (activeHover) BUTTON_HOVER_TEXTURE_SIZE else BUTTON_TEXTURE_SIZE
@@ -324,10 +371,15 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         }
     }
 
-    private fun actionLabel(action: DialogAction): String = if (action == DialogAction.Bye && payload.closeOnly) payload.closeLabel else action.label
+    private fun actionLabel(action: DialogAction): String = when {
+        talkMode && action == DialogAction.Talk -> "SEND"
+        talkMode && action == DialogAction.Buy -> "BACK"
+        action == DialogAction.Bye && payload.closeOnly -> payload.closeLabel
+        else -> action.label
+    }
 
     private fun renderActionTooltip(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, action: DialogAction?) {
-        if (action != DialogAction.Gift) return
+        if (talkMode || action != DialogAction.Gift) return
         val giftStack = giftStack()
         if (giftStack.isEmpty) {
             guiGraphics.renderTooltip(font, Component.literal("Hold an item to gift."), mouseX, mouseY)
@@ -354,7 +406,11 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         }
     }
 
-    private fun actions(): List<DialogAction> = if (payload.closeOnly) listOf(DialogAction.Bye) else DialogAction.entries
+    private fun actions(): List<DialogAction> = when {
+        payload.closeOnly -> listOf(DialogAction.Bye)
+        talkMode -> listOf(DialogAction.Talk, DialogAction.Buy, DialogAction.Bye)
+        else -> DialogAction.entries
+    }
 
     private fun buttonTop(panelHeight: Int): Int = if (payload.closeOnly) (panelHeight - BUTTON_HEIGHT) / 2 else BUTTON_TOP
 
@@ -395,14 +451,46 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
 
     private fun ckdmDialogText(text: String): Component = Component.literal(text.uppercase(Locale.ROOT)).withStyle { style -> style.withFont(CKDM_SMALL_FONT) }
 
+    private fun enterTalkMode() {
+        talkMode = true
+        talkInput?.visible = true
+        talkInput?.isFocused = true
+        setFocused(talkInput)
+    }
+
+    private fun exitTalkMode() {
+        talkMode = false
+        waitingForTalk = false
+        talkInput?.visible = false
+        setFocused(null)
+    }
+
+    private fun sendTalkMessage() {
+        if (waitingForTalk) return
+        val text = talkInput?.value?.trim().orEmpty()
+        if (text.isBlank()) return
+        talkInput?.value = ""
+        waitingForTalk = true
+        updateDisplayMessage("...")
+        NpcNetwork.sendTalk(payload.npcId, text)
+    }
+
+    private fun updateDisplayMessage(message: String) {
+        displayMessage = message
+        messageStartedAtMs = System.currentTimeMillis()
+        lastAnimaleseIndex = 0
+    }
+
+    private fun currentRenderMessage(): String = if (waitingForTalk) ".".repeat(((System.currentTimeMillis() / 300L) % 3L + 1L).toInt()) else displayMessage
+
     private fun entranceProgress(): Float {
         val progress = ((System.currentTimeMillis() - openedAtMs).toFloat() / ENTRANCE_DURATION_MS).coerceIn(0.0f, 1.0f)
         return 1.0f - (1.0f - progress) * (1.0f - progress) * (1.0f - progress)
     }
 
     private fun visibleDialogCharacters(): Int {
-        val elapsed = (System.currentTimeMillis() - openedAtMs - TYPEWRITER_DELAY_MS).coerceAtLeast(0L)
-        return ((elapsed / 1000.0) * TYPEWRITER_CHARS_PER_SECOND).toInt().coerceIn(0, payload.message.length)
+        val elapsed = (System.currentTimeMillis() - messageStartedAtMs - TYPEWRITER_DELAY_MS).coerceAtLeast(0L)
+        return ((elapsed / 1000.0) * TYPEWRITER_CHARS_PER_SECOND).toInt().coerceIn(0, currentRenderMessage().length)
     }
 
     private fun playAnimalese(visibleCharacters: Int) {
@@ -426,9 +514,10 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
             lastAnimaleseIndex = visibleCharacters
             return
         }
-        val end = visibleCharacters.coerceAtMost(payload.message.length)
+        val message = currentRenderMessage()
+        val end = visibleCharacters.coerceAtMost(message.length)
         for (index in lastAnimaleseIndex until end) {
-            val soundIndex = animaleseSoundIndex(payload.message, index) ?: continue
+            val soundIndex = animaleseSoundIndex(message, index) ?: continue
             val sound = SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "npc.animalese.${animalesePitch()}.sound${soundIndex.toString().padStart(2, '0')}"))
             val pitch = (payload.animalesePitchMultiplier * (0.96f + player.random.nextFloat() * 0.08f)).coerceIn(0.5f, 2.0f)
             minecraft.soundManager.play(SimpleSoundInstance(sound, SoundSource.VOICE, volume, pitch, RandomSource.create(), x, y, z))

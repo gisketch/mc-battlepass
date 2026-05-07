@@ -189,6 +189,10 @@ object NpcStore {
             friendship = friendshipSnapshot(npcId, player),
             globalEvents = data.globalEvents.takeLast(MAX_GLOBAL_EVENTS),
             conversation = state.conversations[player.stringUUID].orEmpty().takeLast(MAX_CONVERSATION_HISTORY),
+            lastHurtAt = state.lastHurtAt,
+            lastHurtPlayerName = state.lastHurtPlayerName,
+            hurtStreak = state.hurtStreak,
+            hurtHistory = state.hurtHistory.takeLast(MAX_HURT_HISTORY),
         )
     }
 
@@ -317,6 +321,10 @@ class NpcLlmContext(
     val friendship: NpcFriendshipSnapshot,
     val globalEvents: List<NpcGlobalEvent>,
     val conversation: List<NpcConversationRecord>,
+    val lastHurtAt: Long,
+    val lastHurtPlayerName: String,
+    val hurtStreak: Int,
+    val hurtHistory: List<NpcHurtRecord>,
 )
 
 class NpcBlockPosData(
