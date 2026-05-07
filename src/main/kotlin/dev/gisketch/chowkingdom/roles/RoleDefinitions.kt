@@ -31,6 +31,8 @@ data class RolePerkDefinition(
     var wrongWeaponDamageMultiplier: Double = 1.0,
     @SerializedName(value = "wrong_weapon_cooldown_ticks", alternate = ["wrongWeaponCooldownTicks"])
     var wrongWeaponCooldownTicks: Int = 0,
+    @SerializedName(value = "wrong_weapon_attack_speed_multiplier", alternate = ["wrongWeaponAttackSpeedMultiplier"])
+    var wrongWeaponAttackSpeedMultiplier: Double = 1.0,
     @SerializedName(value = "wrong_armor_disables_sprint", alternate = ["wrongArmorDisablesSprint"])
     var wrongArmorDisablesSprint: Boolean = false,
     @SerializedName(value = "starting_items", alternate = ["startingItems"])

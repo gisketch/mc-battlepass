@@ -25,7 +25,7 @@
 ## State Ownership
 
 - Server owns XP, claims, mission progress, chowcoins, shipping inventories, nicknames, and Discord account links.
-- Server owns active job/class assignment and persists it under world data.
+- Server owns active job/class assignments and persists them under world data.
 - Server owns active trade sessions and active revive sessions; those transient states are not persisted.
 - Revive persists per-player incapacitation counts and last cause in world data.
 - Client caches synced snapshots and UI-only preferences.

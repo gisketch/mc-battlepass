@@ -18,6 +18,7 @@
 - [Trading](TRADING.md)
 - [Revive](REVIVE.md)
 - [Jobs And Classes](ROLES.md)
+- [Jobs And Classes Creation Guide](ROLE_CONFIGURATION_GUIDE.md)
 - [Harness Workflow](HARNESS.md)
 
 ## Harness Context

@@ -24,6 +24,7 @@ object RolesConfig {
         root.resolve("classes").createDirectories()
         writeDefaultIfMissing(root.resolve("jobs").resolve("farmer.json"), defaultFarmer())
         writeDefaultIfMissing(root.resolve("classes").resolve("rogue.json"), defaultRogue())
+        writeDefaultIfMissing(root.resolve("classes").resolve("warrior.json"), defaultWarrior())
         jobsById = loadDefinitions(root.resolve("jobs"))
         classesById = loadDefinitions(root.resolve("classes"))
     }
@@ -84,26 +85,43 @@ object RolesConfig {
             RolePerkDefinition(
                 type = "starting_items",
                 startingItems = mutableListOf(
-                    "rogues:flint_dagger",
-                    "rogues:rogue_armor_feet",
-                    "minecraft:iron_sword",
+                    "minecraft:book",
+                    "minecraft:diamond_axe",
                     "minecraft:leather_boots",
                 ),
             ),
             RolePerkDefinition(
                 type = "equipment_affinity",
                 weaponTag = "gisketchs_chowkingdom_mod:class/rogue_weapons",
-                weaponTags = mutableListOf(
-                    "rogues:daggers",
-                    "rogues:sickles",
-                    "rpg_series:weapon_type/dagger",
-                    "rpg_series:weapon_type/sickle",
-                ),
                 armorTag = "gisketchs_chowkingdom_mod:class/rogue_armor",
-                weaponPatterns = mutableListOf("rogues:*_dagger", "rogues:*_sickle", "rogues_rpg:*", "simplyswords:*dagger*"),
-                armorPatterns = mutableListOf("rogues:*rogue_armor*", "rogues:*assassin_armor*"),
                 wrongWeaponDamageMultiplier = 0.2,
                 wrongWeaponCooldownTicks = 12,
+                wrongWeaponAttackSpeedMultiplier = 0.1,
+                wrongArmorDisablesSprint = true,
+            ),
+        ),
+    )
+
+    private fun defaultWarrior(): RoleDefinition = RoleDefinition(
+        id = "warrior",
+        displayName = "Warrior",
+        icon = "minecraft:wooden_sword",
+        perks = mutableListOf(
+            RolePerkDefinition(
+                type = "starting_items",
+                startingItems = mutableListOf(
+                    "minecraft:book",
+                    "minecraft:wooden_sword",
+                    "minecraft:iron_boots",
+                ),
+            ),
+            RolePerkDefinition(
+                type = "equipment_affinity",
+                weaponTag = "gisketchs_chowkingdom_mod:class/warrior_weapons",
+                armorTag = "gisketchs_chowkingdom_mod:class/warrior_armor",
+                wrongWeaponDamageMultiplier = 0.2,
+                wrongWeaponCooldownTicks = 12,
+                wrongWeaponAttackSpeedMultiplier = 0.1,
                 wrongArmorDisablesSprint = true,
             ),
         ),

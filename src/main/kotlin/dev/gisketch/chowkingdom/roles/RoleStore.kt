@@ -46,18 +46,28 @@ object RoleStore {
         var changed = false
         val defaultJob = RolesConfig.defaultJobId()
         val defaultClass = RolesConfig.defaultClassId()
+        if (record.jobId.isBlank() && record.activeJobIds.isNotEmpty()) {
+            record.jobId = record.activeJobIds.first()
+            changed = true
+        }
+        if (record.classId.isBlank() && record.activeClassIds.isNotEmpty()) {
+            record.classId = record.activeClassIds.first()
+            changed = true
+        }
         if (record.jobId.isBlank() && defaultJob.isNotBlank()) {
             record.jobId = defaultJob
-            record.unlockedJobs.add(defaultJob)
             changed = true
         }
         if (record.classId.isBlank() && defaultClass.isNotBlank()) {
             record.classId = defaultClass
-            record.unlockedClasses.add(defaultClass)
             changed = true
         }
+        if (record.activeJobIds.isEmpty() && record.jobId.isNotBlank()) changed = record.activeJobIds.add(record.jobId) || changed
+        if (record.activeClassIds.isEmpty() && record.classId.isNotBlank()) changed = record.activeClassIds.add(record.classId) || changed
         if (record.jobId.isNotBlank()) changed = record.unlockedJobs.add(record.jobId) || changed
         if (record.classId.isNotBlank()) changed = record.unlockedClasses.add(record.classId) || changed
+        record.activeJobIds.forEach { id -> changed = record.unlockedJobs.add(id) || changed }
+        record.activeClassIds.forEach { id -> changed = record.unlockedClasses.add(id) || changed }
         if (changed) save()
         return record
     }
@@ -68,9 +78,20 @@ object RoleStore {
 
     fun classId(player: ServerPlayer): String = role(player).classId
 
+    fun activeJobIds(player: ServerPlayer): Set<String> = role(player).activeJobIds.toSet()
+
+    fun activeClassIds(player: ServerPlayer): Set<String> = role(player).activeClassIds.toSet()
+
+    fun activeClassIds(playerId: UUID): Set<String> {
+        if (!loaded) load()
+        return players[playerId.toString()]?.activeClassIds?.toSet().orEmpty()
+    }
+
     fun setJob(player: ServerPlayer, jobId: String) {
         val record = ensureDefaults(player)
         record.jobId = jobId
+        record.activeJobIds.clear()
+        record.activeJobIds.add(jobId)
         record.unlockedJobs.add(jobId)
         save()
     }
@@ -78,8 +99,44 @@ object RoleStore {
     fun setClass(player: ServerPlayer, classId: String) {
         val record = ensureDefaults(player)
         record.classId = classId
+        record.activeClassIds.clear()
+        record.activeClassIds.add(classId)
         record.unlockedClasses.add(classId)
         save()
+    }
+
+    fun addJob(player: ServerPlayer, jobId: String): Boolean {
+        val record = ensureDefaults(player)
+        if (record.jobId.isBlank()) record.jobId = jobId
+        val changed = record.activeJobIds.add(jobId)
+        record.unlockedJobs.add(jobId)
+        if (changed) save()
+        return changed
+    }
+
+    fun addClass(player: ServerPlayer, classId: String): Boolean {
+        val record = ensureDefaults(player)
+        if (record.classId.isBlank()) record.classId = classId
+        val changed = record.activeClassIds.add(classId)
+        record.unlockedClasses.add(classId)
+        if (changed) save()
+        return changed
+    }
+
+    fun removeJob(player: ServerPlayer, jobId: String): Boolean {
+        val record = ensureDefaults(player)
+        if (record.activeJobIds.size <= 1 || !record.activeJobIds.remove(jobId)) return false
+        if (record.jobId == jobId) record.jobId = record.activeJobIds.firstOrNull().orEmpty()
+        save()
+        return true
+    }
+
+    fun removeClass(player: ServerPlayer, classId: String): Boolean {
+        val record = ensureDefaults(player)
+        if (record.activeClassIds.size <= 1 || !record.activeClassIds.remove(classId)) return false
+        if (record.classId == classId) record.classId = record.activeClassIds.firstOrNull().orEmpty()
+        save()
+        return true
     }
 
     fun markStartingItemsGranted(playerId: UUID, classId: String): Boolean {
@@ -102,6 +159,8 @@ object RoleStore {
 class PlayerRoleRecord(
     var jobId: String = "",
     var classId: String = "",
+    var activeJobIds: MutableSet<String> = linkedSetOf(),
+    var activeClassIds: MutableSet<String> = linkedSetOf(),
     var unlockedJobs: MutableSet<String> = linkedSetOf(),
     var unlockedClasses: MutableSet<String> = linkedSetOf(),
     var grantedStartingItems: MutableSet<String> = linkedSetOf(),

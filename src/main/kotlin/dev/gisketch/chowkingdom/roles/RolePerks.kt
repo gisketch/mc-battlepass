@@ -4,10 +4,16 @@ import net.minecraft.server.level.ServerPlayer
 
 object RolePerks {
     fun jobPerks(player: ServerPlayer, type: String): List<RolePerkDefinition> =
-        RolesConfig.job(RoleStore.jobId(player))?.perks?.filter { perk -> perk.type == type }.orEmpty()
+        RoleStore.activeJobIds(player)
+            .mapNotNull(RolesConfig::job)
+            .flatMap { role -> role.perks }
+            .filter { perk -> perk.type == type }
 
     fun classPerks(player: ServerPlayer, type: String): List<RolePerkDefinition> =
-        RolesConfig.roleClass(RoleStore.classId(player))?.perks?.filter { perk -> perk.type == type }.orEmpty()
+        RoleStore.activeClassIds(player)
+            .mapNotNull(RolesConfig::roleClass)
+            .flatMap { role -> role.perks }
+            .filter { perk -> perk.type == type }
 
     fun pokemonTypeMultiplier(player: ServerPlayer, perkType: String, pokemonTypes: Set<String>): Double =
         jobPerks(player, perkType)

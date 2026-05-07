@@ -2,6 +2,8 @@
 
 Roles are server-owned and data-driven.
 
+For step-by-step creation and tuning, see [Jobs And Classes Creation Guide](ROLE_CONFIGURATION_GUIDE.md).
+
 ## Files
 
 - Job definitions: `config/gisketchs_chowkingdom_mod/roles/jobs/*.json`
@@ -16,33 +18,40 @@ Roles are server-owned and data-driven.
 - `/ck roles get <player>`
 - `/ck roles set job <player> <job>`
 - `/ck roles set class <player> <class>`
+- `/ck roles add job <player> <job>`
+- `/ck roles add class <player> <class>`
+- `/ck roles remove job <player> <job>`
+- `/ck roles remove class <player> <class>`
 
 Commands require permission level 2.
 
 ## Current Defaults
 
 - `farmer`: prevents farmland trampling. Also defines data-only hooks for Grass catch rate, Grass mount speed, and Quality Food harvest bonus.
-- `rogue`: starts with Rogues gear when installed, keeps vanilla fallback items, and uses item tags/patterns for equipment affinity.
+- `rogue`: starts with a book, diamond axe, and leather boots. Only Rogue-tagged equipment avoids class penalties.
+- `warrior`: starts with a book, wooden sword, and iron boots. Only Warrior-tagged equipment avoids class penalties.
 
 ## Class Equipment
 
-Rogue uses these tags:
+Players can have multiple active classes. Equipment affinity is unioned across active classes: if any active class allows the held weapon or worn armor, that item is treated as valid. If no active class allows the item, the strictest configured wrong-weapon damage and attack-speed multipliers plus the longest cooldown apply.
+
+Current vanilla test tags:
 
 - `gisketchs_chowkingdom_mod:class/rogue_weapons`
 - `gisketchs_chowkingdom_mod:class/rogue_armor`
-- `rogues:daggers`
-- `rogues:sickles`
-- `rpg_series:weapon_type/dagger`
-- `rpg_series:weapon_type/sickle`
+- `gisketchs_chowkingdom_mod:class/warrior_weapons`
+- `gisketchs_chowkingdom_mod:class/warrior_armor`
 
-The bundled Chow Kingdom tags also include optional Rogues entries:
+Current values:
 
-- Weapons: Rogues daggers and sickles.
-- Armor: Rogues Rogue and Assassin armor sets.
+- Rogue weapons: `minecraft:diamond_axe`.
+- Rogue armor: leather armor.
+- Warrior weapons: `minecraft:wooden_sword`.
+- Warrior armor: iron armor.
 
-Wrong weapons deal reduced damage and apply an item cooldown. Wrong armor disables sprinting while worn.
+Wrong weapons deal reduced damage, reduce attack speed while held, apply an item cooldown after attacks, and show red tooltip notes. Wrong armor disables sprinting while worn and also shows red tooltip notes. Starting items are only inventory grants after class application; allowed weapons and armor come from `equipment_affinity` tags/patterns, not `starting_items`. Starting items are granted once per class only after at least one configured item id exists, so future optional mod entries do not burn the grant if a dependency is missing.
 
-To add Simply Swords or RPG Series later, use either tags or wildcard patterns. No Kotlin edit needed.
+To add Simply Swords, RPG Series, or Rogues later, use either tags or wildcard patterns. No Kotlin edit needed.
 
 ```json
 {
@@ -59,7 +68,11 @@ To add Simply Swords or RPG Series later, use either tags or wildcard patterns. 
 	"armor_patterns": [
 		"rogues:*rogue_armor*",
 		"rogues:*assassin_armor*"
-	]
+	],
+	"wrong_weapon_damage_multiplier": 0.2,
+	"wrong_weapon_attack_speed_multiplier": 0.1,
+	"wrong_weapon_cooldown_ticks": 12,
+	"wrong_armor_disables_sprint": true
 }
 ```
 
