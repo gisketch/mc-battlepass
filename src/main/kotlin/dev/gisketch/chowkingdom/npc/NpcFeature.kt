@@ -8,6 +8,7 @@ import dev.gisketch.chowkingdom.ChowKingdomMod
 import dev.gisketch.chowkingdom.discord.DiscordRelay
 import dev.gisketch.chowkingdom.relicroulette.RelicRouletteFeature
 import dev.gisketch.chowkingdom.shops.StoreShopFeature
+import dev.gisketch.chowkingdom.snackbar.SnackbarIcons
 import dev.gisketch.chowkingdom.snackbar.SnackbarNetwork
 import dev.gisketch.chowkingdom.snackbar.SnackbarNotification
 import dev.gisketch.chowkingdom.snackbar.SnackbarSounds
@@ -16,6 +17,7 @@ import net.minecraft.ChatFormatting
 import net.minecraft.commands.CommandSourceStack
 import net.minecraft.commands.Commands
 import net.minecraft.commands.SharedSuggestionProvider
+import net.minecraft.commands.arguments.EntityArgument
 import net.minecraft.core.BlockPos
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.core.registries.Registries
@@ -148,21 +150,21 @@ object NpcFeature {
     private fun openNpcShop(player: ServerPlayer, definition: NpcDefinition) {
         val storeId = definition.store.trim().lowercase()
         if (storeId.isBlank() || !StoreShopFeature.openStore(player, storeId)) {
-            player.displayClientMessage(Component.literal("${definition.name} has no shop ready."), true)
+            npcSnackbar(player, definition.name, "No shop ready.", SnackbarType.ERROR)
         }
     }
 
     private fun giftToNpc(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition) {
         val stack = giftStack(player)
         if (stack.isEmpty) {
-            player.displayClientMessage(Component.literal("Hold an item to gift."), true)
+            npcSnackbar(player, definition.name, "Hold an item to gift.", SnackbarType.ERROR)
             return
         }
         if (RelicRouletteFeature.rejectTransfer(player, stack, "gifts")) return
         val limit = definition.gifts.dailyLimit
         val period = giftPeriod(player.level().dayTime, definition.gifts.resetHour)
         if (!NpcStore.recordGiftIfAllowed(definition.id, player, period, limit)) {
-            player.displayClientMessage(Component.literal("${definition.name} can receive another gift after ${definition.gifts.resetHour.toString().padStart(2, '0')}:00."), true)
+            npcSnackbar(player, definition.name, "Can receive another gift at ${definition.gifts.resetHour.toString().padStart(2, '0')}:00.", SnackbarType.ERROR)
             return
         }
         val itemName = stack.hoverName.string
@@ -199,6 +201,10 @@ object NpcFeature {
         "liked" -> 25
         "disliked" -> -50
         else -> 5
+    }
+
+    private fun npcSnackbar(player: ServerPlayer, title: String, content: String, type: SnackbarType) {
+        SnackbarNetwork.send(player, SnackbarNotification.item(SnackbarIcons.ERROR, title, content, type, SnackbarSounds.forType(type)))
     }
 
     private fun friendshipMessage(set: NpcFriendshipMessageSet, friendship: NpcFriendshipSnapshot, player: ServerPlayer, definition: NpcDefinition, itemName: String = "", mood: String = ""): String {
@@ -261,6 +267,7 @@ object NpcFeature {
         val definition = NpcConfig.get(entity.npcId) ?: return
         entity.homePos = validHomePos(entity.level(), definition.id)
         entity.campPos = entity.campPos ?: NpcStore.campPos(definition.id)
+        if (NpcBrainOverrides.tick(entity, definition)) return
         if (entity.isTalking()) return
         NpcBrain.tick(entity, definition)
     }
@@ -320,12 +327,16 @@ object NpcFeature {
         val hitCount = NpcStore.recordHurt(definition.id, player, System.currentTimeMillis())
         NpcStore.adjustFriendship(definition.id, player, FRIENDSHIP_HIT_DELTA, "hit")
         NpcStore.recordConversation(definition.id, player, player.gameProfile.name, "hurts ${definition.name}", "player_hurt")
-        if (hitCount % HURT_MESSAGE_INTERVAL == 0) relayNpcHurtMessage(player, npc, definition)
+        if (hitCount % HURT_MESSAGE_INTERVAL == 0) {
+            relayNpcHurtMessage(player, npc, definition)
+            NpcBrainOverrides.startHurtResponse(npc, player)
+        }
     }
 
     private fun onLivingDeath(event: LivingDeathEvent) {
         val npc = event.entity as? ChowNpcEntity
         if (npc != null) {
+            NpcBrainOverrides.clear(npc)
             val definition = NpcConfig.get(npc.npcId) ?: return
             val killer = event.source.entity as? ServerPlayer
             val deathText = killer?.let { "${definition.name} died, killed by ${it.gameProfile.name}" } ?: "${definition.name} died"
@@ -440,6 +451,46 @@ object NpcFeature {
                         .executes(::spawnCommand),
                 ),
         )
+        .then(
+            Commands.literal("respawn")
+                .requires { source -> source.hasPermission(2) }
+                .then(
+                    Commands.literal("status")
+                        .then(
+                            Commands.argument("id", StringArgumentType.word())
+                                .suggests(::suggestNpcIds)
+                                .executes(::respawnStatusCommand),
+                        ),
+                )
+                .then(
+                    Commands.argument("id", StringArgumentType.word())
+                        .suggests(::suggestNpcIds)
+                        .executes(::respawnCommand),
+                ),
+        )
+        .then(
+            Commands.literal("friendship")
+                .requires { source -> source.hasPermission(2) }
+                .then(
+                    Commands.literal("get")
+                        .then(friendshipTargetArgument().executes(::friendshipGetCommand)),
+                )
+                .then(
+                    Commands.literal("set")
+                        .then(friendshipTargetArgument().then(Commands.argument("points", IntegerArgumentType.integer(NpcFriendshipLevels.MIN_POINTS, NpcFriendshipLevels.MAX_POINTS)).executes(::friendshipSetCommand))),
+                )
+                .then(
+                    Commands.literal("add")
+                        .then(friendshipTargetArgument().then(Commands.argument("delta", IntegerArgumentType.integer(-2000, 2000)).executes(::friendshipAddCommand))),
+                )
+        )
+
+    private fun suggestNpcIds(context: CommandContext<CommandSourceStack>, builder: com.mojang.brigadier.suggestion.SuggestionsBuilder) =
+        SharedSuggestionProvider.suggest(NpcConfig.all().map { definition -> definition.id }, builder)
+
+    private fun friendshipTargetArgument() = Commands.argument("id", StringArgumentType.word())
+        .suggests(::suggestNpcIds)
+        .then(Commands.argument("player", EntityArgument.player()))
 
     private fun reloadCommand(context: CommandContext<CommandSourceStack>): Int {
         NpcConfig.load()
@@ -484,6 +535,89 @@ object NpcFeature {
         return debugTimeMultiplier
     }
 
+    private fun respawnStatusCommand(context: CommandContext<CommandSourceStack>): Int {
+        NpcConfig.load()
+        val id = StringArgumentType.getString(context, "id")
+        val definition = NpcConfig.get(id) ?: run {
+            context.source.sendFailure(Component.literal("Unknown NPC '$id'."))
+            return 0
+        }
+        val server = context.source.server
+        val dayTime = server.overworld().dayTime
+        val currentDay = dayTime / MINECRAFT_DAY_TICKS
+        val currentHour = NpcScheduleDefinition.hourAt(dayTime)
+        val respawnDay = NpcStore.respawnDay(id)
+        val liveNpc = existingNpc(server, id)
+        val home = NpcStore.homePos(id)
+        val validHome = validHomePos(server.overworld(), id)
+        val ready = NpcStore.isDead(id) && liveNpc == null && respawnReady(dayTime, respawnDay) && validHome != null
+        listOf(
+            Component.literal("NPC RESPAWN: ${definition.displayName()}").withStyle(ChatFormatting.GOLD),
+            Component.literal("live=${liveNpc != null} dead=${NpcStore.isDead(id)} currentDay=$currentDay currentHour=$currentHour respawnDay=$respawnDay ready=$ready"),
+            Component.literal("home=${home?.toShortString() ?: "unset"} validHome=${validHome?.toShortString() ?: "no"}"),
+            Component.literal("Rule: respawns at valid home bed when current day is due and hour is $NPC_RESPAWN_HOUR or later."),
+        ).forEach(context.source::sendSystemMessage)
+        return if (ready) 1 else 0
+    }
+
+    private fun respawnCommand(context: CommandContext<CommandSourceStack>): Int {
+        NpcConfig.load()
+        val id = StringArgumentType.getString(context, "id")
+        val definition = NpcConfig.get(id) ?: run {
+            context.source.sendFailure(Component.literal("Unknown NPC '$id'."))
+            return 0
+        }
+        val server = context.source.server
+        if (existingNpc(server, id) != null) {
+            context.source.sendFailure(Component.literal("${definition.displayName()} already exists."))
+            return 0
+        }
+        val home = validHomePos(server.overworld(), id) ?: run {
+            context.source.sendFailure(Component.literal("${definition.displayName()} has no valid home bed."))
+            return 0
+        }
+        return if (respawnNpc(server.overworld(), definition, home)) {
+            context.source.sendSuccess({ Component.literal("Respawned ${definition.displayName()}.") }, true)
+            1
+        } else {
+            context.source.sendFailure(Component.literal("Could not respawn ${definition.displayName()}."))
+            0
+        }
+    }
+
+    private fun friendshipGetCommand(context: CommandContext<CommandSourceStack>): Int {
+        val definition = npcDefinitionArgument(context) ?: return 0
+        val player = EntityArgument.getPlayer(context, "player")
+        val friendship = NpcStore.friendshipSnapshot(definition.id, player)
+        context.source.sendSuccess({ Component.literal("${definition.displayName()} / ${player.gameProfile.name}: ${friendship.points} points, Lv.${friendship.level}, ${friendship.category.id}.") }, false)
+        return friendship.points
+    }
+
+    private fun friendshipSetCommand(context: CommandContext<CommandSourceStack>): Int {
+        val definition = npcDefinitionArgument(context) ?: return 0
+        val player = EntityArgument.getPlayer(context, "player")
+        val points = IntegerArgumentType.getInteger(context, "points")
+        val friendship = NpcStore.setFriendship(definition.id, player, points, "command_set")
+        context.source.sendSuccess({ Component.literal("Set ${definition.displayName()} / ${player.gameProfile.name} to ${friendship.points} points, Lv.${friendship.level}.") }, true)
+        return friendship.points
+    }
+
+    private fun friendshipAddCommand(context: CommandContext<CommandSourceStack>): Int {
+        val definition = npcDefinitionArgument(context) ?: return 0
+        val player = EntityArgument.getPlayer(context, "player")
+        val delta = IntegerArgumentType.getInteger(context, "delta")
+        val friendship = NpcStore.adjustFriendship(definition.id, player, delta, "command_add")
+        context.source.sendSuccess({ Component.literal("Adjusted ${definition.displayName()} / ${player.gameProfile.name} by $delta to ${friendship.points} points, Lv.${friendship.level}.") }, true)
+        return friendship.points
+    }
+
+    private fun npcDefinitionArgument(context: CommandContext<CommandSourceStack>): NpcDefinition? {
+        val id = StringArgumentType.getString(context, "id")
+        val definition = NpcConfig.get(id)
+        if (definition == null) context.source.sendFailure(Component.literal("Unknown NPC '$id'."))
+        return definition
+    }
+
     private fun tickDebugTime(server: MinecraftServer) {
         if (debugTimeMultiplier <= 1) return
         server.allLevels.forEach { level -> level.setDayTime(level.dayTime + debugTimeMultiplier - 1L) }
@@ -493,9 +627,8 @@ object NpcFeature {
         if (server.tickCount % RESPAWN_SCAN_INTERVAL_TICKS != 0) return
         val dayTime = server.overworld().dayTime
         val currentDay = dayTime / MINECRAFT_DAY_TICKS
-        if (NpcScheduleDefinition.hourAt(dayTime) != NPC_RESPAWN_HOUR) return
         NpcStore.deadNpcIds().forEach { npcId ->
-            if (NpcStore.respawnDay(npcId) > currentDay) return@forEach
+            if (!respawnReady(dayTime, NpcStore.respawnDay(npcId))) return@forEach
             val definition = NpcConfig.get(npcId) ?: return@forEach
             if (existingNpc(server, npcId) != null) {
                 NpcStore.clearDead(npcId)
@@ -504,6 +637,11 @@ object NpcFeature {
             val home = validHomePos(server.overworld(), npcId) ?: return@forEach
             respawnNpc(server.overworld(), definition, home)
         }
+    }
+
+    private fun respawnReady(dayTime: Long, respawnDay: Long): Boolean {
+        val currentDay = dayTime / MINECRAFT_DAY_TICKS
+        return currentDay > respawnDay || currentDay == respawnDay && NpcScheduleDefinition.hourAt(dayTime) >= NPC_RESPAWN_HOUR
     }
 
     private fun nextRespawnDay(dayTime: Long): Long {
@@ -565,6 +703,7 @@ object NpcFeature {
             Mob.createMobAttributes()
                 .add(Attributes.MAX_HEALTH, 20.0)
                 .add(Attributes.MOVEMENT_SPEED, 0.25)
+                .add(Attributes.ATTACK_DAMAGE, 2.0)
                 .add(Attributes.FOLLOW_RANGE, 24.0)
                 .build(),
         )

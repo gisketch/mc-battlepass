@@ -32,6 +32,10 @@ Polish the restored NPC screen dialog and relay NPC speech to nearby players plu
 - Gift reactions use a close-only OKAY dialog, and locked relic/player-locked items cannot be gifted.
 - Per NPC/player friendship points range from -1000 to 1000, derive levels -10 to 10, render in the dialog header, and drive category message pools.
 - Hitting an NPC applies -10 friendship, killing applies -300, and shared `friendship_messages.json` provides generic message banks for all NPCs.
+- NPC dialog action denials use snackbars, gift tooltip hover no longer renders the extra item icon, and snackbars stack from the top while the NPC dialog screen is open.
+- NPC respawn no longer depends on hitting the exact 05:00 scan tick, and OP commands can inspect respawn state, force respawn, and edit friendship points.
+- NPC brain overrides can temporarily hijack schedule navigation for hurt retaliation and fire/campfire avoidance, with NPC held items rendered client-side and attack-back using scripted swing/damage/knockback pulses.
+- NPC Discord relay keeps NPC webhook identity, moves NPC message/player context into an embed, and renders friendship as footer emojis only.
 
 ## Plan
 
@@ -52,6 +56,10 @@ Polish the restored NPC screen dialog and relay NPC speech to nearby players plu
 15. Wire Buy/Gift dialog actions without adding friendship state.
 16. Add friendship storage, visualization, category messages, and gift point deltas.
 17. Add negative friendship events and shared friendship message config.
+18. Polish NPC dialog snackbars and gift tooltip hover.
+19. Add respawn diagnostics, force respawn, and friendship admin commands.
+20. Add scalable NPC brain overrides for reactive behavior.
+21. Polish NPC Discord dialog rendering.
 
 ## Progress
 
@@ -74,3 +82,7 @@ Polish the restored NPC screen dialog and relay NPC speech to nearby players plu
 - 2026-05-07: Made gift reaction dialogs show only OKAY, and blocked relic-locked items from NPC gifts through `RelicRouletteFeature.rejectTransfer`.
 - 2026-05-07: Added per-player friendship points/levels/categories, header heart/anger visualization, LLM friendship context, gift point deltas, and category-based Finn message banks for interact/gift/hurt/wake.
 - 2026-05-07: Added -10 hit and -300 kill friendship deltas, plus shared `friendship_messages.json` fallback loading for reusable NPC message banks.
+- 2026-05-07: Routed NPC buy/gift denial text through snackbars, moved snackbars to top-down rendering during NPC dialog, and removed the gift tooltip item preview icon.
+- 2026-05-07: Made NPC respawn tolerant of debug-time skips, added `/npc respawn status <id>`, `/npc respawn <id>`, and `/npc friendship get|set|add` admin commands.
+- 2026-05-07: Added `NpcBrainOverrides` with third-hit attack-back and fire/campfire run-away behavior, plus client rendering for temporary held weapons and scripted attack-back pulses.
+- 2026-05-07: Changed NPC Discord output to an embed with message description, talked-to player author, and friendship emoji-only footer.

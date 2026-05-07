@@ -66,6 +66,7 @@ Each NPC/player conversation keeps at most 30 records. The world also keeps at m
 - `NpcScheduleDefinition`: static 24-hour schedule loaded from JSON.
 - `NpcResidentState`: saved world data for home bed, camp, contract, and spawned entity UUID.
 - `NpcBrain`: runtime logic that chooses the current schedule activity and movement target.
+- `NpcBrainOverrides`: temporary interrupt behaviors that can hijack schedule movement for reactive events, such as retaliation or running away from danger.
 - `NpcEntity`: the Minecraft entity that moves, interacts, renders, and exposes debug state.
 
 ## Memory Context
@@ -90,9 +91,11 @@ Right-clicking a sleeping NPC wakes it, opens wake-specific dialog, pauses sleep
 
 When the same player hits an NPC three times in a row, the NPC speaks a random `hurt_messages` line in nearby world chat. Those third-hit events are persisted in `NpcResidentState` with timestamp and player identity.
 
+The third same-player hit also starts a short brain override. The NPC equips a temporary random weapon, chases the attacker, then runs two scripted attack pulses with swing animation, attack sound, direct mob-attack damage, and knockback when in range. NPCs also run away for 3 seconds when they step on fire, soul fire, campfire, or soul campfire. Overrides pause normal schedule/job navigation and then fall back to the regular brain.
+
 Gift limits are per NPC/player and reset by in-game schedule period. Finn defaults to one gift per in-game day, resetting at 05:00. Gifts adjust friendship only: neutral `+5`, liked `+25`, loved `+50`, disliked `-50`. Hitting an NPC changes friendship by `-10`; killing one changes friendship by `-300`. No extra friendship mechanics or rewards exist yet.
 
-If an NPC dies, resident state marks it dead. At the next 05:00 schedule hour, the server respawns it at its assigned bed if it has one.
+If an NPC dies, resident state marks it dead. Once the scheduled respawn day is due and the in-game hour is 05:00 or later, the server respawns it at its assigned bed if it has one. This is intentionally tolerant of debug time jumps that skip across the exact 05:00 scan window.
 
 Home beds are validated against live bed blocks. If the assigned bed is broken or missing, the stored home is cleared, the NPC stops treating itself as housed, and interaction can grant a new rent contract. Dead NPCs without a valid assigned bed do not bed-respawn; placing a camping block can introduce them again and clears stale death state.
 
@@ -100,6 +103,11 @@ Home beds are validated against live bed blocks. If the assigned bed is broken o
 
 - `/npc reload`: reload NPC config files.
 - `/npc spawn <id>`: spawn an NPC at the command source player's position.
+- `/npc respawn status <id>`: show live/dead state, current day/hour, stored respawn day, home bed validity, and whether the NPC is ready to respawn.
+- `/npc respawn <id>`: force-respawn a dead or missing NPC at its valid home bed.
+- `/npc friendship get <id> <player>`: show that player's points, level, and category for an NPC.
+- `/npc friendship set <id> <player> <points>`: set points from `-1000` to `1000`.
+- `/npc friendship add <id> <player> <delta>`: add or subtract points, clamped to `-1000..1000`.
 - `/npc debug`: toggle realtime actionbar debug for the Chow Kingdom NPC under the player's crosshair. Run it on the same NPC again to stop. The actionbar includes current schedule hour, activity, task, navigation state, target, and debug time multiplier.
 - `/npc debug time <multiplier>`: speed up day time for debugging schedules. Use `1` to reset. Allowed range is `1` to `240`.
 - `/ck npc ...` and `/chowkingdom npc ...`: aliases.

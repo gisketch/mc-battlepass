@@ -123,6 +123,7 @@ Screenshot message tokens:
 - Join, leave, and death relay use Discord embeds with configurable titles, descriptions, and colors.
 - Battlepass mission completions use Discord embeds with player avatar author icons.
 - Relic roulette rolls use Discord embeds with player avatar author icons after the roll animation completes.
+- NPC dialog uses the NPC webhook name/avatar, puts the NPC line in the embed description, and includes an embed author `Talking to PlayerName` with the player's avatar. The embed footer renders only the player-specific NPC friendship heart/empty/angry emojis.
 - Player chat remains normal webhook content so dynamic username/avatar still behaves like chat.
 - Bot presence updates show online count and smoothed TPS without posting status messages into the Discord channel.
 - Join/leave posts use the configured `webhook_username` and `avatar_url`, such as `Chow Kingdom`.

@@ -14,4 +14,5 @@ data class DiscordEmbed(
     val color: Int? = null,
     val authorName: String = "",
     val authorIconUrl: String = "",
+    val footerText: String = "",
 )

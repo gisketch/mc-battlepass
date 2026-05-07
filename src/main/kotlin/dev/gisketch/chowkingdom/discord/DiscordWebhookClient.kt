@@ -75,9 +75,13 @@ object DiscordWebhookClient {
                 if (authorIconUrl.isNotBlank()) addProperty("icon_url", authorIconUrl)
             })
         }
+        if (footerText.isNotBlank()) {
+            add("footer", JsonObject().apply { addProperty("text", footerText.take(DISCORD_EMBED_FOOTER_LIMIT)) })
+        }
     }
 
     private const val DISCORD_EMBED_TITLE_LIMIT = 256
     private const val DISCORD_EMBED_DESCRIPTION_LIMIT = 4096
     private const val DISCORD_EMBED_AUTHOR_LIMIT = 256
+    private const val DISCORD_EMBED_FOOTER_LIMIT = 2048
 }

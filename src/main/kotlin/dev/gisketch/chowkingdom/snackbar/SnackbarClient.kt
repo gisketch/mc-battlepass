@@ -2,6 +2,7 @@ package dev.gisketch.chowkingdom.snackbar
 
 import com.mojang.blaze3d.systems.RenderSystem
 import dev.gisketch.chowkingdom.ChowKingdomMod
+import dev.gisketch.chowkingdom.npc.NpcClient
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.Font
 import net.minecraft.client.gui.GuiGraphics
@@ -82,24 +83,35 @@ object SnackbarClient {
         val font = minecraft.font
         val screenWidth = minecraft.window.guiScaledWidth
         val screenHeight = minecraft.window.guiScaledHeight
+        val renderFromTop = NpcClient.isDialogOpen()
+        if (renderFromTop) {
+            var top = DIALOG_TOP_OFFSET_Y
+            active.forEach { snackbar ->
+                val layout = layout(font, snackbar, screenWidth)
+                val x = (screenWidth - layout.width) / 2
+                renderSnackbar(guiGraphics, font, snackbar, layout, x, top, now, true)
+                top += layout.height + STACK_GAP
+            }
+            return
+        }
         var bottom = screenHeight - HOTBAR_OFFSET_Y
         active.asReversed().forEach { snackbar ->
             val layout = layout(font, snackbar, screenWidth)
             val x = (screenWidth - layout.width) / 2
             val y = bottom - layout.height
-            renderSnackbar(guiGraphics, font, snackbar, layout, x, y, now)
+            renderSnackbar(guiGraphics, font, snackbar, layout, x, y, now, false)
             bottom = y - STACK_GAP
         }
     }
 
-    private fun renderSnackbar(guiGraphics: GuiGraphics, font: Font, snackbar: ClientSnackbar, layout: SnackbarLayout, x: Int, y: Int, now: Long) {
+    private fun renderSnackbar(guiGraphics: GuiGraphics, font: Font, snackbar: ClientSnackbar, layout: SnackbarLayout, x: Int, y: Int, now: Long, fromTop: Boolean) {
         val age = now - snackbar.createdAtMs
         val entrance = easeOutCubic((age.toFloat() / ENTER_MS).coerceIn(0.0f, 1.0f))
         val exit = if (age <= snackbar.durationMs) 1.0f else 1.0f - ((age - snackbar.durationMs).toFloat() / EXIT_MS).coerceIn(0.0f, 1.0f)
         val alpha = entrance * exit
         if (alpha <= 0.01f) return
         val scale = 0.92f + 0.08f * entrance
-        val slideY = SLIDE_UP_OFFSET * (1.0f - entrance)
+        val slideY = (if (fromTop) -SLIDE_UP_OFFSET else SLIDE_UP_OFFSET) * (1.0f - entrance)
         val pose = guiGraphics.pose()
         pose.pushPose()
         pose.translate((x + layout.width / 2.0f), (y + layout.height / 2.0f + slideY), 240.0f)
@@ -308,6 +320,7 @@ object SnackbarClient {
     private const val CONTENT_LINE_HEIGHT = 10
     private const val MAX_CONTENT_LINES = 3
     private const val HOTBAR_OFFSET_Y = 54
+    private const val DIALOG_TOP_OFFSET_Y = 14
     private const val STACK_GAP = 6
     private const val MAX_ACTIVE = 3
     private const val ENTER_MS = 260L

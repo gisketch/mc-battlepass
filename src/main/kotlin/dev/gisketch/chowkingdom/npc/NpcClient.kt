@@ -6,11 +6,13 @@ import dev.gisketch.chowkingdom.ChowKingdomMod
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.screens.Screen
+import net.minecraft.client.model.HumanoidModel
 import net.minecraft.client.model.PlayerModel
 import net.minecraft.client.model.geom.ModelLayers
 import net.minecraft.client.renderer.MultiBufferSource
 import net.minecraft.client.renderer.entity.EntityRendererProvider
 import net.minecraft.client.renderer.entity.MobRenderer
+import net.minecraft.client.renderer.entity.layers.ItemInHandLayer
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.item.ItemStack
@@ -32,6 +34,9 @@ object NpcClient {
         NeoForge.EVENT_BUS.addListener(::hideHotbarDuringDialog)
     }
 
+    @JvmStatic
+    fun isDialogOpen(): Boolean = Minecraft.getInstance().screen is NpcDialogScreen
+
     private fun registerRenderers(event: EntityRenderersEvent.RegisterRenderers) {
         event.registerEntityRenderer(NpcFeature.NPC_ENTITY.get(), ::ChowNpcRenderer)
     }
@@ -45,8 +50,13 @@ private class ChowNpcRenderer(context: EntityRendererProvider.Context) : MobRend
     private val normalModel = PlayerModel<ChowNpcEntity>(context.bakeLayer(ModelLayers.PLAYER), false)
     private val slimModel = PlayerModel<ChowNpcEntity>(context.bakeLayer(ModelLayers.PLAYER_SLIM), true)
 
+    init {
+        addLayer(ItemInHandLayer(this, context.itemInHandRenderer))
+    }
+
     override fun render(entity: ChowNpcEntity, entityYaw: Float, partialTicks: Float, poseStack: PoseStack, buffer: MultiBufferSource, packedLight: Int) {
         model = if (entity.bodyType == NpcBodyTypes.SLIM) slimModel else normalModel
+        model.rightArmPose = if (entity.mainHandItem.isEmpty) HumanoidModel.ArmPose.EMPTY else HumanoidModel.ArmPose.ITEM
         super.render(entity, entityYaw, partialTicks, poseStack, buffer, packedLight)
     }
 
@@ -177,7 +187,6 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
             guiGraphics.renderTooltip(font, Component.literal("Hold an item to gift."), mouseX, mouseY)
         } else {
             guiGraphics.renderTooltip(font, Component.literal("Gift ${giftStack.hoverName.string}"), mouseX, mouseY)
-            guiGraphics.renderItem(giftStack.copyWithCount(1), mouseX + 8, mouseY - 20)
         }
     }
 

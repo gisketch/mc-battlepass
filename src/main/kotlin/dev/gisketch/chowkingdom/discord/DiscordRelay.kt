@@ -1,5 +1,6 @@
 package dev.gisketch.chowkingdom.discord
 
+import dev.gisketch.chowkingdom.npc.NpcStore
 import dev.gisketch.chowkingdom.profiles.NicknameStore
 import net.minecraft.server.MinecraftServer
 import net.minecraft.server.level.ServerPlayer
@@ -105,16 +106,28 @@ object DiscordRelay {
     fun npcDialog(player: ServerPlayer, npcId: String, npcName: String, message: String) {
         val config = DiscordConfig.current()
         if (!config.enabled) return
-        val link = DiscordAccountLinkStore.linkFor(player)
-        val mention = link?.discordId?.takeIf(String::isNotBlank)?.let { id -> "<@$id>" } ?: "@${player.gameProfile.name}"
+        val playerName = NicknameStore.displayName(player)
+        val friendship = NpcStore.friendshipSnapshot(npcId, player)
         DiscordWebhookClient.send(
             DiscordWebhookMessage(
-                content = "$mention, \"${DiscordText.cleanContent(message)}\"",
                 username = npcName,
                 avatarUrl = DiscordQuickSkinSupport.npcAvatarUrl(npcId, config),
-                allowedUserMentions = link?.discordId?.takeIf(String::isNotBlank)?.let(::listOf).orEmpty(),
+                embeds = listOf(
+                    DiscordEmbed(
+                        description = DiscordText.cleanContent(message),
+                        authorName = "Talking to $playerName",
+                        authorIconUrl = DiscordQuickSkinSupport.avatarUrl(player, config),
+                        footerText = friendshipEmojis(friendship.level),
+                    ),
+                ),
             ),
         )
+    }
+
+    private fun friendshipEmojis(level: Int): String {
+        val clampedLevel = level.coerceIn(-10, 10)
+        val filled = if (clampedLevel >= 0) "❤️".repeat(clampedLevel) else "😠".repeat(-clampedLevel)
+        return filled + "🖤".repeat(10 - kotlin.math.abs(clampedLevel))
     }
 
     private fun embedMessage(title: String, description: String, color: String, values: Map<String, String>): DiscordWebhookMessage = DiscordWebhookMessage(

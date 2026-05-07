@@ -129,6 +129,16 @@ object NpcStore {
         return NpcFriendshipSnapshot.from(friendship.points)
     }
 
+    fun setFriendship(npcId: String, player: ServerPlayer, points: Int, reason: String): NpcFriendshipSnapshot {
+        val state = state(npcId)
+        val friendship = state.friendships.getOrPut(player.stringUUID) { NpcFriendshipState() }
+        friendship.points = points.coerceIn(NpcFriendshipLevels.MIN_POINTS, NpcFriendshipLevels.MAX_POINTS)
+        friendship.lastChangedAt = System.currentTimeMillis()
+        friendship.lastReason = reason
+        save()
+        return NpcFriendshipSnapshot.from(friendship.points)
+    }
+
     fun recordGlobalEvent(type: String, text: String) {
         if (!loaded) load()
         data.globalEvents += NpcGlobalEvent(System.currentTimeMillis(), type, text)
@@ -168,6 +178,8 @@ object NpcStore {
         if (!loaded) load()
         return data.npcs.entries.filter { (_, state) -> state.dead }.map { (npcId, _) -> npcId }
     }
+
+    fun isDead(npcId: String): Boolean = state(npcId).dead
 
     fun respawnDay(npcId: String): Long = state(npcId).respawnDay
 
