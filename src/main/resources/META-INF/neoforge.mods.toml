@@ -36,6 +36,13 @@ ordering="NONE"
 side="BOTH"
 
 [[dependencies.${mod_id}]]
+modId="geckolib"
+type="required"
+versionRange="[4.8.4,)"
+ordering="AFTER"
+side="BOTH"
+
+[[dependencies.${mod_id}]]
 modId="owo"
 type="required"
 versionRange="${owo_version_range}"

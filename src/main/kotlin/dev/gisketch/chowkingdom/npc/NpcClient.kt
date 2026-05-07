@@ -113,13 +113,25 @@ object NpcClient {
 
     private fun registerRenderers(event: EntityRenderersEvent.RegisterRenderers) {
         event.registerEntityRenderer(NpcFeature.NPC_ENTITY.get(), ::ChowNpcRenderer)
+        event.registerBlockEntityRenderer(NpcFeature.CAMPING_BLOCK_ENTITY.get()) { CampingBlockRenderer() }
     }
 
     private fun hideHotbarDuringDialog(event: RenderGuiLayerEvent.Pre) {
-        if (event.name == VanillaGuiLayers.HOTBAR && Minecraft.getInstance().screen is NpcDialogScreen) event.isCanceled = true
+        if (Minecraft.getInstance().screen !is NpcDialogScreen) return
+        if (event.name in HIDDEN_DIALOG_HUD_LAYERS) event.isCanceled = true
     }
 
     private data class NpcBalloonLine(val message: String, val expiresAtMs: Long)
+
+    private val HIDDEN_DIALOG_HUD_LAYERS = setOf(
+        VanillaGuiLayers.HOTBAR,
+        VanillaGuiLayers.EXPERIENCE_BAR,
+        VanillaGuiLayers.PLAYER_HEALTH,
+        VanillaGuiLayers.ARMOR_LEVEL,
+        VanillaGuiLayers.FOOD_LEVEL,
+        VanillaGuiLayers.AIR_LEVEL,
+        VanillaGuiLayers.VEHICLE_HEALTH,
+    )
 
     private fun renderBalloonNineSlice(guiGraphics: GuiGraphics, x: Int, y: Int, width: Int, height: Int) {
         val middleWidth = (width - BALLOON_CORNER * 2).coerceAtLeast(0)
@@ -223,7 +235,12 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
     private var displayMessage: String = payload.message
     private var lastAnimaleseIndex: Int = 0
     private var talkMode: Boolean = false
-    private var waitingForTalk: Boolean = false
+    private var waitingForTalk: Boolean = payload.message == "..."
+    private var talkModeChangedAtMs: Long = openedAtMs
+    private var animatedPanelHeight: Float = BASE_PANEL_HEIGHT.toFloat()
+    private var panelHeightAnimationFrom: Float = BASE_PANEL_HEIGHT.toFloat()
+    private var panelHeightAnimationTarget: Int = BASE_PANEL_HEIGHT
+    private var panelHeightAnimationStartedAtMs: Long = openedAtMs
     private var talkInput: EditBox? = null
 
     override fun isPauseScreen(): Boolean = false
@@ -235,11 +252,8 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
     override fun renderBlurredBackground(partialTick: Float) = Unit
 
     override fun init() {
-        val panelWidth = 356.coerceAtMost(width - 24)
-        val panelHeight = 112.coerceAtMost(height - 24)
-        val x = (width - panelWidth) / 2
-        val y = height - panelHeight - 34
-        talkInput = EditBox(font, x + PAD, y + panelHeight - 26, panelWidth - PAD * 2 - BUTTON_WIDTH - TEXT_GAP, 18, Component.literal("Message ${payload.name}...")).apply {
+        val layout = layout()
+        talkInput = EditBox(font, layout.inputX, layout.inputY, layout.inputWidth, INPUT_HEIGHT, Component.literal("Message ${payload.name}...")).apply {
             setMaxLength(280)
             setHint(Component.literal("Message ${payload.name}..."))
             visible = talkMode
@@ -248,10 +262,12 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
     }
 
     override fun render(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) {
-        val panelWidth = 356.coerceAtMost(width - 24)
-        val panelHeight = 112.coerceAtMost(height - 24)
-        val x = (width - panelWidth) / 2
-        val y = height - panelHeight - 34
+        val layout = layout()
+        updateTalkInput(layout)
+        val panelWidth = layout.panelWidth
+        val panelHeight = layout.panelHeight
+        val x = layout.x
+        val y = layout.y
         val progress = entranceProgress()
         val scale = 0.92f + progress * 0.08f
         val slideY = (18.0f * (1.0f - progress))
@@ -283,7 +299,7 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         val visibleMessage = currentRenderMessage().take(visibleCharacters)
         val lines = font.split(ckdmDialogText(visibleMessage), dialogWidth)
         var lineY = dialogY
-        lines.take(MAX_DIALOG_LINES).forEach { line ->
+        lines.take(layout.dialogLineLimit).forEach { line ->
             guiGraphics.drawString(font, line, dialogX, lineY, DIALOG_COLOR, false)
             lineY += LINE_HEIGHT
         }
@@ -297,19 +313,22 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
 
     override fun mouseClicked(mouseX: Double, mouseY: Double, button: Int): Boolean {
         if (button != 0) return true
-        val panelWidth = 356.coerceAtMost(width - 24)
-        val panelHeight = 112.coerceAtMost(height - 24)
-        val x = (width - panelWidth) / 2
-        val y = height - panelHeight - 34
+        val layout = layout()
+        updateTalkInput(layout)
+        val panelWidth = layout.panelWidth
+        val panelHeight = layout.panelHeight
+        val x = layout.x
+        val y = layout.y
         val progress = entranceProgress()
         val scale = 0.92f + progress * 0.08f
         val slideY = 18.0f * (1.0f - progress)
         val localMouse = localMouse(mouseX.toInt(), mouseY.toInt(), x + panelWidth / 2.0f, y + panelHeight.toFloat(), slideY, scale)
         if (talkMode && talkInput?.mouseClicked(localMouse.first.toDouble(), localMouse.second.toDouble(), button) == true) return true
+        if (waitingForTalk) return true
         val action = actionAt(localMouse.first, localMouse.second) ?: return true
         when (action) {
-            DialogAction.Buy -> if (talkMode) exitTalkMode() else NpcNetwork.sendAction(payload.npcId, "buy")
-            DialogAction.Gift -> if (!talkMode && !giftStack().isEmpty) NpcNetwork.sendAction(payload.npcId, "gift")
+            DialogAction.Buy -> NpcNetwork.sendAction(payload.npcId, "buy")
+            DialogAction.Gift -> if (payload.talkEnabled || !giftStack().isEmpty) NpcNetwork.sendAction(payload.npcId, "gift")
             DialogAction.Bye -> onClose()
             DialogAction.Talk -> if (payload.talkEnabled) {
                 if (talkMode) sendTalkMessage() else enterTalkMode()
@@ -319,7 +338,7 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
     }
 
     override fun keyPressed(keyCode: Int, scanCode: Int, modifiers: Int): Boolean {
-        if (talkMode && keyCode == 257) {
+        if (talkMode && keyCode == 257 && !waitingForTalk) {
             sendTalkMessage()
             return true
         }
@@ -342,9 +361,9 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         actions().forEachIndexed { index, action ->
             val buttonY = y + index * BUTTON_STEP
             val hovered = mouseX in x until x + BUTTON_WIDTH && mouseY in buttonY until buttonY + BUTTON_HEIGHT
-            val enabled = when (action) {
-                DialogAction.Gift -> !talkMode && !giftStack.isEmpty
-                DialogAction.Talk -> payload.talkEnabled && !waitingForTalk
+            val enabled = !waitingForTalk && when (action) {
+                DialogAction.Gift -> payload.talkEnabled || !giftStack.isEmpty
+                DialogAction.Talk -> payload.talkEnabled
                 else -> true
             }
             val activeHover = hovered && enabled
@@ -373,13 +392,13 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
 
     private fun actionLabel(action: DialogAction): String = when {
         talkMode && action == DialogAction.Talk -> "SEND"
-        talkMode && action == DialogAction.Buy -> "BACK"
         action == DialogAction.Bye && payload.closeOnly -> payload.closeLabel
         else -> action.label
     }
 
     private fun renderActionTooltip(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, action: DialogAction?) {
         if (talkMode || action != DialogAction.Gift) return
+        if (payload.talkEnabled) return
         val giftStack = giftStack()
         if (giftStack.isEmpty) {
             guiGraphics.renderTooltip(font, Component.literal("Hold an item to gift."), mouseX, mouseY)
@@ -394,10 +413,11 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
     }
 
     private fun actionAt(mouseX: Int, mouseY: Int): DialogAction? {
-        val panelWidth = 356.coerceAtMost(width - 24)
-        val panelHeight = 112.coerceAtMost(height - 24)
-        val x = (width - panelWidth) / 2
-        val y = height - panelHeight - 34
+        val layout = layout()
+        val panelWidth = layout.panelWidth
+        val panelHeight = layout.panelHeight
+        val x = layout.x
+        val y = layout.y
         val buttonX = x + panelWidth - PAD - BUTTON_WIDTH
         val buttonY = y + buttonTop(panelHeight)
         return actions().firstOrNull { action ->
@@ -408,11 +428,65 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
 
     private fun actions(): List<DialogAction> = when {
         payload.closeOnly -> listOf(DialogAction.Bye)
-        talkMode -> listOf(DialogAction.Talk, DialogAction.Buy, DialogAction.Bye)
         else -> DialogAction.entries
     }
 
     private fun buttonTop(panelHeight: Int): Int = if (payload.closeOnly) (panelHeight - BUTTON_HEIGHT) / 2 else BUTTON_TOP
+
+    private fun layout(): DialogLayout {
+        val panelWidth = 356.coerceAtMost(width - 24)
+        val dialogWidth = panelWidth - PAD * 2 - BUTTON_WIDTH - TEXT_GAP
+        val fullLineCount = dialogLineCount(dialogWidth).coerceIn(1, BASE_DIALOG_LINES + MAX_EXTRA_DIALOG_LINES)
+        val extraLines = (fullLineCount - BASE_DIALOG_LINES).coerceAtLeast(0)
+        val talkReserve = ((INPUT_HEIGHT + INPUT_GAP) * talkProgress()).toInt()
+        val maxPanelHeight = (height - 24 - talkReserve).coerceAtLeast(BASE_PANEL_HEIGHT)
+        val targetPanelHeight = (BASE_PANEL_HEIGHT + extraLines * LINE_HEIGHT + if (extraLines > 0) DYNAMIC_BOTTOM_PAD else 0).coerceAtMost(maxPanelHeight)
+        val panelHeight = animatedPanelHeight(targetPanelHeight)
+        val x = (width - panelWidth) / 2
+        val y = height - panelHeight - 34 - talkReserve
+        return DialogLayout(
+            x = x,
+            y = y,
+            panelWidth = panelWidth,
+            panelHeight = panelHeight,
+            inputX = x + PAD,
+            inputY = y + panelHeight + INPUT_GAP,
+            inputWidth = panelWidth - PAD * 2,
+            dialogLineLimit = fullLineCount.coerceAtLeast(BASE_DIALOG_LINES),
+        )
+    }
+
+    private fun updateTalkInput(layout: DialogLayout) {
+        talkInput?.setX(layout.inputX)
+        talkInput?.setY(layout.inputY)
+        talkInput?.width = layout.inputWidth
+        talkInput?.visible = talkMode
+    }
+
+    private fun animatedPanelHeight(targetPanelHeight: Int): Int {
+        if (targetPanelHeight != panelHeightAnimationTarget) {
+            panelHeightAnimationFrom = animatedPanelHeight
+            panelHeightAnimationTarget = targetPanelHeight
+            panelHeightAnimationStartedAtMs = System.currentTimeMillis()
+        }
+        val progress = ((System.currentTimeMillis() - panelHeightAnimationStartedAtMs).toFloat() / PANEL_HEIGHT_DURATION_MS).coerceIn(0.0f, 1.0f)
+        val eased = 1.0f - (1.0f - progress) * (1.0f - progress) * (1.0f - progress)
+        animatedPanelHeight = panelHeightAnimationFrom + (panelHeightAnimationTarget - panelHeightAnimationFrom) * eased
+        return animatedPanelHeight.toInt()
+    }
+
+    private fun dialogLineCount(dialogWidth: Int): Int {
+        val wrapped = font.split(ckdmDialogText(displayMessage), dialogWidth).size.coerceAtLeast(1)
+        val averageCharsPerLine = (dialogWidth / 6).coerceAtLeast(24)
+        val estimated = (displayMessage.length + averageCharsPerLine - 1) / averageCharsPerLine
+        return maxOf(wrapped, estimated)
+    }
+
+    private fun talkProgress(): Float {
+        if (!talkMode) return 0.0f
+        val progress = ((System.currentTimeMillis() - talkModeChangedAtMs).toFloat() / TALK_LAYOUT_DURATION_MS).coerceIn(0.0f, 1.0f)
+        return 1.0f - (1.0f - progress) * (1.0f - progress)
+    }
 
     private fun renderAvatar(guiGraphics: GuiGraphics, npcId: String, x: Int, y: Int) {
         val texture = if (npcId == "finn") FINN_TEXTURE else STEVE_TEXTURE
@@ -453,6 +527,7 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
 
     private fun enterTalkMode() {
         talkMode = true
+        talkModeChangedAtMs = System.currentTimeMillis()
         talkInput?.visible = true
         talkInput?.isFocused = true
         setFocused(talkInput)
@@ -562,13 +637,18 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         private const val PANEL_SOURCE_CORNER = 75
         private const val PANEL_DEST_CORNER = 13
         private const val PAD = 14
+        private const val BASE_PANEL_HEIGHT = 112
         private const val AVATAR_SIZE = 42
         private const val SKIN_TEXTURE_SIZE = 64
         private const val TEXT_GAP = 12
         private const val LINE_HEIGHT = 11
         private const val NAME_Y = 15
         private const val FRIENDSHIP_Y = 33
-        private const val MAX_DIALOG_LINES = 4
+        private const val BASE_DIALOG_LINES = 4
+        private const val MAX_EXTRA_DIALOG_LINES = 5
+        private const val INPUT_HEIGHT = 18
+        private const val INPUT_GAP = 16
+        private const val DYNAMIC_BOTTOM_PAD = 11
         private const val BUTTON_WIDTH = 74
         private const val BUTTON_HEIGHT = 20
         private const val BUTTON_TOP = 14
@@ -584,6 +664,8 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         private const val FRIENDSHIP_ICON_SIZE = 8
         private const val FRIENDSHIP_ICON_STEP = 9
         private const val ENTRANCE_DURATION_MS = 180.0f
+        private const val PANEL_HEIGHT_DURATION_MS = 140.0f
+        private const val TALK_LAYOUT_DURATION_MS = 160.0f
         private const val TYPEWRITER_DELAY_MS = 110L
         private const val TYPEWRITER_CHARS_PER_SECOND = 68.0
         private const val NAME_COLOR = 0xFFFFFFFF.toInt()
@@ -594,6 +676,17 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         private val ANIMALESE_PITCHES = setOf("high", "med", "low", "lowest")
     }
 }
+
+private data class DialogLayout(
+    val x: Int,
+    val y: Int,
+    val panelWidth: Int,
+    val panelHeight: Int,
+    val inputX: Int,
+    val inputY: Int,
+    val inputWidth: Int,
+    val dialogLineLimit: Int,
+)
 
 private enum class DialogAction(val label: String, val icon: ResourceLocation) {
     Talk("TALK", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/chat_bubble_white.png")),

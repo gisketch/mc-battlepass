@@ -46,6 +46,7 @@ repositories {
     maven("https://maven.neoforged.net/releases/")
     maven("https://thedarkcolour.github.io/KotlinForForge/")
     maven("https://api.modrinth.com/maven")
+    maven("https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/")
 }
 
 neoForge {
@@ -95,6 +96,7 @@ sourceSets {
 dependencies {
     implementation("thedarkcolour:kotlinforforge-neoforge:$kotlinForForgeVersion")
     implementation("maven.modrinth:owo-lib:$owoLibVersion")
+    implementation("software.bernie.geckolib:geckolib-neoforge-1.21.1:4.8.4")
     compileOnly("maven.modrinth:jade:15.9.3+neoforge")
 
     testImplementation(kotlin("test"))

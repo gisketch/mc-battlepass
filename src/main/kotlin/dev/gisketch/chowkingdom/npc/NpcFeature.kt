@@ -20,6 +20,7 @@ import net.minecraft.commands.SharedSuggestionProvider
 import net.minecraft.commands.arguments.EntityArgument
 import net.minecraft.core.BlockPos
 import net.minecraft.core.registries.BuiltInRegistries
+import net.minecraft.core.Direction
 import net.minecraft.core.registries.Registries
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
@@ -41,6 +42,7 @@ import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.BedBlock
 import net.minecraft.world.level.block.Blocks
+import net.minecraft.world.level.block.entity.BlockEntityType
 import net.minecraft.world.level.block.state.BlockBehaviour
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.level.block.state.properties.BedPart
@@ -68,12 +70,17 @@ object NpcFeature {
     private val BLOCKS: DeferredRegister<Block> = DeferredRegister.create(Registries.BLOCK, ChowKingdomMod.MOD_ID)
     private val ITEMS: DeferredRegister<Item> = DeferredRegister.create(Registries.ITEM, ChowKingdomMod.MOD_ID)
     private val ENTITIES: DeferredRegister<EntityType<*>> = DeferredRegister.create(Registries.ENTITY_TYPE, ChowKingdomMod.MOD_ID)
+    private val BLOCK_ENTITIES: DeferredRegister<BlockEntityType<*>> = DeferredRegister.create(Registries.BLOCK_ENTITY_TYPE, ChowKingdomMod.MOD_ID)
     private val realtimeDebugTargets: MutableMap<UUID, UUID> = linkedMapOf()
     private val greetingRadiusPlayers: MutableMap<UUID, MutableSet<String>> = linkedMapOf()
     private var debugTimeMultiplier: Int = 1
 
-    val CAMPING_BLOCK: DeferredHolder<Block, CampingBlock> = BLOCKS.register("camping_block", Supplier { CampingBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.OAK_PLANKS).strength(1.5f)) })
+    val CAMPING_BLOCK: DeferredHolder<Block, CampingBlock> = BLOCKS.register("camping_block", Supplier { CampingBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.OAK_PLANKS).strength(1.5f).noOcclusion()) })
     val CAMPING_BLOCK_ITEM: DeferredHolder<Item, BlockItem> = ITEMS.register("camping_block", Supplier { BlockItem(CAMPING_BLOCK.get(), Item.Properties()) })
+    val CAMPING_BLOCK_ENTITY: DeferredHolder<BlockEntityType<*>, BlockEntityType<CampingBlockEntity>> = BLOCK_ENTITIES.register(
+        "camping_block",
+        Supplier { BlockEntityType.Builder.of(::CampingBlockEntity, CAMPING_BLOCK.get()).build(null) },
+    )
     val RENT_CONTRACT: DeferredHolder<Item, NpcRentContractItem> = ITEMS.register("rent_contract", Supplier { NpcRentContractItem(Item.Properties().stacksTo(1)) })
     val NPC_ENTITY: DeferredHolder<EntityType<*>, EntityType<ChowNpcEntity>> = ENTITIES.register(
         "npc",
@@ -90,6 +97,7 @@ object NpcFeature {
         BLOCKS.register(modBus)
         ITEMS.register(modBus)
         ENTITIES.register(modBus)
+        BLOCK_ENTITIES.register(modBus)
         NpcNetwork.register(modBus)
         NpcConfig.load()
         modBus.addListener(::registerAttributes)
@@ -137,10 +145,16 @@ object NpcFeature {
         }
         npc.startTalkingTo(player, NPC_DIALOG_DURATION_TICKS)
         NpcStore.recordConversation(definition.id, player, player.gameProfile.name, "interacts with ${definition.name}", "player_interact")
-        val useLlmInteract = NpcConfig.settings().llm.enabled && NpcConfig.settings().llmMessageUsage.interact && hasHome && !wasSleeping && !contractGranted
-        if (useLlmInteract) {
+        val settings = NpcConfig.settings()
+        val llmInput = when {
+            wasSleeping && settings.llmMessageUsage.wake -> "${player.gameProfile.name} woke you up. Reply naturally as ${definition.name}, with the context that you were just sleeping."
+            hasHome && firstChatToday && settings.llmMessageUsage.firstDailyChat -> "${player.gameProfile.name} is talking to you for the first time today. Reply like a natural first daily greeting."
+            hasHome && settings.llmMessageUsage.interact && !contractGranted -> "${player.gameProfile.name} interacted with you. Reply like a natural short NPC greeting or acknowledgement for this moment."
+            else -> null
+        }
+        if (settings.llm.enabled && llmInput != null) {
             NpcNetwork.openDialog(player, dialogPayload(definition, npc, "...", contractGranted, friendship.level))
-            NpcLlmService.interact(player, npc, definition, message)
+            NpcLlmService.event(player, npc, definition, message, llmInput, npcRecordType = "npc_llm_interact")
             return
         }
         NpcStore.recordConversation(definition.id, player, definition.name, message, "npc_message")
@@ -153,16 +167,43 @@ object NpcFeature {
         val npc = existingNpc(player.server, definition.id) ?: return
         if (npc.level() != player.level() || player.distanceToSqr(npc) > NPC_DIALOG_ACTION_DISTANCE_SQR) return
         when (action.lowercase()) {
-            "buy" -> openNpcShop(player, definition)
+            "buy" -> openNpcShop(player, npc, definition)
             "gift" -> giftToNpc(player, npc, definition)
         }
     }
 
-    private fun openNpcShop(player: ServerPlayer, definition: NpcDefinition) {
+    private fun openNpcShop(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition) {
+        val currentHour = NpcScheduleDefinition.hourAt(player.level().dayTime)
+        if (definition.schedule.activityAt(player.level().dayTime) != "work") {
+            val friendship = NpcStore.friendshipSnapshot(definition.id, player)
+            val nextOpen = nextWorkOpening(definition, currentHour)
+            val fallback = if (nextOpen == null) "My shop is closed right now." else "My shop is closed right now. Come back around ${nextOpen.toString().padStart(2, '0')}:00."
+            NpcNetwork.openDialog(player, dialogPayload(definition, npc, "...", false, friendship.level, closeOnly = true, closeLabel = "OKAY"))
+            if (NpcConfig.settings().llm.enabled) {
+                NpcLlmService.event(
+                    player,
+                    npc,
+                    definition,
+                    fallback,
+                    "${player.gameProfile.name} tried to open your shop, but you are not working right now. Current hour is ${currentHour.toString().padStart(2, '0')}:00. Your next work opening is ${nextOpen?.toString()?.padStart(2, '0') ?: "unknown"}:00. Reply in-character and tell them when to expect the shop to open.",
+                    npcRecordType = "npc_shop_closed",
+                )
+            } else {
+                NpcNetwork.sendTalkResponse(player, definition.id, fallback)
+                NpcStore.recordConversation(definition.id, player, definition.name, fallback, "npc_shop_closed")
+            }
+            return
+        }
         val storeId = definition.store.trim().lowercase()
         if (storeId.isBlank() || !StoreShopFeature.openStore(player, storeId)) {
             npcSnackbar(player, definition.name, "No shop ready.", SnackbarType.ERROR)
         }
+    }
+
+    private fun nextWorkOpening(definition: NpcDefinition, currentHour: Int): Int? {
+        val workStarts = definition.schedule.activities.filter { entry -> entry.activity == "work" }.map { entry -> entry.fromHour }
+        if (workStarts.isEmpty()) return null
+        return workStarts.filter { hour -> hour > currentHour }.minOrNull() ?: workStarts.minOrNull()
     }
 
     fun onStorePurchase(player: ServerPlayer, storeId: String, quantity: Int, itemName: String, totalCost: Long) {
@@ -174,6 +215,18 @@ object NpcFeature {
         val message = friendshipMessage(definition.shopMessages.forQuantity(quantity), friendship, player, definition, itemName, quantity = quantity, totalCost = totalCost)
         npc.startTalkingTo(player, NPC_DIALOG_DURATION_TICKS)
         NpcStore.recordConversation(definition.id, player, player.gameProfile.name, "buys $quantity $itemName from ${definition.name}", "player_shop_buy")
+        if (NpcConfig.settings().llm.enabled && NpcConfig.settings().llmMessageUsage.shop) {
+            NpcNetwork.openDialog(player, dialogPayload(definition, npc, "...", false, friendship.level, closeOnly = true, closeLabel = "OKAY"))
+            NpcLlmService.event(
+                player,
+                npc,
+                definition,
+                message,
+                "${player.gameProfile.name} bought $quantity x $itemName from your shop for $totalCost chowcoins. Reply with a short in-character shop follow-up.",
+                npcRecordType = "npc_shop_message",
+            )
+            return
+        }
         NpcStore.recordConversation(definition.id, player, definition.name, message, "npc_shop_message")
         NpcNetwork.openDialog(player, dialogPayload(definition, npc, message, false, friendship.level, closeOnly = true, closeLabel = "OKAY"))
     }
@@ -181,6 +234,20 @@ object NpcFeature {
     private fun giftToNpc(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition) {
         val stack = giftStack(player)
         if (stack.isEmpty) {
+            if (NpcConfig.settings().llm.enabled && NpcConfig.settings().llmMessageUsage.gift) {
+                val friendship = NpcStore.friendshipSnapshot(definition.id, player)
+                val fallback = "Hold an item if you want to give me something."
+                NpcNetwork.openDialog(player, dialogPayload(definition, npc, "...", false, friendship.level, closeOnly = true, closeLabel = "OKAY"))
+                NpcLlmService.event(
+                    player,
+                    npc,
+                    definition,
+                    fallback,
+                    "${player.gameProfile.name} tried to gift you, but they are not holding an item. Reply naturally and tell them they need to hold the gift item.",
+                    npcRecordType = "npc_gift_unavailable",
+                )
+                return
+            }
             npcSnackbar(player, definition.name, "Hold an item to gift.", SnackbarType.ERROR)
             return
         }
@@ -188,6 +255,20 @@ object NpcFeature {
         val limit = definition.gifts.dailyLimit
         val period = giftPeriod(player.level().dayTime, definition.gifts.resetHour)
         if (!NpcStore.recordGiftIfAllowed(definition.id, player, period, limit)) {
+            if (NpcConfig.settings().llm.enabled && NpcConfig.settings().llmMessageUsage.gift) {
+                val friendship = NpcStore.friendshipSnapshot(definition.id, player)
+                val fallback = "I can't receive another gift today. Come back after ${definition.gifts.resetHour.toString().padStart(2, '0')}:00."
+                NpcNetwork.openDialog(player, dialogPayload(definition, npc, "...", false, friendship.level, closeOnly = true, closeLabel = "OKAY"))
+                NpcLlmService.event(
+                    player,
+                    npc,
+                    definition,
+                    fallback,
+                    "${player.gameProfile.name} tried to gift you ${stack.hoverName.string}, but your gift limit for today is already reached. Your next gift reset is ${definition.gifts.resetHour.toString().padStart(2, '0')}:00. Reply with a good in-character reason that you cannot receive another gift today.",
+                    npcRecordType = "npc_gift_unavailable",
+                )
+                return
+            }
             npcSnackbar(player, definition.name, "Can receive another gift at ${definition.gifts.resetHour.toString().padStart(2, '0')}:00.", SnackbarType.ERROR)
             return
         }
@@ -197,6 +278,18 @@ object NpcFeature {
         val message = friendshipMessage(definition.friendshipMessages.gift, friendship, player, definition, itemName, mood)
         if (!player.abilities.instabuild) stack.shrink(1)
         NpcStore.recordConversation(definition.id, player, player.gameProfile.name, "gifts $itemName to ${definition.name}", "player_gift")
+        if (NpcConfig.settings().llm.enabled && NpcConfig.settings().llmMessageUsage.gift) {
+            NpcNetwork.openDialog(player, dialogPayload(definition, npc, "...", false, friendship.level, closeOnly = true, closeLabel = "OKAY"))
+            NpcLlmService.event(
+                player,
+                npc,
+                definition,
+                message,
+                "${player.gameProfile.name} gifted you $itemName. Gift mood is $mood. Reply with a short in-character gift reaction.",
+                npcRecordType = "npc_gift_$mood",
+            )
+            return
+        }
         NpcStore.recordConversation(definition.id, player, definition.name, message, "npc_gift_$mood")
         NpcNetwork.openDialog(player, dialogPayload(definition, npc, message, false, friendship.level, closeOnly = true, closeLabel = "OKAY"))
         relayNpcDialog(player, npc, definition, message)
@@ -276,6 +369,19 @@ object NpcFeature {
     private fun relayNpcHurtMessage(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition) {
         val friendship = NpcStore.friendshipSnapshot(definition.id, player)
         val message = friendshipMessage(definition.friendshipMessages.hurt, friendship, player, definition)
+        if (NpcConfig.settings().llm.enabled && NpcConfig.settings().llmMessageUsage.hurt) {
+            NpcLlmService.event(
+                player,
+                npc,
+                definition,
+                message,
+                "${player.gameProfile.name} hurt you. Reply with a short in-character hurt reaction that matches your current health and relationship.",
+                sendTalkResponse = false,
+                excludePlayerFromBalloon = false,
+                npcRecordType = "npc_hurt_message",
+            )
+            return
+        }
         NpcStore.recordConversation(definition.id, player, definition.name, message, "npc_hurt_message")
         val level = npc.level() as? ServerLevel ?: return
         sendNpcBalloon(level, npc, message)
@@ -344,6 +450,19 @@ object NpcFeature {
         val message = friendshipMessage(definition.friendshipMessages.greeting, friendship, player, definition)
         val durationTicks = greeting.balloonDurationSeconds * 20
         NpcStore.markGreetingShown(definition.id, player, day, nowMs + greeting.cooldownSeconds * 1000L)
+        if (NpcConfig.settings().llm.enabled && NpcConfig.settings().llmMessageUsage.greeting) {
+            NpcLlmService.event(
+                player,
+                npc,
+                definition,
+                message,
+                "${player.gameProfile.name} walked near you. Reply with a very short ambient greeting balloon.",
+                sendTalkResponse = false,
+                excludePlayerFromBalloon = false,
+                npcRecordType = "npc_greeting_balloon",
+            )
+            return true
+        }
         sendNpcBalloon(level, npc, message, durationTicks)
         npc.startTalkingTo(player, durationTicks)
         NpcStore.recordConversation(definition.id, player, definition.name, message, "npc_greeting_balloon")
@@ -841,12 +960,32 @@ object NpcFeature {
     private fun spawnNpc(level: ServerLevel, definition: NpcDefinition, campPos: BlockPos): Boolean {
         if (existingNpc(level.server, definition.id) != null) return false
         val npc = NPC_ENTITY.get().create(level) ?: return false
+        val spawnPos = npcSpawnAroundCamp(level, campPos) ?: return false
         npc.configure(definition, campPos)
-        npc.moveTo(campPos.x + 0.5, campPos.y + 1.0, campPos.z + 0.5, level.random.nextFloat() * 360.0f, 0.0f)
+        npc.moveTo(spawnPos.x + 0.5, spawnPos.y.toDouble(), spawnPos.z + 0.5, level.random.nextFloat() * 360.0f, 0.0f)
         level.addFreshEntity(npc)
         NpcStore.setEntity(definition.id, npc.uuid, campPos)
         NpcStore.clearDead(definition.id)
         return true
+    }
+
+    private fun npcSpawnAroundCamp(level: ServerLevel, campPos: BlockPos): BlockPos? {
+        val offsets = (-NPC_CAMP_SPAWN_RADIUS..NPC_CAMP_SPAWN_RADIUS).flatMap { dx ->
+            (-NPC_CAMP_SPAWN_RADIUS..NPC_CAMP_SPAWN_RADIUS).map { dz -> dx to dz }
+        }.filter { (dx, dz) -> dx != 0 || dz != 0 }
+            .sortedWith(compareBy<Pair<Int, Int>> { (dx, dz) -> dx * dx + dz * dz }.thenBy { it.first }.thenBy { it.second })
+        offsets.forEach { (dx, dz) ->
+            val base = campPos.offset(dx, 0, dz)
+            listOf(base, base.above(), base.below()).forEach { candidate ->
+                if (canSpawnNpcAt(level, candidate)) return candidate
+            }
+        }
+        return null
+    }
+
+    private fun canSpawnNpcAt(level: ServerLevel, pos: BlockPos): Boolean {
+        val below = pos.below()
+        return level.getBlockState(below).isFaceSturdy(level, below, Direction.UP) && level.getBlockState(pos).getCollisionShape(level, pos).isEmpty && level.getBlockState(pos.above()).getCollisionShape(level, pos.above()).isEmpty
     }
 
     private fun respawnNpc(level: ServerLevel, definition: NpcDefinition, homePos: BlockPos): Boolean {
@@ -962,6 +1101,7 @@ object NpcFeature {
     private const val NPC_DIALOG_HEAR_RADIUS = 30.0
     private const val NPC_DIALOG_ACTION_DISTANCE_SQR = 64.0
     private const val HURT_MESSAGE_INTERVAL = 3
+    private const val NPC_CAMP_SPAWN_RADIUS = 2
     private const val FRIENDSHIP_HIT_DELTA = -10
     private const val FRIENDSHIP_KILL_DELTA = -300
     private const val FIRST_DAILY_CHAT_FRIENDSHIP_DELTA = 25

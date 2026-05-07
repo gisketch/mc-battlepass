@@ -6,6 +6,7 @@ import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import dev.gisketch.chowkingdom.ChowKingdomMod
 import dev.gisketch.chowkingdom.discord.DiscordRelay
+import dev.gisketch.chowkingdom.shops.StoreShopFeature
 import net.minecraft.ChatFormatting
 import net.minecraft.network.chat.Component
 import net.minecraft.server.level.ServerLevel
@@ -28,26 +29,40 @@ object NpcLlmService {
     private val activeNpcRequests = ConcurrentHashMap.newKeySet<String>()
 
     fun interact(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, fallbackMessage: String) {
+        event(
+            player = player,
+            npc = npc,
+            definition = definition,
+            fallbackMessage = fallbackMessage,
+            input = "${player.gameProfile.name} interacted with you. Reply like a natural short NPC greeting or acknowledgement for this moment.",
+            inputLabel = "Current event",
+            npcRecordType = "npc_llm_interact",
+        )
+    }
+
+    fun event(
+        player: ServerPlayer,
+        npc: ChowNpcEntity,
+        definition: NpcDefinition,
+        fallbackMessage: String,
+        input: String,
+        inputLabel: String = "Current event",
+        sendTalkResponse: Boolean = true,
+        excludePlayerFromBalloon: Boolean = true,
+        npcRecordType: String = "npc_llm_event",
+    ) {
         val settings = NpcConfig.settings().llm
-        val now = System.currentTimeMillis()
-        val allowedAt = nextAllowedAtMs[player.uuid] ?: 0L
-        if (now < allowedAt) {
-            ChowKingdomMod.LOGGER.info("NPC LLM interact rate limited player={} npc={} remainingMs={}", player.gameProfile.name, definition.id, allowedAt - now)
-            return sendFinal(player, npc, definition, fallbackMessage)
-        }
         if (!activeNpcRequests.add(definition.id)) {
-            ChowKingdomMod.LOGGER.info("NPC LLM interact busy npc={} player={}", definition.id, player.gameProfile.name)
-            return sendFinal(player, npc, definition, fallbackMessage)
+            ChowKingdomMod.LOGGER.info("NPC LLM event busy npc={} player={}", definition.id, player.gameProfile.name)
+            return sendFinal(player, npc, definition, fallbackMessage, fallbackMessage = fallbackMessage, sendTalkResponse = sendTalkResponse, excludePlayerFromBalloon = excludePlayerFromBalloon, npcRecordType = npcRecordType)
         }
-        nextAllowedAtMs[player.uuid] = now + settings.cooldownSeconds * 1000L
         NpcFeature.showBalloonToNearby(npc.level() as ServerLevel, npc, "...", NPC_LLM_PENDING_BALLOON_TICKS)
-        val input = "${player.gameProfile.name} interacted with you. Reply like a natural short NPC greeting or acknowledgement for this moment."
-        CompletableFuture.supplyAsync({ complete(player, definition, input, settings, fallbackMessage, "Current event") }, executor).whenComplete { result, throwable ->
+        CompletableFuture.supplyAsync({ complete(player, definition, input, settings, fallbackMessage, inputLabel) }, executor).whenComplete { result, throwable ->
             player.server.execute {
                 activeNpcRequests.remove(definition.id)
                 val liveNpc = NpcFeature.existingNpc(player.server, definition.id) ?: return@execute NpcNetwork.sendTalkResponse(player, definition.id, fallbackMessage)
-                if (throwable != null) ChowKingdomMod.LOGGER.warn("NPC LLM interact request failed npc={} player={}", definition.id, player.gameProfile.name, throwable)
-                sendFinal(player, liveNpc, definition, if (throwable == null) result else fallbackMessage)
+                if (throwable != null) ChowKingdomMod.LOGGER.warn("NPC LLM event request failed npc={} player={}", definition.id, player.gameProfile.name, throwable)
+                sendFinal(player, liveNpc, definition, if (throwable == null) result else fallbackMessage, fallbackMessage = fallbackMessage, sendTalkResponse = sendTalkResponse, excludePlayerFromBalloon = excludePlayerFromBalloon, npcRecordType = npcRecordType)
             }
         }
     }
@@ -168,22 +183,32 @@ object NpcLlmService {
     }
 
     private fun sanitizeReply(raw: String, settings: NpcLlmSettingsDefinition, fallbackMessage: String = settings.fallbackMessage): String {
-        val reply = raw.replace(Regex("```.*?```", RegexOption.DOT_MATCHES_ALL), "").replace('\n', ' ').trim().take(settings.maxReplyChars)
+        val reply = raw.replace(Regex("```.*?```", RegexOption.DOT_MATCHES_ALL), "").replace(EMOJI_PATTERN, "").replace('\n', ' ').trim().take(settings.maxReplyChars)
         if (reply.isBlank()) return fallbackMessage
         val lower = reply.lowercase()
         val blocked = listOf("as an ai", "system prompt", "hidden context", "i gave you", "i teleported", "i changed your friendship", "i completed your quest", "i changed the price")
         return if (blocked.any(lower::contains)) fallbackMessage else reply
     }
 
-    private fun sendFinal(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, message: String, playerMessage: String = "") {
+    private fun sendFinal(
+        player: ServerPlayer,
+        npc: ChowNpcEntity,
+        definition: NpcDefinition,
+        message: String,
+        playerMessage: String = "",
+        fallbackMessage: String = NpcConfig.settings().llm.fallbackMessage,
+        sendTalkResponse: Boolean = true,
+        excludePlayerFromBalloon: Boolean = true,
+        npcRecordType: String = "npc_llm_reply",
+    ) {
         val settings = NpcConfig.settings().llm
-        val reply = sanitizeReply(message, settings)
+        val reply = sanitizeReply(message, settings, fallbackMessage)
         npc.startTalkingTo(player, NPC_LLM_TALK_DURATION_TICKS)
         if (playerMessage.isNotBlank()) NpcStore.recordConversation(definition.id, player, player.gameProfile.name, playerMessage.take(MAX_PLAYER_MESSAGE_LENGTH), "player_llm_talk")
-        NpcStore.recordConversation(definition.id, player, definition.name, reply, "npc_llm_reply")
-        NpcNetwork.sendTalkResponse(player, definition.id, reply)
+        NpcStore.recordConversation(definition.id, player, definition.name, reply, npcRecordType)
+        if (sendTalkResponse) NpcNetwork.sendTalkResponse(player, definition.id, reply)
         relayNpcTalk(player, npc, definition, reply)
-        NpcFeature.showBalloonToNearby(npc.level() as ServerLevel, npc, reply, NPC_LLM_REPLY_BALLOON_TICKS, player.uuid)
+        NpcFeature.showBalloonToNearby(npc.level() as ServerLevel, npc, reply, NPC_LLM_REPLY_BALLOON_TICKS, if (excludePlayerFromBalloon) player.uuid else null)
         NpcFeature.relayNpcDialogToDiscord(player, definition, reply)
     }
 
@@ -215,6 +240,10 @@ object NpcLlmService {
         val traits = definition.personality.traits.joinToString(", ").ifBlank { "unspecified" }
         val catchphrases = definition.personality.catchphrases.joinToString(", ").ifBlank { "none" }
         val heldItem = player.mainHandItem.item.toString()
+        val worldContext = buildWorldContext(player)
+        val npcState = buildNpcState(definition, player)
+        val storeContext = buildStoreContext(definition)
+        val globalEvents = buildGlobalEvents(context)
         return """
             You are roleplaying as an NPC in a Minecraft multiplayer server.
 
@@ -248,6 +277,18 @@ object NpcLlmService {
             - Player health: ${player.health.toInt()}/${player.maxHealth.toInt()}
             - Player held item: $heldItem
 
+            World context:
+            $worldContext
+
+            NPC state:
+            $npcState
+
+            Store context:
+            $storeContext
+
+            Recent global events:
+            $globalEvents
+
             Hurt context:
             $hurtContext
 
@@ -259,6 +300,69 @@ object NpcLlmService {
         """.trimIndent()
     }
 
+    private fun buildWorldContext(player: ServerPlayer): String {
+        val level = player.level() as? ServerLevel ?: return "None."
+        val day = level.dayTime / MINECRAFT_DAY_TICKS
+        val weather = when {
+            level.isThundering -> "thunder"
+            level.isRaining -> "rain"
+            else -> "clear"
+        }
+        val nearby = level.players()
+            .filter { other -> other.uuid != player.uuid && other.distanceToSqr(player) <= NEARBY_PLAYER_RADIUS_SQR }
+            .take(6)
+            .joinToString(", ") { other -> other.gameProfile.name }
+            .ifBlank { "none" }
+        return listOf(
+            "- Dimension: ${level.dimension().location()}",
+            "- Day: $day",
+            "- Weather: $weather",
+            "- Nearby players: $nearby",
+        ).joinToString("\n")
+    }
+
+    private fun buildNpcState(definition: NpcDefinition, player: ServerPlayer): String {
+        val liveNpc = NpcFeature.existingNpc(player.server, definition.id)
+        val activity = definition.schedule.activityAt(player.level().dayTime)
+        val home = NpcStore.homePos(definition.id)?.toShortString() ?: "unset"
+        val camp = NpcStore.campPos(definition.id)?.toShortString() ?: "unset"
+        val dead = NpcStore.isDead(definition.id)
+        val health = liveNpc?.let { npc -> "${npc.health.toInt()}/${npc.maxHealth.toInt()}" } ?: "unknown"
+        val store = definition.store.trim().ifBlank { "none" }
+        val schedule = definition.schedule.activities.joinToString("; ") { entry -> "${entry.fromHour.toString().padStart(2, '0')}-${entry.toHour.toString().padStart(2, '0')}: ${entry.activity}" }.ifBlank { "unspecified" }
+        val giftPeriod = giftPeriod(player.level().dayTime, definition.gifts.resetHour)
+        val giftsToday = NpcStore.giftCount(definition.id, player, giftPeriod)
+        val giftLimit = definition.gifts.dailyLimit
+        val giftAvailability = if (giftLimit <= 0) "disabled" else if (giftsToday >= giftLimit) "cooldown until ${definition.gifts.resetHour.toString().padStart(2, '0')}:00" else "can receive gift"
+        return listOf(
+            "- Work: ${definition.job}",
+            "- Activity: $activity",
+            "- Schedule: $schedule",
+            "- Health: $health",
+            "- Home bed: $home",
+            "- Camp: $camp",
+            "- Store id: $store",
+            "- Dead: $dead",
+            "- Gift status: $giftAvailability ($giftsToday/$giftLimit today)",
+            "- Loved gifts: ${definition.gifts.loved.take(8).joinToString(", ").ifBlank { "none" }}",
+            "- Liked gifts: ${definition.gifts.liked.take(8).joinToString(", ").ifBlank { "none" }}",
+            "- Disliked gifts: ${definition.gifts.disliked.take(8).joinToString(", ").ifBlank { "none" }}",
+        ).joinToString("\n")
+    }
+
+    private fun giftPeriod(dayTime: Long, resetHour: Int): Long = Math.floorDiv(dayTime - (resetHour - 6) * TICKS_PER_HOUR, MINECRAFT_DAY_TICKS)
+
+    private fun buildStoreContext(definition: NpcDefinition): String {
+        val storeId = definition.store.trim()
+        if (storeId.isBlank()) return "No store assigned."
+        return StoreShopFeature.llmSummary(storeId)
+    }
+
+    private fun buildGlobalEvents(context: NpcLlmContext): String = context.globalEvents
+        .takeLast(5)
+        .joinToString("\n") { event -> "- ${formatAge(event.timestamp)}: ${event.type}: ${event.text}" }
+        .ifBlank { "None." }
+
     private fun formatHistoryRecord(record: NpcConversationRecord, npcName: String): String {
         val age = formatAge(record.timestamp)
         return when (record.type) {
@@ -268,7 +372,9 @@ object NpcLlmService {
             "player_hurt" -> "- $age: ${record.playerName} hurt $npcName."
             "npc_hurt_message" -> "- $age: $npcName reacted to being hurt: ${record.text}"
             "player_gift" -> "- $age: ${record.text}."
+            "npc_gift_love", "npc_gift_like", "npc_gift_neutral", "npc_gift_dislike", "npc_gift_hate" -> "- $age: $npcName reacted to a gift: ${record.text}"
             "player_shop_buy" -> "- $age: ${record.text}."
+            "npc_shop_message" -> "- $age: $npcName reacted after a purchase: ${record.text}"
             else -> "- $age: ${record.type}: ${record.speaker}: ${record.text}"
         }
     }
@@ -311,8 +417,12 @@ object NpcLlmService {
     private const val MAX_PLAYER_MESSAGE_LENGTH = 280
     private const val NPC_LLM_ACTION_DISTANCE_SQR = 64.0
     private const val NPC_LLM_HEAR_RADIUS_SQR = 30.0 * 30.0
+    private const val NEARBY_PLAYER_RADIUS_SQR = 48.0 * 48.0
     private const val NPC_LLM_TALK_DURATION_TICKS = 20 * 12
     private const val NPC_LLM_PENDING_BALLOON_TICKS = 40
     private const val NPC_LLM_REPLY_BALLOON_TICKS = 120
     private const val LOG_BODY_LIMIT = 600
+    private const val MINECRAFT_DAY_TICKS = 24000L
+    private const val TICKS_PER_HOUR = 1000L
+    private val EMOJI_PATTERN = Regex("[\\x{1F000}-\\x{1FAFF}\\x{2600}-\\x{27BF}]")
 }

@@ -153,6 +153,18 @@ object StoreShopFeature {
         return true
     }
 
+    fun llmSummary(storeId: String, maxEntries: Int = 8): String {
+        reloadDefinitions()
+        val definition = definitions[storeId.lowercase(Locale.ROOT)] ?: return "No configured store."
+        val offers = activeOffers(definition)
+            .filter { active -> stock(definition, active.pool, active.offer.id) > 0 }
+            .take(maxEntries.coerceIn(1, 16))
+        val items = offers.joinToString("; ") { active ->
+            "${active.pool.label} ${active.category.id}: ${active.offer.item} price=${active.offer.priceAmount} stock=${stock(definition, active.pool, active.offer.id)}"
+        }.ifBlank { "No visible stock right now." }
+        return "${definition.displayName} (${definition.id}); resets at ${definition.resetHour.toString().padStart(2, '0')}:${definition.resetMinute.toString().padStart(2, '0')} ${definition.timeZone}; items: $items"
+    }
+
     private fun buy(player: ServerPlayer, storeId: String, lines: List<ShopViewCartLine>) {
         val definition = definitions[storeId] ?: return
         ensureActive(definition)

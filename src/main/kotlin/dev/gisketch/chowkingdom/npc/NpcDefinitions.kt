@@ -108,11 +108,14 @@ class NpcLlmMessageUsageDefinition(
     var wake: Boolean = false,
     var greeting: Boolean = false,
     @SerializedName("first_daily_chat") var firstDailyChat: Boolean = false,
+    var shop: Boolean = false,
     @SerializedName("shop_single") var shopSingle: Boolean = false,
     @SerializedName("shop_normal") var shopNormal: Boolean = false,
     @SerializedName("shop_bulk") var shopBulk: Boolean = false,
 ) {
-    fun normalized(): NpcLlmMessageUsageDefinition = this
+    fun normalized(): NpcLlmMessageUsageDefinition = apply {
+        if (shopSingle || shopNormal || shopBulk) shop = true
+    }
 }
 
 class NpcVoiceDefinition(

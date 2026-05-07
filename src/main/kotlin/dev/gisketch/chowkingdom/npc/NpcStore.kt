@@ -114,6 +114,11 @@ object NpcStore {
         return true
     }
 
+    fun giftCount(npcId: String, player: ServerPlayer, period: Long): Int {
+        val gift = state(npcId).giftLimits[player.stringUUID] ?: return 0
+        return if (gift.period == period) gift.count else 0
+    }
+
     fun canShowGreeting(npcId: String, player: ServerPlayer, day: Long, nowMs: Long): Boolean {
         val greeting = state(npcId).greetings.getOrPut(player.stringUUID) { NpcGreetingState() }
         return greeting.firstChatDay != day && nowMs >= greeting.cooldownUntilMs
