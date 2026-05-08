@@ -716,6 +716,18 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
                 skipPendingTalkResponse()
                 NpcNetwork.sendAction(payload.npcId, "gift")
             }
+            DialogAction.Work -> if (isActionEnabled(action)) {
+                skipPendingTalkResponse()
+                NpcNetwork.sendAction(payload.npcId, "work")
+            }
+            DialogAction.Move -> if (isActionEnabled(action)) {
+                skipPendingTalkResponse()
+                NpcNetwork.sendAction(payload.npcId, "work_move")
+            }
+            DialogAction.Fire -> if (isActionEnabled(action)) {
+                skipPendingTalkResponse()
+                NpcNetwork.sendAction(payload.npcId, "work_fire")
+            }
             DialogAction.Bye -> if (questMode()) {
                 skipPendingTalkResponse()
                 NpcNetwork.sendAction(payload.npcId, "quest_decline")
@@ -780,7 +792,7 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
             val hovered = mouseX in x until x + BUTTON_WIDTH && mouseY in buttonY until buttonY + BUTTON_HEIGHT
             val enabled = isActionEnabled(action, giftStack)
             val activeHover = hovered && enabled
-            val texture = if (activeHover && action == DialogAction.Bye) RED_BUTTON_HOVER_TEXTURE else if (activeHover) BUTTON_HOVER_TEXTURE else BUTTON_TEXTURE
+            val texture = if (activeHover && (action == DialogAction.Bye || action == DialogAction.Fire)) RED_BUTTON_HOVER_TEXTURE else if (activeHover) BUTTON_HOVER_TEXTURE else BUTTON_TEXTURE
             val sourceSize = if (activeHover) BUTTON_HOVER_TEXTURE_SIZE else BUTTON_TEXTURE_SIZE
             val sourceCorner = if (activeHover) BUTTON_HOVER_SOURCE_CORNER else BUTTON_SOURCE_CORNER
             val textColor = if (enabled) NAME_COLOR else DISABLED_COLOR
@@ -899,13 +911,16 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
     private fun actions(): List<DialogAction> = when {
         questMode() -> listOf(DialogAction.Talk, DialogAction.Bye)
         joinMode() -> listOf(DialogAction.Talk, DialogAction.Bye)
+        workMode() -> listOf(DialogAction.Move, DialogAction.Fire, DialogAction.Bye)
         payload.closeOnly -> listOf(DialogAction.Bye)
-        else -> DialogAction.entries
+        else -> listOf(DialogAction.Talk, DialogAction.Buy, DialogAction.Gift, DialogAction.Work, DialogAction.Bye)
     }
 
     private fun questMode(): Boolean = payload.dialogMode == "quest"
 
     private fun joinMode(): Boolean = payload.dialogMode == "join"
+
+    private fun workMode(): Boolean = payload.dialogMode == "work"
 
     private fun isActionEnabled(action: DialogAction, giftStack: ItemStack = giftStack()): Boolean = when {
         waitingForTalk -> action != DialogAction.Talk
@@ -1187,7 +1202,7 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         private const val PANEL_SOURCE_CORNER = 75
         private const val PANEL_DEST_CORNER = 13
         private const val PAD = 14
-        private const val BASE_PANEL_HEIGHT = 112
+        private const val BASE_PANEL_HEIGHT = 134
         private const val AVATAR_SIZE = 42
         private const val SKIN_TEXTURE_SIZE = 64
         private const val TEXT_GAP = 12
@@ -1255,5 +1270,8 @@ private enum class DialogAction(val label: String, val icon: ResourceLocation) {
     Talk("TALK", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/chat_bubble_white.png")),
     Buy("BUY", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/shop.png")),
     Gift("GIFT", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/gift.png")),
+    Work("WORK", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/shop.png")),
+    Move("MOVE", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/chat_bubble_white.png")),
+    Fire("FIRE", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/chat_bubble_orange.png")),
     Bye("BYE", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/chat_bubble_orange.png")),
 }

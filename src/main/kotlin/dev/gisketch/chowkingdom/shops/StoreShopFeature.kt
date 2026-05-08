@@ -280,11 +280,14 @@ object StoreShopFeature {
         }
     }
 
-    private fun itemTypesToSell(category: StoreCategoryDefinition, pool: ShopViewPool): Int = when (pool) {
-        ShopViewPool.ALL -> category.allItemTypesToSell ?: category.itemTypesToSell
-        ShopViewPool.DAILY -> category.dailyItemTypesToSell ?: category.itemTypesToSell
-        ShopViewPool.WEEKLY -> category.weeklyItemTypesToSell ?: category.itemTypesToSell
-    }.coerceAtLeast(1)
+    private fun itemTypesToSell(category: StoreCategoryDefinition, pool: ShopViewPool): Int {
+        val override = when (pool) {
+            ShopViewPool.ALL -> category.allItemTypesToSell
+            ShopViewPool.DAILY -> category.dailyItemTypesToSell
+            ShopViewPool.WEEKLY -> category.weeklyItemTypesToSell
+        }
+        return override?.coerceAtLeast(0) ?: category.itemTypesToSell.coerceAtLeast(1)
+    }
 
     private fun reroll(definition: StoreDefinition, stockKey: String, pool: ShopViewPool) {
         val poolState = stateFor(stockKey).pools.getOrPut(pool.id) { StorePoolState() }

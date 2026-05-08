@@ -35,7 +35,7 @@ Commands require permission level 2.
 
 ## Current Defaults
 
-- Jobs: `botanist` Grass, `diver` Water, `magma_scout` Fire, `engineer` Electric, `field_researcher` Normal, `bug_scout` Bug, `falconer` Flying, `shade_runner` Dark, `esper` Psychic, `martial_artist` Fighting, `mountaineer` Ice, `shinobi` Poison, `mason` Rock, `excavator` Ground, `blacksmith` Steel, `spirit_medium` Ghost, `drake_tamer` Dragon, and `performer` Fairy.
+- Jobs: `botanist` Grass, `diver` Water, `magma_scout` Fire, `engineer` Electric, `field_researcher` Normal, `bug_scout` Bug, `falconer` Flying, `shade_runner` Dark, `esper` Psychic, `martial_artist` Fighting, `mountaineer` Ice, `shinobi` Poison, `mason` Rock, `excavator` Ground, `blacksmith` Steel, `spirit_medium` Ghost, `drake_tamer` Dragon, `performer` Fairy, and local `seed_merchant` seed shop support.
 - Each default job defines a data-only `cobblemon_catch_rate` hook for its Pokemon type with multiplier `1.5`.
 - `rogue`: starts with a book, diamond axe, and leather boots. Only Rogue-tagged equipment avoids class penalties.
 - `warrior`: starts with a book, wooden sword, and iron boots. Only Warrior-tagged equipment avoids class penalties.

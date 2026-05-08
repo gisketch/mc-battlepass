@@ -13,15 +13,16 @@ Conversation-specific runtime rules live in [NPC Conversations](NPC_CONVERSATION
 - Shared friendship message fallback: `friendship_messages.toml`, written if missing and used by all NPCs unless a definition overrides `friendship_messages`.
 - Intro block: `gisketchs_chowkingdom_mod:camping_block`.
 - Contract item: `gisketchs_chowkingdom_mod:rent_contract`.
+- Job application item: `gisketchs_chowkingdom_mod:job_application`.
 - Entity id: `gisketchs_chowkingdom_mod:npc`.
 
-Place a camping block to spawn a random eligible camper from the configured NPC pool. Right-click the block later to retry if no NPC is currently present and camp cooldown is ready. Right-click an unhoused camper to open dialog and receive a rent contract. Use the rent contract on a bed to assign that NPC's home.
+Place a camping block to spawn a random eligible camper from the configured NPC pool. Right-click the block later to retry if no NPC is currently present and camp cooldown is ready. Right-click an unhoused camper to open dialog and receive a rent contract. Use the rent contract on a bed to assign that NPC's home. Use the WORK dialog action to receive a job application when the NPC has no workplace; right-click a block with it while the NPC is nearby to set that block as the workplace.
 
 ## Dialog
 
-NPC dialog opens as a local screen panel near the bottom of the screen. The panel uses `textures/gui/9slice_container_grey.png`, shows the NPC head avatar, renders the NPC name in the CKDM bold font, renders dialog body copy with the normal Minecraft font, and shows right-side action buttons for Talk, Buy, Gift, and Bye. The panel enters with a bottom-anchored scale/slide animation, the dialog body types in, and the vanilla hotbar is hidden while the dialog screen is open.
+NPC dialog opens as a local screen panel near the bottom of the screen. The panel uses `textures/gui/9slice_container_grey.png`, shows the NPC head avatar, renders the NPC name in the CKDM bold font, renders dialog body copy with the normal Minecraft font, and shows right-side action buttons for Talk, Buy, Gift, Work, and Bye. The panel enters with a bottom-anchored scale/slide animation, the dialog body types in, and the vanilla hotbar is hidden while the dialog screen is open.
 
-Buy opens the store template configured on the NPC job definition. NPC stores share the same store TOML pool by store id, but each NPC uses its own stock key, so two NPCs can roll different daily/weekly items and deplete stock independently. After a successful NPC store purchase, the owning NPC opens a close-only follow-up dialog chosen from `shop_messages` by friendship category and quantity bucket. Gift is disabled unless the player is holding an item, shows a hover hint, consumes one held item on success, and plays a reaction dialog with a single OKAY close button. Locked relic/player-locked items are rejected by the existing relic transfer guard. Bye closes the normal screen.
+Buy opens the store template configured on the NPC job definition. NPC stores share the same store TOML pool by store id, but each NPC uses its own stock key, so two NPCs can roll different daily/weekly items and deplete stock independently. WORK grants a job application if the NPC has no workplace, or opens workplace management with MOVE and FIRE if one is assigned. MOVE gives a fresh job application for reassignment. FIRE clears the assigned workplace and leaves the NPC unemployed until WORK is used again. After a successful NPC store purchase, the owning NPC opens a close-only follow-up dialog chosen from `shop_messages` by friendship category and quantity bucket. Gift is disabled unless the player is holding an item, shows a hover hint, consumes one held item on success, and plays a reaction dialog with a single OKAY close button. Locked relic/player-locked items are rejected by the existing relic transfer guard. Bye closes the normal screen.
 
 Talk opens a text input inside the existing dialog. Submitting sends the message to the server, validates NPC distance/state, shows a pending `...` in the dialog and nearby balloon while waiting, then replaces it with the validated LLM reply or a configured fallback. LLM provider settings are global in NPC `settings.toml`; `llm_message_usage` controls which message surfaces may use LLM text. V1 supports `openai_compatible` and `gemini` provider modes and expects JSON output with a single `message` field. When `llm_streaming = true`, OpenAI-compatible dialog replies stream partial direct-answer text into the dialog; Gemini keeps the non-streaming path.
 
@@ -62,7 +63,7 @@ Each NPC is one TOML file:
 - `hurt_messages`: NPC speech pool used every third hit from the same player. Supports `{player}`.
 - `wake_messages`: NPC speech pool used when a sleeping NPC is right-clicked. Supports `{player}`.
 - `npc_interaction_messages`: Optional NPC-specific world-space lines for NPC-to-NPC micro interactions. Supports `{npc}` and `{other}` and is added on top of shared generic interaction lines.
-- `work_target_blocks`: Block ids/tags the job can path toward while roaming.
+- `work_target_blocks`: Legacy block ids/tags the job can path toward for non-work fallback roaming. Work schedule activity now prefers the assigned workplace block from world state.
 
 Shared generic messages live in `friendship_messages.toml` and affect every NPC. NPC TOML files can add their own message lines under the same keys; those NPC-specific lines join the shared random pool with higher weight.
 
@@ -169,7 +170,7 @@ Runtime state is stored in world data:
 
 `<world>/data/gisketchs_chowkingdom_mod/npcs/state.json`
 
-Resident state tracks each NPC's entity UUID, camp position, assigned home bed, whether a contract has been given, recent hurt records, per-player conversation history, per-player gift counters, last hurt player/streak, death state, scheduled respawn day, and camper return reason. World state also tracks the latest camping block position, the active unhoused camper id, and the next camper cooldown tick. Hurt history stores only every third same-player hit event and keeps the latest 10 records. This is world data, separate from static JSON definitions and runtime brain state.
+Resident state tracks each NPC's entity UUID, camp position, assigned home bed, assigned workplace block, whether the NPC was fired from work, whether a contract has been given, recent hurt records, per-player conversation history, per-player gift counters, last hurt player/streak, death state, scheduled respawn day, and camper return reason. World state also tracks the latest camping block position, the active unhoused camper id, and the next camper cooldown tick. Hurt history stores only every third same-player hit event and keeps the latest 10 records. This is world data, separate from static JSON definitions and runtime brain state.
 
 Greeting state is tracked per NPC/player. It stores the last greeting day, the real-time greeting cooldown expiry, and the first-chat day used to stop repeat greetings and prevent duplicate daily friendship rewards.
 

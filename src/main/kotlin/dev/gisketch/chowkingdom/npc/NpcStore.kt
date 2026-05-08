@@ -170,6 +170,20 @@ object NpcStore {
         save()
     }
 
+    fun setWorkplace(npcId: String, workplacePos: BlockPos) {
+        val state = state(npcId)
+        state.workplace = NpcBlockPosData.from(workplacePos)
+        state.workFired = false
+        save()
+    }
+
+    fun clearWorkplace(npcId: String, fired: Boolean) {
+        val state = state(npcId)
+        state.workplace = null
+        state.workFired = fired
+        save()
+    }
+
     fun markContractGiven(npcId: String) {
         val state = state(npcId)
         if (state.contractGiven) return
@@ -413,6 +427,10 @@ object NpcStore {
 
     fun homePos(npcId: String): BlockPos? = state(npcId).home?.toBlockPos()
 
+    fun workplacePos(npcId: String): BlockPos? = state(npcId).workplace?.toBlockPos()
+
+    fun workFired(npcId: String): Boolean = state(npcId).workFired
+
     fun homeOwnerAt(pos: BlockPos): String? {
         if (!loaded) load()
         return data.npcs.entries.firstOrNull { (_, state) -> state.home?.toBlockPos() == pos }?.key
@@ -473,6 +491,8 @@ class NpcResidentState(
     var entityUuid: String = "",
     var camp: NpcBlockPosData? = null,
     var home: NpcBlockPosData? = null,
+    var workplace: NpcBlockPosData? = null,
+    var workFired: Boolean = false,
     var contractGiven: Boolean = false,
     var lastHurtAt: Long = 0L,
     var lastHurtPlayerUuid: String = "",

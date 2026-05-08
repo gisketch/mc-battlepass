@@ -98,6 +98,7 @@ object NpcFeature {
         Supplier { BlockEntityType.Builder.of(::CampingBlockEntity, CAMPING_BLOCK.get()).build(null) },
     )
     val RENT_CONTRACT: DeferredHolder<Item, NpcRentContractItem> = ITEMS.register("rent_contract", Supplier { NpcRentContractItem(Item.Properties().stacksTo(1)) })
+    val JOB_APPLICATION: DeferredHolder<Item, NpcJobApplicationItem> = ITEMS.register("job_application", Supplier { NpcJobApplicationItem(Item.Properties().stacksTo(1)) })
     val NPC_ENTITY: DeferredHolder<EntityType<*>, EntityType<ChowNpcEntity>> = ENTITIES.register(
         "npc",
         Supplier {
@@ -243,11 +244,64 @@ object NpcFeature {
                 NpcLlmService.cancel(player, definition.id)
                 giftToNpc(player, npc, definition)
             }
+            "work" -> {
+                NpcLlmService.cancel(player, definition.id)
+                openWorkDialog(player, npc, definition)
+            }
+            "work_move" -> {
+                NpcLlmService.cancel(player, definition.id)
+                giveWorkApplication(player, npc, definition, moving = true)
+            }
+            "work_fire" -> {
+                NpcLlmService.cancel(player, definition.id)
+                fireNpcWorkplace(player, npc, definition)
+            }
         }
+    }
+
+    private fun openWorkDialog(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition) {
+        val friendship = NpcStore.friendshipSnapshot(definition.id, player)
+        val workplace = NpcStore.workplacePos(definition.id)
+        if (workplace == null) {
+            giveWorkApplication(player, npc, definition, moving = false)
+            return
+        }
+        npc.startTalkingTo(player, NPC_DIALOG_DURATION_TICKS)
+        val message = "My workplace is at ${workplace.toShortString()}. Move it, or fire me from this post?"
+        NpcNetwork.openDialog(player, dialogPayload(definition, npc, message, false, friendship.level, dialogMode = "work"))
+    }
+
+    private fun giveWorkApplication(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, moving: Boolean) {
+        giveStack(player, createJobApplication(definition.id))
+        npc.startTalkingTo(player, NPC_DIALOG_DURATION_TICKS)
+        val friendship = NpcStore.friendshipSnapshot(definition.id, player)
+        val message = if (moving) {
+            "Okay. Right-click the new work block with that application."
+        } else {
+            "Use this job application on my work block. I will work around it."
+        }
+        NpcNetwork.openDialog(player, dialogPayload(definition, npc, message, false, friendship.level, closeOnly = true, closeLabel = "OKAY"))
+        SnackbarNetwork.send(player, SnackbarNotification.npc(definition.id, "JOB APPLICATION RECEIVED", "Right-click a work block for ${definition.name}.", SnackbarType.SUCCESS, SnackbarSounds.REWARD))
+    }
+
+    private fun fireNpcWorkplace(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition) {
+        NpcStore.clearWorkplace(definition.id, fired = true)
+        npc.navigation.stop()
+        npc.startTalkingTo(player, NPC_DIALOG_DURATION_TICKS)
+        val friendship = NpcStore.friendshipSnapshot(definition.id, player)
+        val message = "Okay. I am unemployed for now."
+        NpcNetwork.openDialog(player, dialogPayload(definition, npc, message, false, friendship.level, closeOnly = true, closeLabel = "OKAY"))
+        SnackbarNetwork.send(player, SnackbarNotification.npc(definition.id, "NPC FIRED", "${definition.name} has no workplace now.", SnackbarType.GENERIC, SnackbarSounds.GENERIC))
     }
 
     private fun openNpcShop(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition) {
         val currentHour = NpcTime.hour(player.level())
+        if (NpcStore.workplacePos(definition.id) == null) {
+            val friendship = NpcStore.friendshipSnapshot(definition.id, player)
+            val message = if (NpcStore.workFired(definition.id)) "I do not have a job right now." else "I need a workplace before I can open shop."
+            NpcNetwork.openDialog(player, dialogPayload(definition, npc, message, false, friendship.level, closeOnly = true, closeLabel = "OKAY"))
+            return
+        }
         if (NpcTime.activityAt(definition.schedule, player.level()) != "work") {
             val friendship = NpcStore.friendshipSnapshot(definition.id, player)
             val nextOpen = nextWorkOpening(definition, currentHour)
@@ -319,6 +373,7 @@ object NpcFeature {
     private fun friendShopStatus(definition: NpcDefinition, currentHour: Int, player: ServerPlayer): String {
         if (definition.storeId().isBlank()) return "No shop"
         return if (NpcTime.activityAt(definition.schedule, player.level()) == "work") {
+            if (NpcStore.workplacePos(definition.id) == null) return if (NpcStore.workFired(definition.id)) "Unemployed" else "No workplace"
             val close = currentWorkClose(definition, currentHour)
             if (close == null) "Shop Open" else "Shop Open (closes at ${formatHour(close)})"
         } else {
@@ -681,6 +736,27 @@ object NpcFeature {
         }
         if (!player.abilities.instabuild) stack.shrink(1)
         SnackbarNetwork.send(player, SnackbarNotification.item(BuiltInRegistries.ITEM.getKey(RENT_CONTRACT.get()).toString(), "HOME ASSIGNED", "${definition.name} now lives here", SnackbarType.SUCCESS, SnackbarSounds.REWARD))
+        return true
+    }
+
+    fun assignWorkplace(player: ServerPlayer, npcId: String, workplacePos: BlockPos, stack: ItemStack): Boolean {
+        val definition = NpcConfig.get(npcId) ?: run {
+            player.displayClientMessage(Component.literal("Unknown NPC '$npcId'."), true)
+            return false
+        }
+        val npc = existingNpc(player.server, npcId)
+        if (npc == null || npc.level() != player.level() || npc.distanceToSqr(workplacePos.x + 0.5, workplacePos.y.toDouble(), workplacePos.z + 0.5) > WORKPLACE_ASSIGN_RADIUS_SQR) {
+            npcSnackbar(player, definition.name, "${definition.name} needs to be near the work block.", SnackbarType.ERROR)
+            return false
+        }
+        NpcStore.setWorkplace(npcId, workplacePos)
+        NpcStore.recordGlobalEvent("npc_workplace_assigned", "${definition.name} got a workplace at ${workplacePos.toShortString()} from ${player.gameProfile.name}.")
+        npc.startTalkingTo(player, NPC_DIALOG_DURATION_TICKS)
+        val friendship = NpcStore.friendshipSnapshot(definition.id, player)
+        val message = "Got it. I will work around this block."
+        NpcNetwork.openDialog(player, dialogPayload(definition, npc, message, false, friendship.level, closeOnly = true, closeLabel = "OKAY"))
+        if (!player.abilities.instabuild) stack.shrink(1)
+        SnackbarNetwork.send(player, SnackbarNotification.item(BuiltInRegistries.ITEM.getKey(JOB_APPLICATION.get()).toString(), "WORKPLACE ASSIGNED", "${definition.name} now works here", SnackbarType.SUCCESS, SnackbarSounds.REWARD))
         return true
     }
 
@@ -1102,6 +1178,24 @@ object NpcFeature {
             entity.navigation.moveTo(target.x + 0.5, target.y.toDouble(), target.z + 0.5, 0.8)
             return
         }
+        if (activity == "work") {
+            val workplace = NpcStore.workplacePos(definition.id)
+            if (workplace == null) {
+                if (entity.isSleeping) entity.stopSleeping()
+                entity.debugActivity = activity
+                entity.debugGoal = if (NpcStore.workFired(definition.id)) "unemployed" else "no_workplace"
+                entity.debugTargetPos = null
+                entity.navigation.stop()
+                return
+            }
+            val target = randomWorkplaceTarget(entity, workplace) ?: workplace.above()
+            if (entity.isSleeping) entity.stopSleeping()
+            entity.debugActivity = activity
+            entity.debugGoal = "workplace"
+            entity.debugTargetPos = target.immutable()
+            entity.navigation.moveTo(target.x + 0.5, target.y.toDouble(), target.z + 0.5, 0.8)
+            return
+        }
         val workTarget = findWorkTarget(entity, definition)
         val target = workTarget ?: randomRoamTarget(entity, definition) ?: return
         if (entity.isSleeping) entity.stopSleeping()
@@ -1264,6 +1358,15 @@ object NpcFeature {
         if (event.hand != InteractionHand.MAIN_HAND) return
         val player = event.entity
         val stack = player.getItemInHand(event.hand)
+        val jobNpcId = NpcJobApplicationData.readNpcId(stack)
+        if (jobNpcId.isNotBlank()) {
+            event.isCanceled = true
+            event.cancellationResult = InteractionResult.SUCCESS
+            if (player.level().isClientSide) return
+            player as? ServerPlayer ?: return
+            assignWorkplace(player, jobNpcId, event.pos, stack)
+            return
+        }
         val npcId = NpcRentContractData.readNpcId(stack)
         if (npcId.isBlank()) return
         if (!player.level().getBlockState(event.pos).`is`(BlockTags.BEDS)) return
@@ -1987,6 +2090,8 @@ object NpcFeature {
 
     private fun createRentContract(npcId: String): ItemStack = NpcRentContractData.forNpc(ItemStack(RENT_CONTRACT.get()), npcId)
 
+    private fun createJobApplication(npcId: String): ItemStack = NpcJobApplicationData.forNpc(ItemStack(JOB_APPLICATION.get()), npcId)
+
     private fun hasRentContract(player: ServerPlayer, npcId: String): Boolean {
         for (slot in 0 until player.inventory.containerSize) {
             if (NpcRentContractData.readNpcId(player.inventory.getItem(slot)) == npcId) return true
@@ -2045,6 +2150,26 @@ object NpcFeature {
             val y = entity.level().getHeightmapPos(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, BlockPos(x, base.y, z)).y
             val pos = BlockPos(x, y, z)
             if (entity.navigation.createPath(pos, 0) != null) return pos
+        }
+        return null
+    }
+
+    private fun randomWorkplaceTarget(entity: ChowNpcEntity, center: BlockPos): BlockPos? {
+        val random = entity.random
+        repeat(16) {
+            val x = center.x + random.nextInt(WORKPLACE_ROAM_RADIUS * 2 + 1) - WORKPLACE_ROAM_RADIUS
+            val z = center.z + random.nextInt(WORKPLACE_ROAM_RADIUS * 2 + 1) - WORKPLACE_ROAM_RADIUS
+            val base = BlockPos(x, center.y, z)
+            val localTarget = (-2..2).asSequence()
+                .map { offset -> base.offset(0, offset, 0) }
+                .firstOrNull { pos -> entity.navigation.createPath(pos, 0) != null }
+            if (localTarget != null) return localTarget
+        }
+        repeat(8) {
+            val x = center.x + random.nextInt(WORKPLACE_ROAM_RADIUS * 2 + 1) - WORKPLACE_ROAM_RADIUS
+            val z = center.z + random.nextInt(WORKPLACE_ROAM_RADIUS * 2 + 1) - WORKPLACE_ROAM_RADIUS
+            val surface = entity.level().getHeightmapPos(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, BlockPos(x, center.y, z))
+            if (entity.navigation.createPath(surface, 0) != null) return surface
         }
         return null
     }
@@ -2123,6 +2248,8 @@ object NpcFeature {
     private const val NPC_PLAZA_CAMP_FALLBACK_RADIUS = 10
     private const val NPC_PLAZA_MICRO_COOLDOWN_TICKS = 120L
     private const val CONTRACT_BED_ASSIGN_RADIUS_SQR = 7.0 * 7.0
+    private const val WORKPLACE_ASSIGN_RADIUS_SQR = 8.0 * 8.0
+    private const val WORKPLACE_ROAM_RADIUS = 8
     private const val NPC_CAMPER_HOUSING_BALLOON_TICKS = 120
     private const val NPC_CAMPER_HOUSING_BALLOON_REFRESH_TICKS = 80L
     private const val NPC_FRIENDSHIP_DELTA_BALLOON_TICKS = 50
