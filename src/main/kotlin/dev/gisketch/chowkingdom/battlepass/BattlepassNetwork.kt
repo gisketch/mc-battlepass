@@ -2,6 +2,7 @@ package dev.gisketch.chowkingdom.battlepass
 
 import com.google.gson.GsonBuilder
 import dev.gisketch.chowkingdom.ChowKingdomMod
+import dev.gisketch.chowkingdom.npc.NpcQuestService
 import dev.gisketch.chowkingdom.revive.ReviveStore
 import dev.gisketch.chowkingdom.wallets.ChowcoinStore
 import net.minecraft.network.RegistryFriendlyByteBuf
@@ -96,6 +97,7 @@ object BattlepassNetwork {
 
     private fun syncTo(player: ServerPlayer) {
         PacketDistributor.sendToPlayer(player, createSyncPayload(player))
+        NpcQuestService.syncTo(player)
     }
 
     private fun createSyncPayload(receiver: ServerPlayer): BattlepassSyncPayload {

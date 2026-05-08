@@ -1058,6 +1058,7 @@ object NpcFeature {
     private fun onPlayerLoggedIn(event: PlayerEvent.PlayerLoggedInEvent) {
         val player = event.entity as? ServerPlayer ?: return
         NpcStore.recordGlobalEvent("player_join", "${player.gameProfile.name} joined the server")
+        NpcQuestService.syncTo(player)
     }
 
     private fun onPlayerLoggedOut(event: PlayerEvent.PlayerLoggedOutEvent) {
@@ -1209,6 +1210,18 @@ object NpcFeature {
     private fun npcRoot(name: String): LiteralArgumentBuilder<CommandSourceStack> = Commands.literal(name)
         .then(Commands.literal("reload").requires { source -> source.hasPermission(2) }.executes(::reloadCommand))
         .then(
+            Commands.literal("quest")
+                .requires { source -> source.hasPermission(2) }
+                .then(
+                    Commands.literal("finish")
+                        .then(
+                            Commands.argument("id", StringArgumentType.word())
+                                .suggests(::suggestNpcIds)
+                                .executes(::questFinishCommand),
+                        ),
+                ),
+        )
+        .then(
             Commands.literal("debug")
                 .requires { source -> source.hasPermission(2) }
                 .executes(::debugCommand)
@@ -1350,6 +1363,18 @@ object NpcFeature {
         NpcConfig.load()
         context.source.sendSuccess({ Component.literal("Reloaded ${NpcConfig.all().size} NPC definition(s). Clock source: ${ChowClockConfig.sourceName()}.") }, true)
         return NpcConfig.all().size
+    }
+
+    private fun questFinishCommand(context: CommandContext<CommandSourceStack>): Int {
+        val player = context.source.playerOrException
+        val npcId = StringArgumentType.getString(context, "id")
+        val definition = NpcConfig.get(npcId)
+        if (definition == null || !NpcQuestService.debugFinish(player, definition.id)) {
+            context.source.sendFailure(Component.literal("No active NPC quest for $npcId."))
+            return 0
+        }
+        context.source.sendSuccess({ Component.literal("Finished active NPC quest for ${definition.name}.").withStyle(ChatFormatting.GREEN) }, true)
+        return 1
     }
 
     private fun plazaInfoCommand(context: CommandContext<CommandSourceStack>): Int {

@@ -27,6 +27,8 @@ private const val MAX_NPC_VOICE_PITCH_LENGTH = 16
 private const val MAX_NPC_DIALOG_MODE_LENGTH = 16
 private const val MAX_NPC_WORLD_CHAT_TARGET_KIND_LENGTH = 16
 private const val MAX_NPC_WORLD_CHAT_MESSAGE_LENGTH = 512
+private const val MAX_NPC_QUEST_DESCRIPTION_LENGTH = 160
+private const val MAX_NPC_QUEST_PASS_LENGTH = 32
 
 object NpcNetwork {
     fun register(modBus: IEventBus) {
@@ -53,6 +55,10 @@ object NpcNetwork {
         PacketDistributor.sendToPlayer(player, NpcTalkResponsePayload(npcId, message, responseToken))
     }
 
+    fun syncQuests(player: ServerPlayer, payload: NpcQuestSyncPayload) {
+        PacketDistributor.sendToPlayer(player, payload)
+    }
+
     fun broadcastWorldChat(server: MinecraftServer, payload: NpcWorldChatPayload) {
         server.playerList.players.forEach { player -> PacketDistributor.sendToPlayer(player, payload) }
     }
@@ -63,6 +69,7 @@ object NpcNetwork {
         registrar.playToClient(NpcBalloonPayload.TYPE, NpcBalloonPayload.STREAM_CODEC, ::handleBalloon)
         registrar.playToClient(NpcTalkResponsePayload.TYPE, NpcTalkResponsePayload.STREAM_CODEC, ::handleTalkResponse)
         registrar.playToClient(NpcWorldChatPayload.TYPE, NpcWorldChatPayload.STREAM_CODEC, ::handleWorldChat)
+        registrar.playToClient(NpcQuestSyncPayload.TYPE, NpcQuestSyncPayload.STREAM_CODEC, ::handleQuestSync)
         registrar.playToServer(NpcDialogActionPayload.TYPE, NpcDialogActionPayload.STREAM_CODEC, ::handleAction)
         registrar.playToServer(NpcTalkRequestPayload.TYPE, NpcTalkRequestPayload.STREAM_CODEC, ::handleTalkRequest)
     }
@@ -111,6 +118,10 @@ object NpcNetwork {
                 client.getMethod("receiveWorldChat", NpcWorldChatPayload::class.java).invoke(null, payload)
             }
         }
+    }
+
+    private fun handleQuestSync(payload: NpcQuestSyncPayload, context: IPayloadContext) {
+        if (FMLEnvironment.dist.isClient) context.enqueueWork { NpcQuestClientState.apply(payload) }
     }
 }
 
@@ -320,5 +331,63 @@ data class NpcWorldChatPayload(
                 buffer.writeUtf(value.message.take(MAX_NPC_WORLD_CHAT_MESSAGE_LENGTH), MAX_NPC_WORLD_CHAT_MESSAGE_LENGTH)
             }
         }
+    }
+}
+
+data class NpcQuestSyncPayload(
+    val quests: List<NpcQuestHudEntryPayload>,
+) : CustomPacketPayload {
+    override fun type(): CustomPacketPayload.Type<NpcQuestSyncPayload> = TYPE
+
+    companion object {
+        val TYPE: CustomPacketPayload.Type<NpcQuestSyncPayload> = CustomPacketPayload.Type(ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "npc/quest_sync"))
+        val STREAM_CODEC: StreamCodec<RegistryFriendlyByteBuf, NpcQuestSyncPayload> = object : StreamCodec<RegistryFriendlyByteBuf, NpcQuestSyncPayload> {
+            override fun decode(buffer: RegistryFriendlyByteBuf): NpcQuestSyncPayload = NpcQuestSyncPayload(
+                List(buffer.readVarInt()) { NpcQuestHudEntryPayload.decode(buffer) },
+            )
+
+            override fun encode(buffer: RegistryFriendlyByteBuf, value: NpcQuestSyncPayload) {
+                buffer.writeVarInt(value.quests.size.coerceAtMost(8))
+                value.quests.take(8).forEach { quest -> quest.encode(buffer) }
+            }
+        }
+    }
+}
+
+data class NpcQuestHudEntryPayload(
+    val npcId: String,
+    val npcName: String,
+    val description: String,
+    val passId: String,
+    val xp: Int,
+    val chowcoins: Long,
+    val progress: Int,
+    val goal: Int,
+    val acceptedAtTick: Long,
+) {
+    fun encode(buffer: RegistryFriendlyByteBuf) {
+        buffer.writeUtf(npcId.take(MAX_NPC_ID_LENGTH), MAX_NPC_ID_LENGTH)
+        buffer.writeUtf(npcName.take(MAX_NPC_NAME_LENGTH), MAX_NPC_NAME_LENGTH)
+        buffer.writeUtf(description.take(MAX_NPC_QUEST_DESCRIPTION_LENGTH), MAX_NPC_QUEST_DESCRIPTION_LENGTH)
+        buffer.writeUtf(passId.take(MAX_NPC_QUEST_PASS_LENGTH), MAX_NPC_QUEST_PASS_LENGTH)
+        buffer.writeVarInt(xp.coerceIn(0, 1_000_000))
+        buffer.writeLong(chowcoins.coerceIn(0L, 1_000_000_000L))
+        buffer.writeVarInt(progress.coerceAtLeast(0))
+        buffer.writeVarInt(goal.coerceAtLeast(1))
+        buffer.writeLong(acceptedAtTick)
+    }
+
+    companion object {
+        fun decode(buffer: RegistryFriendlyByteBuf): NpcQuestHudEntryPayload = NpcQuestHudEntryPayload(
+            buffer.readUtf(MAX_NPC_ID_LENGTH),
+            buffer.readUtf(MAX_NPC_NAME_LENGTH),
+            buffer.readUtf(MAX_NPC_QUEST_DESCRIPTION_LENGTH),
+            buffer.readUtf(MAX_NPC_QUEST_PASS_LENGTH),
+            buffer.readVarInt(),
+            buffer.readLong(),
+            buffer.readVarInt(),
+            buffer.readVarInt(),
+            buffer.readLong(),
+        )
     }
 }

@@ -572,15 +572,18 @@ object NpcLlmService {
     ) {
         val settings = NpcConfig.settings().llm
         val reply = sanitizeReply(message, settings, fallbackMessage)
+        val publicReply = stripDialogMarkup(reply)
         npc.startTalkingTo(player, NPC_LLM_TALK_DURATION_TICKS)
         if (playerMessage.isNotBlank()) NpcStore.recordConversation(definition.id, player, player.gameProfile.name, playerMessage.take(MAX_PLAYER_MESSAGE_LENGTH), "player_llm_talk")
-        NpcStore.recordConversation(definition.id, player, definition.name, reply, npcRecordType)
+        NpcStore.recordConversation(definition.id, player, definition.name, publicReply, npcRecordType)
         if (memorable.isNotBlank()) NpcStore.recordPlayerMemory(player, "llm_memorable", memorable)
         if (sendTalkResponse) NpcNetwork.sendTalkResponse(player, definition.id, reply, responseToken)
-        relayNpcTalk(player, npc, definition, reply)
-        if (showBalloon) NpcFeature.showBalloonToNearby(npc.level() as ServerLevel, npc, reply, NPC_LLM_REPLY_BALLOON_TICKS, if (excludePlayerFromBalloon) player.uuid else null)
-        NpcFeature.relayNpcDialogToDiscord(player, definition, reply)
+        relayNpcTalk(player, npc, definition, publicReply)
+        if (showBalloon) NpcFeature.showBalloonToNearby(npc.level() as ServerLevel, npc, publicReply, NPC_LLM_REPLY_BALLOON_TICKS, if (excludePlayerFromBalloon) player.uuid else null)
+        NpcFeature.relayNpcDialogToDiscord(player, definition, publicReply)
     }
+
+    private fun stripDialogMarkup(message: String): String = message.replace(DIALOG_MARKUP_TAG_REGEX, "")
 
     private fun sendGroupFinal(
         speaker: ServerPlayer,
@@ -902,6 +905,7 @@ object NpcLlmService {
     private val EMOJI_PATTERN = Regex("[\\x{1F000}-\\x{1FAFF}\\x{2600}-\\x{27BF}]")
     private val NON_ASCII_PATTERN = Regex("[^\\x20-\\x7E]")
     private val WHITESPACE_PATTERN = Regex("\\s+")
+    private val DIALOG_MARKUP_TAG_REGEX = Regex("(?i)</?(mission|coin|xp|player)>")
 }
 
 private data class ActiveNpcRequest(val playerId: UUID, val responseToken: Long)

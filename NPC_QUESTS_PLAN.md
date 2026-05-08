@@ -9,7 +9,10 @@ Replace battlepass daily missions with NPC daily meetup quests. Battlepasses sho
 - Daily battlepass missions are not loaded, shown, auto-tracked, or announced.
 - NPC TOML supports a `missions.pool` with task and fetch quests, pass XP reward, optional chowcoin reward, and offer text pools.
 - During meetup (15:00-20:00), an NPC with an available quest shows `@quest_log.png ...` balloon.
-- Right-click opens in-character quest dialog with `ACCEPT` / `DECLINE`.
+- Right-click no longer opens active quest progress dialogs that block buying, gifting, or talking.
+- Active accepted NPC quests render at the top of the battlepass HUD mission list.
+- NPC quest HUD rows use the NPC head as icon and render like normal tracked missions, pinned above battlepass tracked missions.
+- Quest offer dialog supports `<player>`, `<mission>`, `<coin>`, and `<xp>` markup for gold/coin/green highlights; public relay strips those tags.
 - Decline suppresses that NPC quest offer for one in-game hour; same daily quest remains until 15:00 reset.
 - Accept starts/tracks a quest. Max 4 active NPC quests per player per daily reset period.
 - Task quests progress from existing battlepass event signals. Fetch quests complete when player returns with required item; item is consumed on claim.
@@ -21,9 +24,9 @@ Replace battlepass daily missions with NPC daily meetup quests. Battlepasses sho
 - Config: extend `NpcDefinition` with `missions: NpcMissionsDefinition`.
 - State: store per-player NPC quest state in `NpcStore` world data.
 - Runtime service: `NpcQuestService` owns daily selection, accept/decline, progress, fetch validation, reward claim.
-- NPC integration: `NpcFeature.interact` checks quest offer/claim before normal dialog; `tickNpc` shows offer balloon during meetup.
+- NPC integration: `NpcFeature.interact` only claims ready active quests before normal dialog; incomplete active quests track on HUD. `tickNpc` shows offer balloon during meetup.
 - Progress integration: `BattlepassMissionProgressStore.recordSignal` forwards signals to active NPC quests.
-- UX: reuse NPC dialog screen with `dialogMode = "quest"`; reuse world balloon icon system with `@quest_log.png`.
+- UX: active tracking renders in the compact HUD above battlepass missions; offer flow can still use `dialogMode = "quest"` with highlight markup; world offer balloons reuse `@quest_log.png`.
 
 ## Implementation steps
 

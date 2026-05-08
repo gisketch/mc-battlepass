@@ -33,8 +33,7 @@ object NpcQuestService {
         val playerState = NpcStore.questState(player, period)
         playerState.active[definition.id]?.let { active ->
             if (tryClaim(player, npc, definition, active, playerState)) return true
-            openProgressDialog(player, npc, definition, active)
-            return true
+            return false
         }
         val offer = selectedOffer(player, definition, period) ?: return false
         if (!canOffer(player, npc, definition, playerState)) return false
@@ -98,8 +97,39 @@ object NpcQuestService {
                 SnackbarNetwork.send(player, SnackbarNotification.item("minecraft:paper", "NPC QUEST READY", "Return to ${quest.npcName}: ${quest.description}", SnackbarType.SUCCESS, SnackbarSounds.REWARD))
             }
         }
-        if (changed) NpcStore.saveQuestState()
+        if (changed) {
+            NpcStore.saveQuestState()
+            syncTo(player)
+        }
         return changed
+    }
+
+    fun syncTo(player: ServerPlayer) {
+        val period = NpcTime.periodForReset(player.level().dayTime, RESET_HOUR)
+        val state = NpcStore.questState(player, period)
+        val quests = state.active.values.sortedBy { quest -> quest.acceptedAtTick }.map { quest ->
+            NpcQuestHudEntryPayload(
+                npcId = quest.npcId,
+                npcName = quest.npcName,
+                description = quest.description,
+                passId = quest.passId,
+                xp = quest.xp,
+                chowcoins = quest.chowcoins,
+                progress = displayProgress(player, quest),
+                goal = quest.goal,
+                acceptedAtTick = quest.acceptedAtTick,
+            )
+        }
+        NpcNetwork.syncQuests(player, NpcQuestSyncPayload(quests))
+    }
+
+    fun debugFinish(player: ServerPlayer, npcId: String): Boolean {
+        val definition = NpcConfig.get(npcId) ?: return false
+        val state = NpcStore.questState(player, NpcTime.periodForReset(player.level().dayTime, RESET_HOUR))
+        val active = state.active[definition.id] ?: return false
+        active.progress = active.goal
+        finishQuest(player, definition, active, state, null)
+        return true
     }
 
     private fun accept(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, offer: NpcMissionDefinition, state: NpcPlayerQuestState) {
@@ -125,6 +155,7 @@ object NpcQuestService {
             acceptedAtTick = player.level().dayTime,
         )
         NpcStore.saveQuestState()
+        syncTo(player)
         SnackbarNetwork.send(player, SnackbarNotification.npc(definition.id, "NPC QUEST ACCEPTED", missionText(offer, goal), SnackbarType.GENERIC, SnackbarSounds.GENERIC))
         openCloseDialog(player, npc, definition, template(offer.acceptedMessages.randomOrNull() ?: "Thanks, {player}.", player, definition, offer, 0))
     }
@@ -137,6 +168,11 @@ object NpcQuestService {
             active.progress = active.goal
         }
         if (active.progress < active.goal) return false
+        finishQuest(player, definition, active, state, npc)
+        return true
+    }
+    
+    private fun finishQuest(player: ServerPlayer, definition: NpcDefinition, active: NpcAcceptedQuestState, state: NpcPlayerQuestState, npc: ChowNpcEntity?) {
         BattlepassXpStore.addXp(player, active.passId, active.xp)
         if (active.chowcoins > 0L) {
             ChowcoinStore.add(player, active.chowcoins)
@@ -145,6 +181,7 @@ object NpcQuestService {
         state.active.remove(definition.id)
         state.completedNpcIds.add(definition.id)
         NpcStore.saveQuestState()
+        syncTo(player)
         BattlepassNetwork.syncAllPlayers()
         val reward = buildString {
             append("+").append(active.xp).append(" XP to ").append(active.passId)
@@ -152,12 +189,11 @@ object NpcQuestService {
         }
         SnackbarNetwork.send(player, SnackbarNotification.npc(definition.id, "NPC QUEST COMPLETE", reward, SnackbarType.SUCCESS, SnackbarSounds.REWARD))
         NpcStore.recordPlayerMemory(player, "npc_quest_complete", "${player.gameProfile.name} completed ${active.description} for ${definition.name}.")
-        openCloseDialog(player, npc, definition, "You did it, {player}. That helps more than you know.".replace("{player}", player.gameProfile.name))
-        return true
+        if (npc != null) openCloseDialog(player, npc, definition, "You did it, {player}. That helps more than you know.".replace("{player}", player.gameProfile.name))
     }
 
     private fun openOfferDialog(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, offer: NpcMissionDefinition) {
-        val fallback = template(offer.offerMessages.randomOrNull() ?: "Hey {player}, I have a favor. {quest_text}", player, definition, offer, 0)
+        val fallback = questOfferDialogText(offer.offerMessages.randomOrNull() ?: "Hey {player}, I need you to {quest_text} for me. Reward? {chowcoins} and {xp} xp.", player, definition, offer)
         npc.startTalkingTo(player, 100)
         val friendship = NpcStore.friendshipSnapshot(definition.id, player)
         val responseToken = NpcDialogTokens.next()
@@ -168,21 +204,11 @@ object NpcQuestService {
             npc,
             definition,
             fallback,
-            "${player.gameProfile.name} met you at town meetup. Ask them for this quest in-character. Quest: ${missionText(offer, if (offer.category == "fetch") offer.fetchCount else offer.goal)}. Reward: ${offer.xp} XP to ${offer.passId}${if (offer.chowcoins > 0) " and ${offer.chowcoins} chowcoins" else ""}. End by asking if they accept.",
+            "${player.gameProfile.name} met you at town meetup. Ask them for this quest in-character. Use natural wording, but wrap the player name with <player>...</player>, the mission with <mission>...</mission>, chowcoin amount with <coin>...</coin>, and XP reward with <xp>...</xp>. Keep those tags in the reply. Quest: ${missionText(offer, if (offer.category == "fetch") offer.fetchCount else offer.goal)}. Reward: ${offer.xp} XP to ${offer.passId}${if (offer.chowcoins > 0) " and ${offer.chowcoins} chowcoins" else ""}. End by asking if they accept.",
             inputLabel = "NPC quest offer",
             npcRecordType = "npc_quest_offer",
             responseToken = responseToken,
         )
-    }
-
-    private fun openProgressDialog(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, active: NpcAcceptedQuestState) {
-        val message = if (active.category == "fetch") {
-            val count = countItem(player, active.fetchItem)
-            "I still need ${active.fetchCount} x ${itemName(active.fetchItem)}. You have $count."
-        } else {
-            "Progress: ${active.progress}/${active.goal}. ${active.description}"
-        }
-        openCloseDialog(player, npc, definition, message)
     }
 
     private fun openCloseDialog(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, message: String) {
@@ -223,6 +249,16 @@ object NpcQuestService {
         .replace("{xp}", offer.xp.toString())
         .replace("{chowcoins}", offer.chowcoins.toString())
 
+    private fun questOfferDialogText(template: String, player: ServerPlayer, definition: NpcDefinition, offer: NpcMissionDefinition): String = template
+        .replace("{player}", "<player>${player.gameProfile.name}</player>")
+        .replace("{npc}", definition.name)
+        .replace("{quest_text}", "<mission>${offer.questText.ifBlank { missionText(offer, if (offer.category == "fetch") offer.fetchCount else offer.goal) }}</mission>")
+        .replace("{goal}", (if (offer.category == "fetch") offer.fetchCount else offer.goal).toString())
+        .replace("{progress}", "0")
+        .replace("{pass}", offer.passId)
+        .replace("{xp}", "<xp>${offer.xp} xp</xp>")
+        .replace("{chowcoins}", if (offer.chowcoins > 0L) "<coin>${offer.chowcoins}</coin>" else "<coin>0</coin>")
+
     private fun countItem(player: ServerPlayer, itemId: String): Int {
         val item = item(itemId)
         if (item == Items.AIR) return 0
@@ -247,4 +283,6 @@ object NpcQuestService {
         ?: Items.AIR
 
     private fun itemName(itemId: String): String = ItemStack(item(itemId)).hoverName.string
+
+    private fun displayProgress(player: ServerPlayer, quest: NpcAcceptedQuestState): Int = if (quest.category == "fetch") countItem(player, quest.fetchItem).coerceAtMost(quest.goal) else quest.progress
 }

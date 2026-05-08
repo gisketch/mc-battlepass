@@ -18,6 +18,7 @@ import net.neoforged.bus.api.IEventBus
 import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent
 import net.neoforged.neoforge.client.gui.VanillaGuiLayers
 import java.util.Locale
+import kotlin.math.roundToInt
 
 object SnackbarClient {
     private val LAYER_ID: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "snackbar")
@@ -39,6 +40,7 @@ object SnackbarClient {
             SnackbarType.fromId(payload.type),
             payload.sound,
             payload.durationMs.coerceIn(1_000L, 60_000L),
+            if (payload.progressTierSize > 0 && payload.progressToXp > payload.progressFromXp) SnackbarProgress(payload.progressFromXp, payload.progressToXp, payload.progressTierSize) else null,
         )
         promoteQueued(System.currentTimeMillis())
     }
@@ -63,6 +65,7 @@ object SnackbarClient {
                 next.sound,
                 now,
                 next.durationMs,
+                next.progress,
             )
             playSound(next.sound)
         }
@@ -124,6 +127,10 @@ object SnackbarClient {
         if (!layout.titleOnly) {
             layout.contentLines.forEachIndexed { index, line ->
                 guiGraphics.drawString(font, line, x + PAD + ICON_SLOT_WIDTH, y + PAD + TITLE_HEIGHT + CONTENT_GAP + index * CONTENT_LINE_HEIGHT, colorAlpha(CONTENT_COLOR, alpha), false)
+            }
+            snackbar.progress?.let { progress ->
+                val barY = y + PAD + TITLE_HEIGHT + if (layout.contentLines.isEmpty()) PROGRESS_TOP_GAP else CONTENT_GAP + layout.contentLines.size * CONTENT_LINE_HEIGHT + PROGRESS_AFTER_CONTENT_GAP
+                renderProgressBar(guiGraphics, snackbar, progress, x + PAD + ICON_SLOT_WIDTH, barY, layout.textWidth, age, alpha)
             }
         }
         pose.popPose()
@@ -187,6 +194,17 @@ object SnackbarClient {
         guiGraphics.setColor(1.0f, 1.0f, 1.0f, 1.0f)
     }
 
+    private fun renderProgressBar(guiGraphics: GuiGraphics, snackbar: ClientSnackbar, progress: SnackbarProgress, x: Int, y: Int, width: Int, age: Long, alpha: Float) {
+        val tierSize = progress.tierSize.coerceAtLeast(1)
+        val animation = easeOutCubic((age.toFloat() / PROGRESS_ANIM_MS).coerceIn(0.0f, 1.0f))
+        val currentXp = progress.fromXp + ((progress.toXp - progress.fromXp) * animation).roundToInt()
+        val localXp = Math.floorMod(currentXp, tierSize)
+        val innerWidth = (width - 2).coerceAtLeast(1)
+        val fillWidth = (innerWidth * (localXp.toFloat() / tierSize.toFloat())).roundToInt().coerceIn(0, innerWidth)
+        guiGraphics.fill(x, y, x + width, y + PROGRESS_BAR_HEIGHT, colorAlpha(PROGRESS_TRACK, alpha))
+        if (fillWidth > 0) guiGraphics.fill(x + 1, y + 1, x + 1 + fillWidth, y + PROGRESS_BAR_HEIGHT - 1, colorAlpha(progressFillColor(snackbar), alpha))
+    }
+
     private fun renderNineSlice(guiGraphics: GuiGraphics, rect: Rect, alpha: Float) {
         RenderSystem.enableBlend()
         RenderSystem.defaultBlendFunc()
@@ -218,11 +236,14 @@ object SnackbarClient {
         val width = screenWidth.coerceAtMost(MAX_WIDTH + PAD * 2).coerceAtLeast(MIN_WIDTH)
         val textWidth = width - PAD * 2 - ICON_SLOT_WIDTH
         val lines = wrap(font, snackbar.content, textWidth).take(MAX_CONTENT_LINES)
-        val titleOnly = lines.isEmpty()
-        val textHeight = if (titleOnly) TITLE_HEIGHT else TITLE_HEIGHT + CONTENT_GAP + lines.size * CONTENT_LINE_HEIGHT
+        val titleOnly = lines.isEmpty() && snackbar.progress == null
+        val progressHeight = if (snackbar.progress != null) progressBarTopGap(lines) + PROGRESS_BAR_HEIGHT else 0
+        val textHeight = if (titleOnly) TITLE_HEIGHT else TITLE_HEIGHT + if (lines.isEmpty()) progressHeight else CONTENT_GAP + lines.size * CONTENT_LINE_HEIGHT + progressHeight
         val contentHeight = maxOf(ICON_SIZE, textHeight)
         return SnackbarLayout(width, contentHeight + PAD * 2, contentHeight, textWidth, titleOnly, lines)
     }
+
+    private fun progressBarTopGap(lines: List<String>): Int = if (lines.isEmpty()) PROGRESS_TOP_GAP else PROGRESS_AFTER_CONTENT_GAP
 
     private fun wrap(font: Font, text: String, maxWidth: Int): List<String> {
         val words = text.trim().split(Regex("\\s+")).filter(String::isNotBlank)
@@ -297,6 +318,8 @@ object SnackbarClient {
         SnackbarType.GENERIC -> GENERIC_TITLE
     }
 
+    private fun progressFillColor(snackbar: ClientSnackbar): Int = if (snackbar.title.contains("COMBAT", ignoreCase = true)) PROGRESS_COMBAT_FILL else PROGRESS_COZY_FILL
+
     private fun easeOutCubic(progress: Float): Float {
         val inverse = 1.0f - progress.coerceIn(0.0f, 1.0f)
         return 1.0f - inverse * inverse * inverse
@@ -304,8 +327,8 @@ object SnackbarClient {
 
     private fun colorAlpha(color: Int, alphaFactor: Float): Int = ((((color ushr 24) and 0xFF) * alphaFactor).toInt().coerceIn(0, 255) shl 24) or (color and 0x00FFFFFF)
 
-    private data class QueuedSnackbar(val iconKind: SnackbarIconKind, val icon: String, val title: String, val content: String, val type: SnackbarType, val sound: String, val durationMs: Long)
-    private data class ClientSnackbar(val id: Long, val iconKind: SnackbarIconKind, val icon: String, val itemIcon: ItemStack, val title: String, val content: String, val type: SnackbarType, val sound: String, val createdAtMs: Long, val durationMs: Long)
+    private data class QueuedSnackbar(val iconKind: SnackbarIconKind, val icon: String, val title: String, val content: String, val type: SnackbarType, val sound: String, val durationMs: Long, val progress: SnackbarProgress?)
+    private data class ClientSnackbar(val id: Long, val iconKind: SnackbarIconKind, val icon: String, val itemIcon: ItemStack, val title: String, val content: String, val type: SnackbarType, val sound: String, val createdAtMs: Long, val durationMs: Long, val progress: SnackbarProgress?)
     private data class SnackbarLayout(val width: Int, val height: Int, val contentHeight: Int, val textWidth: Int, val titleOnly: Boolean, val contentLines: List<String>)
     private data class Rect(val x: Int, val y: Int, val width: Int, val height: Int) {
         val right: Int get() = x + width
@@ -330,6 +353,10 @@ object SnackbarClient {
     private const val CONTENT_GAP = 3
     private const val CONTENT_LINE_HEIGHT = 10
     private const val MAX_CONTENT_LINES = 3
+    private const val PROGRESS_TOP_GAP = 6
+    private const val PROGRESS_AFTER_CONTENT_GAP = 4
+    private const val PROGRESS_BAR_HEIGHT = 6
+    private const val PROGRESS_ANIM_MS = 1400L
     private const val HOTBAR_OFFSET_Y = 54
     private const val DIALOG_TOP_OFFSET_Y = 14
     private const val STACK_GAP = 6
@@ -342,6 +369,9 @@ object SnackbarClient {
     private const val SUCCESS_TITLE = 0xFFFFD56E.toInt()
     private const val TITLE_SHADOW = 0xCC050505.toInt()
     private const val CONTENT_COLOR = 0xFFEDE6DA.toInt()
+    private const val PROGRESS_TRACK = 0xAA1D1D22.toInt()
+    private const val PROGRESS_COZY_FILL = 0xFFFFD35C.toInt()
+    private const val PROGRESS_COMBAT_FILL = 0xFFFF6A5C.toInt()
     private const val PLAYER_FALLBACK_FILL = 0xCC2F3545.toInt()
     private val STEVE_TEXTURE = ResourceLocation.withDefaultNamespace("textures/entity/player/wide/steve.png")
 }

@@ -9,6 +9,8 @@ import dev.gisketch.chowkingdom.battlepass.BattlepassMissionService
 import dev.gisketch.chowkingdom.battlepass.BattlepassPassRegistry
 import dev.gisketch.chowkingdom.battlepass.BattlepassTrackedMissions
 import dev.gisketch.chowkingdom.battlepass.BattlepassXpEventDefinition
+import dev.gisketch.chowkingdom.npc.NpcQuestClientState
+import dev.gisketch.chowkingdom.npc.NpcQuestHudEntryPayload
 import dev.gisketch.chowkingdom.shipping.ShippingBinClientState
 import dev.gisketch.chowkingdom.wallets.ChowcoinClientState
 import net.minecraft.client.Minecraft
@@ -29,7 +31,7 @@ import org.lwjgl.glfw.GLFW
 import java.util.Locale
 
 object ChowKingdomHud {
-    private data class HudMission(val title: String, val icon: ItemStack)
+    private data class HudMission(val title: String, val icon: ItemStack, val npcQuest: NpcQuestHudEntryPayload? = null)
     private data class ActiveCompletionToast(val title: String, val missionName: String, val startedAt: Long)
     private data class ActiveShippingSaleToast(val itemCount: Int, val amount: Long, val startedAt: Long)
 
@@ -68,7 +70,7 @@ object ChowKingdomHud {
         val screenWidth = minecraft.window.guiScaledWidth
         val maxPanelWidth = (screenWidth - HUD_PADDING * 2).coerceAtMost(COMPACT_HUD_MAX_WIDTH)
         val maxMissionTextWidth = (maxPanelWidth - COMPACT_MISSION_ICON_SIZE - COMPACT_MISSION_ICON_GAP).coerceAtLeast(COMPACT_MIN_TEXT_WIDTH)
-        val hudMissions = compactHudMissions(minecraft, missions, playerId, showGoal, maxMissionTextWidth)
+        val hudMissions = npcQuestHudMissions(minecraft, maxMissionTextWidth) + compactHudMissions(minecraft, missions, playerId, showGoal, maxMissionTextWidth)
         val now = System.currentTimeMillis()
         val coinText = formatChowcoins(ChowcoinClientState.displayBalance(now))
         val left = HUD_PADDING
@@ -90,10 +92,21 @@ object ChowKingdomHud {
         hudMissions.forEachIndexed { index, mission ->
             val rowX = left
             val rowY = headerY + COMPACT_HEADER_LINE_HEIGHT + COMPACT_MISSION_HEADER_GAP + index * COMPACT_MISSION_ROW_HEIGHT
-            renderScaledItem(guiGraphics, mission.icon, rowX, rowY, COMPACT_MISSION_ICON_SIZE)
-            drawCkdmShadowedScaled(guiGraphics, font, mission.title, rowX + COMPACT_MISSION_ICON_SIZE + COMPACT_MISSION_ICON_GAP, rowY + COMPACT_MISSION_TEXT_Y, COMPACT_MISSION_TEXT_SCALE, COMPACT_WHITE, COMPACT_BLACK_SHADOW, COMPACT_SMALL_SHADOW_OFFSET, CKDM_BOLD_SMALL_FONT)
+            if (mission.npcQuest != null) {
+                renderNpcHead(guiGraphics, mission.npcQuest.npcId, rowX, rowY, COMPACT_MISSION_ICON_SIZE)
+                drawCkdmShadowedScaled(guiGraphics, font, mission.title, rowX + COMPACT_MISSION_ICON_SIZE + COMPACT_MISSION_ICON_GAP, rowY + COMPACT_MISSION_TEXT_Y, COMPACT_MISSION_TEXT_SCALE, COMPACT_WHITE, COMPACT_BLACK_SHADOW, COMPACT_SMALL_SHADOW_OFFSET, CKDM_BOLD_SMALL_FONT)
+            } else {
+                renderScaledItem(guiGraphics, mission.icon, rowX, rowY, COMPACT_MISSION_ICON_SIZE)
+                drawCkdmShadowedScaled(guiGraphics, font, mission.title, rowX + COMPACT_MISSION_ICON_SIZE + COMPACT_MISSION_ICON_GAP, rowY + COMPACT_MISSION_TEXT_Y, COMPACT_MISSION_TEXT_SCALE, COMPACT_WHITE, COMPACT_BLACK_SHADOW, COMPACT_SMALL_SHADOW_OFFSET, CKDM_BOLD_SMALL_FONT)
+            }
         }
     }
+
+    private fun npcQuestHudMissions(minecraft: Minecraft, maxTextWidth: Int): List<HudMission> =
+        NpcQuestClientState.activeQuests().take(MAX_NPC_QUEST_HUD_ROWS).map { quest ->
+            val details = if (quest.goal > 0) " (${quest.progress.coerceAtMost(quest.goal)}/${quest.goal})" else ""
+            HudMission(fitCkdmText(minecraft.font, quest.description + details, (maxTextWidth / COMPACT_MISSION_TEXT_SCALE).toInt(), CKDM_BOLD_SMALL_FONT), ItemStack.EMPTY, quest)
+        }
 
     private fun compactHudMissions(minecraft: Minecraft, missions: List<BattlepassTrackedMissions.TrackedMission>, playerId: java.util.UUID, showGoal: Boolean, maxTextWidth: Int): List<HudMission> =
         missions.mapNotNull { mission ->
@@ -132,6 +145,14 @@ object ChowKingdomHud {
         guiGraphics.pose().popPose()
     }
 
+    private fun renderNpcHead(guiGraphics: GuiGraphics, npcId: String, x: Int, y: Int, size: Int) {
+        RenderSystem.enableBlend()
+        RenderSystem.defaultBlendFunc()
+        val texture = npcTexture(npcId)
+        guiGraphics.blit(texture, x, y, size, size, 8.0f, 8.0f, 8, 8, NPC_SKIN_TEXTURE_SIZE, NPC_SKIN_TEXTURE_SIZE)
+        guiGraphics.blit(texture, x, y, size, size, 40.0f, 8.0f, 8, 8, NPC_SKIN_TEXTURE_SIZE, NPC_SKIN_TEXTURE_SIZE)
+    }
+
     private fun renderStatRow(guiGraphics: GuiGraphics, font: Font, x: Int, y: Int, playerId: java.util.UUID) {
         val iconY = y + (font.lineHeight - COMPACT_STAT_ICON_SIZE) / 2 + COMPACT_COIN_ICON_Y_OFFSET
         val pokemonText = formatCompactNumber(BattlepassClientState.uniquePokemonCaught(playerId))
@@ -156,6 +177,11 @@ object ChowKingdomHud {
     private fun formatCompactNumber(amount: Int): String = String.format(Locale.US, "%,d", amount)
 
     private fun pokeBallStack(): ItemStack = ItemStack(BuiltInRegistries.ITEM.getOptional(POKE_BALL_ITEM_ID).orElse(Items.BARRIER))
+
+    private fun npcTexture(npcId: String): ResourceLocation {
+        val cleanId = npcId.trim().lowercase(Locale.ROOT).replace(Regex("[^a-z0-9_./-]"), "")
+        return if (cleanId.isBlank()) STEVE_TEXTURE else ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/entity/npc/$cleanId.png")
+    }
 
     private fun renderChowcoinDelta(guiGraphics: GuiGraphics, font: Font, coinText: String, coinTextX: Int, coinTextY: Int, now: Long) {
         val delta = ChowcoinClientState.deltaDisplay(now) ?: return
@@ -333,7 +359,7 @@ object ChowKingdomHud {
 
     private const val MISSIONS_HEADER = "Missions"
     private const val HUD_PADDING = 8
-    private const val COMPACT_HUD_MAX_WIDTH = 220
+    private const val COMPACT_HUD_MAX_WIDTH = 360
     private const val COMPACT_MIN_TEXT_WIDTH = 72
     private const val COMPACT_COIN_SIZE = 9
     private const val COMPACT_COIN_TEXTURE_SIZE = 16
@@ -361,6 +387,8 @@ object ChowKingdomHud {
     private const val COMPACT_STAT_TEXT_GAP = 4
     private const val COMPACT_STAT_GROUP_GAP = 10
     private const val COMPACT_SMALL_SHADOW_OFFSET = 1
+    private const val MAX_NPC_QUEST_HUD_ROWS = 4
+    private const val NPC_SKIN_TEXTURE_SIZE = 64
     private const val VANILLA_ITEM_SIZE = 16
     private const val TOAST_MIN_WIDTH = 160
     private const val TOAST_SCREEN_PADDING = 10
@@ -383,4 +411,5 @@ object ChowKingdomHud {
     private const val TOAST_TITLE_COLOR = 0xFFFFE7AA.toInt()
     private const val TOAST_NAME_COLOR = 0xFFFFFFFF.toInt()
     private const val TOAST_HIGHLIGHT_COLOR = 0xFFFFD35C.toInt()
+    private val STEVE_TEXTURE = ResourceLocation.withDefaultNamespace("textures/entity/player/wide/steve.png")
 }

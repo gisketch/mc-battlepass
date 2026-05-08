@@ -3,6 +3,8 @@ package dev.gisketch.chowkingdom.battlepass
 import com.google.gson.GsonBuilder
 import dev.gisketch.chowkingdom.ChowKingdomMod
 import dev.gisketch.chowkingdom.config.TomlConfigIO
+import dev.gisketch.chowkingdom.snackbar.SnackbarNetwork
+import dev.gisketch.chowkingdom.snackbar.SnackbarNotification
 import net.minecraft.server.level.ServerPlayer
 import java.nio.file.Files
 import java.nio.file.Path
@@ -45,9 +47,11 @@ object BattlepassXpStore {
         if (!loaded) load()
 
         val playerPasses = playerXp.getOrPut(player.stringUUID) { linkedMapOf() }
-        val total = (playerPasses.getOrDefault(passId, 0) + amount).coerceAtLeast(0)
+        val previous = playerPasses.getOrDefault(passId, 0)
+        val total = (previous + amount).coerceAtLeast(0)
         playerPasses[passId] = total
         save()
+        if (amount > 0 && total > previous) sendXpSnackbar(player, passId, amount, previous, total)
         return total
     }
 
@@ -84,8 +88,23 @@ object BattlepassXpStore {
         TomlConfigIO.write(file, StoredXpData(playerXp, claimedTiers))
     }
 
+    private fun sendXpSnackbar(player: ServerPlayer, passId: String, amount: Int, previousXp: Int, currentXp: Int) {
+        val pass = BattlepassPassRegistry.get(passId)
+        val passName = pass?.displayName?.ifBlank { pass.id } ?: passId
+        val tierSize = pass?.progression.orEmpty().map { tier -> tier.xp }.sorted().let { tiers ->
+            when {
+                tiers.size >= 2 -> (tiers[1] - tiers[0]).coerceAtLeast(1)
+                tiers.size == 1 -> tiers[0].coerceAtLeast(1)
+                else -> DEFAULT_BATTLEPASS_TIER_SIZE
+            }
+        }
+        SnackbarNetwork.send(player, SnackbarNotification.battlepassXp("+${amount} ${passName.uppercase()} BP XP", previousXp, currentXp, tierSize))
+    }
+
     private class StoredXpData(
         var players: MutableMap<String, MutableMap<String, Int>> = linkedMapOf(),
         var claimed: MutableMap<String, MutableMap<String, MutableSet<Int>>> = linkedMapOf(),
     )
+
+    private const val DEFAULT_BATTLEPASS_TIER_SIZE = 100
 }
