@@ -26,6 +26,8 @@ Buy opens the store template configured on the NPC job definition. NPC stores sh
 
 Talk opens a text input inside the existing dialog. Submitting sends the message to the server, validates NPC distance/state, shows a pending `...` in the dialog and nearby balloon while waiting, then replaces it with the validated LLM reply or a configured fallback. LLM provider settings are global in NPC `settings.toml`; `llm_message_usage` controls which message surfaces may use LLM text. V1 supports `openai_compatible` and `gemini` provider modes and expects JSON output with a single `message` field. When `llm_streaming = true`, OpenAI-compatible dialog replies stream partial direct-answer text into the dialog; Gemini keeps the non-streaming path.
 
+Workplace dialogs can use LLM text when `llm_message_usage.work_application`, `work_manage`, `work_move`, `work_fire`, or `assigned_workplace` are enabled. Prompt text for those surfaces lives under `[work]` in NPC `settings.toml`.
+
 The dialog header shows the NPC avatar, name, and a 10-icon friendship row. Positive levels render filled hearts, negative levels render angry icons, and remaining slots render empty hearts. Dialog body text uses the CKDM small bold font at 75% white opacity.
 
 The inventory side menu has a Friends screen listing configured NPCs. Each row shows the NPC head, name, friendship hearts, friendship level, and mission summary. Hovering a row shows friendship points, gift availability for the current reset period, shop open/close timing, and active or available mission progress.

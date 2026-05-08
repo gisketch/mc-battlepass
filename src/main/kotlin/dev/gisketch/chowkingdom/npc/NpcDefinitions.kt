@@ -75,6 +75,7 @@ class NpcSettingsDefinition(
     var llm: NpcLlmSettingsDefinition = NpcLlmSettingsDefinition(),
     @SerializedName("llm_message_usage") var llmMessageUsage: NpcLlmMessageUsageDefinition = NpcLlmMessageUsageDefinition(),
     @SerializedName("campers") var campers: NpcCampersSettingsDefinition = NpcCampersSettingsDefinition(),
+    var work: NpcWorkSettingsDefinition = NpcWorkSettingsDefinition(),
     @SerializedName("npc_interactions") var npcInteractions: NpcInteractionSettingsDefinition = NpcInteractionSettingsDefinition(),
 ) {
     fun normalized(): NpcSettingsDefinition = apply {
@@ -82,6 +83,7 @@ class NpcSettingsDefinition(
         llm = llm.normalized()
         llmMessageUsage = llmMessageUsage.normalized()
         campers = campers.normalized()
+        work = work.normalized()
         npcInteractions = npcInteractions.normalized()
     }
 }
@@ -207,9 +209,30 @@ class NpcLlmMessageUsageDefinition(
     @SerializedName("camper_needs_house") var camperNeedsHouse: Boolean = false,
     @SerializedName("camper_lost_house") var camperLostHouse: Boolean = false,
     @SerializedName("assigned_house") var assignedHouse: Boolean = false,
+    @SerializedName("work_application") var workApplication: Boolean = false,
+    @SerializedName("work_manage") var workManage: Boolean = false,
+    @SerializedName("work_move") var workMove: Boolean = false,
+    @SerializedName("work_fire") var workFire: Boolean = false,
+    @SerializedName("assigned_workplace") var assignedWorkplace: Boolean = false,
 ) {
     fun normalized(): NpcLlmMessageUsageDefinition = apply {
         if (shopSingle || shopNormal || shopBulk) shop = true
+    }
+}
+
+class NpcWorkSettingsDefinition(
+    @SerializedName("application_llm_prompt") var applicationLlmPrompt: String = "The player asked you to start work but you do not have a workplace. Give them a job application and tell them to use it on the block you should work around.",
+    @SerializedName("manage_llm_prompt") var manageLlmPrompt: String = "The player opened workplace management. Your workplace is {workplace}. Ask whether they want to move your workplace or fire you from this post.",
+    @SerializedName("move_llm_prompt") var moveLlmPrompt: String = "The player wants to move your workplace. Say you gave them a new job application and tell them to use it on the new work block.",
+    @SerializedName("fire_llm_prompt") var fireLlmPrompt: String = "The player fired you from your workplace. React in character as newly unemployed, without being too dramatic.",
+    @SerializedName("assigned_workplace_llm_prompt") var assignedWorkplaceLlmPrompt: String = "The player assigned this block as your workplace. Thank them and say you will work around it.",
+) {
+    fun normalized(): NpcWorkSettingsDefinition = apply {
+        applicationLlmPrompt = applicationLlmPrompt.trim().ifBlank { "The player asked you to start work but you do not have a workplace. Give them a job application and tell them to use it on the block you should work around." }
+        manageLlmPrompt = manageLlmPrompt.trim().ifBlank { "The player opened workplace management. Your workplace is {workplace}. Ask whether they want to move your workplace or fire you from this post." }
+        moveLlmPrompt = moveLlmPrompt.trim().ifBlank { "The player wants to move your workplace. Say you gave them a new job application and tell them to use it on the new work block." }
+        fireLlmPrompt = fireLlmPrompt.trim().ifBlank { "The player fired you from your workplace. React in character as newly unemployed, without being too dramatic." }
+        assignedWorkplaceLlmPrompt = assignedWorkplaceLlmPrompt.trim().ifBlank { "The player assigned this block as your workplace. Thank them and say you will work around it." }
     }
 }
 

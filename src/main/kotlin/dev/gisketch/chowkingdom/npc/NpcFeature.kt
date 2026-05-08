@@ -267,20 +267,30 @@ object NpcFeature {
             return
         }
         npc.startTalkingTo(player, NPC_DIALOG_DURATION_TICKS)
-        val message = "My workplace is at ${workplace.toShortString()}. Move it, or fire me from this post?"
-        NpcNetwork.openDialog(player, dialogPayload(definition, npc, message, false, friendship.level, dialogMode = "work"))
+        val fallback = "My workplace is at ${workplace.toShortString()}. Move it, or fire me from this post?"
+        val responseToken = NpcDialogTokens.next()
+        NpcNetwork.openDialog(player, dialogPayload(definition, npc, if (workLlmEnabled { it.workManage }) "..." else fallback, false, friendship.level, responseToken = responseToken, dialogMode = "work"))
+        if (workLlmEnabled { it.workManage }) {
+            NpcLlmService.event(player, npc, definition, fallback, NpcConfig.settings().work.manageLlmPrompt.replace("{workplace}", workplace.toShortString()), npcRecordType = "npc_work_manage", responseToken = responseToken)
+        }
     }
 
     private fun giveWorkApplication(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, moving: Boolean) {
         giveStack(player, createJobApplication(definition.id))
         npc.startTalkingTo(player, NPC_DIALOG_DURATION_TICKS)
         val friendship = NpcStore.friendshipSnapshot(definition.id, player)
-        val message = if (moving) {
+        val fallback = if (moving) {
             "Okay. Right-click the new work block with that application."
         } else {
             "Use this job application on my work block. I will work around it."
         }
-        NpcNetwork.openDialog(player, dialogPayload(definition, npc, message, false, friendship.level, closeOnly = true, closeLabel = "OKAY"))
+        val llmEnabled = workLlmEnabled { usage -> if (moving) usage.workMove else usage.workApplication }
+        val responseToken = NpcDialogTokens.next()
+        NpcNetwork.openDialog(player, dialogPayload(definition, npc, if (llmEnabled) "..." else fallback, false, friendship.level, closeOnly = true, closeLabel = "OKAY", responseToken = responseToken))
+        if (llmEnabled) {
+            val prompt = if (moving) NpcConfig.settings().work.moveLlmPrompt else NpcConfig.settings().work.applicationLlmPrompt
+            NpcLlmService.event(player, npc, definition, fallback, prompt, npcRecordType = if (moving) "npc_work_move" else "npc_work_application", responseToken = responseToken)
+        }
         SnackbarNetwork.send(player, SnackbarNotification.npc(definition.id, "JOB APPLICATION RECEIVED", "Right-click a work block for ${definition.name}.", SnackbarType.SUCCESS, SnackbarSounds.REWARD))
     }
 
@@ -289,9 +299,18 @@ object NpcFeature {
         npc.navigation.stop()
         npc.startTalkingTo(player, NPC_DIALOG_DURATION_TICKS)
         val friendship = NpcStore.friendshipSnapshot(definition.id, player)
-        val message = "Okay. I am unemployed for now."
-        NpcNetwork.openDialog(player, dialogPayload(definition, npc, message, false, friendship.level, closeOnly = true, closeLabel = "OKAY"))
+        val fallback = "Okay. I am unemployed for now."
+        val responseToken = NpcDialogTokens.next()
+        NpcNetwork.openDialog(player, dialogPayload(definition, npc, if (workLlmEnabled { it.workFire }) "..." else fallback, false, friendship.level, closeOnly = true, closeLabel = "OKAY", responseToken = responseToken))
+        if (workLlmEnabled { it.workFire }) {
+            NpcLlmService.event(player, npc, definition, fallback, NpcConfig.settings().work.fireLlmPrompt, npcRecordType = "npc_work_fire", responseToken = responseToken)
+        }
         SnackbarNetwork.send(player, SnackbarNotification.npc(definition.id, "NPC FIRED", "${definition.name} has no workplace now.", SnackbarType.GENERIC, SnackbarSounds.GENERIC))
+    }
+
+    private fun workLlmEnabled(flag: (NpcLlmMessageUsageDefinition) -> Boolean): Boolean {
+        val settings = NpcConfig.settings()
+        return settings.llm.enabled && flag(settings.llmMessageUsage)
     }
 
     private fun openNpcShop(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition) {
@@ -753,8 +772,12 @@ object NpcFeature {
         NpcStore.recordGlobalEvent("npc_workplace_assigned", "${definition.name} got a workplace at ${workplacePos.toShortString()} from ${player.gameProfile.name}.")
         npc.startTalkingTo(player, NPC_DIALOG_DURATION_TICKS)
         val friendship = NpcStore.friendshipSnapshot(definition.id, player)
-        val message = "Got it. I will work around this block."
-        NpcNetwork.openDialog(player, dialogPayload(definition, npc, message, false, friendship.level, closeOnly = true, closeLabel = "OKAY"))
+        val fallback = "Got it. I will work around this block."
+        val responseToken = NpcDialogTokens.next()
+        NpcNetwork.openDialog(player, dialogPayload(definition, npc, if (workLlmEnabled { it.assignedWorkplace }) "..." else fallback, false, friendship.level, closeOnly = true, closeLabel = "OKAY", responseToken = responseToken))
+        if (workLlmEnabled { it.assignedWorkplace }) {
+            NpcLlmService.event(player, npc, definition, fallback, NpcConfig.settings().work.assignedWorkplaceLlmPrompt, npcRecordType = "npc_assigned_workplace", responseToken = responseToken)
+        }
         if (!player.abilities.instabuild) stack.shrink(1)
         SnackbarNetwork.send(player, SnackbarNotification.item(BuiltInRegistries.ITEM.getKey(JOB_APPLICATION.get()).toString(), "WORKPLACE ASSIGNED", "${definition.name} now works here", SnackbarType.SUCCESS, SnackbarSounds.REWARD))
         return true

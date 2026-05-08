@@ -30,9 +30,11 @@ Add player-assigned NPC workplaces for work routine.
 - Reuse rent-contract pattern for item metadata and block right-click flow.
 - Work schedule activity requires an assigned workplace; without one NPC work routing stops as no workplace/unemployed.
 - Workplace roaming prefers positions near the assigned block height, then falls back to surface positions.
+- Runtime settings expose LLM toggles and prompts for work application, management, move, fire, and assignment replies.
 
 ## Progress log
 - Started.
 - Added implementation draft for job application, workplace state, WORK/MOVE/FIRE dialog flow, and work routing.
 - Adjusted workplace roaming to prefer positions around the assigned block height.
 - Build passed.
+- Added work LLM settings and local runClient defaults.
