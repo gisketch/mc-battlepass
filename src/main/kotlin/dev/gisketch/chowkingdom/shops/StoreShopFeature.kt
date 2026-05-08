@@ -57,6 +57,8 @@ object StoreShopFeature {
     private var definitions: Map<String, StoreDefinition> = emptyMap()
     private var state = StoreStateFile()
     private var statePath: Path? = null
+    private val warnedInvalidOfferItems = mutableSetOf<String>()
+    private val warnedMissingOfferItems = mutableSetOf<String>()
 
     private val configDir: Path
         get() = FMLPaths.CONFIGDIR.get().resolve(ChowKingdomMod.MOD_ID).resolve("stores")
@@ -269,7 +271,13 @@ object StoreShopFeature {
 
     private fun missingSelectedCategories(definition: StoreDefinition, poolState: StorePoolState, pool: ShopViewPool): Boolean {
         if (pool == ShopViewPool.ALL) return false
-        return definition.categories.any { category -> rollGroupsFor(category, pool).isNotEmpty() && category.id !in poolState.selected }
+        return definition.categories.any { category ->
+            val groups = rollGroupsFor(category, pool)
+            val selected = poolState.selected[category.id]
+            val validOfferIds = groups.flatMap(StoreOfferRollGroup::offers).map(StoreOffer::id).toSet()
+            val expectedGroups = category.itemTypesToSell.coerceAtLeast(1).coerceAtMost(groups.size)
+            groups.isNotEmpty() && (selected == null || selected.size < expectedGroups || selected.any { it !in validOfferIds })
+        }
     }
 
     private fun reroll(definition: StoreDefinition, stockKey: String, pool: ShopViewPool) {
@@ -310,7 +318,20 @@ object StoreShopFeature {
         return singles + sets
     }
 
-    private fun List<StoreOffer>.filterValidOffers(): List<StoreOffer> = filter { it.id.isNotBlank() && it.item.isNotBlank() }
+    private fun List<StoreOffer>.filterValidOffers(): List<StoreOffer> = filter(::isValidOffer)
+
+    private fun isValidOffer(offer: StoreOffer): Boolean {
+        if (offer.id.isBlank() || offer.item.isBlank()) return false
+        val id = runCatching { ResourceLocation.parse(offer.item) }
+            .onFailure { if (warnedInvalidOfferItems.add(offer.item)) ChowKingdomMod.LOGGER.warn("Store offer {} has invalid item id {}; skipping offer.", offer.id, offer.item) }
+            .getOrNull() ?: return false
+        val item = BuiltInRegistries.ITEM.getOptional(id).orElse(Items.AIR)
+        if (item == Items.AIR) {
+            if (warnedMissingOfferItems.add(offer.item)) ChowKingdomMod.LOGGER.warn("Store offer item {} is not present in the current modlist; skipping matching offers.", offer.item)
+            return false
+        }
+        return !RelicRouletteFeature.isTokenItem(item)
+    }
 
     private fun stock(stockKey: String, pool: ShopViewPool, offerId: String): Int =
         stateFor(stockKey).pools[pool.id]?.stock?.get(offerId) ?: 0
