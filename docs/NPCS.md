@@ -10,6 +10,7 @@ Conversation-specific runtime rules live in [NPC Conversations](NPC_CONVERSATION
 - Runtime config folder: `<game config>/gisketchs_chowkingdom_mod/npcs`; in local `runClient`, this is `runs/client/config/gisketchs_chowkingdom_mod/npcs`.
 - Default file: `finn.toml`, written if missing.
 - Global NPC settings: `settings.toml`, written if missing.
+- Rendering experiment: `settings.toml` `[rendering].playerlike_renderer` switches NPCs to an RCT-style vanilla `PlayerModel`/`HumanoidMobRenderer` path for EMF/ETF animation pack testing. Restart the client after changing it. FA/Fresh may apply automatically if it hooks custom player-shaped mobs; otherwise a compat resource pack or deeper renderer adapter is needed.
 - Shared friendship message fallback: `friendship_messages.toml`, written if missing and used by all NPCs unless a definition overrides `friendship_messages`.
 - Intro block: `gisketchs_chowkingdom_mod:camping_block`.
 - Contract item: `gisketchs_chowkingdom_mod:rent_contract`.

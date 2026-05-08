@@ -24,7 +24,9 @@ import net.minecraft.client.model.geom.ModelLayers
 import net.minecraft.client.model.geom.ModelPart
 import net.minecraft.client.renderer.MultiBufferSource
 import net.minecraft.client.renderer.entity.EntityRendererProvider
+import net.minecraft.client.renderer.entity.HumanoidMobRenderer
 import net.minecraft.client.renderer.entity.MobRenderer
+import net.minecraft.client.renderer.entity.layers.HumanoidArmorLayer
 import net.minecraft.client.renderer.entity.layers.ItemInHandLayer
 import net.minecraft.client.renderer.texture.DynamicTexture
 import net.minecraft.client.resources.sounds.SimpleSoundInstance
@@ -201,7 +203,13 @@ object NpcClient {
     fun isDialogOpen(): Boolean = Minecraft.getInstance().screen is NpcDialogScreen
 
     private fun registerRenderers(event: EntityRenderersEvent.RegisterRenderers) {
-        event.registerEntityRenderer(NpcFeature.NPC_ENTITY.get(), ::ChowNpcRenderer)
+        event.registerEntityRenderer(NpcFeature.NPC_ENTITY.get()) { context ->
+            if (NpcConfig.settings().rendering.playerlikeRenderer) {
+                ChowNpcPlayerlikeRenderer(context)
+            } else {
+                ChowNpcRenderer(context)
+            }
+        }
         event.registerBlockEntityRenderer(NpcFeature.CAMPING_BLOCK_ENTITY.get()) { CampingBlockRenderer() }
     }
 
@@ -517,6 +525,31 @@ private fun npcTexture(npcId: String): ResourceLocation {
 }
 
 private val STEVE_TEXTURE = ResourceLocation.withDefaultNamespace("textures/entity/player/wide/steve.png")
+
+private class ChowNpcPlayerlikeRenderer(context: EntityRendererProvider.Context) : HumanoidMobRenderer<ChowNpcEntity, PlayerModel<ChowNpcEntity>>(context, PlayerModel(context.bakeLayer(ModelLayers.PLAYER), false), 0.5f) {
+    private val normalModel = PlayerModel<ChowNpcEntity>(context.bakeLayer(ModelLayers.PLAYER), false)
+    private val slimModel = PlayerModel<ChowNpcEntity>(context.bakeLayer(ModelLayers.PLAYER_SLIM), true)
+
+    init {
+        addLayer(
+            HumanoidArmorLayer(
+                this,
+                HumanoidModel(context.bakeLayer(ModelLayers.PLAYER_INNER_ARMOR)),
+                HumanoidModel(context.bakeLayer(ModelLayers.PLAYER_OUTER_ARMOR)),
+                context.modelManager,
+            )
+        )
+        addLayer(ItemInHandLayer(this, context.itemInHandRenderer))
+    }
+
+    override fun render(entity: ChowNpcEntity, entityYaw: Float, partialTicks: Float, poseStack: PoseStack, buffer: MultiBufferSource, packedLight: Int) {
+        model = if (entity.bodyType == NpcBodyTypes.SLIM) slimModel else normalModel
+        model.rightArmPose = if (entity.mainHandItem.isEmpty) HumanoidModel.ArmPose.EMPTY else HumanoidModel.ArmPose.ITEM
+        super.render(entity, entityYaw, partialTicks, poseStack, buffer, packedLight)
+    }
+
+    override fun getTextureLocation(entity: ChowNpcEntity): ResourceLocation = npcTexture(entity.npcId)
+}
 
 private class ChowNpcRenderer(context: EntityRendererProvider.Context) : MobRenderer<ChowNpcEntity, PlayerModel<ChowNpcEntity>>(context, ChowNpcModel(context.bakeLayer(ModelLayers.PLAYER), false), 0.5f) {
     private val normalModel = ChowNpcModel(context.bakeLayer(ModelLayers.PLAYER), false)

@@ -72,6 +72,7 @@ class NpcDefinition(
 
 class NpcSettingsDefinition(
     var greetings: NpcGreetingsDefinition = NpcGreetingsDefinition(),
+    var rendering: NpcRenderingSettingsDefinition = NpcRenderingSettingsDefinition(),
     var llm: NpcLlmSettingsDefinition = NpcLlmSettingsDefinition(),
     @SerializedName("llm_message_usage") var llmMessageUsage: NpcLlmMessageUsageDefinition = NpcLlmMessageUsageDefinition(),
     @SerializedName("campers") var campers: NpcCampersSettingsDefinition = NpcCampersSettingsDefinition(),
@@ -80,11 +81,19 @@ class NpcSettingsDefinition(
 ) {
     fun normalized(): NpcSettingsDefinition = apply {
         greetings = greetings.normalized()
+        rendering = rendering.normalized()
         llm = llm.normalized()
         llmMessageUsage = llmMessageUsage.normalized()
         campers = campers.normalized()
         work = work.normalized()
         npcInteractions = npcInteractions.normalized()
+    }
+}
+
+class NpcRenderingSettingsDefinition(
+    @SerializedName("playerlike_renderer") var playerlikeRenderer: Boolean = false,
+) {
+    fun normalized(): NpcRenderingSettingsDefinition = apply {
     }
 }
 
