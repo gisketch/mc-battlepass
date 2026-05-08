@@ -142,6 +142,7 @@ class NpcLlmSettingsDefinition(
     @SerializedName("rate_limited_message") var rateLimitedMessage: String = "Give me a second to gather my thoughts.",
     @SerializedName("error_message") var errorMessage: String = "Sorry, my thoughts wandered for a second. What were we talking about?",
     @SerializedName("fallback_message") var fallbackMessage: String = "Sorry, my thoughts wandered for a second. What were we talking about?",
+    @SerializedName("llm_streaming") var llmStreaming: Boolean = false,
 ) {
     fun normalized(): NpcLlmSettingsDefinition = apply {
         activePreset = activePreset.trim().ifBlank { "current" }

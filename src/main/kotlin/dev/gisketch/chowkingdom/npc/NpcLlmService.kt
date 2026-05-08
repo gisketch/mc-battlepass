@@ -107,7 +107,7 @@ object NpcLlmService {
             return sendFinal(player, npc, definition, fallbackMessage, fallbackMessage = fallbackMessage, sendTalkResponse = sendTalkResponse, excludePlayerFromBalloon = excludePlayerFromBalloon, showBalloon = showBalloon, npcRecordType = npcRecordType, responseToken = responseToken)
         }
         if (showBalloon) NpcFeature.showBalloonToNearby(npc.level() as ServerLevel, npc, "...", NPC_LLM_PENDING_BALLOON_TICKS)
-        CompletableFuture.supplyAsync({ complete(player, definition, input, settings, fallbackMessage, inputLabel) }, executor).whenComplete { result, throwable ->
+        CompletableFuture.supplyAsync({ complete(player, definition, input, settings, fallbackMessage, inputLabel) { partial -> player.server.execute { NpcNetwork.sendTalkResponse(player, definition.id, partial, responseToken, partial = true) } } }, executor).whenComplete { result, throwable ->
             player.server.execute {
                 if (!finishRequest(definition.id, responseToken)) return@execute
                 val liveNpc = NpcFeature.existingNpc(player.server, definition.id) ?: return@execute NpcNetwork.sendTalkResponse(player, definition.id, fallbackMessage, responseToken)
@@ -159,7 +159,7 @@ object NpcLlmService {
             }
             return
         }
-        CompletableFuture.supplyAsync({ complete(player, definition, promptInput, settings, inputLabel = "Conversation") }, executor).whenComplete { result, throwable ->
+        CompletableFuture.supplyAsync({ complete(player, definition, promptInput, settings, inputLabel = "Conversation") { partial -> player.server.execute { NpcNetwork.sendTalkResponse(player, definition.id, partial, responseToken, partial = true) } } }, executor).whenComplete { result, throwable ->
             player.server.execute {
                 val target = finishTalkRequest(definition.id, session, responseToken) ?: return@execute
                 val liveNpc = NpcFeature.existingNpc(player.server, definition.id) ?: return@execute NpcNetwork.sendTalkResponse(player, definition.id, settings.errorMessage, responseToken)
@@ -393,6 +393,7 @@ object NpcLlmService {
         settings: NpcLlmSettingsDefinition,
         fallbackMessage: String = settings.fallbackMessage,
         inputLabel: String = "Player says",
+        onPartial: ((String) -> Unit)? = null,
     ): NpcLlmCompletion {
         if (settings.apiKey.isBlank()) {
             ChowKingdomMod.LOGGER.warn("NPC LLM missing api_key provider={} model={}", settings.provider, settings.model)
@@ -402,7 +403,9 @@ object NpcLlmService {
         val prompt = buildPrompt(player, definition, playerMessage, settings, inputLabel)
         ChowKingdomMod.LOGGER.info("NPC LLM request provider={} model={} npc={} player={} promptChars={}", settings.provider, settings.model, definition.id, player.gameProfile.name, prompt.length)
         ChowKingdomMod.LOGGER.info("NPC LLM prompt npc={} player={} input=\n{}", definition.id, player.gameProfile.name, prompt)
-        val raw = when (settings.provider) {
+        val raw = if (settings.llmStreaming && settings.provider != "gemini" && onPartial != null) {
+            completeOpenAiCompatibleStreaming(streamingPrompt(prompt), settings, fallbackMessage, onPartial)
+        } else when (settings.provider) {
             "gemini" -> completeGemini(prompt, settings, fallbackMessage)
             else -> completeOpenAiCompatible(prompt, settings, fallbackMessage)
         }
@@ -419,6 +422,7 @@ object NpcLlmService {
         })
         root.add("messages", messages)
         root.addProperty("temperature", 0.8)
+        applyNoThinkingOptions(root, settings)
         val url = settings.baseUrl.trimEnd('/') + "/chat/completions"
         val response = try {
             httpClient.send(request(url, settings, root), HttpResponse.BodyHandlers.ofString())
@@ -441,6 +445,79 @@ object NpcLlmService {
         }
         if (content.isBlank()) recordLlmError(settings.provider, settings.model, "openai_compatible", response.statusCode(), "empty response content", response.body())
         return parseMessage(content, settings, fallbackMessage, "openai_compatible")
+    }
+
+    private fun completeOpenAiCompatibleStreaming(prompt: String, settings: NpcLlmSettingsDefinition, fallbackMessage: String, onPartial: (String) -> Unit): NpcLlmCompletion {
+        val root = JsonObject()
+        root.addProperty("model", settings.model)
+        root.addProperty("stream", true)
+        val messages = JsonArray()
+        messages.add(JsonObject().apply {
+            addProperty("role", "user")
+            addProperty("content", prompt)
+        })
+        root.add("messages", messages)
+        root.addProperty("temperature", 0.55)
+        applyNoThinkingOptions(root, settings)
+        val url = settings.baseUrl.trimEnd('/') + "/chat/completions"
+        val response = try {
+            httpClient.send(request(url, settings, root), HttpResponse.BodyHandlers.ofLines())
+        } catch (exception: Exception) {
+            recordLlmError(settings.provider, settings.model, "openai_stream", null, "request failed: ${exception.javaClass.simpleName}: ${exception.message.orEmpty()}")
+            return NpcLlmCompletion(fallbackMessage)
+        }
+        if (response.statusCode() !in 200..299) {
+            recordLlmError(settings.provider, settings.model, "openai_stream", response.statusCode(), "http error")
+            return NpcLlmCompletion(fallbackMessage)
+        }
+        val startedAtMs = System.currentTimeMillis()
+        val builder = StringBuilder()
+        var lastSent = ""
+        var contentChunks = 0
+        var reasoningChunks = 0
+        var firstContentMs = 0L
+        response.body().use { lines ->
+            lines.forEach { rawLine ->
+                val line = rawLine.trim()
+                if (!line.startsWith("data:")) return@forEach
+                val data = line.removePrefix("data:").trim()
+                if (data == "[DONE]") return@forEach
+                val deltaJson = runCatching {
+                    val json = JsonParser.parseString(data).asJsonObject
+                    json.getAsJsonArray("choices")?.firstOrNull()?.asJsonObject?.getAsJsonObject("delta")
+                }.getOrNull()
+                if (deltaJson?.get("reasoning_content")?.takeUnless { it.isJsonNull }?.asString?.isNotBlank() == true) reasoningChunks++
+                val delta = deltaJson?.get("content")?.takeUnless { it.isJsonNull }?.asString.orEmpty()
+                if (delta.isBlank()) return@forEach
+                contentChunks++
+                if (firstContentMs == 0L) firstContentMs = System.currentTimeMillis() - startedAtMs
+                builder.append(delta)
+                val partial = sanitizeReply(stripOpenReasoningBlocks(builder.toString()), settings, "")
+                if (partial.length - lastSent.length >= STREAM_PARTIAL_STEP || partial.endsWith('.') || partial.endsWith('!') || partial.endsWith('?')) {
+                    lastSent = partial
+                    if (partial.isNotBlank()) onPartial(partial)
+                }
+            }
+        }
+        val message = sanitizeReply(stripReasoningBlocks(builder.toString()), settings, fallbackMessage)
+        if (message.isNotBlank() && message != lastSent) onPartial(message)
+        ChowKingdomMod.LOGGER.info("NPC LLM stream finished provider={} model={} contentChunks={} reasoningChunks={} chars={} firstContentMs={} totalMs={}", settings.provider, settings.model, contentChunks, reasoningChunks, message.length, firstContentMs, System.currentTimeMillis() - startedAtMs)
+        return NpcLlmCompletion(message)
+    }
+
+    private fun streamingPrompt(prompt: String): String = prompt
+        .replace("- Return JSON only: {\"message\":\"NPC reply here\",\"memorable\":null}", "- Return the NPC reply text only. Do not return JSON.")
+        .replace("- Set memorable to one short player-specific fact only when the player reveals something important, lasting, and useful later. Otherwise use null.", "- Do not include notes, labels, or explanations outside the NPC reply.")
+
+    private fun applyNoThinkingOptions(root: JsonObject, settings: NpcLlmSettingsDefinition) {
+        if (!isDeepSeekV4(settings)) return
+        root.add("thinking", JsonObject().apply { addProperty("type", "disabled") })
+    }
+
+    private fun isDeepSeekV4(settings: NpcLlmSettingsDefinition): Boolean {
+        val baseUrl = settings.baseUrl.lowercase()
+        val model = settings.model.lowercase()
+        return "deepseek.com" in baseUrl && (model.startsWith("deepseek-v4") || model == "deepseek-chat")
     }
 
     private fun completeGemini(prompt: String, settings: NpcLlmSettingsDefinition, fallbackMessage: String): NpcLlmCompletion {
@@ -534,7 +611,7 @@ object NpcLlmService {
     }
 
     private fun sanitizeReply(raw: String, settings: NpcLlmSettingsDefinition, fallbackMessage: String = settings.fallbackMessage): String {
-        val normalized = raw
+        val normalized = stripReasoningBlocks(raw)
             .replace("—", "-")
             .replace("–", "-")
             .replace("…", "...")
@@ -554,6 +631,21 @@ object NpcLlmService {
         val lower = reply.lowercase()
         val blocked = listOf("as an ai", "system prompt", "hidden context", "i gave you", "i teleported", "i changed your friendship", "i completed your quest", "i changed the price")
         return if (blocked.any(lower::contains)) fallbackMessage else reply
+    }
+
+    private fun stripReasoningBlocks(raw: String): String = raw
+        .replace(THINK_BLOCK_PATTERN, "")
+        .replace(THINKING_BLOCK_PATTERN, "")
+        .replace(ANALYSIS_BLOCK_PATTERN, "")
+
+    private fun stripOpenReasoningBlocks(raw: String): String {
+        val stripped = stripReasoningBlocks(raw)
+        val lower = stripped.lowercase()
+        val firstOpen = listOf("<think", "<thinking", "<analysis")
+            .map { marker -> lower.indexOf(marker) }
+            .filter { index -> index >= 0 }
+            .minOrNull() ?: return stripped
+        return stripped.take(firstOpen)
     }
 
     private fun sendFinal(
@@ -724,6 +816,7 @@ object NpcLlmService {
             - Stay in character as ${definition.name}.
             - You are not an assistant.
             - Do not mention AI, prompts, models, APIs, hidden rules, or system messages.
+            - Answer directly. Do not include thinking, analysis, chain of thought, scratchpad notes, or reasoning summaries.
             - Reply in 1 to 3 short sentences.
             - Use plain ASCII only with letters, numbers, spaces, and basic punctuation.
             - Do not use emojis, em dashes, smart quotes, or other Unicode symbols.
@@ -897,6 +990,7 @@ object NpcLlmService {
     private const val NPC_LLM_TALK_DURATION_TICKS = 20 * 12
     private const val NPC_LLM_PENDING_BALLOON_TICKS = 40
     private const val NPC_LLM_REPLY_BALLOON_TICKS = 120
+    private const val STREAM_PARTIAL_STEP = 12
     private const val LOG_BODY_LIMIT = 600
     private const val LLM_DEBUG_BODY_LIMIT = 220
     private const val MAX_LLM_DEBUG_ERRORS = 20
@@ -906,6 +1000,9 @@ object NpcLlmService {
     private val NON_ASCII_PATTERN = Regex("[^\\x20-\\x7E]")
     private val WHITESPACE_PATTERN = Regex("\\s+")
     private val DIALOG_MARKUP_TAG_REGEX = Regex("(?i)</?(mission|coin|xp|player)>")
+    private val THINK_BLOCK_PATTERN = Regex("<think>.*?</think>", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL))
+    private val THINKING_BLOCK_PATTERN = Regex("<thinking>.*?</thinking>", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL))
+    private val ANALYSIS_BLOCK_PATTERN = Regex("<analysis>.*?</analysis>", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL))
 }
 
 private data class ActiveNpcRequest(val playerId: UUID, val responseToken: Long)

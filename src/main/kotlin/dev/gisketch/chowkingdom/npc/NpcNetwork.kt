@@ -53,8 +53,8 @@ object NpcNetwork {
         runCatching { PacketDistributor.sendToServer(NpcTalkRequestPayload(npcId, message, responseToken)) }
     }
 
-    fun sendTalkResponse(player: ServerPlayer, npcId: String, message: String, responseToken: Long = 0L) {
-        PacketDistributor.sendToPlayer(player, NpcTalkResponsePayload(npcId, message, responseToken))
+    fun sendTalkResponse(player: ServerPlayer, npcId: String, message: String, responseToken: Long = 0L, partial: Boolean = false) {
+        PacketDistributor.sendToPlayer(player, NpcTalkResponsePayload(npcId, message, responseToken, partial))
     }
 
     fun syncQuests(player: ServerPlayer, payload: NpcQuestSyncPayload) {
@@ -303,6 +303,7 @@ data class NpcTalkResponsePayload(
     val npcId: String,
     val message: String,
     val responseToken: Long,
+    val partial: Boolean = false,
 ) : CustomPacketPayload {
     override fun type(): CustomPacketPayload.Type<NpcTalkResponsePayload> = TYPE
 
@@ -313,12 +314,14 @@ data class NpcTalkResponsePayload(
                 buffer.readUtf(MAX_NPC_ID_LENGTH),
                 buffer.readUtf(MAX_NPC_DIALOG_LENGTH),
                 buffer.readLong(),
+                buffer.readBoolean(),
             )
 
             override fun encode(buffer: RegistryFriendlyByteBuf, value: NpcTalkResponsePayload) {
                 buffer.writeUtf(value.npcId.take(MAX_NPC_ID_LENGTH), MAX_NPC_ID_LENGTH)
                 buffer.writeUtf(value.message.take(MAX_NPC_DIALOG_LENGTH), MAX_NPC_DIALOG_LENGTH)
                 buffer.writeLong(value.responseToken)
+                buffer.writeBoolean(value.partial)
             }
         }
     }

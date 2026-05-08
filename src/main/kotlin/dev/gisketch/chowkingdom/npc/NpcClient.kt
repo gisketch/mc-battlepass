@@ -582,6 +582,7 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
     private var messageStartedAtMs: Long = openedAtMs
     private var displayMessage: String = payload.message
     private var lastAnimaleseIndex: Int = 0
+    private var streamingResponseActive: Boolean = false
     private var talkMode: Boolean = payload.startTalkMode
     private var waitingForTalk: Boolean = payload.message == "..."
     private var activeResponseToken: Long = payload.responseToken
@@ -750,9 +751,19 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         if (response.npcId != payload.npcId) return
         if (NpcClient.shouldIgnoreTalkResponse(response.responseToken)) return
         if (response.responseToken != 0L && response.responseToken != activeResponseToken) return
+        if (response.partial) {
+            waitingForTalk = false
+            updateStreamingDisplayMessage(response.message)
+            return
+        }
         waitingForTalk = false
         activeResponseToken = 0L
-        updateDisplayMessage(response.message)
+        if (streamingResponseActive) {
+            updateStreamingDisplayMessage(response.message)
+            streamingResponseActive = false
+        } else {
+            updateDisplayMessage(response.message)
+        }
     }
 
     private fun localMouse(mouseX: Int, mouseY: Int, anchorX: Float, anchorY: Float, slideY: Float, scale: Float): Pair<Int, Int> = Pair(
@@ -1069,12 +1080,24 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         NpcClient.skipTalkResponse(activeResponseToken)
         waitingForTalk = false
         activeResponseToken = 0L
+        streamingResponseActive = false
     }
 
     private fun updateDisplayMessage(message: String) {
         displayMessage = message
         messageStartedAtMs = System.currentTimeMillis()
         lastAnimaleseIndex = 0
+        streamingResponseActive = false
+    }
+
+    private fun updateStreamingDisplayMessage(message: String) {
+        if (message == displayMessage) return
+        val previousAnimaleseIndex = lastAnimaleseIndex.coerceAtMost(message.length)
+        displayMessage = message
+        val visibleElapsedMs = ((message.length / TYPEWRITER_CHARS_PER_SECOND) * 1000.0).toLong()
+        messageStartedAtMs = System.currentTimeMillis() - TYPEWRITER_DELAY_MS - visibleElapsedMs
+        lastAnimaleseIndex = previousAnimaleseIndex
+        streamingResponseActive = true
     }
 
     private fun currentRenderMessage(): String = if (waitingForTalk) ".".repeat(((System.currentTimeMillis() / 300L) % 3L + 1L).toInt()) else displayMessage
