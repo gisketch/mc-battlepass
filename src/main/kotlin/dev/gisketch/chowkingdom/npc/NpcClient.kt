@@ -277,7 +277,7 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
     private var messageStartedAtMs: Long = openedAtMs
     private var displayMessage: String = payload.message
     private var lastAnimaleseIndex: Int = 0
-    private var talkMode: Boolean = false
+    private var talkMode: Boolean = payload.startTalkMode
     private var waitingForTalk: Boolean = payload.message == "..."
     private var activeResponseToken: Long = payload.responseToken
     private var talkModeChangedAtMs: Long = openedAtMs
@@ -303,6 +303,10 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
             visible = talkMode
         }
         talkInput?.let(::addRenderableWidget)
+        if (talkMode) {
+            talkInput?.isFocused = true
+            setFocused(talkInput)
+        }
     }
 
     override fun render(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) {
@@ -379,7 +383,10 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
             }
             DialogAction.Bye -> onClose()
             DialogAction.Talk -> if (!waitingForTalk && payload.talkEnabled) {
-                if (talkMode) sendTalkMessage() else enterTalkMode()
+                if (talkMode) sendTalkMessage() else {
+                    NpcNetwork.sendAction(payload.npcId, "join_talk")
+                    enterTalkMode()
+                }
             }
         }
         return true
@@ -387,8 +394,9 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
 
     override fun onClose() {
         val wasWaitingForTalk = waitingForTalk
+        val wasInTalkMode = talkMode
         skipPendingTalkResponse()
-        if (wasWaitingForTalk) NpcNetwork.sendAction(payload.npcId, "cancel_llm")
+        if (wasWaitingForTalk || wasInTalkMode) NpcNetwork.sendAction(payload.npcId, "cancel_llm")
         super.onClose()
     }
 
@@ -446,6 +454,7 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
 
     private fun actionLabel(action: DialogAction): String = when {
         talkMode && action == DialogAction.Talk -> "SEND"
+        joinMode() && action == DialogAction.Talk -> "JOIN CONVERSATION"
         action == DialogAction.Bye && payload.closeOnly -> payload.closeLabel
         else -> action.label
     }
@@ -482,9 +491,12 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
     }
 
     private fun actions(): List<DialogAction> = when {
+        joinMode() -> listOf(DialogAction.Talk, DialogAction.Bye)
         payload.closeOnly -> listOf(DialogAction.Bye)
         else -> DialogAction.entries
     }
+
+    private fun joinMode(): Boolean = payload.dialogMode == "join"
 
     private fun isActionEnabled(action: DialogAction, giftStack: ItemStack = giftStack()): Boolean = when {
         waitingForTalk -> action != DialogAction.Talk
@@ -717,7 +729,7 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         private const val INPUT_HEIGHT = 18
         private const val INPUT_GAP = 16
         private const val DYNAMIC_BOTTOM_PAD = 11
-        private const val BUTTON_WIDTH = 74
+        private const val BUTTON_WIDTH = 132
         private const val BUTTON_HEIGHT = 20
         private const val BUTTON_TOP = 14
         private const val BUTTON_STEP = 23

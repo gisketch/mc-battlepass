@@ -45,6 +45,7 @@ Polish the restored NPC screen dialog and relay NPC speech to nearby players plu
 - NPCs greet nearby players with globally configurable radius/timing and friendship-category balloons until that player has the first chat of the in-game day.
 - First NPC chat of the in-game day grants +25 friendship and can use configurable friendship-category first-chat dialog.
 - NPC LLM context includes bounded durable player/global memories, recent join/leave events, player deaths, notable kills, mission completions, and every tenth battlepass tier milestone.
+- NPC LLM talk supports shared per-NPC sessions: later players see JOIN CONVERSATION/BYE, joined player messages restart stale LLM work, and one combined NPC reply is sent to all participants.
 
 ## Plan
 
@@ -75,6 +76,7 @@ Polish the restored NPC screen dialog and relay NPC speech to nearby players plu
 25. Add a direct debug command for balloon testing.
 26. Add NPC greeting microinteractions and daily first-chat friendship reward.
 27. Add sparse durable player/global memory context for NPC LLM prompts.
+28. Add concurrent-player shared LLM talk sessions.
 
 ## Progress
 
@@ -111,3 +113,4 @@ Polish the restored NPC screen dialog and relay NPC speech to nearby players plu
 - 2026-05-08: Added `/npc debug balloon <id> <message>` to test the exact balloon payload/render path near a spawned NPC.
 - 2026-05-08: Added globally configurable proximity greeting balloons, per-player greeting state with radius-leave cooldown reset, and first daily chat +25 friendship reward with special dialog messages.
 - 2026-05-08: Added bounded player/global NPC memories, JSON LLM `memorable` capture, join/leave context, death/notable-kill memory hooks, and battlepass mission/tier milestone hooks.
+- 2026-05-08: Added shared NPC LLM talk sessions with JOIN CONVERSATION mode, per-participant response tokens, stale request cancellation, and combined group prompts/replies.

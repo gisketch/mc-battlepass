@@ -22,6 +22,7 @@ private const val MAX_NPC_ACTION_LENGTH = 16
 private const val MAX_NPC_TALK_MESSAGE_LENGTH = 280
 private const val MAX_NPC_CLOSE_LABEL_LENGTH = 24
 private const val MAX_NPC_VOICE_PITCH_LENGTH = 16
+private const val MAX_NPC_DIALOG_MODE_LENGTH = 16
 
 object NpcNetwork {
     fun register(modBus: IEventBus) {
@@ -117,6 +118,8 @@ data class NpcDialogPayload(
     val animaleseRadius: Float = 12.0f,
     val talkEnabled: Boolean = true,
     val responseToken: Long = 0L,
+    val dialogMode: String = "normal",
+    val startTalkMode: Boolean = false,
 ) : CustomPacketPayload {
     override fun type(): CustomPacketPayload.Type<NpcDialogPayload> = TYPE
 
@@ -139,6 +142,8 @@ data class NpcDialogPayload(
                 buffer.readFloat(),
                 buffer.readBoolean(),
                 buffer.readLong(),
+                buffer.readUtf(MAX_NPC_DIALOG_MODE_LENGTH),
+                buffer.readBoolean(),
             )
 
             override fun encode(buffer: RegistryFriendlyByteBuf, value: NpcDialogPayload) {
@@ -157,6 +162,8 @@ data class NpcDialogPayload(
                 buffer.writeFloat(value.animaleseRadius.coerceIn(1.0f, 48.0f))
                 buffer.writeBoolean(value.talkEnabled)
                 buffer.writeLong(value.responseToken)
+                buffer.writeUtf(value.dialogMode.take(MAX_NPC_DIALOG_MODE_LENGTH), MAX_NPC_DIALOG_MODE_LENGTH)
+                buffer.writeBoolean(value.startTalkMode)
             }
         }
     }

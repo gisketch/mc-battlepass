@@ -139,6 +139,19 @@ object NpcFeature {
         val validHome = validHomePos(npc.level(), definition.id)
         npc.homePos = validHome
         val hasHome = validHome != null
+        val activeTalk = NpcLlmService.talkSnapshot(definition.id)
+        if (activeTalk != null) {
+            val friendship = NpcStore.friendshipSnapshot(definition.id, player)
+            val otherNames = activeTalk.participants.filterNot { participant -> participant.uuid == player.uuid }.joinToString(", ") { participant -> participant.name }
+            val message = if (activeTalk.contains(player.uuid)) {
+                if (otherNames.isBlank()) "You are already talking with ${definition.name}." else "You are in the conversation with $otherNames."
+            } else {
+                val names = activeTalk.participants.joinToString(", ") { participant -> participant.name }
+                "${definition.name} is currently talking to $names."
+            }
+            NpcNetwork.openDialog(player, dialogPayload(definition, npc, message, false, friendship.level, dialogMode = "join", startTalkMode = activeTalk.contains(player.uuid)))
+            return
+        }
         val wasSleeping = npc.isSleeping
         val currentDay = NpcTime.day(player.level())
         val firstChatToday = NpcStore.markFirstChatIfNeeded(definition.id, player, currentDay)
@@ -190,6 +203,7 @@ object NpcFeature {
         if (npc.level() != player.level() || player.distanceToSqr(npc) > NPC_DIALOG_ACTION_DISTANCE_SQR) return
         when (action.lowercase()) {
             "cancel_llm" -> NpcLlmService.cancel(player, definition.id)
+            "join_talk" -> NpcLlmService.joinConversation(player, definition.id)
             "buy" -> {
                 NpcLlmService.cancel(player, definition.id)
                 openNpcShop(player, npc, definition)
@@ -372,7 +386,7 @@ object NpcFeature {
         SnackbarNetwork.send(player, SnackbarNotification.item(SnackbarIcons.ERROR, title, content, type, SnackbarSounds.forType(type)))
     }
 
-    private fun dialogPayload(definition: NpcDefinition, npc: ChowNpcEntity, message: String, contractGranted: Boolean, friendshipLevel: Int, closeOnly: Boolean = false, closeLabel: String = "BYE", responseToken: Long = 0L): NpcDialogPayload = NpcDialogPayload(
+    private fun dialogPayload(definition: NpcDefinition, npc: ChowNpcEntity, message: String, contractGranted: Boolean, friendshipLevel: Int, closeOnly: Boolean = false, closeLabel: String = "BYE", responseToken: Long = 0L, dialogMode: String = "normal", startTalkMode: Boolean = false): NpcDialogPayload = NpcDialogPayload(
         definition.id,
         definition.name,
         definition.title,
@@ -388,6 +402,8 @@ object NpcFeature {
         animaleseRadius = definition.voice.radius,
         talkEnabled = NpcConfig.settings().llm.enabled,
         responseToken = responseToken,
+        dialogMode = dialogMode,
+        startTalkMode = startTalkMode,
     )
 
     private fun friendshipMessage(set: NpcFriendshipMessageSet, friendship: NpcFriendshipSnapshot, player: ServerPlayer, definition: NpcDefinition, itemName: String = "", mood: String = "", quantity: Int = 0, totalCost: Long = 0L): String {
@@ -654,6 +670,7 @@ object NpcFeature {
     private fun onPlayerLoggedOut(event: PlayerEvent.PlayerLoggedOutEvent) {
         val player = event.entity as? ServerPlayer ?: return
         NpcStore.recordGlobalEvent("player_leave", "${player.gameProfile.name} left the server")
+        NpcConfig.all().forEach { definition -> NpcLlmService.cancel(player, definition.id) }
     }
 
     private fun onLivingDeath(event: LivingDeathEvent) {

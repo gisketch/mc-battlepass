@@ -27,13 +27,43 @@ object NpcLlmService {
     private val executor = Executors.newCachedThreadPool()
     private val nextAllowedAtMs = ConcurrentHashMap<UUID, Long>()
     private val activeNpcRequests = ConcurrentHashMap<String, ActiveNpcRequest>()
+    private val talkSessions = ConcurrentHashMap<String, NpcTalkSession>()
     private val cancelledResponseTokens = ConcurrentHashMap.newKeySet<Long>()
 
     fun cancel(player: ServerPlayer, npcId: String) {
+        val session = talkSessions[npcId]
+        if (session != null) {
+            val removeSession = synchronized(session) {
+                session.participants.remove(player.uuid)
+                if (session.participants.isEmpty()) {
+                    if (session.activeResponseToken != 0L) cancelledResponseTokens += session.activeResponseToken
+                    true
+                } else {
+                    false
+                }
+            }
+            if (removeSession) talkSessions.remove(npcId, session)
+            return
+        }
         val request = activeNpcRequests[npcId] ?: return
         if (request.playerId != player.uuid) return
         cancelledResponseTokens += request.responseToken
         activeNpcRequests.remove(npcId, request)
+    }
+
+    fun joinConversation(player: ServerPlayer, npcId: String) {
+        val definition = NpcConfig.get(npcId) ?: return
+        val npc = NpcFeature.existingNpc(player.server, definition.id) ?: return
+        if (npc.level() != player.level() || player.distanceToSqr(npc) > NPC_LLM_ACTION_DISTANCE_SQR) return
+        joinConversationSession(player, definition.id)
+    }
+
+    fun talkSnapshot(npcId: String): NpcTalkSnapshot? {
+        val session = talkSessions[npcId] ?: return null
+        return synchronized(session) {
+            val participants = session.participants.values.map { participant -> NpcTalkParticipantSnapshot(participant.playerId, participant.name) }
+            if (participants.isEmpty()) null else NpcTalkSnapshot(participants)
+        }
     }
 
     fun interact(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, fallbackMessage: String) {
@@ -90,27 +120,70 @@ object NpcLlmService {
             ChowKingdomMod.LOGGER.info("NPC LLM rate limited player={} npc={} remainingMs={}", player.gameProfile.name, definition.id, allowedAt - now)
             return sendFinal(player, npc, definition, settings.rateLimitedMessage, responseToken = responseToken)
         }
-        if (!startRequest(definition.id, player, responseToken)) {
-            ChowKingdomMod.LOGGER.info("NPC LLM busy npc={} player={}", definition.id, player.gameProfile.name)
-            return sendFinal(player, npc, definition, settings.rateLimitedMessage, responseToken = responseToken)
-        }
+        val session = joinConversationSession(player, definition.id)
+        val promptInput = addTalkTurn(session, player, message, responseToken)
+        activeNpcRequests.remove(definition.id)?.let { request -> cancelledResponseTokens += request.responseToken }
+        startTalkRequest(session, responseToken)
         nextAllowedAtMs[player.uuid] = now + settings.cooldownSeconds * 1000L
         npc.startTalkingTo(player, NPC_LLM_TALK_DURATION_TICKS)
         relayPlayerTalk(player, npc, definition, message)
         NpcFeature.showBalloonToNearby(npc.level() as ServerLevel, npc, "...", NPC_LLM_PENDING_BALLOON_TICKS)
         if (!settings.enabled) {
             ChowKingdomMod.LOGGER.info("NPC LLM disabled npc={} player={}", definition.id, player.gameProfile.name)
-            finishRequest(definition.id, responseToken)
-            return sendFinal(player, npc, definition, settings.fallbackMessage, message, responseToken = responseToken)
+            finishTalkRequest(definition.id, session, responseToken)?.let { target ->
+                return sendGroupFinal(player, npc, definition, settings.fallbackMessage, target, fallbackMessage = settings.fallbackMessage)
+            }
+            return
         }
-        CompletableFuture.supplyAsync({ complete(player, definition, message, settings) }, executor).whenComplete { result, throwable ->
+        CompletableFuture.supplyAsync({ complete(player, definition, promptInput, settings, inputLabel = "Conversation") }, executor).whenComplete { result, throwable ->
             player.server.execute {
-                if (!finishRequest(definition.id, responseToken)) return@execute
+                val target = finishTalkRequest(definition.id, session, responseToken) ?: return@execute
                 val liveNpc = NpcFeature.existingNpc(player.server, definition.id) ?: return@execute NpcNetwork.sendTalkResponse(player, definition.id, settings.errorMessage, responseToken)
                 if (throwable != null) ChowKingdomMod.LOGGER.warn("NPC LLM request failed npc={} player={}", definition.id, player.gameProfile.name, throwable)
                 val completion = if (throwable == null) result else NpcLlmCompletion(settings.errorMessage)
-                sendFinal(player, liveNpc, definition, completion.message, message, responseToken = responseToken, memorable = completion.memorable)
+                sendGroupFinal(player, liveNpc, definition, completion.message, target, fallbackMessage = settings.errorMessage, memorable = completion.memorable)
             }
+        }
+    }
+
+    private fun joinConversationSession(player: ServerPlayer, npcId: String): NpcTalkSession {
+        val session = talkSessions.computeIfAbsent(npcId) { NpcTalkSession() }
+        synchronized(session) {
+            session.participants.putIfAbsent(player.uuid, NpcTalkParticipant(player.uuid, player.gameProfile.name))
+        }
+        return session
+    }
+
+    private fun addTalkTurn(session: NpcTalkSession, player: ServerPlayer, message: String, responseToken: Long): String = synchronized(session) {
+        val participant = session.participants.getOrPut(player.uuid) { NpcTalkParticipant(player.uuid, player.gameProfile.name) }
+        participant.responseToken = responseToken
+        session.pendingTurns += NpcTalkTurn(player.uuid, player.gameProfile.name, message)
+        val names = session.participants.values.joinToString(", ") { participantSnapshot -> participantSnapshot.name }
+        val lines = session.pendingTurns.takeLast(MAX_GROUP_TURNS).joinToString("\n") { turn -> "- ${turn.playerName}: ${turn.message}" }
+        "Players in this conversation: $names\nNew player messages to answer together:\n$lines\nReply once as the NPC to the whole conversation."
+    }
+
+    private fun startTalkRequest(session: NpcTalkSession, responseToken: Long) {
+        cancelledResponseTokens.remove(responseToken)
+        synchronized(session) {
+            if (session.activeResponseToken != 0L) cancelledResponseTokens += session.activeResponseToken
+            session.activeResponseToken = responseToken
+        }
+    }
+
+    private fun finishTalkRequest(npcId: String, session: NpcTalkSession, responseToken: Long): NpcTalkResponseTarget? = synchronized(session) {
+        if (session.activeResponseToken != responseToken) return@synchronized null
+        session.activeResponseToken = 0L
+        if (cancelledResponseTokens.remove(responseToken)) return@synchronized null
+        val participants = session.participants.values.map { participant -> participant.copy() }
+        val turns = session.pendingTurns.toList()
+        session.pendingTurns.clear()
+        session.participants.values.forEach { participant -> participant.responseToken = 0L }
+        if (participants.isEmpty()) {
+            talkSessions.remove(npcId, session)
+            null
+        } else {
+            NpcTalkResponseTarget(participants, turns)
         }
     }
 
@@ -279,6 +352,42 @@ object NpcLlmService {
         NpcFeature.relayNpcDialogToDiscord(player, definition, reply)
     }
 
+    private fun sendGroupFinal(
+        speaker: ServerPlayer,
+        npc: ChowNpcEntity,
+        definition: NpcDefinition,
+        message: String,
+        target: NpcTalkResponseTarget,
+        fallbackMessage: String,
+        memorable: String = "",
+    ) {
+        val settings = NpcConfig.settings().llm
+        val reply = sanitizeReply(message, settings, fallbackMessage)
+        npc.startTalkingTo(speaker, NPC_LLM_TALK_DURATION_TICKS)
+        target.turns.forEach { turn ->
+            speaker.server.playerList.getPlayer(turn.playerId)?.let { turnPlayer ->
+                NpcStore.recordConversation(definition.id, turnPlayer, turn.playerName, turn.message.take(MAX_PLAYER_MESSAGE_LENGTH), "player_llm_talk")
+            }
+        }
+        val onlineParticipants = target.participants.mapNotNull { participant ->
+            speaker.server.playerList.getPlayer(participant.playerId)?.let { player -> participant to player }
+        }
+        onlineParticipants.forEach { (participant, participantPlayer) ->
+            NpcStore.recordConversation(definition.id, participantPlayer, definition.name, reply, "npc_llm_group_reply")
+            NpcNetwork.sendTalkResponse(participantPlayer, definition.id, reply, participant.responseToken)
+        }
+        if (memorable.isNotBlank()) {
+            if (onlineParticipants.size == 1) {
+                NpcStore.recordPlayerMemory(onlineParticipants.first().second, "llm_memorable", memorable)
+            } else {
+                NpcStore.recordGlobalMemory("llm_group_memorable", memorable)
+            }
+        }
+        relayNpcGroupTalk(speaker, npc, definition, onlineParticipants.map { it.first.name }, reply)
+        NpcFeature.showBalloonToNearby(npc.level() as ServerLevel, npc, reply, NPC_LLM_REPLY_BALLOON_TICKS)
+        NpcFeature.relayNpcDialogToDiscord(speaker, definition, reply)
+    }
+
     private fun relayPlayerTalk(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, message: String) {
         val level = npc.level() as? ServerLevel ?: return
         val line = Component.literal("${player.gameProfile.name} > ${definition.name}: $message").withStyle(ChatFormatting.GRAY)
@@ -293,6 +402,15 @@ object NpcLlmService {
         val line = Component.literal("${definition.name} > ${player.gameProfile.name}: $message").withStyle(ChatFormatting.GRAY)
         level.players().forEach { listener ->
             if (listener.uuid != player.uuid && listener.distanceToSqr(npc.x, npc.y, npc.z) <= NPC_LLM_HEAR_RADIUS_SQR) listener.sendSystemMessage(line)
+        }
+    }
+
+    private fun relayNpcGroupTalk(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, participantNames: List<String>, message: String) {
+        val level = npc.level() as? ServerLevel ?: return
+        val names = participantNames.distinct().joinToString(", ").ifBlank { player.gameProfile.name }
+        val line = Component.literal("${definition.name} > $names: $message").withStyle(ChatFormatting.GRAY)
+        level.players().forEach { listener ->
+            if (listener.distanceToSqr(npc.x, npc.y, npc.z) <= NPC_LLM_HEAR_RADIUS_SQR) listener.sendSystemMessage(line)
         }
     }
 
@@ -504,6 +622,7 @@ object NpcLlmService {
     private const val NPC_LLM_REPLY_BALLOON_TICKS = 120
     private const val LOG_BODY_LIMIT = 600
     private const val MAX_MEMORY_CHARS = 180
+    private const val MAX_GROUP_TURNS = 8
     private val EMOJI_PATTERN = Regex("[\\x{1F000}-\\x{1FAFF}\\x{2600}-\\x{27BF}]")
     private val NON_ASCII_PATTERN = Regex("[^\\x20-\\x7E]")
     private val WHITESPACE_PATTERN = Regex("\\s+")
@@ -512,3 +631,21 @@ object NpcLlmService {
 private data class ActiveNpcRequest(val playerId: UUID, val responseToken: Long)
 
 private data class NpcLlmCompletion(val message: String, val memorable: String = "")
+
+private class NpcTalkSession(
+    val participants: MutableMap<UUID, NpcTalkParticipant> = linkedMapOf(),
+    val pendingTurns: MutableList<NpcTalkTurn> = mutableListOf(),
+    var activeResponseToken: Long = 0L,
+)
+
+private data class NpcTalkParticipant(val playerId: UUID, val name: String, var responseToken: Long = 0L)
+
+private data class NpcTalkTurn(val playerId: UUID, val playerName: String, val message: String)
+
+private data class NpcTalkResponseTarget(val participants: List<NpcTalkParticipant>, val turns: List<NpcTalkTurn>)
+
+data class NpcTalkParticipantSnapshot(val uuid: UUID, val name: String)
+
+data class NpcTalkSnapshot(val participants: List<NpcTalkParticipantSnapshot>) {
+    fun contains(uuid: UUID): Boolean = participants.any { participant -> participant.uuid == uuid }
+}
