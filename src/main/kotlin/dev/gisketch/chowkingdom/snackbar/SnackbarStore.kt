@@ -1,26 +1,22 @@
 package dev.gisketch.chowkingdom.snackbar
 
-import com.google.gson.GsonBuilder
 import com.google.gson.annotations.SerializedName
 import dev.gisketch.chowkingdom.ChowKingdomMod
+import dev.gisketch.chowkingdom.config.TomlConfigIO
 import net.minecraft.server.level.ServerPlayer
 import net.neoforged.fml.loading.FMLPaths
-import java.nio.file.Files
 import java.nio.file.Path
 import java.util.UUID
-import kotlin.io.path.bufferedReader
-import kotlin.io.path.bufferedWriter
 import kotlin.io.path.createDirectories
 import kotlin.io.path.exists
 
 object SnackbarStore {
-    private val gson = GsonBuilder().setPrettyPrinting().create()
     private val knownPlayers: MutableSet<String> = linkedSetOf()
     private val pending: MutableMap<String, MutableList<StoredSnackbar>> = linkedMapOf()
     private var loaded = false
 
     private val file: Path
-        get() = FMLPaths.CONFIGDIR.get().resolve(ChowKingdomMod.MOD_ID).resolve("snackbar").resolve("pending.json")
+        get() = FMLPaths.CONFIGDIR.get().resolve(ChowKingdomMod.MOD_ID).resolve("snackbar").resolve("pending.toml")
 
     fun load() {
         file.parent.createDirectories()
@@ -28,9 +24,9 @@ object SnackbarStore {
         pending.clear()
         if (file.exists()) {
             try {
-                val data = file.bufferedReader().use { reader -> gson.fromJson(reader, SnackbarStoreData::class.java) }
-                data?.knownPlayers.orEmpty().mapTo(knownPlayers) { it.lowercase() }
-                data?.pending.orEmpty().forEach { (playerId, notifications) ->
+                val data = TomlConfigIO.read(file, SnackbarStoreData::class.java, ::SnackbarStoreData)
+                data.knownPlayers.mapTo(knownPlayers) { it.lowercase() }
+                data.pending.forEach { (playerId, notifications) ->
                     pending[playerId.lowercase()] = notifications.take(MAX_PENDING_PER_PLAYER).toMutableList()
                 }
             } catch (exception: Exception) {
@@ -74,10 +70,7 @@ object SnackbarStore {
 
     private fun save() {
         file.parent.createDirectories()
-        Files.createTempFile(file.parent, "snackbar_pending", ".json.tmp").also { temp ->
-            temp.bufferedWriter().use { writer -> gson.toJson(SnackbarStoreData(knownPlayers.toList(), pending), writer) }
-            Files.move(temp, file, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
-        }
+        TomlConfigIO.write(file, SnackbarStoreData(knownPlayers.toList(), pending))
     }
 
     private const val MAX_PENDING_PER_PLAYER = 50

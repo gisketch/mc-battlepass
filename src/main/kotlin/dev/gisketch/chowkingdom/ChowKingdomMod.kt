@@ -18,6 +18,7 @@ import dev.gisketch.chowkingdom.client.ChowKingdomHud
 import dev.gisketch.chowkingdom.client.InventoryMenuClient
 import dev.gisketch.chowkingdom.client.PlayerListHudClient
 import dev.gisketch.chowkingdom.compat.UnifiedStaminaFeature
+import dev.gisketch.chowkingdom.config.TomlConfigIO
 import dev.gisketch.chowkingdom.discord.DiscordFeature
 import dev.gisketch.chowkingdom.discord.DiscordScreenshotClient
 import dev.gisketch.chowkingdom.npc.NpcClient
@@ -48,6 +49,7 @@ import org.slf4j.Logger
 class ChowKingdomMod(modBus: IEventBus, container: ModContainer) {
     init {
         LOGGER.info("Loading {}", container.modInfo.displayName)
+        TomlConfigIO.migrateModConfigTree()
         ChowClockConfig.load()
         BattlepassPassRegistry.reload()
         BattlepassXpStore.load()

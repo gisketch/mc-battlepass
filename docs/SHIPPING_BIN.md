@@ -22,7 +22,7 @@ Shipping bin is a Stardew-style sale container for Chow Kingdom.
 File created on first load:
 
 ```text
-config/gisketchs_chowkingdom_mod/shipping_bin/prices.json
+config/gisketchs_chowkingdom_mod/shipping_bin/prices.toml
 ```
 
 Versioned samples:
@@ -32,22 +32,20 @@ Versioned samples:
 
 Default shape:
 
-```json
-{
-  "payout_hour": 5,
-  "payout_minute": 0,
-  "entries": [
-    { "item": "minecraft:wheat", "price_amount": 100 },
-    { "item": "minecraft:carrot", "price_amount": 75 },
-    { "tag": "minecraft:crops", "price_amount": 50 }
-  ],
-  "quality_food": {
-    "enabled": true,
-    "iron_quality": 1.1,
-    "gold_quality": 1.25,
-    "diamond_quality": 1.5
-  }
-}
+```toml
+payout_hour = 5
+payout_minute = 0
+entries = [
+  { item = "minecraft:wheat", price_amount = 100 },
+  { item = "minecraft:carrot", price_amount = 75 },
+  { tag = "minecraft:crops", price_amount = 50 },
+]
+
+[quality_food]
+enabled = true
+iron_quality = 1.1
+gold_quality = 1.25
+diamond_quality = 1.5
 ```
 
 ## Price Resolution

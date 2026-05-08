@@ -1,19 +1,16 @@
 package dev.gisketch.chowkingdom.battlepass
 
-import com.google.gson.GsonBuilder
 import dev.gisketch.chowkingdom.ChowKingdomMod
+import dev.gisketch.chowkingdom.config.TomlConfigIO
 import net.neoforged.fml.loading.FMLPaths
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.Locale
-import kotlin.io.path.bufferedReader
-import kotlin.io.path.bufferedWriter
 import kotlin.io.path.createDirectories
 import kotlin.io.path.exists
 import kotlin.io.path.nameWithoutExtension
 
 object BattlepassPassRegistry {
-    private val gson = GsonBuilder().setPrettyPrinting().create()
     private val passes: MutableMap<String, BattlepassPassDefinition> = linkedMapOf()
 
     val passDirectory: Path
@@ -25,7 +22,7 @@ object BattlepassPassRegistry {
 
         Files.list(passDirectory).use { files ->
             files
-                .filter { Files.isRegularFile(it) && it.fileName.toString().endsWith(".json") }
+            .filter { Files.isRegularFile(it) && it.fileName.toString().endsWith(".toml") }
                 .sorted()
                 .forEach(::loadPass)
         }
@@ -59,7 +56,7 @@ object BattlepassPassRegistry {
 
     private fun loadPass(path: Path) {
         try {
-            val pass = path.bufferedReader().use { reader -> gson.fromJson(reader, BattlepassPassDefinition::class.java) }
+        val pass = TomlConfigIO.read(path, BattlepassPassDefinition::class.java, ::BattlepassPassDefinition)
             if (pass.id.isBlank()) {
                 pass.id = path.nameWithoutExtension
             }
@@ -79,14 +76,14 @@ object BattlepassPassRegistry {
 
     private fun ensureDefaultPasses() {
         passDirectory.createDirectories()
-        writeDefault("cozy.json", COZY_PASS)
-        writeDefault("combat.json", COMBAT_PASS)
+        writeDefault("cozy.toml", COZY_PASS)
+        writeDefault("combat.toml", COMBAT_PASS)
     }
 
     private fun writeDefault(fileName: String, content: String) {
         val path = passDirectory.resolve(fileName)
         if (path.exists()) return
-        path.bufferedWriter().use { writer -> writer.write(content.trimIndent()) }
+        TomlConfigIO.writeJson(path, content.trimIndent())
     }
 
     private fun normalizeId(id: String): String = id.trim().lowercase(Locale.ROOT)

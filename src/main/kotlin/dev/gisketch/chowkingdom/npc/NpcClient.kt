@@ -48,6 +48,7 @@ import org.joml.Vector3f
 
 object NpcClient {
     private val activeBalloons = mutableMapOf<Int, NpcBalloonLine>()
+    private val skippedTalkResponses = mutableSetOf<Long>()
 
     @JvmStatic
     fun openDialog(payload: NpcDialogPayload) {
@@ -63,6 +64,12 @@ object NpcClient {
     fun receiveTalkResponse(payload: NpcTalkResponsePayload) {
         (Minecraft.getInstance().screen as? NpcDialogScreen)?.receiveTalkResponse(payload)
     }
+
+    fun skipTalkResponse(responseToken: Long) {
+        if (responseToken != 0L) skippedTalkResponses += responseToken
+    }
+
+    fun shouldIgnoreTalkResponse(responseToken: Long): Boolean = responseToken != 0L && skippedTalkResponses.remove(responseToken)
 
     @JvmStatic
     fun renderBalloon(entity: LivingEntity, poseStack: PoseStack, bufferSource: MultiBufferSource, font: Font, packedLight: Int) {
@@ -272,6 +279,7 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
     private var lastAnimaleseIndex: Int = 0
     private var talkMode: Boolean = false
     private var waitingForTalk: Boolean = payload.message == "..."
+    private var activeResponseToken: Long = payload.responseToken
     private var talkModeChangedAtMs: Long = openedAtMs
     private var animatedPanelHeight: Float = BASE_PANEL_HEIGHT.toFloat()
     private var panelHeightAnimationFrom: Float = BASE_PANEL_HEIGHT.toFloat()
@@ -359,17 +367,29 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         val slideY = 18.0f * (1.0f - progress)
         val localMouse = localMouse(mouseX.toInt(), mouseY.toInt(), x + panelWidth / 2.0f, y + panelHeight.toFloat(), slideY, scale)
         if (talkMode && talkInput?.mouseClicked(localMouse.first.toDouble(), localMouse.second.toDouble(), button) == true) return true
-        if (waitingForTalk) return true
         val action = actionAt(localMouse.first, localMouse.second) ?: return true
         when (action) {
-            DialogAction.Buy -> NpcNetwork.sendAction(payload.npcId, "buy")
-            DialogAction.Gift -> if (payload.talkEnabled || !giftStack().isEmpty) NpcNetwork.sendAction(payload.npcId, "gift")
+            DialogAction.Buy -> if (isActionEnabled(action)) {
+                skipPendingTalkResponse()
+                NpcNetwork.sendAction(payload.npcId, "buy")
+            }
+            DialogAction.Gift -> if (isActionEnabled(action)) {
+                skipPendingTalkResponse()
+                NpcNetwork.sendAction(payload.npcId, "gift")
+            }
             DialogAction.Bye -> onClose()
-            DialogAction.Talk -> if (payload.talkEnabled) {
+            DialogAction.Talk -> if (!waitingForTalk && payload.talkEnabled) {
                 if (talkMode) sendTalkMessage() else enterTalkMode()
             }
         }
         return true
+    }
+
+    override fun onClose() {
+        val wasWaitingForTalk = waitingForTalk
+        skipPendingTalkResponse()
+        if (wasWaitingForTalk) NpcNetwork.sendAction(payload.npcId, "cancel_llm")
+        super.onClose()
     }
 
     override fun keyPressed(keyCode: Int, scanCode: Int, modifiers: Int): Boolean {
@@ -382,7 +402,10 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
 
     fun receiveTalkResponse(response: NpcTalkResponsePayload) {
         if (response.npcId != payload.npcId) return
+        if (NpcClient.shouldIgnoreTalkResponse(response.responseToken)) return
+        if (response.responseToken != 0L && response.responseToken != activeResponseToken) return
         waitingForTalk = false
+        activeResponseToken = 0L
         updateDisplayMessage(response.message)
     }
 
@@ -396,11 +419,7 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         actions().forEachIndexed { index, action ->
             val buttonY = y + index * BUTTON_STEP
             val hovered = mouseX in x until x + BUTTON_WIDTH && mouseY in buttonY until buttonY + BUTTON_HEIGHT
-            val enabled = !waitingForTalk && when (action) {
-                DialogAction.Gift -> payload.talkEnabled || !giftStack.isEmpty
-                DialogAction.Talk -> payload.talkEnabled
-                else -> true
-            }
+            val enabled = isActionEnabled(action, giftStack)
             val activeHover = hovered && enabled
             val texture = if (activeHover && action == DialogAction.Bye) RED_BUTTON_HOVER_TEXTURE else if (activeHover) BUTTON_HOVER_TEXTURE else BUTTON_TEXTURE
             val sourceSize = if (activeHover) BUTTON_HOVER_TEXTURE_SIZE else BUTTON_TEXTURE_SIZE
@@ -433,6 +452,7 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
 
     private fun renderActionTooltip(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, action: DialogAction?) {
         if (talkMode || action != DialogAction.Gift) return
+        if (waitingForTalk) return
         if (payload.talkEnabled) return
         val giftStack = giftStack()
         if (giftStack.isEmpty) {
@@ -464,6 +484,13 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
     private fun actions(): List<DialogAction> = when {
         payload.closeOnly -> listOf(DialogAction.Bye)
         else -> DialogAction.entries
+    }
+
+    private fun isActionEnabled(action: DialogAction, giftStack: ItemStack = giftStack()): Boolean = when {
+        waitingForTalk -> action != DialogAction.Talk
+        action == DialogAction.Gift -> payload.talkEnabled || !giftStack.isEmpty
+        action == DialogAction.Talk -> payload.talkEnabled
+        else -> true
     }
 
     private fun buttonTop(panelHeight: Int): Int = if (payload.closeOnly) (panelHeight - BUTTON_HEIGHT) / 2 else BUTTON_TOP
@@ -581,8 +608,16 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         if (text.isBlank()) return
         talkInput?.value = ""
         waitingForTalk = true
+        activeResponseToken = NpcDialogTokens.next()
         updateDisplayMessage("...")
-        NpcNetwork.sendTalk(payload.npcId, text)
+        NpcNetwork.sendTalk(payload.npcId, text, activeResponseToken)
+    }
+
+    private fun skipPendingTalkResponse() {
+        if (!waitingForTalk) return
+        NpcClient.skipTalkResponse(activeResponseToken)
+        waitingForTalk = false
+        activeResponseToken = 0L
     }
 
     private fun updateDisplayMessage(message: String) {

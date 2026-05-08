@@ -131,7 +131,7 @@ Add new reward type:
 
 ## Shipping Bin Pricing
 
-Shipping bin prices live in `config/gisketchs_chowkingdom_mod/shipping_bin/prices.json`.
+Shipping bin prices live in `config/gisketchs_chowkingdom_mod/shipping_bin/prices.toml`.
 
 ```json
 {
@@ -167,7 +167,7 @@ Rules:
 
 ## Discord Webhook
 
-Discord config lives in `config/gisketchs_chowkingdom_mod/discord/webhook.json`.
+Discord config lives in `config/gisketchs_chowkingdom_mod/discord/webhook.toml`.
 
 - Default is disabled and blank webhook URL.
 - Chat relay uses `ServerChatEvent`.

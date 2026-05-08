@@ -1,29 +1,25 @@
 package dev.gisketch.chowkingdom.discord
 
-import com.google.gson.GsonBuilder
 import com.google.gson.annotations.SerializedName
 import dev.gisketch.chowkingdom.ChatGlyphs
 import dev.gisketch.chowkingdom.ChowKingdomMod
+import dev.gisketch.chowkingdom.config.TomlConfigIO
 import net.neoforged.fml.loading.FMLPaths
-import java.nio.file.Files
 import java.nio.file.Path
-import kotlin.io.path.bufferedReader
-import kotlin.io.path.bufferedWriter
 import kotlin.io.path.createDirectories
 import kotlin.io.path.exists
 
 object DiscordConfig {
-    private val gson = GsonBuilder().setPrettyPrinting().create()
     private var config = DiscordWebhookConfig()
 
     private val file: Path
-        get() = FMLPaths.CONFIGDIR.get().resolve(ChowKingdomMod.MOD_ID).resolve("discord").resolve("webhook.json")
+        get() = FMLPaths.CONFIGDIR.get().resolve(ChowKingdomMod.MOD_ID).resolve("discord").resolve("webhook.toml")
 
     fun load() {
         file.parent.createDirectories()
         if (!file.exists()) writeDefault()
         config = try {
-            file.bufferedReader().use { reader -> gson.fromJson(reader, DiscordWebhookConfig::class.java) } ?: DiscordWebhookConfig()
+            TomlConfigIO.read(file, DiscordWebhookConfig::class.java, ::DiscordWebhookConfig)
         } catch (exception: Exception) {
             ChowKingdomMod.LOGGER.warn("Failed to load Discord webhook config {}", file, exception)
             DiscordWebhookConfig()
@@ -33,10 +29,7 @@ object DiscordConfig {
     fun current(): DiscordWebhookConfig = config
 
     private fun writeDefault() {
-        Files.createTempFile(file.parent, "discord_webhook", ".json.tmp").also { temp ->
-            temp.bufferedWriter().use { writer -> gson.toJson(DiscordWebhookConfig(), writer) }
-            Files.move(temp, file, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
-        }
+        TomlConfigIO.write(file, DiscordWebhookConfig())
     }
 }
 

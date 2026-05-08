@@ -31,7 +31,7 @@ Polish the restored NPC screen dialog and relay NPC speech to nearby players plu
 - Buy opens the NPC's configured store; Gift consumes a held item, respects a configurable daily reset limit, and has flavor reactions with no friendship storage.
 - Gift reactions use a close-only OKAY dialog, and locked relic/player-locked items cannot be gifted.
 - Per NPC/player friendship points range from -1000 to 1000, derive levels -10 to 10, render in the dialog header, and drive category message pools.
-- Hitting an NPC applies -10 friendship, killing applies -300, and shared `friendship_messages.json` provides generic message banks for all NPCs.
+- Hitting an NPC applies -10 friendship, killing applies -300, and shared `friendship_messages.toml` provides generic message banks for all NPCs.
 - NPC dialog action denials use snackbars, gift tooltip hover no longer renders the extra item icon, and snackbars stack from the top while the NPC dialog screen is open.
 - NPC respawn no longer depends on hitting the exact 05:00 scan tick, and OP commands can inspect respawn state, force respawn, and edit friendship points.
 - NPC brain overrides can temporarily hijack schedule navigation for hurt retaliation and fire/campfire avoidance, with NPC held items rendered client-side and attack-back using synced custom animation plus damage/knockback pulses.
@@ -94,10 +94,12 @@ Polish the restored NPC screen dialog and relay NPC speech to nearby players plu
 - 2026-05-07: Wired Buy to the configured store, added held-item Gift enable/tooltip UI, per NPC/player gift limits reset by in-game hour, and loved/liked/disliked/neutral reactions without friendship state.
 - 2026-05-07: Made gift reaction dialogs show only OKAY, and blocked relic-locked items from NPC gifts through `RelicRouletteFeature.rejectTransfer`.
 - 2026-05-07: Added per-player friendship points/levels/categories, header heart/anger visualization, LLM friendship context, gift point deltas, and category-based Finn message banks for interact/gift/hurt/wake.
-- 2026-05-07: Added -10 hit and -300 kill friendship deltas, plus shared `friendship_messages.json` fallback loading for reusable NPC message banks.
+- 2026-05-07: Added -10 hit and -300 kill friendship deltas, plus shared `friendship_messages.toml` fallback loading for reusable NPC message banks.
 - 2026-05-07: Routed NPC buy/gift denial text through snackbars, moved snackbars to top-down rendering during NPC dialog, and removed the gift tooltip item preview icon.
 - 2026-05-07: Made NPC respawn tolerant of debug-time skips, added `/npc respawn status <id>`, `/npc respawn <id>`, and `/npc friendship get|set|add` admin commands.
 - 2026-05-07: Added `NpcBrainOverrides` with third-hit attack-back and fire/campfire run-away behavior, plus client rendering for temporary held weapons and synced custom attack-back animation pulses.
+- 2026-05-08: Made pending NPC LLM dialog responses skippable: BUY/GIFT/BYE stay clickable, replacement actions cancel the active LLM response, and stale replies are ignored by response token.
+- 2026-05-08: Fixed skip race where right-clicking the same NPC again could hit the busy fallback; same-player requests now replace their own pending request and every dialog close sends cancel.
 - 2026-05-07: Changed NPC Discord output to an embed with message description, talked-to player author, and friendship emoji-only footer.
 - 2026-05-07: Trialed GeckoLib NPC rendering but reverted after playtest; kept vanilla player model renderer with held-item layer and sleeve/jacket transform fix.
 - 2026-05-07: Added NPC Jade entity tooltip and sped up the scripted attack animation/cadence.

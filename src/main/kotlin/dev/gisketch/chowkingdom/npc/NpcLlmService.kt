@@ -26,7 +26,15 @@ object NpcLlmService {
     private val httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build()
     private val executor = Executors.newCachedThreadPool()
     private val nextAllowedAtMs = ConcurrentHashMap<UUID, Long>()
-    private val activeNpcRequests = ConcurrentHashMap.newKeySet<String>()
+    private val activeNpcRequests = ConcurrentHashMap<String, ActiveNpcRequest>()
+    private val cancelledResponseTokens = ConcurrentHashMap.newKeySet<Long>()
+
+    fun cancel(player: ServerPlayer, npcId: String) {
+        val request = activeNpcRequests[npcId] ?: return
+        if (request.playerId != player.uuid) return
+        cancelledResponseTokens += request.responseToken
+        activeNpcRequests.remove(npcId, request)
+    }
 
     fun interact(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, fallbackMessage: String) {
         event(
@@ -50,27 +58,28 @@ object NpcLlmService {
         sendTalkResponse: Boolean = true,
         excludePlayerFromBalloon: Boolean = true,
         npcRecordType: String = "npc_llm_event",
+        responseToken: Long = NpcDialogTokens.next(),
     ) {
         val settings = NpcConfig.settings().llm
-        if (!activeNpcRequests.add(definition.id)) {
+        if (!startRequest(definition.id, player, responseToken)) {
             ChowKingdomMod.LOGGER.info("NPC LLM event busy npc={} player={}", definition.id, player.gameProfile.name)
-            return sendFinal(player, npc, definition, fallbackMessage, fallbackMessage = fallbackMessage, sendTalkResponse = sendTalkResponse, excludePlayerFromBalloon = excludePlayerFromBalloon, npcRecordType = npcRecordType)
+            return sendFinal(player, npc, definition, fallbackMessage, fallbackMessage = fallbackMessage, sendTalkResponse = sendTalkResponse, excludePlayerFromBalloon = excludePlayerFromBalloon, npcRecordType = npcRecordType, responseToken = responseToken)
         }
         NpcFeature.showBalloonToNearby(npc.level() as ServerLevel, npc, "...", NPC_LLM_PENDING_BALLOON_TICKS)
         CompletableFuture.supplyAsync({ complete(player, definition, input, settings, fallbackMessage, inputLabel) }, executor).whenComplete { result, throwable ->
             player.server.execute {
-                activeNpcRequests.remove(definition.id)
-                val liveNpc = NpcFeature.existingNpc(player.server, definition.id) ?: return@execute NpcNetwork.sendTalkResponse(player, definition.id, fallbackMessage)
+                if (!finishRequest(definition.id, responseToken)) return@execute
+                val liveNpc = NpcFeature.existingNpc(player.server, definition.id) ?: return@execute NpcNetwork.sendTalkResponse(player, definition.id, fallbackMessage, responseToken)
                 if (throwable != null) ChowKingdomMod.LOGGER.warn("NPC LLM event request failed npc={} player={}", definition.id, player.gameProfile.name, throwable)
-                sendFinal(player, liveNpc, definition, if (throwable == null) result else fallbackMessage, fallbackMessage = fallbackMessage, sendTalkResponse = sendTalkResponse, excludePlayerFromBalloon = excludePlayerFromBalloon, npcRecordType = npcRecordType)
+                sendFinal(player, liveNpc, definition, if (throwable == null) result else fallbackMessage, fallbackMessage = fallbackMessage, sendTalkResponse = sendTalkResponse, excludePlayerFromBalloon = excludePlayerFromBalloon, npcRecordType = npcRecordType, responseToken = responseToken)
             }
         }
     }
 
-    fun talk(player: ServerPlayer, npcId: String, playerMessage: String) {
-        val definition = NpcConfig.get(npcId) ?: return NpcNetwork.sendTalkResponse(player, npcId, NpcConfig.settings().llm.errorMessage)
-        val npc = NpcFeature.existingNpc(player.server, definition.id) ?: return NpcNetwork.sendTalkResponse(player, npcId, NpcConfig.settings().llm.errorMessage)
-        if (npc.level() != player.level() || player.distanceToSqr(npc) > NPC_LLM_ACTION_DISTANCE_SQR) return NpcNetwork.sendTalkResponse(player, npcId, NpcConfig.settings().llm.errorMessage)
+    fun talk(player: ServerPlayer, npcId: String, playerMessage: String, responseToken: Long) {
+        val definition = NpcConfig.get(npcId) ?: return NpcNetwork.sendTalkResponse(player, npcId, NpcConfig.settings().llm.errorMessage, responseToken)
+        val npc = NpcFeature.existingNpc(player.server, definition.id) ?: return NpcNetwork.sendTalkResponse(player, npcId, NpcConfig.settings().llm.errorMessage, responseToken)
+        if (npc.level() != player.level() || player.distanceToSqr(npc) > NPC_LLM_ACTION_DISTANCE_SQR) return NpcNetwork.sendTalkResponse(player, npcId, NpcConfig.settings().llm.errorMessage, responseToken)
         val settings = NpcConfig.settings().llm
         val message = playerMessage.trim().take(MAX_PLAYER_MESSAGE_LENGTH)
         if (message.isBlank()) return
@@ -78,11 +87,11 @@ object NpcLlmService {
         val allowedAt = nextAllowedAtMs[player.uuid] ?: 0L
         if (now < allowedAt) {
             ChowKingdomMod.LOGGER.info("NPC LLM rate limited player={} npc={} remainingMs={}", player.gameProfile.name, definition.id, allowedAt - now)
-            return sendFinal(player, npc, definition, settings.rateLimitedMessage)
+            return sendFinal(player, npc, definition, settings.rateLimitedMessage, responseToken = responseToken)
         }
-        if (!activeNpcRequests.add(definition.id)) {
+        if (!startRequest(definition.id, player, responseToken)) {
             ChowKingdomMod.LOGGER.info("NPC LLM busy npc={} player={}", definition.id, player.gameProfile.name)
-            return sendFinal(player, npc, definition, settings.rateLimitedMessage)
+            return sendFinal(player, npc, definition, settings.rateLimitedMessage, responseToken = responseToken)
         }
         nextAllowedAtMs[player.uuid] = now + settings.cooldownSeconds * 1000L
         npc.startTalkingTo(player, NPC_LLM_TALK_DURATION_TICKS)
@@ -90,18 +99,38 @@ object NpcLlmService {
         NpcFeature.showBalloonToNearby(npc.level() as ServerLevel, npc, "...", NPC_LLM_PENDING_BALLOON_TICKS)
         if (!settings.enabled) {
             ChowKingdomMod.LOGGER.info("NPC LLM disabled npc={} player={}", definition.id, player.gameProfile.name)
-            activeNpcRequests.remove(definition.id)
-            return sendFinal(player, npc, definition, settings.fallbackMessage, message)
+            finishRequest(definition.id, responseToken)
+            return sendFinal(player, npc, definition, settings.fallbackMessage, message, responseToken = responseToken)
         }
         CompletableFuture.supplyAsync({ complete(player, definition, message, settings) }, executor).whenComplete { result, throwable ->
             player.server.execute {
-                activeNpcRequests.remove(definition.id)
-                val liveNpc = NpcFeature.existingNpc(player.server, definition.id) ?: return@execute NpcNetwork.sendTalkResponse(player, definition.id, settings.errorMessage)
+                if (!finishRequest(definition.id, responseToken)) return@execute
+                val liveNpc = NpcFeature.existingNpc(player.server, definition.id) ?: return@execute NpcNetwork.sendTalkResponse(player, definition.id, settings.errorMessage, responseToken)
                 if (throwable != null) ChowKingdomMod.LOGGER.warn("NPC LLM request failed npc={} player={}", definition.id, player.gameProfile.name, throwable)
                 val reply = if (throwable == null) result else settings.errorMessage
-                sendFinal(player, liveNpc, definition, reply, message)
+                sendFinal(player, liveNpc, definition, reply, message, responseToken = responseToken)
             }
         }
+    }
+
+    private fun startRequest(npcId: String, player: ServerPlayer, responseToken: Long): Boolean {
+        cancelledResponseTokens.remove(responseToken)
+        while (true) {
+            val current = activeNpcRequests[npcId]
+            if (current == null) {
+                if (activeNpcRequests.putIfAbsent(npcId, ActiveNpcRequest(player.uuid, responseToken)) == null) return true
+                continue
+            }
+            if (current.playerId != player.uuid) return false
+            cancelledResponseTokens += current.responseToken
+            if (activeNpcRequests.replace(npcId, current, ActiveNpcRequest(player.uuid, responseToken))) return true
+        }
+    }
+
+    private fun finishRequest(npcId: String, responseToken: Long): Boolean {
+        val request = activeNpcRequests[npcId]
+        if (request?.responseToken == responseToken) activeNpcRequests.remove(npcId, request)
+        return !cancelledResponseTokens.remove(responseToken)
     }
 
     private fun complete(
@@ -215,13 +244,14 @@ object NpcLlmService {
         sendTalkResponse: Boolean = true,
         excludePlayerFromBalloon: Boolean = true,
         npcRecordType: String = "npc_llm_reply",
+        responseToken: Long = 0L,
     ) {
         val settings = NpcConfig.settings().llm
         val reply = sanitizeReply(message, settings, fallbackMessage)
         npc.startTalkingTo(player, NPC_LLM_TALK_DURATION_TICKS)
         if (playerMessage.isNotBlank()) NpcStore.recordConversation(definition.id, player, player.gameProfile.name, playerMessage.take(MAX_PLAYER_MESSAGE_LENGTH), "player_llm_talk")
         NpcStore.recordConversation(definition.id, player, definition.name, reply, npcRecordType)
-        if (sendTalkResponse) NpcNetwork.sendTalkResponse(player, definition.id, reply)
+        if (sendTalkResponse) NpcNetwork.sendTalkResponse(player, definition.id, reply, responseToken)
         relayNpcTalk(player, npc, definition, reply)
         NpcFeature.showBalloonToNearby(npc.level() as ServerLevel, npc, reply, NPC_LLM_REPLY_BALLOON_TICKS, if (excludePlayerFromBalloon) player.uuid else null)
         NpcFeature.relayNpcDialogToDiscord(player, definition, reply)
@@ -441,3 +471,5 @@ object NpcLlmService {
     private val NON_ASCII_PATTERN = Regex("[^\\x20-\\x7E]")
     private val WHITESPACE_PATTERN = Regex("\\s+")
 }
+
+private data class ActiveNpcRequest(val playerId: UUID, val responseToken: Long)

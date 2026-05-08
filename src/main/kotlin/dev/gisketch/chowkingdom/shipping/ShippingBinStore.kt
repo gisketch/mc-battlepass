@@ -2,6 +2,7 @@ package dev.gisketch.chowkingdom.shipping
 
 import com.google.gson.GsonBuilder
 import dev.gisketch.chowkingdom.ChowKingdomMod
+import dev.gisketch.chowkingdom.config.TomlConfigIO
 import dev.gisketch.chowkingdom.integrations.QualityFoodSupport
 import dev.gisketch.chowkingdom.relicroulette.RelicRouletteFeature
 import dev.gisketch.chowkingdom.wallets.ChowcoinNetwork
@@ -35,7 +36,8 @@ object ShippingBinStore {
         get() {
             val server = ServerLifecycleHooks.getCurrentServer()
             val root = if (server != null) server.getWorldPath(LevelResource.ROOT).resolve("data") else net.neoforged.fml.loading.FMLPaths.CONFIGDIR.get()
-            return root.resolve(ChowKingdomMod.MOD_ID).resolve("shipping_bin").resolve("bins.json")
+            val extension = if (server != null) "json" else "toml"
+            return root.resolve(ChowKingdomMod.MOD_ID).resolve("shipping_bin").resolve("bins.$extension")
         }
 
     fun load() {
@@ -44,9 +46,9 @@ object ShippingBinStore {
         lastPayoutDay = Long.MIN_VALUE
         if (file.exists()) {
             try {
-                val data = file.bufferedReader().use { reader -> gson.fromJson(reader, StoredShippingBins::class.java) }
-                data?.players?.forEach { (playerId, stacks) -> bins[playerId] = stacks.toMutableList() }
-                data?.pendingRewards?.forEach { (playerId, reward) ->
+                val data = TomlConfigIO.read(file, StoredShippingBins::class.java, ::StoredShippingBins)
+                data.players.forEach { (playerId, stacks) -> bins[playerId] = stacks.toMutableList() }
+                data.pendingRewards.forEach { (playerId, reward) ->
                     pendingRewards[playerId] = StoredPendingReward(
                         reward.itemCount.coerceAtLeast(0),
                         reward.amount.coerceAtLeast(0L),
@@ -57,7 +59,7 @@ object ShippingBinStore {
                         reward.diamondQualityFoodItemCount.coerceAtLeast(0),
                     )
                 }
-                lastPayoutDay = data?.lastPayoutDay ?: Long.MIN_VALUE
+                lastPayoutDay = data.lastPayoutDay
             } catch (exception: Exception) {
                 ChowKingdomMod.LOGGER.warn("Failed to load shipping bin store {}", file, exception)
             }
@@ -201,11 +203,7 @@ object ShippingBinStore {
     }
 
     private fun save() {
-        file.parent.createDirectories()
-        Files.createTempFile(file.parent, "shipping_bins", ".json.tmp").also { temp ->
-            temp.bufferedWriter().use { writer -> gson.toJson(StoredShippingBins(lastPayoutDay, bins, pendingRewards), writer) }
-            Files.move(temp, file, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
-        }
+        TomlConfigIO.write(file, StoredShippingBins(lastPayoutDay, bins, pendingRewards))
     }
 
     private const val SLOT_COUNT = 54

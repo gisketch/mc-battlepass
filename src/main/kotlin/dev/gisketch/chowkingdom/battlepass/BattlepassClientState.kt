@@ -2,12 +2,10 @@ package dev.gisketch.chowkingdom.battlepass
 
 import com.google.gson.GsonBuilder
 import dev.gisketch.chowkingdom.ChowKingdomMod
+import dev.gisketch.chowkingdom.config.TomlConfigIO
 import net.minecraft.client.Minecraft
-import java.nio.file.Files
 import java.nio.file.Path
 import java.util.UUID
-import kotlin.io.path.bufferedReader
-import kotlin.io.path.bufferedWriter
 import kotlin.io.path.createDirectories
 import kotlin.io.path.exists
 
@@ -48,7 +46,7 @@ object BattlepassClientState {
     private val notifiedKeys: MutableSet<String> = mutableSetOf()
 
     private val notifiedFile: Path
-        get() = Minecraft.getInstance().gameDirectory.toPath().resolve("config/${ChowKingdomMod.MOD_ID}/battlepass/notified_missions.json")
+        get() = Minecraft.getInstance().gameDirectory.toPath().resolve("config/${ChowKingdomMod.MOD_ID}/battlepass/notified_missions.toml")
 
     fun apply(payload: BattlepassSyncPayload) {
         loadNotifiedKeys()
@@ -179,8 +177,8 @@ object BattlepassClientState {
         if (notifiedLoaded) return
         if (notifiedFile.exists()) {
             runCatching {
-                val data = notifiedFile.bufferedReader().use { reader -> gson.fromJson(reader, SavedNotifiedMissions::class.java) }
-                notifiedKeys += data?.keys.orEmpty()
+                val data = TomlConfigIO.read(notifiedFile, SavedNotifiedMissions::class.java, ::SavedNotifiedMissions)
+                notifiedKeys += data.keys
             }.onFailure { exception -> ChowKingdomMod.LOGGER.warn("Failed to load mission notification state {}", notifiedFile, exception) }
         }
         notifiedLoaded = true
@@ -188,10 +186,7 @@ object BattlepassClientState {
 
     private fun saveNotifiedKeys() {
         notifiedFile.parent.createDirectories()
-        Files.createTempFile(notifiedFile.parent, "notified_missions", ".json.tmp").also { temp ->
-            temp.bufferedWriter().use { writer -> gson.toJson(SavedNotifiedMissions(notifiedKeys.sorted()), writer) }
-            Files.move(temp, notifiedFile, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
-        }
+        TomlConfigIO.write(notifiedFile, SavedNotifiedMissions(notifiedKeys.sorted()))
     }
 
     private fun notificationKey(passId: String, missionKey: String, kind: String): String = "$passId|$missionKey|$kind"

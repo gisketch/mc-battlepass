@@ -29,7 +29,7 @@ Build V1 on the existing NPC pieces:
 - `NpcFeature`: interaction flow, Talk button action routing, dialog opening, Discord relay, balloons.
 - `NpcNetwork`: client/server dialog actions and payloads.
 - `NpcClient`: dialog screen, typewriter, animalese, world balloons.
-- `settings.json`: global NPC settings. Add LLM settings here.
+- `settings.toml`: global NPC settings. Add LLM settings here.
 
 Keep the first implementation small. No new event scoring engine. No job-specific knowledge map. No store context in V1.
 
@@ -56,7 +56,7 @@ Discord receives NPC line if enabled
 
 ### `NpcLlmSettings`
 
-Global config under `settings.json`:
+Global config under `settings.toml`:
 
 ```json
 {
@@ -415,8 +415,8 @@ On reply:
 
 ### Phase 1 — Config + Provider Skeleton
 
-- Add `llm` block to NPC `settings.json`.
-- Add global `llm_message_usage` toggles to NPC `settings.json`.
+- Add `llm` block to NPC `settings.toml`.
+- Add global `llm_message_usage` toggles to NPC `settings.toml`.
 - Add settings model and normalization.
 - Add provider interface.
 - Add disabled/fallback provider.
@@ -510,7 +510,7 @@ Use emotion later for portrait, balloon style, and voice variation.
 - Enter or Send submits a client-to-server Talk request.
 - While the server is fetching, the local dialog and nearby balloon show animated/pending `...`.
 - Server validates NPC existence, distance, per-player cooldown, and one active request per NPC.
-- `settings.json` supports `openai_compatible` and `gemini` provider modes with configurable `base_url`, `model`, and inline `api_key`.
+- `settings.toml` supports `openai_compatible` and `gemini` provider modes with configurable `base_url`, `model`, and inline `api_key`.
 - Disabled provider, missing API key, rate limits, invalid output, timeouts, and provider errors use configured fallback messages.
 - Valid replies return as JSON `{ "message": "..." }`, are clamped/filtered, stored in conversation history, shown in the dialog, relayed as a nearby balloon, and sent through the existing Discord NPC relay.
 - Important memory extraction remains planned, not implemented in this pass.

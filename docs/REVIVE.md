@@ -43,19 +43,17 @@ Revive turns lethal player damage into an incapacitated state.
 Path:
 
 ```text
-config/gisketchs_chowkingdom_mod/revive/config.json
+config/gisketchs_chowkingdom_mod/revive/config.toml
 ```
 
 Defaults:
 
-```json
-{
-  "revive_seconds": 7,
-  "incapacitated_seconds": 120,
-  "max_revive_distance": 3.0,
-  "revived_health": 1.0,
-  "revived_food_level": 1
-}
+```toml
+revive_seconds = 7
+incapacitated_seconds = 120
+max_revive_distance = 3.0
+revived_health = 1.0
+revived_food_level = 1
 ```
 
 All time values are seconds in config.

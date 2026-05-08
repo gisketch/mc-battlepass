@@ -2,6 +2,7 @@ package dev.gisketch.chowkingdom.roles
 
 import com.google.gson.GsonBuilder
 import dev.gisketch.chowkingdom.ChowKingdomMod
+import dev.gisketch.chowkingdom.config.TomlConfigIO
 import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.level.storage.LevelResource
 import net.neoforged.fml.loading.FMLPaths
@@ -23,7 +24,8 @@ object RoleStore {
         get() {
             val server = ServerLifecycleHooks.getCurrentServer()
             val root = server?.getWorldPath(LevelResource.ROOT)?.resolve("data") ?: FMLPaths.CONFIGDIR.get()
-            return root.resolve(ChowKingdomMod.MOD_ID).resolve("roles").resolve("players.json")
+            val extension = if (server != null) "json" else "toml"
+            return root.resolve(ChowKingdomMod.MOD_ID).resolve("roles").resolve("players.$extension")
         }
 
     fun load() {
@@ -31,8 +33,8 @@ object RoleStore {
         players.clear()
         if (file.exists()) {
             try {
-                val data = file.bufferedReader().use { reader -> gson.fromJson(reader, StoredRoleData::class.java) }
-                data?.players?.forEach { (id, record) -> players[id] = record }
+                val data = TomlConfigIO.read(file, StoredRoleData::class.java, ::StoredRoleData)
+                data.players.forEach { (id, record) -> players[id] = record }
             } catch (exception: Exception) {
                 ChowKingdomMod.LOGGER.warn("Failed to load role store {}", file, exception)
             }
@@ -159,11 +161,7 @@ object RoleStore {
     }
 
     private fun save() {
-        file.parent.createDirectories()
-        Files.createTempFile(file.parent, "players", ".json.tmp").also { temp ->
-            temp.bufferedWriter().use { writer -> gson.toJson(StoredRoleData(players), writer) }
-            Files.move(temp, file, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
-        }
+        TomlConfigIO.write(file, StoredRoleData(players))
     }
 }
 

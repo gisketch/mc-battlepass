@@ -1,22 +1,18 @@
 package dev.gisketch.chowkingdom.profiles
 
-import com.google.gson.GsonBuilder
 import dev.gisketch.chowkingdom.ChowKingdomMod
+import dev.gisketch.chowkingdom.config.TomlConfigIO
 import net.neoforged.fml.loading.FMLPaths
-import java.nio.file.Files
 import java.nio.file.Path
-import kotlin.io.path.bufferedReader
-import kotlin.io.path.bufferedWriter
 import kotlin.io.path.createDirectories
 import kotlin.io.path.exists
 
 object NicknameConfig {
-    private val gson = GsonBuilder().setPrettyPrinting().create()
     private var config = StoredNicknameClientConfig()
     private var loaded = false
 
     private val file: Path
-        get() = FMLPaths.CONFIGDIR.get().resolve(ChowKingdomMod.MOD_ID).resolve("profiles").resolve("client.json")
+        get() = FMLPaths.CONFIGDIR.get().resolve(ChowKingdomMod.MOD_ID).resolve("profiles").resolve("client.toml")
 
     @JvmStatic
     fun enableNickname(): Boolean {
@@ -38,10 +34,7 @@ object NicknameConfig {
     fun save(values: NicknameClientConfigValues) {
         file.parent.createDirectories()
         config = StoredNicknameClientConfig(values.enableNickname, values.showOwnNameTag)
-        Files.createTempFile(file.parent, "nickname_client", ".json.tmp").also { temp ->
-            temp.bufferedWriter().use { writer -> gson.toJson(config, writer) }
-            Files.move(temp, file, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
-        }
+        TomlConfigIO.write(file, config)
         loaded = true
     }
 
@@ -49,7 +42,7 @@ object NicknameConfig {
         file.parent.createDirectories()
         if (!file.exists()) writeDefault()
         config = try {
-            file.bufferedReader().use { reader -> gson.fromJson(reader, StoredNicknameClientConfig::class.java) } ?: StoredNicknameClientConfig()
+            TomlConfigIO.read(file, StoredNicknameClientConfig::class.java, ::StoredNicknameClientConfig)
         } catch (exception: Exception) {
             ChowKingdomMod.LOGGER.warn("Failed to load nickname client config {}", file, exception)
             StoredNicknameClientConfig()
@@ -58,10 +51,7 @@ object NicknameConfig {
     }
 
     private fun writeDefault() {
-        Files.createTempFile(file.parent, "nickname_client", ".json.tmp").also { temp ->
-            temp.bufferedWriter().use { writer -> gson.toJson(StoredNicknameClientConfig(), writer) }
-            Files.move(temp, file, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
-        }
+        TomlConfigIO.write(file, StoredNicknameClientConfig())
     }
 }
 

@@ -2,6 +2,7 @@ package dev.gisketch.chowkingdom.npc
 
 import com.google.gson.GsonBuilder
 import dev.gisketch.chowkingdom.ChowKingdomMod
+import dev.gisketch.chowkingdom.config.TomlConfigIO
 import net.minecraft.core.BlockPos
 import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.level.storage.LevelResource
@@ -27,14 +28,15 @@ object NpcStore {
         get() {
             val server = ServerLifecycleHooks.getCurrentServer()
             val root = if (server != null) server.getWorldPath(LevelResource.ROOT).resolve("data") else FMLPaths.CONFIGDIR.get()
-            return root.resolve(ChowKingdomMod.MOD_ID).resolve("npcs").resolve("state.json")
+            val extension = if (server != null) "json" else "toml"
+            return root.resolve(ChowKingdomMod.MOD_ID).resolve("npcs").resolve("state.$extension")
         }
 
     fun load() {
         file.parent.createDirectories()
         data = if (file.exists()) {
             try {
-                file.bufferedReader().use { reader -> gson.fromJson(reader, NpcWorldData::class.java) } ?: NpcWorldData()
+                TomlConfigIO.read(file, NpcWorldData::class.java, ::NpcWorldData)
             } catch (exception: Exception) {
                 ChowKingdomMod.LOGGER.warn("Failed to load NPC state {}", file, exception)
                 NpcWorldData()
@@ -320,11 +322,7 @@ object NpcStore {
     }
 
     private fun save() {
-        file.parent.createDirectories()
-        Files.createTempFile(file.parent, "npc_state", ".json.tmp").also { temp ->
-            temp.bufferedWriter().use { writer -> gson.toJson(data, writer) }
-            Files.move(temp, file, StandardCopyOption.REPLACE_EXISTING)
-        }
+        TomlConfigIO.write(file, data)
     }
 }
 

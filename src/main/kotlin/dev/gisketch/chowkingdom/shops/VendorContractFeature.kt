@@ -1,9 +1,9 @@
 package dev.gisketch.chowkingdom.shops
 
-import com.google.gson.GsonBuilder
 import com.google.gson.annotations.SerializedName
 import dev.gisketch.chowkingdom.ChowKingdomMod
 import dev.gisketch.chowkingdom.commerce.CommerceAuditLog
+import dev.gisketch.chowkingdom.config.TomlConfigIO
 import dev.gisketch.chowkingdom.relicroulette.RelicRouletteFeature
 import dev.gisketch.chowkingdom.snackbar.SnackbarIcons
 import dev.gisketch.chowkingdom.snackbar.SnackbarNetwork
@@ -491,17 +491,16 @@ object VendorContractFeature {
 data class VendorJadeSummary(val shopName: String, val itemTypes: Int, val sellerCount: Int)
 
 object VendorContractConfig {
-    private val gson = GsonBuilder().setPrettyPrinting().create()
     private var config = VendorConfig()
 
     private val file: Path
-        get() = FMLPaths.CONFIGDIR.get().resolve(ChowKingdomMod.MOD_ID).resolve("shops").resolve("vendor_contract.json")
+        get() = FMLPaths.CONFIGDIR.get().resolve(ChowKingdomMod.MOD_ID).resolve("shops").resolve("vendor_contract.toml")
 
     fun load() {
         file.parent.createDirectories()
         if (!file.exists()) writeDefault()
         config = try {
-            file.bufferedReader().use { reader -> gson.fromJson(reader, VendorConfig::class.java) } ?: VendorConfig()
+            TomlConfigIO.read(file, VendorConfig::class.java, ::VendorConfig)
         } catch (exception: Exception) {
             ChowKingdomMod.LOGGER.warn("Failed to load vendor contract config {}", file, exception)
             VendorConfig()
@@ -511,10 +510,7 @@ object VendorContractConfig {
     fun maxLinks(): Int = config.maxLinkedShops.coerceIn(1, 1_000)
 
     private fun writeDefault() {
-        Files.createTempFile(file.parent, "vendor_contract", ".json.tmp").also { temp ->
-            temp.bufferedWriter().use { writer -> gson.toJson(VendorConfig(), writer) }
-            Files.move(temp, file, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
-        }
+        TomlConfigIO.write(file, VendorConfig())
     }
 }
 

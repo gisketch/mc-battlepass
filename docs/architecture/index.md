@@ -31,7 +31,7 @@
 - Client caches synced snapshots and UI-only preferences.
 - Gameplay state persists under `<world>/data/gisketchs_chowkingdom_mod/`.
 - Admin-editable definitions and local preferences live under `config/gisketchs_chowkingdom_mod/`.
-- Jobs/classes are admin-editable JSON under `config/gisketchs_chowkingdom_mod/roles/`.
+- Admin-editable definitions and local preferences are TOML under `config/gisketchs_chowkingdom_mod/`; legacy JSON in that tree is migrated to TOML on startup and moved to `json-backup/`.
 
 ## Application Skeleton
 

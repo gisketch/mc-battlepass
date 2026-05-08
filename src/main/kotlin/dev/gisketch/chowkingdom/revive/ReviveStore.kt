@@ -3,6 +3,7 @@ package dev.gisketch.chowkingdom.revive
 import com.google.gson.GsonBuilder
 import com.google.gson.annotations.SerializedName
 import dev.gisketch.chowkingdom.ChowKingdomMod
+import dev.gisketch.chowkingdom.config.TomlConfigIO
 import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.level.storage.LevelResource
 import net.neoforged.fml.loading.FMLPaths
@@ -29,7 +30,8 @@ object ReviveStore {
             } else {
                 FMLPaths.CONFIGDIR.get()
             }
-            return root.resolve(ChowKingdomMod.MOD_ID).resolve("revive").resolve("player_stats.json")
+            val extension = if (server != null) "json" else "toml"
+            return root.resolve(ChowKingdomMod.MOD_ID).resolve("revive").resolve("player_stats.$extension")
         }
 
     fun load() {
@@ -37,8 +39,8 @@ object ReviveStore {
         players.clear()
         if (file.exists()) {
             try {
-                val data = file.bufferedReader().use { reader -> gson.fromJson(reader, StoredReviveData::class.java) }
-                data?.players?.forEach { (playerId, stats) ->
+                val data = TomlConfigIO.read(file, StoredReviveData::class.java, ::StoredReviveData)
+                data.players.forEach { (playerId, stats) ->
                     players[playerId] = StoredRevivePlayer(
                         name = stats.name.orEmpty(),
                         incapacitatedCount = stats.incapacitatedCount.coerceAtLeast(0),
@@ -122,11 +124,7 @@ object ReviveStore {
         ?: linkedMapOf()
 
     private fun save() {
-        file.parent.createDirectories()
-        Files.createTempFile(file.parent, "revive_player_stats", ".json.tmp").also { temp ->
-            temp.bufferedWriter().use { writer -> gson.toJson(StoredReviveData(players), writer) }
-            Files.move(temp, file, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
-        }
+        TomlConfigIO.write(file, StoredReviveData(players))
     }
 
     private class StoredReviveData(

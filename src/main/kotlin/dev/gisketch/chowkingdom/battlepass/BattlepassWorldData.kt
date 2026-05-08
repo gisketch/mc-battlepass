@@ -21,6 +21,17 @@ object BattlepassWorldData {
         return FMLPaths.CONFIGDIR.get().resolve(ChowKingdomMod.MOD_ID).resolve("battlepass")
     }
 
+    fun battlepassFile(name: String): Path {
+        val server = ServerLifecycleHooks.getCurrentServer()
+        val extension = if (server != null) "json" else "toml"
+        val root = if (server != null) {
+            server.getWorldPath(LevelResource.ROOT).resolve("data").resolve(ChowKingdomMod.MOD_ID).resolve("battlepass")
+        } else {
+            FMLPaths.CONFIGDIR.get().resolve(ChowKingdomMod.MOD_ID).resolve("battlepass")
+        }
+        return root.resolve("$name.$extension")
+    }
+
     private fun onServerStarted(event: ServerStartedEvent) {
         BattlepassXpStore.load()
         BattlepassMissionProgressStore.load()

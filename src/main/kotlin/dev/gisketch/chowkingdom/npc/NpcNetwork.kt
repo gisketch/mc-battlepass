@@ -11,6 +11,7 @@ import net.neoforged.fml.loading.FMLEnvironment
 import net.neoforged.neoforge.network.PacketDistributor
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent
 import net.neoforged.neoforge.network.handling.IPayloadContext
+import java.util.concurrent.atomic.AtomicLong
 
 private const val MAX_NPC_ID_LENGTH = 64
 private const val MAX_NPC_NAME_LENGTH = 96
@@ -39,12 +40,12 @@ object NpcNetwork {
         runCatching { PacketDistributor.sendToServer(NpcDialogActionPayload(npcId, action)) }
     }
 
-    fun sendTalk(npcId: String, message: String) {
-        runCatching { PacketDistributor.sendToServer(NpcTalkRequestPayload(npcId, message)) }
+    fun sendTalk(npcId: String, message: String, responseToken: Long) {
+        runCatching { PacketDistributor.sendToServer(NpcTalkRequestPayload(npcId, message, responseToken)) }
     }
 
-    fun sendTalkResponse(player: ServerPlayer, npcId: String, message: String) {
-        PacketDistributor.sendToPlayer(player, NpcTalkResponsePayload(npcId, message))
+    fun sendTalkResponse(player: ServerPlayer, npcId: String, message: String, responseToken: Long = 0L) {
+        PacketDistributor.sendToPlayer(player, NpcTalkResponsePayload(npcId, message, responseToken))
     }
 
     private fun registerPayloads(event: RegisterPayloadHandlersEvent) {
@@ -72,7 +73,7 @@ object NpcNetwork {
 
     private fun handleTalkRequest(payload: NpcTalkRequestPayload, context: IPayloadContext) {
         val player = context.player() as? ServerPlayer ?: return
-        NpcLlmService.talk(player, payload.npcId, payload.message)
+        NpcLlmService.talk(player, payload.npcId, payload.message, payload.responseToken)
     }
 
     private fun handleBalloon(payload: NpcBalloonPayload, context: IPayloadContext) {
@@ -94,6 +95,12 @@ object NpcNetwork {
     }
 }
 
+object NpcDialogTokens {
+    private val next = AtomicLong(System.currentTimeMillis())
+
+    fun next(): Long = next.incrementAndGet()
+}
+
 data class NpcDialogPayload(
     val npcId: String,
     val name: String,
@@ -109,6 +116,7 @@ data class NpcDialogPayload(
     val animaleseVolume: Float = 0.75f,
     val animaleseRadius: Float = 12.0f,
     val talkEnabled: Boolean = true,
+    val responseToken: Long = 0L,
 ) : CustomPacketPayload {
     override fun type(): CustomPacketPayload.Type<NpcDialogPayload> = TYPE
 
@@ -130,6 +138,7 @@ data class NpcDialogPayload(
                 buffer.readFloat(),
                 buffer.readFloat(),
                 buffer.readBoolean(),
+                buffer.readLong(),
             )
 
             override fun encode(buffer: RegistryFriendlyByteBuf, value: NpcDialogPayload) {
@@ -147,6 +156,7 @@ data class NpcDialogPayload(
                 buffer.writeFloat(value.animaleseVolume.coerceIn(0.0f, 1.0f))
                 buffer.writeFloat(value.animaleseRadius.coerceIn(1.0f, 48.0f))
                 buffer.writeBoolean(value.talkEnabled)
+                buffer.writeLong(value.responseToken)
             }
         }
     }
@@ -202,6 +212,7 @@ data class NpcDialogActionPayload(
 data class NpcTalkRequestPayload(
     val npcId: String,
     val message: String,
+    val responseToken: Long,
 ) : CustomPacketPayload {
     override fun type(): CustomPacketPayload.Type<NpcTalkRequestPayload> = TYPE
 
@@ -211,11 +222,13 @@ data class NpcTalkRequestPayload(
             override fun decode(buffer: RegistryFriendlyByteBuf): NpcTalkRequestPayload = NpcTalkRequestPayload(
                 buffer.readUtf(MAX_NPC_ID_LENGTH),
                 buffer.readUtf(MAX_NPC_TALK_MESSAGE_LENGTH),
+                buffer.readLong(),
             )
 
             override fun encode(buffer: RegistryFriendlyByteBuf, value: NpcTalkRequestPayload) {
                 buffer.writeUtf(value.npcId.take(MAX_NPC_ID_LENGTH), MAX_NPC_ID_LENGTH)
                 buffer.writeUtf(value.message.take(MAX_NPC_TALK_MESSAGE_LENGTH), MAX_NPC_TALK_MESSAGE_LENGTH)
+                buffer.writeLong(value.responseToken)
             }
         }
     }
@@ -224,6 +237,7 @@ data class NpcTalkRequestPayload(
 data class NpcTalkResponsePayload(
     val npcId: String,
     val message: String,
+    val responseToken: Long,
 ) : CustomPacketPayload {
     override fun type(): CustomPacketPayload.Type<NpcTalkResponsePayload> = TYPE
 
@@ -233,11 +247,13 @@ data class NpcTalkResponsePayload(
             override fun decode(buffer: RegistryFriendlyByteBuf): NpcTalkResponsePayload = NpcTalkResponsePayload(
                 buffer.readUtf(MAX_NPC_ID_LENGTH),
                 buffer.readUtf(MAX_NPC_DIALOG_LENGTH),
+                buffer.readLong(),
             )
 
             override fun encode(buffer: RegistryFriendlyByteBuf, value: NpcTalkResponsePayload) {
                 buffer.writeUtf(value.npcId.take(MAX_NPC_ID_LENGTH), MAX_NPC_ID_LENGTH)
                 buffer.writeUtf(value.message.take(MAX_NPC_DIALOG_LENGTH), MAX_NPC_DIALOG_LENGTH)
+                buffer.writeLong(value.responseToken)
             }
         }
     }

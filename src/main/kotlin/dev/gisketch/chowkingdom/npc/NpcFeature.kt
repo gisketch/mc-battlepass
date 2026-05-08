@@ -171,8 +171,9 @@ object NpcFeature {
             else -> null
         }
         if (settings.llm.enabled && llmInput != null) {
-            NpcNetwork.openDialog(player, dialogPayload(definition, npc, "...", contractGranted, friendship.level, closeOnly = contractGranted, closeLabel = if (contractGranted) "OKAY" else "BYE"))
-            NpcLlmService.event(player, npc, definition, message, llmInput, npcRecordType = "npc_llm_interact")
+            val responseToken = NpcDialogTokens.next()
+            NpcNetwork.openDialog(player, dialogPayload(definition, npc, "...", contractGranted, friendship.level, closeOnly = contractGranted, closeLabel = if (contractGranted) "OKAY" else "BYE", responseToken = responseToken))
+            NpcLlmService.event(player, npc, definition, message, llmInput, npcRecordType = "npc_llm_interact", responseToken = responseToken)
             return
         }
         NpcStore.recordConversation(definition.id, player, definition.name, message, "npc_message")
@@ -185,8 +186,15 @@ object NpcFeature {
         val npc = existingNpc(player.server, definition.id) ?: return
         if (npc.level() != player.level() || player.distanceToSqr(npc) > NPC_DIALOG_ACTION_DISTANCE_SQR) return
         when (action.lowercase()) {
-            "buy" -> openNpcShop(player, npc, definition)
-            "gift" -> giftToNpc(player, npc, definition)
+            "cancel_llm" -> NpcLlmService.cancel(player, definition.id)
+            "buy" -> {
+                NpcLlmService.cancel(player, definition.id)
+                openNpcShop(player, npc, definition)
+            }
+            "gift" -> {
+                NpcLlmService.cancel(player, definition.id)
+                giftToNpc(player, npc, definition)
+            }
         }
     }
 
@@ -196,7 +204,8 @@ object NpcFeature {
             val friendship = NpcStore.friendshipSnapshot(definition.id, player)
             val nextOpen = nextWorkOpening(definition, currentHour)
             val fallback = if (nextOpen == null) "My shop is closed right now." else "My shop is closed right now. Come back around ${nextOpen.toString().padStart(2, '0')}:00."
-            NpcNetwork.openDialog(player, dialogPayload(definition, npc, "...", false, friendship.level, closeOnly = true, closeLabel = "OKAY"))
+            val responseToken = NpcDialogTokens.next()
+            NpcNetwork.openDialog(player, dialogPayload(definition, npc, "...", false, friendship.level, closeOnly = true, closeLabel = "OKAY", responseToken = responseToken))
             if (NpcConfig.settings().llm.enabled) {
                 NpcLlmService.event(
                     player,
@@ -205,9 +214,10 @@ object NpcFeature {
                     fallback,
                     "${player.gameProfile.name} tried to open your shop, but you are not working right now. Current hour is ${currentHour.toString().padStart(2, '0')}:00. Your next work opening is ${nextOpen?.toString()?.padStart(2, '0') ?: "unknown"}:00. Reply in-character and tell them when to expect the shop to open.",
                     npcRecordType = "npc_shop_closed",
+                    responseToken = responseToken,
                 )
             } else {
-                NpcNetwork.sendTalkResponse(player, definition.id, fallback)
+                NpcNetwork.sendTalkResponse(player, definition.id, fallback, responseToken)
                 NpcStore.recordConversation(definition.id, player, definition.name, fallback, "npc_shop_closed")
             }
             return
@@ -243,7 +253,8 @@ object NpcFeature {
         npc.startTalkingTo(player, NPC_DIALOG_DURATION_TICKS)
         NpcStore.recordConversation(definition.id, player, player.gameProfile.name, "buys $quantity $itemName from ${definition.name}", "player_shop_buy")
         if (NpcConfig.settings().llm.enabled && NpcConfig.settings().llmMessageUsage.shop) {
-            NpcNetwork.openDialog(player, dialogPayload(definition, npc, "...", false, friendship.level, closeOnly = true, closeLabel = "OKAY"))
+            val responseToken = NpcDialogTokens.next()
+            NpcNetwork.openDialog(player, dialogPayload(definition, npc, "...", false, friendship.level, closeOnly = true, closeLabel = "OKAY", responseToken = responseToken))
             NpcLlmService.event(
                 player,
                 npc,
@@ -251,6 +262,7 @@ object NpcFeature {
                 message,
                 "${player.gameProfile.name} bought $quantity x $itemName from your shop for $totalCost chowcoins. Reply with a short in-character shop follow-up.",
                 npcRecordType = "npc_shop_message",
+                responseToken = responseToken,
             )
             return
         }
@@ -264,7 +276,8 @@ object NpcFeature {
             if (NpcConfig.settings().llm.enabled && NpcConfig.settings().llmMessageUsage.gift) {
                 val friendship = NpcStore.friendshipSnapshot(definition.id, player)
                 val fallback = "Hold an item if you want to give me something."
-                NpcNetwork.openDialog(player, dialogPayload(definition, npc, "...", false, friendship.level, closeOnly = true, closeLabel = "OKAY"))
+                val responseToken = NpcDialogTokens.next()
+                NpcNetwork.openDialog(player, dialogPayload(definition, npc, "...", false, friendship.level, closeOnly = true, closeLabel = "OKAY", responseToken = responseToken))
                 NpcLlmService.event(
                     player,
                     npc,
@@ -272,6 +285,7 @@ object NpcFeature {
                     fallback,
                     "${player.gameProfile.name} tried to gift you, but they are not holding an item. Reply naturally and tell them they need to hold the gift item.",
                     npcRecordType = "npc_gift_unavailable",
+                    responseToken = responseToken,
                 )
                 return
             }
@@ -285,7 +299,8 @@ object NpcFeature {
             if (NpcConfig.settings().llm.enabled && NpcConfig.settings().llmMessageUsage.gift) {
                 val friendship = NpcStore.friendshipSnapshot(definition.id, player)
                 val fallback = "I can't receive another gift today. Come back after ${definition.gifts.resetHour.toString().padStart(2, '0')}:00."
-                NpcNetwork.openDialog(player, dialogPayload(definition, npc, "...", false, friendship.level, closeOnly = true, closeLabel = "OKAY"))
+                val responseToken = NpcDialogTokens.next()
+                NpcNetwork.openDialog(player, dialogPayload(definition, npc, "...", false, friendship.level, closeOnly = true, closeLabel = "OKAY", responseToken = responseToken))
                 NpcLlmService.event(
                     player,
                     npc,
@@ -293,6 +308,7 @@ object NpcFeature {
                     fallback,
                     "${player.gameProfile.name} tried to gift you ${stack.hoverName.string}, but your gift limit for today is already reached. Your next gift reset is ${definition.gifts.resetHour.toString().padStart(2, '0')}:00. Reply with a good in-character reason that you cannot receive another gift today.",
                     npcRecordType = "npc_gift_unavailable",
+                    responseToken = responseToken,
                 )
                 return
             }
@@ -306,7 +322,8 @@ object NpcFeature {
         if (!player.abilities.instabuild) stack.shrink(1)
         NpcStore.recordConversation(definition.id, player, player.gameProfile.name, "gifts $itemName to ${definition.name}", "player_gift")
         if (NpcConfig.settings().llm.enabled && NpcConfig.settings().llmMessageUsage.gift) {
-            NpcNetwork.openDialog(player, dialogPayload(definition, npc, "...", false, friendship.level, closeOnly = true, closeLabel = "OKAY"))
+            val responseToken = NpcDialogTokens.next()
+            NpcNetwork.openDialog(player, dialogPayload(definition, npc, "...", false, friendship.level, closeOnly = true, closeLabel = "OKAY", responseToken = responseToken))
             NpcLlmService.event(
                 player,
                 npc,
@@ -314,6 +331,7 @@ object NpcFeature {
                 message,
                 "${player.gameProfile.name} gifted you $itemName. Gift mood is $mood. Reply with a short in-character gift reaction.",
                 npcRecordType = "npc_gift_$mood",
+                responseToken = responseToken,
             )
             return
         }
@@ -351,7 +369,7 @@ object NpcFeature {
         SnackbarNetwork.send(player, SnackbarNotification.item(SnackbarIcons.ERROR, title, content, type, SnackbarSounds.forType(type)))
     }
 
-    private fun dialogPayload(definition: NpcDefinition, npc: ChowNpcEntity, message: String, contractGranted: Boolean, friendshipLevel: Int, closeOnly: Boolean = false, closeLabel: String = "BYE"): NpcDialogPayload = NpcDialogPayload(
+    private fun dialogPayload(definition: NpcDefinition, npc: ChowNpcEntity, message: String, contractGranted: Boolean, friendshipLevel: Int, closeOnly: Boolean = false, closeLabel: String = "BYE", responseToken: Long = 0L): NpcDialogPayload = NpcDialogPayload(
         definition.id,
         definition.name,
         definition.title,
@@ -366,6 +384,7 @@ object NpcFeature {
         animaleseVolume = definition.voice.volume,
         animaleseRadius = definition.voice.radius,
         talkEnabled = NpcConfig.settings().llm.enabled,
+        responseToken = responseToken,
     )
 
     private fun friendshipMessage(set: NpcFriendshipMessageSet, friendship: NpcFriendshipSnapshot, player: ServerPlayer, definition: NpcDefinition, itemName: String = "", mood: String = "", quantity: Int = 0, totalCost: Long = 0L): String {
@@ -457,7 +476,8 @@ object NpcFeature {
             npc.startTalkingTo(player, NPC_DIALOG_DURATION_TICKS)
             val friendship = NpcStore.friendshipSnapshot(definition.id, player)
             val fallback = "Thank you, {player}. This bed feels like home already.".replace("{player}", player.gameProfile.name)
-            NpcNetwork.openDialog(player, dialogPayload(definition, npc, "...", false, friendship.level, closeOnly = true, closeLabel = "OKAY"))
+            val responseToken = NpcDialogTokens.next()
+            NpcNetwork.openDialog(player, dialogPayload(definition, npc, "...", false, friendship.level, closeOnly = true, closeLabel = "OKAY", responseToken = responseToken))
             if (NpcConfig.settings().llm.enabled && NpcConfig.settings().llmMessageUsage.assignedHouse) {
                 NpcLlmService.event(
                     player,
@@ -466,9 +486,10 @@ object NpcFeature {
                     fallback,
                     NpcConfig.settings().campers.assignedHouseLlmPrompt,
                     npcRecordType = "npc_assigned_house",
+                    responseToken = responseToken,
                 )
             } else {
-                NpcNetwork.sendTalkResponse(player, definition.id, fallback)
+                NpcNetwork.sendTalkResponse(player, definition.id, fallback, responseToken)
                 NpcStore.recordConversation(definition.id, player, definition.name, fallback, "npc_assigned_house")
                 relayNpcDialog(player, npc, definition, fallback)
             }

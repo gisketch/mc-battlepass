@@ -1,19 +1,16 @@
 package dev.gisketch.chowkingdom.roles
 
-import com.google.gson.GsonBuilder
 import dev.gisketch.chowkingdom.ChowKingdomMod
+import dev.gisketch.chowkingdom.config.TomlConfigIO
 import net.neoforged.fml.loading.FMLPaths
 import java.nio.file.Files
 import java.nio.file.Path
-import kotlin.io.path.bufferedReader
-import kotlin.io.path.bufferedWriter
 import kotlin.io.path.createDirectories
 import kotlin.io.path.exists
 import kotlin.io.path.extension
 import kotlin.random.Random
 
 object RolesConfig {
-    private val gson = GsonBuilder().setPrettyPrinting().create()
     private var jobsById: Map<String, RoleDefinition> = emptyMap()
     private var classesById: Map<String, RoleDefinition> = emptyMap()
     private var onboardingDefinition = RolesOnboardingDefinition()
@@ -24,11 +21,11 @@ object RolesConfig {
     fun load() {
         root.resolve("jobs").createDirectories()
         root.resolve("classes").createDirectories()
-        writeDefaultIfMissing(root.resolve("onboarding.json"), defaultOnboarding())
-        writeDefaultIfMissing(root.resolve("jobs").resolve("farmer.json"), defaultFarmer())
-        writeDefaultIfMissing(root.resolve("classes").resolve("rogue.json"), defaultRogue())
-        writeDefaultIfMissing(root.resolve("classes").resolve("warrior.json"), defaultWarrior())
-        onboardingDefinition = readOnboarding(root.resolve("onboarding.json"))
+        writeDefaultIfMissing(root.resolve("onboarding.toml"), defaultOnboarding())
+        writeDefaultIfMissing(root.resolve("jobs").resolve("farmer.toml"), defaultFarmer())
+        writeDefaultIfMissing(root.resolve("classes").resolve("rogue.toml"), defaultRogue())
+        writeDefaultIfMissing(root.resolve("classes").resolve("warrior.toml"), defaultWarrior())
+        onboardingDefinition = readOnboarding(root.resolve("onboarding.toml"))
         jobsById = loadDefinitions(root.resolve("jobs"))
         classesById = loadDefinitions(root.resolve("classes"))
     }
@@ -51,7 +48,7 @@ object RolesConfig {
     }
 
     private fun loadDefinitions(directory: Path): Map<String, RoleDefinition> = Files.list(directory).use { stream ->
-        stream.filter { path -> path.extension.equals("json", ignoreCase = true) }
+        stream.filter { path -> path.extension.equals("toml", ignoreCase = true) }
             .map { path -> readDefinition(path) }
             .filter { definition -> definition.id.isNotBlank() }
             .toList()
@@ -59,14 +56,14 @@ object RolesConfig {
     }
 
     private fun readDefinition(path: Path): RoleDefinition = try {
-        path.bufferedReader().use { reader -> gson.fromJson(reader, RoleDefinition::class.java) } ?: RoleDefinition()
+        TomlConfigIO.read(path, RoleDefinition::class.java, ::RoleDefinition)
     } catch (exception: Exception) {
         ChowKingdomMod.LOGGER.warn("Failed to load role definition {}", path, exception)
         RoleDefinition()
     }
 
     private fun readOnboarding(path: Path): RolesOnboardingDefinition = try {
-        path.bufferedReader().use { reader -> gson.fromJson(reader, RolesOnboardingDefinition::class.java) } ?: defaultOnboarding()
+        TomlConfigIO.read(path, RolesOnboardingDefinition::class.java, ::defaultOnboarding)
     } catch (exception: Exception) {
         ChowKingdomMod.LOGGER.warn("Failed to load role onboarding config {}", path, exception)
         defaultOnboarding()
@@ -76,7 +73,7 @@ object RolesConfig {
         if (file.exists()) return
         file.parent.createDirectories()
         Files.createTempFile(file.parent, file.fileName.toString(), ".tmp").also { temp ->
-            temp.bufferedWriter().use { writer -> gson.toJson(definition, writer) }
+            TomlConfigIO.write(temp, definition)
             Files.move(temp, file, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
         }
     }

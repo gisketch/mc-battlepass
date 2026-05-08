@@ -36,7 +36,7 @@ Rotate configured NPCs through the camping block. Only one unhoused camper can w
 ## Manual Test Steps
 
 1. Add at least two NPC JSON files under `config/gisketchs_chowkingdom_mod/npcs`.
-2. Set `settings.json` campers cooldown to `1..1` for fast testing.
+2. Set `settings.toml` campers cooldown to `1..1` for fast testing.
 3. Start client/server, place `gisketchs_chowkingdom_mod:camping_block`.
 4. Verify exactly one random NPC appears near camp and shows a needs-house balloon.
 5. Verify all players receive a snackbar: `NEW CAMPER AT THE CAMPING BLOCK`, NPC head icon, and welcome/rent-contract content.
@@ -66,8 +66,8 @@ Rotate configured NPCs through the camping block. Only one unhoused camper can w
 
 ## Decision Log
 
-- 2026-05-08: Added `shoumai.json` under the playtest `runs/client` config, added `fashionista` as a supported NPC job id, and moved NPC store routing to `job_definition.store`.
-- 2026-05-08: Store ids on jobs are now store templates/pools; NPC shops use per-NPC stock keys so two NPCs can share `cosmetics.json` while rolling different stock.
+- 2026-05-08: Added `shoumai.toml` under the playtest `runs/client` config, added `fashionista` as a supported NPC job id, and moved NPC store routing to `job_definition.store`.
+- 2026-05-08: Store ids on jobs are now store templates/pools; NPC shops use per-NPC stock keys so two NPCs can share `cosmetics.toml` while rolling different stock.
 
 ## Progress Log
 

@@ -62,8 +62,8 @@ src/main/kotlin/dev/gisketch/chowkingdom/
 
 ## Battlepass State
 
-- Pass definitions load from `config/gisketchs_chowkingdom_mod/battlepass/passes/*.json`.
-- Default pass JSON lives in `BattlepassPassRegistry`; generated only when config files are missing.
+- Pass definitions load from `config/gisketchs_chowkingdom_mod/battlepass/passes/*.toml`.
+- Default pass data lives in `BattlepassPassRegistry`; generated as TOML only when config files are missing.
 - Server owns XP, claims, mission progress, mission completions, active rotating mission keys.
 - Client receives snapshots through `BattlepassSyncPayload` and renders from `BattlepassClientState`.
 - Client local files track UI-only state such as tracked missions and notified mission toasts.
@@ -112,7 +112,7 @@ Mission scopes:
 - `GameProfileMixin` routes `GameProfile#getName()` through `NicknameStore`, so other mods reading game profile names see the nickname when present.
 - `ProfilesFeature` uses NeoForge name-format and tab-list events for nickname display, leaving vanilla player chat packets intact for mods like Chat Heads.
 - Nickname changes refresh linked Discord account names, and Discord relay templates/webhook author names use nickname display names while avatar lookup still uses the real profile/UUID.
-- `NicknameConfig` writes `config/gisketchs_chowkingdom_mod/profiles/client.json`; `enableNickname` and `showOwnNameTag` default to `true` and own nametag rendering is handled by renderer mixins.
+- `NicknameConfig` writes `config/gisketchs_chowkingdom_mod/profiles/client.toml`; `enableNickname` and `showOwnNameTag` default to `true` and own nametag rendering is handled by renderer mixins.
 
 ## Revive
 
@@ -120,7 +120,7 @@ Mission scopes:
 - Incapacitated players are held in transient server memory, stabilized at minimum vitals, red-glowed through a temporary scoreboard team, and action/movement constrained.
 - Other players right-click an incapacitated player to begin a timed revive; the reviver is crouch/action locked until completion or cancel.
 - Timeout death wraps the original damage source so the vanilla death message keeps its cause and appends revive-failure context.
-- `ReviveConfig` writes `config/gisketchs_chowkingdom_mod/revive/config.json`; all timer fields are seconds.
+- `ReviveConfig` writes `config/gisketchs_chowkingdom_mod/revive/config.toml`; all timer fields are seconds.
 - `ReviveStore` persists per-player incapacitation counts and last cause in world data.
 - `/revive` commands provide reload, force-revive, status, and singleplayer debug flows.
 
@@ -142,23 +142,25 @@ Use config for definitions and client-local preferences:
 
 ```text
 config/gisketchs_chowkingdom_mod/
-  battlepass/passes/*.json
-  battlepass/tracked_missions.json
-  battlepass/notified_missions.json
-  shipping_bin/prices.json
-  discord/webhook.json
-  profiles/client.json
-  revive/config.json
+  battlepass/passes/*.toml
+  battlepass/tracked_missions.toml
+  battlepass/notified_missions.toml
+  shipping_bin/prices.toml
+  discord/webhook.toml
+  profiles/client.toml
+  revive/config.toml
 ```
+
+Legacy JSON files in the mod config tree are converted to commented TOML during startup, then moved under `config/gisketchs_chowkingdom_mod/json-backup/` with relative paths preserved.
 
 ## Discord
 
 - `DiscordFeature` registers server chat, optional join/leave, and server tick status hooks.
-- `DiscordConfig` loads `config/gisketchs_chowkingdom_mod/discord/webhook.json` and generates a disabled default.
+- `DiscordConfig` loads `config/gisketchs_chowkingdom_mod/discord/webhook.toml` and generates a disabled default.
 - `DiscordWebhookClient` sends async JSON webhook payloads with mentions disabled.
 - Status messages include online player count and smoothed TPS.
 
-Stores use GSON, lazy `load()`, coercion for numeric data, and temp-file replacement on save.
+Stores use lazy `load()`, coercion for numeric data, and temp-file replacement on save. Config files use TOML; world save data remains JSON.
 
 ## Networking
 

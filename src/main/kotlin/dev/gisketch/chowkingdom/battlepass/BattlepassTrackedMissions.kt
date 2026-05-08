@@ -1,12 +1,9 @@
 package dev.gisketch.chowkingdom.battlepass
 
-import com.google.gson.GsonBuilder
 import dev.gisketch.chowkingdom.ChowKingdomMod
+import dev.gisketch.chowkingdom.config.TomlConfigIO
 import net.minecraft.client.Minecraft
-import java.nio.file.Files
 import java.nio.file.Path
-import kotlin.io.path.bufferedReader
-import kotlin.io.path.bufferedWriter
 import kotlin.io.path.createDirectories
 import kotlin.io.path.exists
 
@@ -14,12 +11,11 @@ object BattlepassTrackedMissions {
     data class TrackedMission(val pass: BattlepassPassDefinition, val entry: BattlepassMissionEntry)
 
     private const val MAX_TRACKED = 7
-    private val gson = GsonBuilder().setPrettyPrinting().create()
     private var loaded = false
     private var tracked: MutableList<String> = mutableListOf()
 
     private val file: Path
-        get() = Minecraft.getInstance().gameDirectory.toPath().resolve("config/${ChowKingdomMod.MOD_ID}/battlepass/tracked_missions.json")
+        get() = Minecraft.getInstance().gameDirectory.toPath().resolve("config/${ChowKingdomMod.MOD_ID}/battlepass/tracked_missions.toml")
 
     fun isTracked(passId: String, missionKey: String): Boolean {
         if (!loaded) load()
@@ -84,8 +80,8 @@ object BattlepassTrackedMissions {
         tracked.clear()
         if (file.exists()) {
             runCatching {
-                val data = file.bufferedReader().use { reader -> gson.fromJson(reader, SavedTrackedMissions::class.java) }
-                tracked = data?.tracked?.distinct()?.take(MAX_TRACKED)?.toMutableList() ?: mutableListOf()
+                val data = TomlConfigIO.read(file, SavedTrackedMissions::class.java, ::SavedTrackedMissions)
+                tracked = data.tracked.distinct().take(MAX_TRACKED).toMutableList()
             }.onFailure { exception -> ChowKingdomMod.LOGGER.warn("Failed to load tracked missions {}", file, exception) }
         }
         loaded = true
@@ -93,10 +89,7 @@ object BattlepassTrackedMissions {
 
     private fun save() {
         file.parent.createDirectories()
-        Files.createTempFile(file.parent, "tracked_missions", ".json.tmp").also { temp ->
-            temp.bufferedWriter().use { writer -> gson.toJson(SavedTrackedMissions(tracked), writer) }
-            Files.move(temp, file, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
-        }
+        TomlConfigIO.write(file, SavedTrackedMissions(tracked))
     }
 
     private fun storageKey(passId: String, missionKey: String): String = "$passId|$missionKey"

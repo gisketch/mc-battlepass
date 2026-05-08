@@ -9,7 +9,7 @@ Client screenshots use their own webhook config and can be sent with the screens
 Config file:
 
 ```text
-config/gisketchs_chowkingdom_mod/discord/webhook.json
+config/gisketchs_chowkingdom_mod/discord/webhook.toml
 ```
 
 Default config is generated disabled:
@@ -81,7 +81,7 @@ Set `enabled` to `true` and paste a Discord webhook URL into `webhook_url`.
 Screenshot config file:
 
 ```text
-config/gisketchs_chowkingdom_mod/discord/screenshot.json
+config/gisketchs_chowkingdom_mod/discord/screenshot.toml
 ```
 
 Default config:
@@ -178,7 +178,7 @@ Admin diagnostics:
 
 The avatar command prints whether Quick Skin server classes exist, whether a `skin_id` was found, whether texture bytes are available, and which avatar URL Discord will receive.
 
-`/chowkingdom discord reload` reloads `webhook.json` without restarting the server. It also restarts the avatar HTTP server if bind host or port changed, and resets Discord-to-Minecraft polling state.
+`/chowkingdom discord reload` reloads `webhook.toml` without restarting the server. It also restarts the avatar HTTP server if bind host or port changed, and resets Discord-to-Minecraft polling state.
 
 ## Discord to Minecraft
 
@@ -333,7 +333,7 @@ Recommended minimal structure:
       chowkingdom.jar
       quick-skin.jar
       architectury.jar
-    config/gisketchs_chowkingdom_mod/discord/webhook.json
+    config/gisketchs_chowkingdom_mod/discord/webhook.toml
     run.sh
   caddy/
     Caddyfile

@@ -1,28 +1,24 @@
 package dev.gisketch.chowkingdom.discord
 
-import com.google.gson.GsonBuilder
 import com.google.gson.annotations.SerializedName
 import dev.gisketch.chowkingdom.ChowKingdomMod
+import dev.gisketch.chowkingdom.config.TomlConfigIO
 import net.neoforged.fml.loading.FMLPaths
-import java.nio.file.Files
 import java.nio.file.Path
-import kotlin.io.path.bufferedReader
-import kotlin.io.path.bufferedWriter
 import kotlin.io.path.createDirectories
 import kotlin.io.path.exists
 
 object DiscordScreenshotConfig {
-    private val gson = GsonBuilder().setPrettyPrinting().create()
     private var config = DiscordScreenshotWebhookConfig()
 
     private val file: Path
-        get() = FMLPaths.CONFIGDIR.get().resolve(ChowKingdomMod.MOD_ID).resolve("discord").resolve("screenshot.json")
+        get() = FMLPaths.CONFIGDIR.get().resolve(ChowKingdomMod.MOD_ID).resolve("discord").resolve("screenshot.toml")
 
     fun load() {
         file.parent.createDirectories()
         if (!file.exists()) writeDefault()
         config = try {
-            file.bufferedReader().use { reader -> gson.fromJson(reader, DiscordScreenshotWebhookConfig::class.java) } ?: DiscordScreenshotWebhookConfig()
+            TomlConfigIO.read(file, DiscordScreenshotWebhookConfig::class.java, ::DiscordScreenshotWebhookConfig)
         } catch (exception: Exception) {
             ChowKingdomMod.LOGGER.warn("Failed to load Discord screenshot config {}", file, exception)
             DiscordScreenshotWebhookConfig()
@@ -34,17 +30,11 @@ object DiscordScreenshotConfig {
     fun save(updated: DiscordScreenshotWebhookConfig) {
         file.parent.createDirectories()
         config = updated.normalized()
-        Files.createTempFile(file.parent, "discord_screenshot", ".json.tmp").also { temp ->
-            temp.bufferedWriter().use { writer -> gson.toJson(config, writer) }
-            Files.move(temp, file, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
-        }
+        TomlConfigIO.write(file, config)
     }
 
     private fun writeDefault() {
-        Files.createTempFile(file.parent, "discord_screenshot", ".json.tmp").also { temp ->
-            temp.bufferedWriter().use { writer -> gson.toJson(DiscordScreenshotWebhookConfig(), writer) }
-            Files.move(temp, file, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
-        }
+        TomlConfigIO.write(file, DiscordScreenshotWebhookConfig())
     }
 }
 

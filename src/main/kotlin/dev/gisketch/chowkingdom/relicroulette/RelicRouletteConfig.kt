@@ -1,13 +1,11 @@
 package dev.gisketch.chowkingdom.relicroulette
 
-import com.google.gson.GsonBuilder
 import dev.gisketch.chowkingdom.ChowKingdomMod
+import dev.gisketch.chowkingdom.config.TomlConfigIO
 import net.neoforged.fml.loading.FMLPaths
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
-import kotlin.io.path.bufferedReader
-import kotlin.io.path.bufferedWriter
 import kotlin.io.path.createDirectories
 import kotlin.io.path.exists
 import kotlin.io.path.extension
@@ -15,7 +13,6 @@ import kotlin.io.path.isRegularFile
 import kotlin.io.path.listDirectoryEntries
 
 object RelicRouletteConfig {
-    private val gson = GsonBuilder().setPrettyPrinting().create()
     private var poolsById: Map<String, RelicPoolDefinition> = emptyMap()
     private var poolsByTicket: Map<String, RelicPoolDefinition> = emptyMap()
 
@@ -24,10 +21,10 @@ object RelicRouletteConfig {
 
     fun load() {
         poolsDir.createDirectories()
-        writeDefaultIfMissing("common_relics.json", defaultCommonPool())
-        writeDefaultIfMissing("rare_relics.json", defaultRarePool())
-        val loaded = poolsDir.listDirectoryEntries("*.json")
-            .filter { path -> path.isRegularFile() && path.extension.equals("json", ignoreCase = true) }
+        writeDefaultIfMissing("common_relics.toml", defaultCommonPool())
+        writeDefaultIfMissing("rare_relics.toml", defaultRarePool())
+        val loaded = poolsDir.listDirectoryEntries("*.toml")
+            .filter { path -> path.isRegularFile() && path.extension.equals("toml", ignoreCase = true) }
             .mapNotNull(::readPool)
             .associateBy { pool -> pool.id }
         poolsById = loaded
@@ -53,8 +50,8 @@ object RelicRouletteConfig {
     }
 
     private fun readPool(path: Path): RelicPoolDefinition? = try {
-        path.bufferedReader().use { reader -> gson.fromJson(reader, RelicPoolDefinition::class.java) }
-            ?.normalized(path.fileName.toString().substringBeforeLast('.'))
+        TomlConfigIO.read(path, RelicPoolDefinition::class.java, ::RelicPoolDefinition)
+            .normalized(path.fileName.toString().substringBeforeLast('.'))
     } catch (exception: Exception) {
         ChowKingdomMod.LOGGER.warn("Failed to load relic roulette pool {}", path, exception)
         null
@@ -64,7 +61,7 @@ object RelicRouletteConfig {
         val file = poolsDir.resolve(fileName)
         if (file.exists()) return
         Files.createTempFile(file.parent, file.fileName.toString(), ".tmp").also { temp ->
-            temp.bufferedWriter().use { writer -> gson.toJson(pool, writer) }
+            TomlConfigIO.write(temp, pool)
             Files.move(temp, file, StandardCopyOption.REPLACE_EXISTING)
         }
     }

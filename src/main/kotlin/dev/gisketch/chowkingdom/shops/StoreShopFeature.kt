@@ -8,6 +8,7 @@ import com.mojang.brigadier.context.CommandContext
 import dev.gisketch.chowkingdom.ChowKingdomMod
 import dev.gisketch.chowkingdom.battlepass.BattlepassMissionEventBank
 import dev.gisketch.chowkingdom.battlepass.BattlepassNetwork
+import dev.gisketch.chowkingdom.config.TomlConfigIO
 import dev.gisketch.chowkingdom.npc.NpcFeature
 import dev.gisketch.chowkingdom.relicroulette.RelicRouletteFeature
 import dev.gisketch.chowkingdom.snackbar.SnackbarIcons
@@ -321,16 +322,16 @@ object StoreShopFeature {
 
     private fun reloadDefinitions() {
         configDir.createDirectories()
-        val loaded = configDir.listDirectoryEntries("*.json")
-            .filter { it.isRegularFile() && it.extension.equals("json", ignoreCase = true) }
+        val loaded = configDir.listDirectoryEntries("*.toml")
+            .filter { it.isRegularFile() && it.extension.equals("toml", ignoreCase = true) }
             .mapNotNull(::readDefinition)
             .associateBy { it.id.lowercase(Locale.ROOT) }
         definitions = loaded
     }
 
     private fun readDefinition(path: Path): StoreDefinition? = try {
-        path.bufferedReader().use { reader -> gson.fromJson(reader, StoreDefinition::class.java) }
-            ?.normalized(path.fileName.toString().substringBeforeLast('.'))
+        TomlConfigIO.read(path, StoreDefinition::class.java, ::StoreDefinition)
+            .normalized(path.fileName.toString().substringBeforeLast('.'))
     } catch (exception: Exception) {
         ChowKingdomMod.LOGGER.warn("Failed to load store config {}", path, exception)
         null

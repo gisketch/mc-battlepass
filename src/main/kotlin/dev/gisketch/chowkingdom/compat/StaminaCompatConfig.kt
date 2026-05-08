@@ -2,14 +2,10 @@ package dev.gisketch.chowkingdom.compat
 
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonObject
-import com.google.gson.JsonParser
 import dev.gisketch.chowkingdom.ChowKingdomMod
+import dev.gisketch.chowkingdom.config.TomlConfigIO
 import net.neoforged.fml.loading.FMLPaths
-import java.nio.file.Files
 import java.nio.file.Path
-import kotlin.io.path.bufferedReader
-import kotlin.io.path.bufferedWriter
-import kotlin.io.path.createDirectories
 import kotlin.io.path.exists
 
 object StaminaCompatConfig {
@@ -17,12 +13,12 @@ object StaminaCompatConfig {
     private var current = StaminaCompatDefinition()
 
     private val file: Path
-        get() = FMLPaths.CONFIGDIR.get().resolve(ChowKingdomMod.MOD_ID).resolve("compat").resolve("stamina.json")
+        get() = FMLPaths.CONFIGDIR.get().resolve(ChowKingdomMod.MOD_ID).resolve("compat").resolve("stamina.toml")
 
     fun load(): StaminaCompatDefinition {
         if (!file.exists()) write(current)
         current = try {
-            val json = file.bufferedReader().use { reader -> JsonParser.parseReader(reader).asJsonObject }
+            val json = TomlConfigIO.readObject(file) ?: JsonObject()
             (gson.fromJson(json, StaminaCompatDefinition::class.java) ?: StaminaCompatDefinition()).withMissingDefaults(json).also { config ->
                 if (missingKeys(json).isNotEmpty()) write(config)
             }
@@ -36,11 +32,7 @@ object StaminaCompatConfig {
     fun values(): StaminaCompatDefinition = current
 
     private fun write(config: StaminaCompatDefinition) {
-        file.parent.createDirectories()
-        Files.createTempFile(file.parent, file.fileName.toString(), ".tmp").also { temp ->
-            temp.bufferedWriter().use { writer -> gson.toJson(config, writer) }
-            Files.move(temp, file, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
-        }
+        TomlConfigIO.write(file, config)
     }
 
     private fun StaminaCompatDefinition.withMissingDefaults(json: JsonObject): StaminaCompatDefinition {

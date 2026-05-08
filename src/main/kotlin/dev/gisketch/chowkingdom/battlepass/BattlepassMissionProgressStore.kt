@@ -3,6 +3,7 @@ package dev.gisketch.chowkingdom.battlepass
 import com.google.gson.GsonBuilder
 import dev.gisketch.chowkingdom.ChatGlyphs
 import dev.gisketch.chowkingdom.ChowKingdomMod
+import dev.gisketch.chowkingdom.config.TomlConfigIO
 import dev.gisketch.chowkingdom.discord.DiscordRelay
 import dev.gisketch.chowkingdom.relicroulette.RelicRouletteFeature
 import dev.gisketch.chowkingdom.snackbar.SnackbarIcons
@@ -30,7 +31,7 @@ object BattlepassMissionProgressStore {
     private var loaded = false
 
     private val file: Path
-        get() = BattlepassWorldData.battlepassDirectory().resolve("mission_progress.json")
+        get() = BattlepassWorldData.battlepassFile("mission_progress")
 
     fun load() {
         file.parent.createDirectories()
@@ -40,14 +41,14 @@ object BattlepassMissionProgressStore {
 
         if (file.exists()) {
             try {
-                val data = file.bufferedReader().use { reader -> gson.fromJson(reader, StoredMissionProgress::class.java) }
-                data?.players?.forEach { (playerId, passes) ->
+                val data = TomlConfigIO.read(file, StoredMissionProgress::class.java, ::StoredMissionProgress)
+                data.players.forEach { (playerId, passes) ->
                     progress[playerId] = passes.mapValues { (_, events) -> events.toMutableMap() }.toMutableMap()
                 }
-                data?.completed?.forEach { (playerId, passes) ->
+                data.completed.forEach { (playerId, passes) ->
                     completed[playerId] = passes.mapValues { (_, periods) -> periods.mapValues { (_, keys) -> keys.toMutableSet() }.toMutableMap() }.toMutableMap()
                 }
-                data?.rotations?.forEach { (passId, scopes) ->
+                data.rotations.forEach { (passId, scopes) ->
                     rotations[passId] = scopes.mapValues { (_, rotation) -> rotation.copy(activeKeys = rotation.activeKeys.toMutableList(), usageCounts = rotation.usageCounts.toMutableMap()) }.toMutableMap()
                 }
             } catch (exception: Exception) {
@@ -447,11 +448,7 @@ object BattlepassMissionProgressStore {
     }
 
     private fun save() {
-        file.parent.createDirectories()
-        Files.createTempFile(file.parent, "mission_progress", ".json.tmp").also { temp ->
-            temp.bufferedWriter().use { writer -> gson.toJson(StoredMissionProgress(progress, completed, rotations), writer) }
-            Files.move(temp, file, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
-        }
+        TomlConfigIO.write(file, StoredMissionProgress(progress, completed, rotations))
     }
 
     private data class StoredRotation(

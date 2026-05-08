@@ -6,9 +6,9 @@ For step-by-step creation and tuning, see [Jobs And Classes Creation Guide](ROLE
 
 ## Files
 
-- Job definitions: `config/gisketchs_chowkingdom_mod/roles/jobs/*.json`
-- Class definitions: `config/gisketchs_chowkingdom_mod/roles/classes/*.json`
-- Onboarding copy: `config/gisketchs_chowkingdom_mod/roles/onboarding.json`
+- Job definitions: `config/gisketchs_chowkingdom_mod/roles/jobs/*.toml`
+- Class definitions: `config/gisketchs_chowkingdom_mod/roles/classes/*.toml`
+- Onboarding copy: `config/gisketchs_chowkingdom_mod/roles/onboarding.toml`
 - Player state: `<world>/data/gisketchs_chowkingdom_mod/roles/players.json`
 - Class item tags: `src/main/resources/data/gisketchs_chowkingdom_mod/tags/item/class/`
 
@@ -16,7 +16,7 @@ For step-by-step creation and tuning, see [Jobs And Classes Creation Guide](ROLE
 
 Players with no active job and no active class keep an empty role record and get a fullscreen onboarding stepper on login. They pick one job, then one class. The server validates the selected ids, persists them, and grants configured class starter items.
 
-The source defaults create editable job/class JSON, but they no longer auto-assign those roles to brand-new players.
+The source defaults create editable job/class TOML, but they no longer auto-assign those roles to brand-new players.
 
 ## Commands
 

@@ -1,20 +1,17 @@
 package dev.gisketch.chowkingdom.npc
 
-import com.google.gson.GsonBuilder
 import dev.gisketch.chowkingdom.ChowKingdomMod
+import dev.gisketch.chowkingdom.config.TomlConfigIO
 import net.neoforged.fml.loading.FMLPaths
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
-import kotlin.io.path.bufferedReader
-import kotlin.io.path.bufferedWriter
 import kotlin.io.path.createDirectories
 import kotlin.io.path.exists
 import kotlin.io.path.extension
 import kotlin.io.path.nameWithoutExtension
 
 object NpcConfig {
-    private val gson = GsonBuilder().setPrettyPrinting().create()
     private var definitions: Map<String, NpcDefinition> = linkedMapOf()
     private var settings: NpcSettingsDefinition = NpcSettingsDefinition().normalized()
 
@@ -28,14 +25,14 @@ object NpcConfig {
         val friendshipDefaults = loadFriendshipDefaults()
         val loaded = linkedMapOf<String, NpcDefinition>()
         Files.list(dir).use { files ->
-            files.filter { path -> path.extension.equals("json", ignoreCase = true) }
+            files.filter { path -> path.extension.equals("toml", ignoreCase = true) }
                 .filter { path -> path.fileName.toString() != FRIENDSHIP_MESSAGES_FILE }
                 .filter { path -> path.fileName.toString() != NPC_SETTINGS_FILE }
                 .sorted(Comparator.comparing { path -> path.fileName.toString() })
                 .forEach { path ->
                     val fallbackId = path.nameWithoutExtension
                     val definition = try {
-                        path.bufferedReader().use { reader -> gson.fromJson(reader, NpcDefinition::class.java) } ?: NpcDefinition()
+                        TomlConfigIO.read(path, NpcDefinition::class.java, ::NpcDefinition)
                     } catch (exception: Exception) {
                         ChowKingdomMod.LOGGER.warn("Failed to load NPC definition {}", path, exception)
                         NpcDefinition(id = fallbackId)
@@ -55,24 +52,24 @@ object NpcConfig {
     fun firstIntroducible(): NpcDefinition? = definitions["finn"] ?: definitions.values.firstOrNull()
 
     private fun writeDefaultIfMissing() {
-        val file = dir.resolve("finn.json")
+        val file = dir.resolve("finn.toml")
         if (!file.exists()) {
-            Files.createTempFile(dir, "finn", ".json.tmp").also { temp ->
-                temp.bufferedWriter().use { writer -> gson.toJson(defaultFinn(), writer) }
+            Files.createTempFile(dir, "finn", ".toml.tmp").also { temp ->
+                TomlConfigIO.write(temp, defaultFinn())
                 Files.move(temp, file, StandardCopyOption.REPLACE_EXISTING)
             }
         }
         val friendshipFile = dir.resolve(FRIENDSHIP_MESSAGES_FILE)
         if (!friendshipFile.exists()) {
-            Files.createTempFile(dir, "friendship_messages", ".json.tmp").also { temp ->
-                temp.bufferedWriter().use { writer -> gson.toJson(NpcFriendshipMessagesDefinition.default().normalized(), writer) }
+            Files.createTempFile(dir, "friendship_messages", ".toml.tmp").also { temp ->
+                TomlConfigIO.write(temp, NpcFriendshipMessagesDefinition.default().normalized())
                 Files.move(temp, friendshipFile, StandardCopyOption.REPLACE_EXISTING)
             }
         }
         val settingsFile = dir.resolve(NPC_SETTINGS_FILE)
         if (!settingsFile.exists()) {
-            Files.createTempFile(dir, "npc_settings", ".json.tmp").also { temp ->
-                temp.bufferedWriter().use { writer -> gson.toJson(NpcSettingsDefinition().normalized(), writer) }
+            Files.createTempFile(dir, "npc_settings", ".toml.tmp").also { temp ->
+                TomlConfigIO.write(temp, NpcSettingsDefinition().normalized())
                 Files.move(temp, settingsFile, StandardCopyOption.REPLACE_EXISTING)
             }
         }
@@ -81,7 +78,7 @@ object NpcConfig {
     private fun loadSettings(): NpcSettingsDefinition {
         val file = dir.resolve(NPC_SETTINGS_FILE)
         return try {
-            file.bufferedReader().use { reader -> gson.fromJson(reader, NpcSettingsDefinition::class.java) } ?: NpcSettingsDefinition()
+            TomlConfigIO.read(file, NpcSettingsDefinition::class.java, ::NpcSettingsDefinition)
         } catch (exception: Exception) {
             ChowKingdomMod.LOGGER.warn("Failed to load NPC settings {}", file, exception)
             NpcSettingsDefinition()
@@ -91,7 +88,7 @@ object NpcConfig {
     private fun loadFriendshipDefaults(): NpcFriendshipMessagesDefinition {
         val file = dir.resolve(FRIENDSHIP_MESSAGES_FILE)
         return try {
-            file.bufferedReader().use { reader -> gson.fromJson(reader, NpcFriendshipMessagesDefinition::class.java) } ?: NpcFriendshipMessagesDefinition.default()
+            TomlConfigIO.read(file, NpcFriendshipMessagesDefinition::class.java, { NpcFriendshipMessagesDefinition.default() })
         } catch (exception: Exception) {
             ChowKingdomMod.LOGGER.warn("Failed to load NPC friendship messages {}", file, exception)
             NpcFriendshipMessagesDefinition.default()
@@ -158,5 +155,5 @@ object NpcConfig {
     )
 }
 
-private const val FRIENDSHIP_MESSAGES_FILE = "friendship_messages.json"
-private const val NPC_SETTINGS_FILE = "settings.json"
+private const val FRIENDSHIP_MESSAGES_FILE = "friendship_messages.toml"
+private const val NPC_SETTINGS_FILE = "settings.toml"

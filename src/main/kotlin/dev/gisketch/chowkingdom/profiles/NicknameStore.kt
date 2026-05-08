@@ -2,6 +2,7 @@ package dev.gisketch.chowkingdom.profiles
 
 import com.google.gson.GsonBuilder
 import dev.gisketch.chowkingdom.ChowKingdomMod
+import dev.gisketch.chowkingdom.config.TomlConfigIO
 import dev.gisketch.chowkingdom.discord.DiscordAccountLinkStore
 import net.minecraft.network.protocol.game.ClientboundPlayerInfoRemovePacket
 import net.minecraft.network.protocol.game.ClientboundPlayerInfoUpdatePacket
@@ -27,7 +28,8 @@ object NicknameStore {
         get() {
             val server = ServerLifecycleHooks.getCurrentServer()
             val root = if (server != null) server.getWorldPath(LevelResource.ROOT).resolve("data") else FMLPaths.CONFIGDIR.get()
-            return root.resolve(ChowKingdomMod.MOD_ID).resolve("profiles").resolve("nicknames.json")
+            val extension = if (server != null) "json" else "toml"
+            return root.resolve(ChowKingdomMod.MOD_ID).resolve("profiles").resolve("nicknames.$extension")
         }
 
     fun load() {
@@ -36,8 +38,8 @@ object NicknameStore {
 
         if (file.exists()) {
             try {
-                val data = file.bufferedReader().use { reader -> gson.fromJson(reader, StoredNicknames::class.java) }
-                data?.players.orEmpty()
+                val data = TomlConfigIO.read(file, StoredNicknames::class.java, ::StoredNicknames)
+                data.players
                     .mapValues { (_, nickname) -> nickname.trim() }
                     .filterValues(::isValidNickname)
                     .forEach { (playerId, nickname) -> nicknames[playerId] = nickname }
@@ -114,11 +116,7 @@ object NicknameStore {
     }
 
     private fun save() {
-        file.parent.createDirectories()
-        Files.createTempFile(file.parent, "nicknames", ".json.tmp").also { temp ->
-            temp.bufferedWriter().use { writer -> gson.toJson(StoredNicknames(nicknames), writer) }
-            Files.move(temp, file, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
-        }
+        TomlConfigIO.write(file, StoredNicknames(nicknames))
     }
 
     private fun isValidNickname(nickname: String): Boolean = nickname.length in 1..16 && nickname.all { char -> char.isLetterOrDigit() || char == '_' }

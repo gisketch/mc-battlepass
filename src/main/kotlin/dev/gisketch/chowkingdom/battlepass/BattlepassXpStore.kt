@@ -2,6 +2,7 @@ package dev.gisketch.chowkingdom.battlepass
 
 import com.google.gson.GsonBuilder
 import dev.gisketch.chowkingdom.ChowKingdomMod
+import dev.gisketch.chowkingdom.config.TomlConfigIO
 import net.minecraft.server.level.ServerPlayer
 import java.nio.file.Files
 import java.nio.file.Path
@@ -18,7 +19,7 @@ object BattlepassXpStore {
     private var loaded = false
 
     private val file: Path
-        get() = BattlepassWorldData.battlepassDirectory().resolve("player_xp.json")
+        get() = BattlepassWorldData.battlepassFile("player_xp")
 
     fun load() {
         file.parent.createDirectories()
@@ -27,9 +28,9 @@ object BattlepassXpStore {
 
         if (file.exists()) {
             try {
-                val data = file.bufferedReader().use { reader -> gson.fromJson(reader, StoredXpData::class.java) }
-                data?.players?.forEach { (playerId, passes) -> playerXp[playerId] = passes.toMutableMap() }
-                data?.claimed?.forEach { (playerId, passes) ->
+                val data = TomlConfigIO.read(file, StoredXpData::class.java, ::StoredXpData)
+                data.players.forEach { (playerId, passes) -> playerXp[playerId] = passes.toMutableMap() }
+                data.claimed.forEach { (playerId, passes) ->
                     claimedTiers[playerId] = passes.mapValues { (_, tiers) -> tiers.toMutableSet() }.toMutableMap()
                 }
             } catch (exception: Exception) {
@@ -80,11 +81,7 @@ object BattlepassXpStore {
     }
 
     private fun save() {
-        file.parent.createDirectories()
-        Files.createTempFile(file.parent, "player_xp", ".json.tmp").also { temp ->
-            temp.bufferedWriter().use { writer -> gson.toJson(StoredXpData(playerXp, claimedTiers), writer) }
-            Files.move(temp, file, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
-        }
+        TomlConfigIO.write(file, StoredXpData(playerXp, claimedTiers))
     }
 
     private class StoredXpData(

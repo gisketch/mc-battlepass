@@ -11,29 +11,27 @@ Tokens only roll when they were locked by the battlepass claim service. Plain/ad
 
 ## Config
 
-Pool JSON files live under:
+Pool TOML files live under:
 
-`config/gisketchs_chowkingdom_mod/relic_roulette/pools/*.json`
+`config/gisketchs_chowkingdom_mod/relic_roulette/pools/*.toml`
 
 Default files are generated if missing:
 
-- `common_relics.json`
-- `rare_relics.json`
+- `common_relics.toml`
+- `rare_relics.toml`
 
 Pool shape:
 
-```json
-{
-  "id": "common_relics",
-  "display_name": "Common Relic",
-  "ticket": "gisketchs_chowkingdom_mod:common_relic_token",
-  "rarity": "common",
-  "pool": [
-    "minecraft:iron_ingot",
-    "minecraft:copper_ingot",
-    "minecraft:amethyst_shard"
-  ]
-}
+```toml
+id = "common_relics"
+display_name = "Common Relic"
+ticket = "gisketchs_chowkingdom_mod:common_relic_token"
+rarity = "common"
+pool = [
+  "minecraft:iron_ingot",
+  "minecraft:copper_ingot",
+  "minecraft:amethyst_shard",
+]
 ```
 
 Fields:

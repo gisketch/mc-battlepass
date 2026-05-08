@@ -1,6 +1,6 @@
 # Jobs And Classes Creation Guide
 
-Use this when adding or tuning Chow Kingdom jobs/classes through JSON config.
+Use this when adding or tuning Chow Kingdom jobs/classes through TOML config.
 
 ## Mental Model
 
@@ -14,9 +14,9 @@ Use this when adding or tuning Chow Kingdom jobs/classes through JSON config.
 
 Runtime config files are loaded from the run folder:
 
-- Jobs: `runs/client/config/gisketchs_chowkingdom_mod/roles/jobs/*.json`
-- Classes: `runs/client/config/gisketchs_chowkingdom_mod/roles/classes/*.json`
-- Onboarding copy: `runs/client/config/gisketchs_chowkingdom_mod/roles/onboarding.json`
+- Jobs: `runs/client/config/gisketchs_chowkingdom_mod/roles/jobs/*.toml`
+- Classes: `runs/client/config/gisketchs_chowkingdom_mod/roles/classes/*.toml`
+- Onboarding copy: `runs/client/config/gisketchs_chowkingdom_mod/roles/onboarding.toml`
 
 Source defaults live in Kotlin and only create runtime config files when missing:
 
@@ -26,7 +26,7 @@ Class item tags are data files:
 
 - [src/main/resources/data/gisketchs_chowkingdom_mod/tags/item/class](../src/main/resources/data/gisketchs_chowkingdom_mod/tags/item/class)
 
-Important: existing runtime JSON is not overwritten by source defaults. If a new field is added later, update the existing runtime JSON or delete that role JSON so it regenerates.
+Important: existing runtime TOML is not overwritten by source defaults. Legacy JSON in the mod config tree migrates to TOML on startup and moves under `json-backup/`. If a new field is added later, update the existing runtime TOML or delete that role TOML so it regenerates.
 
 Brand-new players are not auto-assigned default roles. If their player record has no active job and no active class, the onboarding screen opens on login and persists the choices they make.
 
@@ -44,26 +44,19 @@ Brand-new players are not auto-assigned default roles. If their player record ha
 
 Commands require permission level 2.
 
-## Job JSON Shape
+## Job TOML Shape
 
-Create `runs/client/config/gisketchs_chowkingdom_mod/roles/jobs/<id>.json`.
+Create `runs/client/config/gisketchs_chowkingdom_mod/roles/jobs/<id>.toml`.
 
-```json
-{
-  "id": "farmer",
-  "display_name": "Farmer",
-  "icon": "minecraft:grass_block",
-  "description": "Tend crops, protect farmland, and coax better harvests from the kingdom soil.",
-  "perks": [
-    {
-      "type": "prevent_crop_trample"
-    },
-    {
-      "type": "quality_food_harvest_bonus",
-      "multiplier": 1.15
-    }
-  ]
-}
+```toml
+id = "farmer"
+display_name = "Farmer"
+icon = "minecraft:grass_block"
+description = "Tend crops, protect farmland, and coax better harvests from the kingdom soil."
+perks = [
+  { type = "prevent_crop_trample" },
+  { type = "quality_food_harvest_bonus", multiplier = 1.15 },
+]
 ```
 
 Current job perk types:
@@ -73,36 +66,19 @@ Current job perk types:
 - `cobblemon_catch_rate`: data hook for Pokemon type catch scaling. Uses `pokemon_type` and `multiplier`.
 - `mount_speed`: data hook for Pokemon type mount speed scaling. Uses `pokemon_type` and `multiplier`.
 
-## Class JSON Shape
+## Class TOML Shape
 
-Create `runs/client/config/gisketchs_chowkingdom_mod/roles/classes/<id>.json`.
+Create `runs/client/config/gisketchs_chowkingdom_mod/roles/classes/<id>.toml`.
 
-```json
-{
-  "id": "rogue",
-  "display_name": "Rogue",
-  "icon": "minecraft:grass_block",
-  "description": "Move light, hit hard, and favor quick gear built for sharp openings.",
-  "perks": [
-    {
-      "type": "starting_items",
-      "starting_items": [
-        "minecraft:book",
-        "minecraft:diamond_axe",
-        "minecraft:leather_boots"
-      ]
-    },
-    {
-      "type": "equipment_affinity",
-      "weapon_tag": "gisketchs_chowkingdom_mod:class/rogue_weapons",
-      "armor_tag": "gisketchs_chowkingdom_mod:class/rogue_armor",
-      "wrong_weapon_damage_multiplier": 0.2,
-      "wrong_weapon_attack_speed_multiplier": 0.1,
-      "wrong_weapon_cooldown_ticks": 12,
-      "wrong_armor_disables_sprint": true
-    }
-  ]
-}
+```toml
+id = "rogue"
+display_name = "Rogue"
+icon = "minecraft:grass_block"
+description = "Move light, hit hard, and favor quick gear built for sharp openings."
+perks = [
+  { type = "starting_items", starting_items = ["minecraft:book", "minecraft:diamond_axe", "minecraft:leather_boots"] },
+  { type = "equipment_affinity", weapon_tag = "gisketchs_chowkingdom_mod:class/rogue_weapons", armor_tag = "gisketchs_chowkingdom_mod:class/rogue_armor", wrong_weapon_damage_multiplier = 0.2, wrong_weapon_attack_speed_multiplier = 0.1, wrong_weapon_cooldown_ticks = 12, wrong_armor_disables_sprint = true },
+]
 ```
 
 Current class perk types:
@@ -115,17 +91,15 @@ Current class perk types:
 - `description`: shown in onboarding when the role is hovered or selected.
 - `icon`: item id first, texture resource id second. Use item ids like `minecraft:grass_block` for quick testing. Texture ids can point at bundled assets, for example `gisketchs_chowkingdom_mod:textures/gui/icons/star.png`.
 
-## Onboarding JSON Shape
+## Onboarding TOML Shape
 
-Create or edit `runs/client/config/gisketchs_chowkingdom_mod/roles/onboarding.json`.
+Create or edit `runs/client/config/gisketchs_chowkingdom_mod/roles/onboarding.toml`.
 
-```json
-{
-  "welcome_content": [
-    "A new chapter begins in Chowkingdom. Choose how you work, then choose how you fight.",
-    "Pick your place in the kingdom before the road opens."
-  ]
-}
+```toml
+welcome_content = [
+  "A new chapter begins in Chowkingdom. Choose how you work, then choose how you fight.",
+  "Pick your place in the kingdom before the road opens.",
+]
 ```
 
 One non-empty line is chosen when the onboarding screen is opened.

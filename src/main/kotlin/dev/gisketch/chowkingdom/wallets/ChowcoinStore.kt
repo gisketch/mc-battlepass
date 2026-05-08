@@ -2,6 +2,7 @@ package dev.gisketch.chowkingdom.wallets
 
 import com.google.gson.GsonBuilder
 import dev.gisketch.chowkingdom.ChowKingdomMod
+import dev.gisketch.chowkingdom.config.TomlConfigIO
 import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.level.storage.LevelResource
 import net.neoforged.fml.loading.FMLPaths
@@ -27,7 +28,8 @@ object ChowcoinStore {
             } else {
                 FMLPaths.CONFIGDIR.get()
             }
-            return root.resolve(ChowKingdomMod.MOD_ID).resolve("wallets").resolve("chowcoins.json")
+            val extension = if (server != null) "json" else "toml"
+            return root.resolve(ChowKingdomMod.MOD_ID).resolve("wallets").resolve("chowcoins.$extension")
         }
 
     fun load() {
@@ -36,8 +38,8 @@ object ChowcoinStore {
 
         if (file.exists()) {
             try {
-                val data = file.bufferedReader().use { reader -> gson.fromJson(reader, StoredChowcoinData::class.java) }
-                data?.players?.forEach { (playerId, balance) -> balances[playerId] = balance.coerceAtLeast(0L) }
+                val data = TomlConfigIO.read(file, StoredChowcoinData::class.java, ::StoredChowcoinData)
+                data.players.forEach { (playerId, balance) -> balances[playerId] = balance.coerceAtLeast(0L) }
             } catch (exception: Exception) {
                 ChowKingdomMod.LOGGER.warn("Failed to load chowcoin store {}", file, exception)
             }
@@ -81,11 +83,7 @@ object ChowcoinStore {
     }
 
     private fun save() {
-        file.parent.createDirectories()
-        Files.createTempFile(file.parent, "chowcoins", ".json.tmp").also { temp ->
-            temp.bufferedWriter().use { writer -> gson.toJson(StoredChowcoinData(balances), writer) }
-            Files.move(temp, file, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
-        }
+        TomlConfigIO.write(file, StoredChowcoinData(balances))
     }
 
     private class StoredChowcoinData(

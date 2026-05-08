@@ -2,6 +2,7 @@ package dev.gisketch.chowkingdom.discord
 
 import com.google.gson.GsonBuilder
 import dev.gisketch.chowkingdom.ChowKingdomMod
+import dev.gisketch.chowkingdom.config.TomlConfigIO
 import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.level.storage.LevelResource
 import net.neoforged.fml.loading.FMLPaths
@@ -27,7 +28,8 @@ object DiscordAccountLinkStore {
         get() {
             val server = ServerLifecycleHooks.getCurrentServer()
             val root = if (server != null) server.getWorldPath(LevelResource.ROOT).resolve("data") else FMLPaths.CONFIGDIR.get()
-            return root.resolve(ChowKingdomMod.MOD_ID).resolve("discord").resolve("account_links.json")
+            val extension = if (server != null) "json" else "toml"
+            return root.resolve(ChowKingdomMod.MOD_ID).resolve("discord").resolve("account_links.$extension")
         }
 
     fun load() {
@@ -38,9 +40,9 @@ object DiscordAccountLinkStore {
 
         if (file.exists()) {
             try {
-                val data = file.bufferedReader().use { reader -> gson.fromJson(reader, StoredDiscordAccountLinks::class.java) }
-                data?.links.orEmpty().forEach(::putLink)
-                data?.pending.orEmpty().filter { pending -> !pending.expired() }.forEach { pending -> pendingByCode[pending.code] = pending }
+                val data = TomlConfigIO.read(file, StoredDiscordAccountLinks::class.java, ::StoredDiscordAccountLinks)
+                data.links.forEach(::putLink)
+                data.pending.filter { pending -> !pending.expired() }.forEach { pending -> pendingByCode[pending.code] = pending }
             } catch (exception: Exception) {
                 ChowKingdomMod.LOGGER.warn("Failed to load Discord account links {}", file, exception)
             }
@@ -138,11 +140,7 @@ object DiscordAccountLinkStore {
     }
 
     private fun save() {
-        file.parent.createDirectories()
-        Files.createTempFile(file.parent, "discord_account_links", ".json.tmp").also { temp ->
-            temp.bufferedWriter().use { writer -> gson.toJson(StoredDiscordAccountLinks(linksByMinecraftId.values.toMutableList(), pendingByCode.values.toMutableList()), writer) }
-            Files.move(temp, file, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
-        }
+        TomlConfigIO.write(file, StoredDiscordAccountLinks(linksByMinecraftId.values.toMutableList(), pendingByCode.values.toMutableList()))
     }
 
     private fun generateCode(): String {

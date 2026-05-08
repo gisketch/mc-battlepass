@@ -1,8 +1,8 @@
 package dev.gisketch.chowkingdom.shipping
 
-import com.google.gson.GsonBuilder
 import com.google.gson.annotations.SerializedName
 import dev.gisketch.chowkingdom.ChowKingdomMod
+import dev.gisketch.chowkingdom.config.TomlConfigIO
 import net.minecraft.core.component.DataComponentType
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.core.registries.Registries
@@ -11,26 +11,22 @@ import net.minecraft.tags.TagKey
 import net.minecraft.world.item.Item
 import net.minecraft.world.item.ItemStack
 import net.neoforged.fml.loading.FMLPaths
-import java.nio.file.Files
 import java.nio.file.Path
-import kotlin.io.path.bufferedReader
-import kotlin.io.path.bufferedWriter
 import kotlin.io.path.createDirectories
 import kotlin.io.path.exists
 import kotlin.math.roundToLong
 
 object ShippingBinConfig {
-    private val gson = GsonBuilder().setPrettyPrinting().create()
     private var config = ShippingBinPriceConfig()
 
     private val file: Path
-        get() = FMLPaths.CONFIGDIR.get().resolve(ChowKingdomMod.MOD_ID).resolve("shipping_bin").resolve("prices.json")
+        get() = FMLPaths.CONFIGDIR.get().resolve(ChowKingdomMod.MOD_ID).resolve("shipping_bin").resolve("prices.toml")
 
     fun load() {
         file.parent.createDirectories()
         if (!file.exists()) writeDefault()
         config = try {
-            file.bufferedReader().use { reader -> gson.fromJson(reader, ShippingBinPriceConfig::class.java) } ?: ShippingBinPriceConfig()
+            TomlConfigIO.read(file, ShippingBinPriceConfig::class.java, ::ShippingBinPriceConfig)
         } catch (exception: Exception) {
             ChowKingdomMod.LOGGER.warn("Failed to load shipping bin config {}", file, exception)
             ShippingBinPriceConfig()
@@ -82,10 +78,7 @@ object ShippingBinConfig {
     }
 
     private fun writeDefault() {
-        Files.createTempFile(file.parent, "shipping_bin_prices", ".json.tmp").also { temp ->
-            temp.bufferedWriter().use { writer -> gson.toJson(defaultConfig(), writer) }
-            Files.move(temp, file, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
-        }
+        TomlConfigIO.write(file, defaultConfig())
     }
 
     private fun defaultConfig(): ShippingBinPriceConfig = ShippingBinPriceConfig(

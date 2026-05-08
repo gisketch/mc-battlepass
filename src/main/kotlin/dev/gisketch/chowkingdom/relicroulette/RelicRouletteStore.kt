@@ -2,6 +2,7 @@ package dev.gisketch.chowkingdom.relicroulette
 
 import com.google.gson.GsonBuilder
 import dev.gisketch.chowkingdom.ChowKingdomMod
+import dev.gisketch.chowkingdom.config.TomlConfigIO
 import net.minecraft.world.level.storage.LevelResource
 import net.neoforged.fml.loading.FMLPaths
 import net.neoforged.neoforge.server.ServerLifecycleHooks
@@ -23,14 +24,15 @@ object RelicRouletteStore {
         get() {
             val server = ServerLifecycleHooks.getCurrentServer()
             val root = if (server != null) server.getWorldPath(LevelResource.ROOT).resolve("data") else FMLPaths.CONFIGDIR.get()
-            return root.resolve(ChowKingdomMod.MOD_ID).resolve("relic_roulette").resolve("player_unlocks.json")
+            val extension = if (server != null) "json" else "toml"
+            return root.resolve(ChowKingdomMod.MOD_ID).resolve("relic_roulette").resolve("player_unlocks.$extension")
         }
 
     fun load() {
         file.parent.createDirectories()
         data = if (file.exists()) {
             try {
-                file.bufferedReader().use { reader -> gson.fromJson(reader, RelicRouletteData::class.java) } ?: RelicRouletteData()
+                TomlConfigIO.read(file, RelicRouletteData::class.java, ::RelicRouletteData)
             } catch (exception: Exception) {
                 ChowKingdomMod.LOGGER.warn("Failed to load relic roulette store {}", file, exception)
                 RelicRouletteData()
@@ -71,11 +73,7 @@ object RelicRouletteStore {
     }
 
     private fun save() {
-        file.parent.createDirectories()
-        Files.createTempFile(file.parent, "relic_roulette", ".json.tmp").also { temp ->
-            temp.bufferedWriter().use { writer -> gson.toJson(data, writer) }
-            Files.move(temp, file, StandardCopyOption.REPLACE_EXISTING)
-        }
+        TomlConfigIO.write(file, data)
     }
 }
 
