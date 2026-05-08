@@ -289,7 +289,7 @@ object NpcLlmService {
 
             Channel context:
             - Channel: discord_chat
-            - Speaker: Discord User $discordAuthorName
+            - Speaker: $discordAuthorName (Discord user)
             - Linked Minecraft player: no
             - Matched call name: $matchedCallName
             - Time hour: $hour
@@ -610,7 +610,7 @@ object NpcLlmService {
         NpcStore.recordConversation(definition.id, player, player.gameProfile.name, playerMessage.take(MAX_PLAYER_MESSAGE_LENGTH), "player_world_chat")
         NpcStore.recordConversation(definition.id, player, definition.name, reply, "npc_world_chat_reply")
         if (memorable.isNotBlank()) NpcStore.recordPlayerMemory(player, "llm_memorable", memorable)
-        player.server.playerList.broadcastSystemMessage(worldChatLine(definition.name, player.gameProfile.name, reply), false)
+        NpcNetwork.broadcastWorldChat(player.server, NpcWorldChatPayload(definition.id, definition.name, player.gameProfile.name, player.uuid, "player", reply))
         DiscordRelay.npcWorldChat(definition.id, definition.name, reply, discordMentionUserId) { messageId ->
             NpcWorldChatService.rememberDiscordNpcMessage(messageId, definition.id)
         }
@@ -629,21 +629,15 @@ object NpcLlmService {
     ) {
         val settings = NpcConfig.settings().llm
         val reply = sanitizeReply(message, settings, fallbackMessage)
-        val speakerName = "Discord User $discordAuthorName"
-        server.playerList.broadcastSystemMessage(worldChatLine(definition.name, speakerName, reply), false)
+        val speakerName = discordAuthorName.trim().ifBlank { "Discord" }
+        NpcNetwork.broadcastWorldChat(server, NpcWorldChatPayload(definition.id, definition.name, speakerName, null, "discord", reply))
         DiscordRelay.npcWorldChat(definition.id, definition.name, reply, fallbackName = discordAuthorName) { messageId ->
             NpcWorldChatService.rememberDiscordNpcMessage(messageId, definition.id)
         }
         NpcWorldChatService.recordNpcReply(definition.name, reply, "discord")
-        NpcStore.recordGlobalEvent("npc_world_chat", "${definition.name} replied to $speakerName")
+        NpcStore.recordGlobalEvent("npc_world_chat", "${definition.name} replied to Discord user $speakerName")
         if (memorable.isNotBlank()) NpcStore.recordGlobalMemory("discord_user_memory", "$speakerName: $memorable")
     }
-
-    private fun worldChatLine(npcName: String, targetName: String, message: String): Component = Component.empty()
-        .append(Component.literal(npcName).withStyle(ChatFormatting.WHITE, ChatFormatting.BOLD))
-        .append(Component.literal(" > ").withStyle(ChatFormatting.GRAY))
-        .append(Component.literal(targetName).withStyle(ChatFormatting.WHITE, ChatFormatting.BOLD))
-        .append(Component.literal(": $message").withStyle(ChatFormatting.GRAY))
 
     private fun relayPlayerTalk(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, message: String) {
         val level = npc.level() as? ServerLevel ?: return

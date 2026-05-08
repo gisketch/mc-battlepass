@@ -87,11 +87,12 @@ Implemented behavior:
 - Minecraft-origin replies also relay to Discord through the NPC webhook identity when Discord is enabled.
 - Discord-origin replies broadcast to Minecraft chat and also reply in Discord through the NPC webhook identity.
 - Discord replies are normal webhook chat messages, not embeds.
-- While a world-chat LLM reply is pending, Minecraft players see an animated actionbar line like `Finn is thinking...` and Discord receives a temporary NPC webhook message that is deleted before the final reply when Discord allows it.
+- While a world-chat LLM reply is pending, Minecraft players see an NPC world-chat entry like `Finn is thinking...` with the NPC chat head. Discord receives a temporary NPC webhook message that is deleted before the final reply when Discord allows it.
 - If the source player has a linked Discord account, the Discord NPC reply mentions that user.
-- If the source Discord user is unlinked, Minecraft sees them as `Discord User <name>` and Discord receives a normal name-prefixed NPC reply.
+- If the source Discord user is unlinked, Minecraft shows their Discord display name with the Discord chat icon, and Discord receives a normal name-prefixed NPC reply.
 - If a Discord user replies to a tracked NPC webhook world-chat message, that reply routes back to the same NPC even without a call name.
 - Minecraft world-chat output renders speaker names in bold white and the separator/message in gray.
+- Minecraft NPC world-chat output is delivered through a client payload so the local client can add the chat line and draw Chat Heads-style face icons over reserved slots. NPC heads use the NPC skin crop; linked Minecraft players use the same QuickSkin head PNG path as the custom tab HUD, then fall back to the vanilla player skin. Discord guests use the existing Discord chat icon.
 - The prompt includes the latest shared world-chat buffer across Minecraft chat, Discord chat, and NPC world-chat replies.
 - Store prompts include the NPC store id, active stock key, current visible offers, prices, and stock status. If all active offers are sold out, the prompt still lists the active catalog as out of stock instead of hiding the store inventory.
 

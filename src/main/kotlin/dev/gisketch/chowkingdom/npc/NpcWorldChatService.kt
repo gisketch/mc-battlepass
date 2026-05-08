@@ -2,8 +2,6 @@ package dev.gisketch.chowkingdom.npc
 
 import dev.gisketch.chowkingdom.discord.DiscordAccountLinkStore
 import dev.gisketch.chowkingdom.discord.DiscordRelay
-import net.minecraft.ChatFormatting
-import net.minecraft.network.chat.Component
 import net.minecraft.server.MinecraftServer
 import net.minecraft.server.level.ServerPlayer
 import java.util.Locale
@@ -18,6 +16,7 @@ object NpcWorldChatService {
 
     fun beginThinking(server: MinecraftServer, responseToken: Long, npcId: String, npcName: String) {
         activeThinking[responseToken] = NpcWorldChatThinking(npcId, npcName)
+        NpcNetwork.broadcastWorldChat(server, NpcWorldChatPayload(npcId, npcName, "", null, "thinking", "is thinking..."))
         DiscordRelay.npcWorldChatThinking(npcId, npcName) { messageId ->
             val thinking = activeThinking[responseToken]
             if (thinking != null) {
@@ -26,17 +25,13 @@ object NpcWorldChatService {
                 DiscordRelay.deleteNpcWorldChatMessage(messageId)
             }
         }
-        pushThinking(server, responseToken, System.currentTimeMillis())
     }
 
     fun endThinking(responseToken: Long) {
         activeThinking.remove(responseToken)?.discordMessageId?.let(DiscordRelay::deleteNpcWorldChatMessage)
     }
 
-    fun tick(server: MinecraftServer) {
-        val now = System.currentTimeMillis()
-        activeThinking.keys.forEach { responseToken -> pushThinking(server, responseToken, now) }
-    }
+    fun tick(server: MinecraftServer) = Unit
 
     fun onMinecraftChat(player: ServerPlayer, rawMessage: String) {
         recordChat("minecraft", player.gameProfile.name, rawMessage)
@@ -128,15 +123,6 @@ object NpcWorldChatService {
         return true
     }
 
-    private fun pushThinking(server: MinecraftServer, responseToken: Long, now: Long) {
-        val thinking = activeThinking[responseToken] ?: return
-        if (now < thinking.nextMinecraftAtMs) return
-        thinking.nextMinecraftAtMs = now + MINECRAFT_THINKING_INTERVAL_MS
-        val dots = ".".repeat(((now / MINECRAFT_THINKING_INTERVAL_MS) % 3L).toInt() + 1)
-        val line = Component.literal("${thinking.npcName} is thinking$dots").withStyle(ChatFormatting.GRAY)
-        server.playerList.players.forEach { player -> player.displayClientMessage(line, true) }
-    }
-
     private fun matchNpc(rawMessage: String, allowMinecraft: Boolean, allowDiscord: Boolean): NpcWorldChatMatch? {
         val message = rawMessage.trim()
         if (message.isBlank()) return null
@@ -181,11 +167,9 @@ private data class NpcWorldChatThinking(
     val npcId: String,
     val npcName: String,
     @Volatile var discordMessageId: String? = null,
-    @Volatile var nextMinecraftAtMs: Long = 0L,
 )
 
 private const val MAX_WORLD_CHAT_MESSAGE_LENGTH = 220
 private const val MAX_STORED_WORLD_CHAT_LINES = 40
 private const val MAX_RECENT_WORLD_CHAT_LINES = 20
 private const val MAX_TRACKED_DISCORD_NPC_MESSAGES = 200
-private const val MINECRAFT_THINKING_INTERVAL_MS = 700L

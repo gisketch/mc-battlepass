@@ -49,9 +49,10 @@ Polish the restored NPC screen dialog and relay NPC speech to nearby players plu
 - NPC LLM world chat supports per-NPC `chat.call_names` from Minecraft chat, linked Discord users, and unlinked Discord users, with normal chat/webhook replies instead of dialog UI.
 - NPC world-chat LLM prompts include a bounded shared recent chat buffer across Minecraft, Discord, and NPC world-chat replies.
 - Discord replies to tracked NPC webhook messages route back to the same NPC without requiring a call name.
-- NPC world-chat LLM pending state shows `NPC is thinking...` in Minecraft actionbar and a temporary Discord webhook message that is deleted before the final reply.
+- NPC world-chat LLM pending state shows `NPC is thinking...` as a Minecraft world-chat entry and a temporary Discord webhook message that is deleted before the final reply.
 - NPC LLM store context tells the model the store id, active stock key, visible offers, prices, and out-of-stock status instead of returning an empty stock summary.
 - `/npc debug llm` shows current LLM settings and recent in-memory LLM failures with HTTP status/body snippets for debugging provider errors.
+- NPC world-chat lines include Chat Heads-style rendered heads before the NPC and target names. NPC heads use NPC skin crops; linked player targets use the existing QuickSkin head PNG system with vanilla skin fallback, and Discord targets use the existing Discord chat icon.
 
 ## Plan
 
@@ -124,7 +125,8 @@ Polish the restored NPC screen dialog and relay NPC speech to nearby players plu
 - 2026-05-08: Added shared NPC LLM talk sessions with JOIN CONVERSATION mode, per-participant response tokens, stale request cancellation, and combined group prompts/replies.
 - 2026-05-08: Added NPC world chat V1 with per-NPC `call_names`, Minecraft chat triggers, Discord inbound triggers for linked online players, normal NPC webhook replies, Discord mentions, and stale per-NPC world-chat request handling.
 - 2026-05-08: Added shared world-chat history context and enabled chat settings in local run NPC configs for Finn and Shou Mai.
-- 2026-05-08: Added unlinked Discord NPC world-chat support using a Discord guest prompt context and `Discord User <name>` Minecraft display.
+- 2026-05-08: Added unlinked Discord NPC world-chat support using a Discord guest prompt context and raw Discord display names in Minecraft.
 - 2026-05-08: Added Discord NPC webhook reply tracking via returned webhook message ids, inbound `message_reference` routing, and bold-white name styling for Minecraft world-chat lines.
-- 2026-05-08: Added world-chat thinking indicators for Minecraft actionbar/temporary Discord webhook messages and made store prompt summaries include active catalog data even when stock is sold out.
+- 2026-05-08: Added world-chat thinking indicators for Minecraft chat/temporary Discord webhook messages and made store prompt summaries include active catalog data even when stock is sold out.
 - 2026-05-08: Added `/npc debug llm` plus a bounded in-memory LLM failure buffer for HTTP statuses, request exceptions, empty provider payloads, and non-JSON model replies.
+- 2026-05-08: Replaced bitmap font chat-head glyphs with a client NPC world-chat payload plus Chat Heads-style rendered NPC/player/Discord heads; player heads reuse the existing QuickSkin head PNG path.

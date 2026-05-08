@@ -1,15 +1,21 @@
 package dev.gisketch.chowkingdom.npc
 
 import com.mojang.blaze3d.systems.RenderSystem
+import com.mojang.blaze3d.platform.NativeImage
 import com.mojang.blaze3d.vertex.PoseStack
 import com.mojang.math.Axis
 import dev.gisketch.chowkingdom.ChowKingdomMod
+import dev.gisketch.chowkingdom.discord.DiscordQuickSkinSupport
 import dev.gisketch.chowkingdom.mixin.GuiGraphicsAccessor
+import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.Font
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.components.EditBox
+import net.minecraft.client.gui.components.ComponentRenderUtils
 import net.minecraft.client.gui.screens.inventory.tooltip.ClientTooltipComponent
+import net.minecraft.client.gui.components.PlayerFaceRenderer
+import net.minecraft.client.gui.screens.ChatScreen
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.model.HumanoidModel
 import net.minecraft.client.model.PlayerModel
@@ -19,6 +25,7 @@ import net.minecraft.client.renderer.MultiBufferSource
 import net.minecraft.client.renderer.entity.EntityRendererProvider
 import net.minecraft.client.renderer.entity.MobRenderer
 import net.minecraft.client.renderer.entity.layers.ItemInHandLayer
+import net.minecraft.client.renderer.texture.DynamicTexture
 import net.minecraft.client.resources.sounds.SimpleSoundInstance
 import net.minecraft.network.chat.Component
 import net.minecraft.network.chat.FormattedText
@@ -27,10 +34,12 @@ import net.minecraft.sounds.SoundEvent
 import net.minecraft.sounds.SoundSource
 import net.minecraft.util.RandomSource
 import net.minecraft.world.entity.LivingEntity
+import net.minecraft.world.entity.player.ChatVisiblity
 import net.minecraft.world.inventory.tooltip.TooltipComponent
 import net.minecraft.world.item.ItemStack
 import net.neoforged.bus.api.IEventBus
 import net.neoforged.neoforge.client.event.EntityRenderersEvent
+import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent
 import net.neoforged.neoforge.client.event.RegisterClientTooltipComponentFactoriesEvent
 import net.neoforged.neoforge.client.event.RenderGuiLayerEvent
 import net.neoforged.neoforge.client.event.RenderTooltipEvent
@@ -38,16 +47,23 @@ import net.neoforged.neoforge.client.gui.VanillaGuiLayers
 import net.neoforged.neoforge.common.NeoForge
 import com.mojang.datafixers.util.Either
 import java.util.Locale
+import java.util.UUID
+import java.io.ByteArrayInputStream
+import kotlin.math.floor
 import kotlin.math.abs
 import kotlin.math.asin
 import kotlin.math.atan2
 import kotlin.math.PI
+import kotlin.math.roundToInt
 import kotlin.math.sin
 import org.joml.Quaternionf
 import org.joml.Vector3f
 
 object NpcClient {
+    private val WORLD_CHAT_HEADS_LAYER_ID = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "npc_world_chat_heads")
     private val activeBalloons = mutableMapOf<Int, NpcBalloonLine>()
+    private val worldChatEntries = mutableListOf<NpcWorldChatEntry>()
+    private val quickSkinChatTextures = mutableMapOf<UUID, ResourceLocation?>()
     private val skippedTalkResponses = mutableSetOf<Long>()
 
     @JvmStatic
@@ -63,6 +79,17 @@ object NpcClient {
     @JvmStatic
     fun receiveTalkResponse(payload: NpcTalkResponsePayload) {
         (Minecraft.getInstance().screen as? NpcDialogScreen)?.receiveTalkResponse(payload)
+    }
+
+    @JvmStatic
+    fun receiveWorldChat(payload: NpcWorldChatPayload) {
+        val minecraft = Minecraft.getInstance()
+        val line = worldChatLine(payload)
+        minecraft.gui.chat.addMessage(line)
+        val lineCount = worldChatLineCount(minecraft, line)
+        val targetHeadX = if (payload.targetKind == "thinking") 0 else minecraft.font.width(worldChatTargetPrefix(payload.npcName))
+        worldChatEntries.add(0, NpcWorldChatEntry(payload.npcId, payload.targetName, payload.targetId, payload.targetKind, minecraft.gui.guiTicks, lineCount, targetHeadX))
+        while (worldChatEntries.size > MAX_WORLD_CHAT_HEAD_ENTRIES) worldChatEntries.removeLast()
     }
 
     fun skipTalkResponse(responseToken: Long) {
@@ -117,6 +144,7 @@ object NpcClient {
 
     fun register(modBus: IEventBus) {
         modBus.addListener(::registerRenderers)
+        modBus.addListener(::registerGuiLayers)
         modBus.addListener(::registerTooltipFactories)
         NeoForge.EVENT_BUS.addListener(::hideHotbarDuringDialog)
         NeoForge.EVENT_BUS.addListener(::gatherRentContractTooltip)
@@ -128,6 +156,10 @@ object NpcClient {
     private fun registerRenderers(event: EntityRenderersEvent.RegisterRenderers) {
         event.registerEntityRenderer(NpcFeature.NPC_ENTITY.get(), ::ChowNpcRenderer)
         event.registerBlockEntityRenderer(NpcFeature.CAMPING_BLOCK_ENTITY.get()) { CampingBlockRenderer() }
+    }
+
+    private fun registerGuiLayers(event: RegisterGuiLayersEvent) {
+        event.registerAbove(VanillaGuiLayers.CHAT, WORLD_CHAT_HEADS_LAYER_ID) { guiGraphics, _ -> renderWorldChatHeads(guiGraphics) }
     }
 
     private fun registerTooltipFactories(event: RegisterClientTooltipComponentFactoriesEvent) {
@@ -147,7 +179,135 @@ object NpcClient {
         if (event.name in HIDDEN_DIALOG_HUD_LAYERS) event.isCanceled = true
     }
 
+    private fun renderWorldChatHeads(guiGraphics: GuiGraphics) {
+        val minecraft = Minecraft.getInstance()
+        if (minecraft.options.hideGui || minecraft.options.chatVisibility().get() == ChatVisiblity.HIDDEN) return
+        if (worldChatEntries.isEmpty()) return
+
+        val focused = minecraft.screen is ChatScreen
+        val now = minecraft.gui.guiTicks
+        worldChatEntries.removeIf { entry -> !focused && now - entry.addedTick >= CHAT_FADE_TICKS }
+        val scale = minecraft.gui.chat.scale
+        if (scale <= 0.0) return
+
+        val lineHeight = (9.0 * (minecraft.options.chatLineSpacing().get() + 1.0)).toInt().coerceAtLeast(1)
+        val lineOffset = Math.round(-8.0 * (minecraft.options.chatLineSpacing().get() + 1.0) + 4.0 * minecraft.options.chatLineSpacing().get()).toInt()
+        val chatBottom = floor((guiGraphics.guiHeight() - CHAT_BOTTOM_MARGIN) / scale).toInt()
+        val headSize = (CHAT_HEAD_SIZE * scale).roundToInt().coerceAtLeast(1)
+        var visualLineOffset = 0
+        worldChatEntries.forEach { entry ->
+            val firstLineOffset = visualLineOffset + entry.lineCount - 1
+            visualLineOffset += entry.lineCount
+            val age = now - entry.addedTick
+            val alpha = if (focused) 1.0f else chatFade(age) * (minecraft.options.chatOpacity().get().toFloat() * 0.9f + 0.1f)
+            if (alpha <= 0.02f) return@forEach
+            val y = ((chatBottom - firstLineOffset * lineHeight + lineOffset) * scale).roundToInt()
+            val npcX = (CHAT_LEFT_MARGIN * scale).roundToInt()
+            renderNpcChatHead(guiGraphics, entry.npcId, npcX, y, headSize, alpha)
+            if (entry.targetKind != "thinking") {
+                val targetX = ((CHAT_LEFT_MARGIN + entry.targetHeadX) * scale).roundToInt()
+                renderTargetChatHead(guiGraphics, entry.targetKind, entry.targetId, entry.targetName, targetX, y, headSize, alpha)
+            }
+        }
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f)
+    }
+
+    private fun renderNpcChatHead(guiGraphics: GuiGraphics, npcId: String, x: Int, y: Int, size: Int, alpha: Float) {
+        RenderSystem.enableBlend()
+        RenderSystem.defaultBlendFunc()
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, alpha)
+        val texture = npcTexture(npcId)
+        guiGraphics.blit(texture, x, y, size, size, 8.0f, 8.0f, 8, 8, 64, 64)
+        guiGraphics.blit(texture, x, y, size, size, 40.0f, 8.0f, 8, 8, 64, 64)
+    }
+
+    private fun renderTargetChatHead(guiGraphics: GuiGraphics, targetKind: String, playerId: UUID?, name: String, x: Int, y: Int, size: Int, alpha: Float) {
+        if (targetKind == "discord") return renderDiscordChatHead(guiGraphics, x, y, size, alpha)
+        val minecraft = Minecraft.getInstance()
+        val quickSkinTexture = playerId?.let(::quickSkinChatTexture)
+        val skin = playerId?.let { id -> minecraft.connection?.getPlayerInfo(id)?.skin }
+        RenderSystem.enableBlend()
+        RenderSystem.defaultBlendFunc()
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, alpha)
+        when {
+            quickSkinTexture != null -> guiGraphics.blit(quickSkinTexture, x, y, size, size, 0.0f, 0.0f, QUICKSKIN_HEAD_TEXTURE_SIZE, QUICKSKIN_HEAD_TEXTURE_SIZE, QUICKSKIN_HEAD_TEXTURE_SIZE, QUICKSKIN_HEAD_TEXTURE_SIZE)
+            skin != null -> PlayerFaceRenderer.draw(guiGraphics, skin, x, y, size)
+            else -> renderFallbackChatHead(guiGraphics, name, x, y, size, alpha)
+        }
+    }
+
+    private fun renderDiscordChatHead(guiGraphics: GuiGraphics, x: Int, y: Int, size: Int, alpha: Float) {
+        RenderSystem.enableBlend()
+        RenderSystem.defaultBlendFunc()
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, alpha)
+        guiGraphics.blit(DISCORD_CHAT_ICON, x, y, size, size, 0.0f, 0.0f, DISCORD_CHAT_ICON_TEXTURE_SIZE, DISCORD_CHAT_ICON_TEXTURE_SIZE, DISCORD_CHAT_ICON_TEXTURE_SIZE, DISCORD_CHAT_ICON_TEXTURE_SIZE)
+    }
+
+    private fun renderFallbackChatHead(guiGraphics: GuiGraphics, name: String, x: Int, y: Int, size: Int, alpha: Float) {
+        val color = withAlpha(CHAT_HEAD_FALLBACK_FILL, alpha)
+        guiGraphics.fill(x, y, x + size, y + size, color)
+        val letter = name.trim().take(1).uppercase(Locale.ROOT).ifBlank { "?" }
+        val textX = x + ((size - Minecraft.getInstance().font.width(letter)) / 2).coerceAtLeast(0)
+        val textY = y + ((size - 8) / 2).coerceAtLeast(0)
+        guiGraphics.drawString(Minecraft.getInstance().font, letter, textX, textY, withAlpha(0x00FFFFFF, alpha), false)
+    }
+
+    private fun quickSkinChatTexture(playerId: UUID): ResourceLocation? {
+        if (quickSkinChatTextures.containsKey(playerId)) return quickSkinChatTextures[playerId]
+        val texture = runCatching {
+            val bytes = DiscordQuickSkinSupport.quickSkinHeadPng(playerId) ?: return@runCatching null
+            val image = NativeImage.read(ByteArrayInputStream(bytes))
+            val id = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "quickskin/chat_head/${playerId.toString().replace("-", "_")}")
+            Minecraft.getInstance().textureManager.register(id, DynamicTexture(image))
+            id
+        }.getOrNull()
+        quickSkinChatTextures[playerId] = texture
+        return texture
+    }
+
+    private fun worldChatLine(payload: NpcWorldChatPayload): Component = Component.empty()
+        .append(Component.literal(CHAT_HEAD_SPACES))
+        .append(Component.literal(payload.npcName).withStyle(ChatFormatting.WHITE, ChatFormatting.BOLD))
+        .also { component ->
+            if (payload.targetKind == "thinking") {
+                component.append(Component.literal(" ${payload.message}").withStyle(ChatFormatting.GRAY))
+            } else {
+                component.append(Component.literal(" > ").withStyle(ChatFormatting.GRAY))
+                    .append(Component.literal(CHAT_HEAD_SPACES))
+                    .append(Component.literal(payload.targetName).withStyle(ChatFormatting.WHITE, ChatFormatting.BOLD))
+                    .append(Component.literal(": ${payload.message}").withStyle(ChatFormatting.GRAY))
+            }
+        }
+
+    private fun worldChatTargetPrefix(npcName: String): Component = Component.empty()
+        .append(Component.literal(CHAT_HEAD_SPACES))
+        .append(Component.literal(npcName).withStyle(ChatFormatting.WHITE, ChatFormatting.BOLD))
+        .append(Component.literal(" > ").withStyle(ChatFormatting.GRAY))
+
+    private fun worldChatLineCount(minecraft: Minecraft, line: Component): Int {
+        val maxWidth = floor(minecraft.gui.chat.width / minecraft.gui.chat.scale).toInt().coerceAtLeast(1)
+        return ComponentRenderUtils.wrapComponents(line, maxWidth, minecraft.font).size.coerceAtLeast(1)
+    }
+
+    private fun chatFade(ageTicks: Int): Float {
+        val progress = (1.0 - (ageTicks.coerceAtLeast(0) / CHAT_FADE_TICKS.toDouble())).coerceIn(0.0, 1.0) * 10.0
+        val clamped = progress.coerceIn(0.0, 1.0)
+        return (clamped * clamped).toFloat()
+    }
+
+    private fun withAlpha(rgb: Int, alpha: Float): Int = ((alpha.coerceIn(0.0f, 1.0f) * 255).roundToInt() shl 24) or (rgb and 0x00FFFFFF)
+
     private data class NpcBalloonLine(val message: String, val expiresAtMs: Long)
+
+    private data class NpcWorldChatEntry(
+        val npcId: String,
+        val targetName: String,
+        val targetId: UUID?,
+        val targetKind: String,
+        val addedTick: Int,
+        val lineCount: Int,
+        val targetHeadX: Int,
+    )
 
     private val HIDDEN_DIALOG_HUD_LAYERS = setOf(
         VanillaGuiLayers.HOTBAR,
@@ -204,6 +364,16 @@ object NpcClient {
     private const val BALLOON_TEXTURE_SIZE = 16
     private const val BALLOON_LINE_HEIGHT = 9
     private const val BALLOON_TEXT_COLOR = 0xFF24201C.toInt()
+    private const val CHAT_HEAD_SPACES = "   "
+    private const val CHAT_HEAD_SIZE = 8
+    private const val CHAT_LEFT_MARGIN = 4
+    private const val CHAT_BOTTOM_MARGIN = 40
+    private const val CHAT_FADE_TICKS = 200
+    private const val MAX_WORLD_CHAT_HEAD_ENTRIES = 50
+    private const val QUICKSKIN_HEAD_TEXTURE_SIZE = 128
+    private const val DISCORD_CHAT_ICON_TEXTURE_SIZE = 8
+    private const val CHAT_HEAD_FALLBACK_FILL = 0x003D4352
+    private val DISCORD_CHAT_ICON = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/fonts/discord.png")
 }
 
 private fun npcTexture(npcId: String): ResourceLocation {
