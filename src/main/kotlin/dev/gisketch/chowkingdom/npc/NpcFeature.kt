@@ -54,6 +54,7 @@ import net.neoforged.bus.api.IEventBus
 import net.neoforged.bus.api.EventPriority
 import net.neoforged.neoforge.common.NeoForge
 import net.neoforged.neoforge.event.RegisterCommandsEvent
+import net.neoforged.neoforge.event.ServerChatEvent
 import net.neoforged.neoforge.event.entity.EntityAttributeCreationEvent
 import net.neoforged.neoforge.event.entity.living.LivingDamageEvent
 import net.neoforged.neoforge.event.entity.living.LivingDeathEvent
@@ -112,6 +113,7 @@ object NpcFeature {
         NeoForge.EVENT_BUS.addListener(::onLivingDeath)
         NeoForge.EVENT_BUS.addListener(::onPlayerLoggedIn)
         NeoForge.EVENT_BUS.addListener(::onPlayerLoggedOut)
+        NeoForge.EVENT_BUS.addListener(::onServerChat)
         NeoForge.EVENT_BUS.addListener(::onBlockBreak)
         NeoForge.EVENT_BUS.addListener(::onRegisterCommands)
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, ::onRightClickBlock)
@@ -647,6 +649,7 @@ object NpcFeature {
         tickCamperSpawner(event.server)
         tickClockDebug(event.server)
         tickRealtimeDebug(event.server)
+        NpcWorldChatService.tick(event.server)
     }
 
     private fun onLivingDamagePre(event: LivingDamageEvent.Pre) {
@@ -671,6 +674,10 @@ object NpcFeature {
         val player = event.entity as? ServerPlayer ?: return
         NpcStore.recordGlobalEvent("player_leave", "${player.gameProfile.name} left the server")
         NpcConfig.all().forEach { definition -> NpcLlmService.cancel(player, definition.id) }
+    }
+
+    private fun onServerChat(event: ServerChatEvent) {
+        NpcWorldChatService.onMinecraftChat(event.player, event.rawText)
     }
 
     private fun onLivingDeath(event: LivingDeathEvent) {
@@ -818,6 +825,10 @@ object NpcFeature {
                         .executes(::debugClockCommand),
                 )
                 .then(
+                    Commands.literal("llm")
+                        .executes(::debugLlmCommand),
+                )
+                .then(
                     Commands.literal("time")
                         .then(Commands.argument("multiplier", IntegerArgumentType.integer(1, 240)).executes(::debugTimeCommand)),
                 )
@@ -955,6 +966,18 @@ object NpcFeature {
         player.sendSystemMessage(Component.literal("CK CLOCK DEBUG: ${clockDebugLine(player.level())}").withStyle(ChatFormatting.GOLD))
         player.sendSystemMessage(Component.literal("Actionbar will update live. Run /npc debug clock again to stop.").withStyle(ChatFormatting.DARK_GRAY))
         return 1
+    }
+
+    private fun debugLlmCommand(context: CommandContext<CommandSourceStack>): Int {
+        val settings = NpcConfig.settings().llm
+        context.source.sendSuccess({ Component.literal("NPC LLM DEBUG enabled=${settings.enabled} provider=${settings.provider} model=${settings.model}").withStyle(ChatFormatting.GOLD) }, false)
+        val lines = NpcLlmService.debugErrorLines()
+        if (lines.isEmpty()) {
+            context.source.sendSuccess({ Component.literal("No recent LLM errors recorded.").withStyle(ChatFormatting.GRAY) }, false)
+            return 1
+        }
+        lines.forEach { line -> context.source.sendSuccess({ Component.literal(line).withStyle(ChatFormatting.GRAY) }, false) }
+        return lines.size
     }
 
     private fun debugTimeCommand(context: CommandContext<CommandSourceStack>): Int {

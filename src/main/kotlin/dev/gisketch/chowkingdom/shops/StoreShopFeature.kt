@@ -168,13 +168,17 @@ object StoreShopFeature {
         reloadDefinitions()
         val definition = definitions[storeId.lowercase(Locale.ROOT)] ?: return "No configured store."
         val normalizedStockKey = stockKey(stockKey, definition.id)
-        val offers = activeOffers(definition, normalizedStockKey)
-            .filter { active -> stock(normalizedStockKey, active.pool, active.offer.id) > 0 }
-            .take(maxEntries.coerceIn(1, 16))
-        val items = offers.joinToString("; ") { active ->
-            "${active.pool.label} ${active.category.id}: ${active.offer.item} price=${active.offer.priceAmount} stock=${stock(normalizedStockKey, active.pool, active.offer.id)}"
-        }.ifBlank { "No visible stock right now." }
-        return "${definition.displayName} (${definition.id}); resets at ${definition.resetHour.toString().padStart(2, '0')}:${definition.resetMinute.toString().padStart(2, '0')} ${definition.timeZone}; items: $items"
+        val activeOffers = activeOffers(definition, normalizedStockKey)
+        if (statePath != null) saveState()
+        val stockedOffers = activeOffers.filter { active -> stock(normalizedStockKey, active.pool, active.offer.id) > 0 }
+        val visibleOffers = stockedOffers.ifEmpty { activeOffers }.take(maxEntries.coerceIn(1, 16))
+        val items = visibleOffers.joinToString("; ") { active ->
+            val count = stock(normalizedStockKey, active.pool, active.offer.id)
+            val stockText = if (count > 0) count.toString() else "out"
+            "${active.pool.label} ${active.category.id}: ${active.offer.item} price=${active.offer.priceAmount} stock=$stockText"
+        }.ifBlank { "No configured offers right now." }
+        val stockNote = if (stockedOffers.isEmpty() && activeOffers.isNotEmpty()) "All listed offers are currently out of stock. " else ""
+        return "${definition.displayName} (${definition.id}); stock_key=$normalizedStockKey; resets at ${definition.resetHour.toString().padStart(2, '0')}:${definition.resetMinute.toString().padStart(2, '0')} ${definition.timeZone}; ${stockNote}items: $items"
     }
 
     private fun buy(player: ServerPlayer, storeId: String, stockKey: String, lines: List<ShopViewCartLine>) {

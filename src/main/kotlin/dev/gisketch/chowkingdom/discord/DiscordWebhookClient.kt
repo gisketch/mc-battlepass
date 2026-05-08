@@ -3,6 +3,7 @@ package dev.gisketch.chowkingdom.discord
 import com.google.gson.Gson
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
+import com.google.gson.JsonParser
 import dev.gisketch.chowkingdom.ChowKingdomMod
 import java.net.URI
 import java.net.http.HttpClient
@@ -21,6 +22,34 @@ object DiscordWebhookClient {
     }
 
     fun send(message: DiscordWebhookMessage) {
+        sendInternal(message, waitForMessage = false, onMessageId = null)
+    }
+
+    fun sendAndCaptureMessageId(message: DiscordWebhookMessage, onMessageId: (String) -> Unit) {
+        sendInternal(message, waitForMessage = true, onMessageId = onMessageId)
+    }
+
+    fun deleteMessage(messageId: String) {
+        val config = DiscordConfig.current()
+        if (!config.enabled || config.webhookUrl.isBlank() || messageId.isBlank()) return
+        val request = runCatching {
+            HttpRequest.newBuilder(URI.create("${baseWebhookUrl(config.webhookUrl)}/messages/$messageId"))
+                .timeout(Duration.ofSeconds(10))
+                .DELETE()
+                .build()
+        }.getOrElse { exception ->
+            ChowKingdomMod.LOGGER.warn("Invalid Discord webhook URL for delete", exception)
+            return
+        }
+        client.sendAsync(request, HttpResponse.BodyHandlers.discarding())
+            .thenAccept { response -> if (response.statusCode() !in 200..299 && response.statusCode() != 404) ChowKingdomMod.LOGGER.warn("Discord webhook delete returned HTTP {}", response.statusCode()) }
+            .exceptionally { exception ->
+                ChowKingdomMod.LOGGER.warn("Failed to delete Discord webhook message", exception)
+                null
+            }
+    }
+
+    private fun sendInternal(message: DiscordWebhookMessage, waitForMessage: Boolean, onMessageId: ((String) -> Unit)?) {
         val config = DiscordConfig.current()
         if (!config.enabled || config.webhookUrl.isBlank()) return
         val effectiveUsername = message.username?.trim()?.takeIf(String::isNotBlank) ?: config.webhookUsername
@@ -38,7 +67,7 @@ object DiscordWebhookClient {
         }
 
         val request = runCatching {
-            HttpRequest.newBuilder(URI.create(config.webhookUrl))
+            HttpRequest.newBuilder(URI.create(if (waitForMessage) waitUrl(config.webhookUrl) else config.webhookUrl))
                 .timeout(Duration.ofSeconds(10))
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(payload)))
@@ -48,10 +77,16 @@ object DiscordWebhookClient {
             return
         }
 
-        client.sendAsync(request, HttpResponse.BodyHandlers.discarding())
+        val bodyHandler = if (waitForMessage) HttpResponse.BodyHandlers.ofString() else HttpResponse.BodyHandlers.discarding().let { HttpResponse.BodyHandlers.replacing("") }
+        client.sendAsync(request, bodyHandler)
             .thenAccept { response ->
                 if (response.statusCode() !in 200..299) {
                     ChowKingdomMod.LOGGER.warn("Discord webhook returned HTTP {}", response.statusCode())
+                    return@thenAccept
+                }
+                if (waitForMessage && onMessageId != null) {
+                    val messageId = runCatching { JsonParser.parseString(response.body()).asJsonObject.get("id")?.asString.orEmpty() }.getOrDefault("")
+                    if (messageId.isNotBlank()) onMessageId(messageId)
                 }
             }
             .exceptionally { exception ->
@@ -59,6 +94,10 @@ object DiscordWebhookClient {
                 null
             }
     }
+
+    private fun waitUrl(url: String): String = if (url.contains('?')) "$url&wait=true" else "$url?wait=true"
+
+    private fun baseWebhookUrl(url: String): String = url.substringBefore('?').trimEnd('/')
 
     private const val DISCORD_CONTENT_LIMIT = 2000
     private const val DISCORD_USERNAME_LIMIT = 80

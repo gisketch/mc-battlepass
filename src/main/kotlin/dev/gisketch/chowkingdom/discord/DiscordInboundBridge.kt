@@ -4,6 +4,7 @@ import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import dev.gisketch.chowkingdom.ChowKingdomMod
+import dev.gisketch.chowkingdom.npc.NpcWorldChatService
 import dev.gisketch.chowkingdom.profiles.NicknameStore
 import net.minecraft.network.chat.ClickEvent
 import net.minecraft.network.chat.Component
@@ -278,6 +279,7 @@ object DiscordInboundBridge {
                 ?.let(server.playerList::getPlayer)
             val author = link?.minecraftName ?: message.author
             server.playerList.broadcastSystemMessage(inboundMessageComponent(config, message, author, linkedPlayer), false)
+            NpcWorldChatService.onDiscordChat(server, message.authorId, message.author, message.content, message.referencedMessageId)
         }
     }
 
@@ -437,7 +439,8 @@ object DiscordInboundBridge {
         val authorName = author.get("global_name")?.takeIf { !it.isJsonNull }?.asString?.takeIf(String::isNotBlank)
             ?: author.get("username")?.asString?.takeIf(String::isNotBlank)
             ?: "Discord"
-        return InboundMessage(id, authorId, authorName, content)
+        val referencedMessageId = getAsJsonObject("message_reference")?.get("message_id")?.asString?.takeIf(String::isNotBlank)
+        return InboundMessage(id, authorId, authorName, content, referencedMessageId)
     }
 
     private fun isAfter(id: String, previousId: String): Boolean = runCatching {
@@ -483,7 +486,7 @@ object DiscordInboundBridge {
         }
     }
 
-    private data class InboundMessage(val id: String, val authorId: String, val author: String, val content: String)
+    private data class InboundMessage(val id: String, val authorId: String, val author: String, val content: String, val referencedMessageId: String? = null)
 
     private const val DISCORD_INTENT_GUILDS = 1
     private const val DISCORD_INTENT_GUILD_MESSAGES = 512

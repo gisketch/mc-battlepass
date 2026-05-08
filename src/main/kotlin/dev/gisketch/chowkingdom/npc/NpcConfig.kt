@@ -118,6 +118,7 @@ object NpcConfig {
         ),
         housing = NpcHousingDefinition(canMoveIn = true, requiresBed = true),
         voice = NpcVoiceDefinition(animalesePitch = "low", pitch = 0.95f, volume = 0.38f, radius = 12.0f),
+        chat = NpcChatDefinition(callNames = mutableListOf("finn", "dude")),
         gifts = NpcGiftsDefinition(
             loved = mutableListOf("minecraft:diamond_sword", "#minecraft:swords"),
             liked = mutableListOf("minecraft:cooked_beef", "minecraft:iron_sword"),

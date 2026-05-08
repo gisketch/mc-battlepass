@@ -16,6 +16,7 @@ class NpcDefinition(
     var housing: NpcHousingDefinition = NpcHousingDefinition(),
     var gifts: NpcGiftsDefinition = NpcGiftsDefinition(),
     @SerializedName("voice") var voice: NpcVoiceDefinition = NpcVoiceDefinition(),
+    var chat: NpcChatDefinition = NpcChatDefinition(),
     @SerializedName("friendship_messages") var friendshipMessages: NpcFriendshipMessagesDefinition = NpcFriendshipMessagesDefinition(),
     @SerializedName("shop_messages") var shopMessages: NpcShopMessagesDefinition = NpcShopMessagesDefinition(),
     @SerializedName("camper_messages") var camperMessages: NpcCamperMessagesDefinition = NpcCamperMessagesDefinition(),
@@ -37,6 +38,7 @@ class NpcDefinition(
         housing = housing.normalized()
         gifts = gifts.normalized()
         voice = voice.normalized()
+        chat = chat.normalized(id, name)
         friendshipMessages = friendshipMessages.normalized(friendshipDefaults)
         shopMessages = shopMessages.normalized()
         camperMessages = camperMessages.normalized()
@@ -75,6 +77,21 @@ class NpcSettingsDefinition(
         llm = llm.normalized()
         llmMessageUsage = llmMessageUsage.normalized()
         campers = campers.normalized()
+    }
+}
+
+class NpcChatDefinition(
+    var enabled: Boolean = true,
+    @SerializedName("call_names") var callNames: MutableList<String> = mutableListOf(),
+    @SerializedName("minecraft_chat") var minecraftChat: Boolean = true,
+    @SerializedName("discord_chat") var discordChat: Boolean = true,
+) {
+    fun normalized(npcId: String, npcName: String): NpcChatDefinition = apply {
+        callNames = (callNames + npcId + npcName)
+            .map { name -> name.trim().lowercase() }
+            .filter { name -> name.isNotBlank() }
+            .distinct()
+            .toMutableList()
     }
 }
 

@@ -18,6 +18,7 @@
 - [Trading](TRADING.md)
 - [Relic Roulette](RELIC_ROULETTE.md)
 - [NPCs](NPCS.md)
+- [NPC Conversations](NPC_CONVERSATIONS.md)
 - [Revive](REVIVE.md)
 - [Jobs And Classes](ROLES.md)
 - [Jobs And Classes Creation Guide](ROLE_CONFIGURATION_GUIDE.md)

@@ -9,6 +9,7 @@ import dev.gisketch.chowkingdom.discord.DiscordRelay
 import dev.gisketch.chowkingdom.shops.StoreShopFeature
 import net.minecraft.ChatFormatting
 import net.minecraft.network.chat.Component
+import net.minecraft.server.MinecraftServer
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.server.level.ServerPlayer
 import java.net.URI
@@ -28,7 +29,17 @@ object NpcLlmService {
     private val nextAllowedAtMs = ConcurrentHashMap<UUID, Long>()
     private val activeNpcRequests = ConcurrentHashMap<String, ActiveNpcRequest>()
     private val talkSessions = ConcurrentHashMap<String, NpcTalkSession>()
+    private val activeWorldChatRequests = ConcurrentHashMap<String, Long>()
     private val cancelledResponseTokens = ConcurrentHashMap.newKeySet<Long>()
+    private val recentLlmErrors = ArrayDeque<NpcLlmDebugEntry>()
+
+    fun debugErrorLines(limit: Int = 8): List<String> = synchronized(recentLlmErrors) {
+        recentLlmErrors.takeLast(limit.coerceIn(1, MAX_LLM_DEBUG_ERRORS)).map { entry ->
+            val status = entry.status?.toString() ?: "n/a"
+            val body = entry.body.takeIf(String::isNotBlank)?.let { " body=$it" }.orEmpty()
+            "${formatAge(entry.timestamp)} provider=${entry.provider} model=${entry.model} status=$status source=${entry.source} ${entry.message}$body"
+        }
+    }
 
     fun cancel(player: ServerPlayer, npcId: String) {
         val session = talkSessions[npcId]
@@ -146,6 +157,161 @@ object NpcLlmService {
         }
     }
 
+    fun worldChat(
+        player: ServerPlayer,
+        definition: NpcDefinition,
+        message: String,
+        channel: String,
+        matchedCallName: String,
+        discordMentionUserId: String? = null,
+    ) {
+        val settings = NpcConfig.settings().llm
+        if (!settings.enabled) return
+        val cleanMessage = message.trim().take(MAX_PLAYER_MESSAGE_LENGTH)
+        if (cleanMessage.isBlank()) return
+        val responseToken = NpcDialogTokens.next()
+        startWorldChatRequest(definition.id, responseToken)
+        NpcWorldChatService.beginThinking(player.server, responseToken, definition.id, definition.name)
+        val input = buildWorldChatInput(player, definition, cleanMessage, channel, matchedCallName)
+        CompletableFuture.supplyAsync({ complete(player, definition, input, settings, inputLabel = "World chat message") }, executor).whenComplete { result, throwable ->
+            player.server.execute {
+                if (!finishWorldChatRequest(definition.id, responseToken)) return@execute
+                if (throwable != null) ChowKingdomMod.LOGGER.warn("NPC world chat LLM failed npc={} player={} channel={}", definition.id, player.gameProfile.name, channel, throwable)
+                val completion = if (throwable == null) result else NpcLlmCompletion(settings.errorMessage)
+                sendWorldChatFinal(player, definition, cleanMessage, completion.message, settings.errorMessage, channel, discordMentionUserId, completion.memorable)
+            }
+        }
+    }
+
+    fun worldChatDiscordGuest(
+        server: MinecraftServer,
+        definition: NpcDefinition,
+        message: String,
+        matchedCallName: String,
+        discordAuthorId: String,
+        discordAuthorName: String,
+    ) {
+        val settings = NpcConfig.settings().llm
+        if (!settings.enabled) return
+        val cleanMessage = message.trim().take(MAX_PLAYER_MESSAGE_LENGTH)
+        if (cleanMessage.isBlank()) return
+        val responseToken = NpcDialogTokens.next()
+        startWorldChatRequest(definition.id, responseToken)
+        NpcWorldChatService.beginThinking(server, responseToken, definition.id, definition.name)
+        val input = buildDiscordGuestWorldChatPrompt(server, definition, cleanMessage, matchedCallName, discordAuthorName)
+        CompletableFuture.supplyAsync({ completeRaw(input, settings, settings.errorMessage) }, executor).whenComplete { result, throwable ->
+            server.execute {
+                if (!finishWorldChatRequest(definition.id, responseToken)) return@execute
+                if (throwable != null) ChowKingdomMod.LOGGER.warn("NPC Discord guest world chat LLM failed npc={} discordUser={}", definition.id, discordAuthorName, throwable)
+                val completion = if (throwable == null) result else NpcLlmCompletion(settings.errorMessage)
+                sendDiscordGuestWorldChatFinal(server, definition, discordAuthorName, cleanMessage, completion.message, settings.errorMessage, completion.memorable)
+            }
+        }
+    }
+
+    private fun completeRaw(prompt: String, settings: NpcLlmSettingsDefinition, fallbackMessage: String): NpcLlmCompletion {
+        if (settings.apiKey.isBlank()) {
+            ChowKingdomMod.LOGGER.warn("NPC LLM missing api_key provider={} model={}", settings.provider, settings.model)
+            recordLlmError(settings.provider, settings.model, "config", null, "missing api_key")
+            return NpcLlmCompletion(fallbackMessage)
+        }
+        val raw = when (settings.provider) {
+            "gemini" -> completeGemini(prompt, settings, fallbackMessage)
+            else -> completeOpenAiCompatible(prompt, settings, fallbackMessage)
+        }
+        return raw.copy(message = sanitizeReply(raw.message, settings, fallbackMessage))
+    }
+
+    private fun startWorldChatRequest(npcId: String, responseToken: Long) {
+        cancelledResponseTokens.remove(responseToken)
+        activeWorldChatRequests.put(npcId, responseToken)?.let { previous ->
+            cancelledResponseTokens += previous
+            NpcWorldChatService.endThinking(previous)
+        }
+    }
+
+    private fun finishWorldChatRequest(npcId: String, responseToken: Long): Boolean {
+        val active = activeWorldChatRequests[npcId]
+        if (active != responseToken) {
+            NpcWorldChatService.endThinking(responseToken)
+            return false
+        }
+        activeWorldChatRequests.remove(npcId, responseToken)
+        NpcWorldChatService.endThinking(responseToken)
+        return !cancelledResponseTokens.remove(responseToken)
+    }
+
+    private fun buildWorldChatInput(player: ServerPlayer, definition: NpcDefinition, message: String, channel: String, matchedCallName: String): String = """
+        Channel: $channel
+        Matched call name: $matchedCallName
+        Speaker: ${player.gameProfile.name}
+        This is remote world chat, not the local NPC dialog screen.
+        Do not assume the player is standing beside you unless context says they are nearby.
+        Recent world chat from all players and NPCs:
+        ${NpcWorldChatService.recentChatSummary()}
+        Reply like a normal chat message from ${definition.name}.
+        Player message: $message
+    """.trimIndent()
+
+    private fun buildDiscordGuestWorldChatPrompt(server: MinecraftServer, definition: NpcDefinition, message: String, matchedCallName: String, discordAuthorName: String): String {
+        val settings = NpcConfig.settings().llm
+        val recentGlobalEvents = NpcStore.recentGlobalEvents()
+            .takeLast(5)
+            .joinToString("\n") { event -> "- ${formatAge(event.timestamp)}: ${event.type}: ${event.text}" }
+            .ifBlank { "None." }
+        val globalMemories = NpcStore.recentGlobalMemories()
+            .takeLast(8)
+            .joinToString("\n") { memory -> "- ${formatAge(memory.timestamp)}: ${memory.type}: ${memory.text}" }
+            .ifBlank { "None." }
+        val traits = definition.personality.traits.joinToString(", ").ifBlank { "unspecified" }
+        val catchphrases = definition.personality.catchphrases.joinToString(", ").ifBlank { "none" }
+        val hour = NpcTime.hour(server.overworld())
+        val storeContext = buildStoreContext(definition)
+        return """
+            You are roleplaying as an NPC in a Minecraft multiplayer server.
+
+            NPC:
+            - Name: ${definition.name}
+            - Title: ${definition.title}
+            - Job: ${definition.job}
+            - Personality: $traits
+            - Speech style: ${definition.personality.speechStyle}
+            - Catchphrases: $catchphrases
+            - Prompt: ${definition.personality.llmPrompt}
+
+            Rules:
+            - Stay in character as ${definition.name}.
+            - You are not an assistant.
+            - Reply in 1 to 3 short sentences.
+            - Use plain ASCII only with letters, numbers, spaces, and basic punctuation.
+            - Do not claim you gave items, changed friendship, changed prices, completed quests, teleported anyone, healed anyone, or changed the world.
+            - Return JSON only: {"message":"NPC reply here","memorable":null}
+
+            Channel context:
+            - Channel: discord_chat
+            - Speaker: Discord User $discordAuthorName
+            - Linked Minecraft player: no
+            - Matched call name: $matchedCallName
+            - Time hour: $hour
+            - Treat this speaker as a Discord user. Do not pretend you know their Minecraft inventory, location, or friendship.
+
+            Store context:
+            $storeContext
+
+            Recent global events:
+            $recentGlobalEvents
+
+            Important global memories:
+            $globalMemories
+
+            Recent world chat from all players and NPCs:
+            ${NpcWorldChatService.recentChatSummary()}
+
+            World chat message:
+            "$message"
+        """.trimIndent().take(settings.maxReplyChars * 80)
+    }
+
     private fun joinConversationSession(player: ServerPlayer, npcId: String): NpcTalkSession {
         val session = talkSessions.computeIfAbsent(npcId) { NpcTalkSession() }
         synchronized(session) {
@@ -217,6 +383,7 @@ object NpcLlmService {
     ): NpcLlmCompletion {
         if (settings.apiKey.isBlank()) {
             ChowKingdomMod.LOGGER.warn("NPC LLM missing api_key provider={} model={}", settings.provider, settings.model)
+            recordLlmError(settings.provider, settings.model, "config", null, "missing api_key")
             return NpcLlmCompletion(fallbackMessage)
         }
         val prompt = buildPrompt(player, definition, playerMessage, settings, inputLabel)
@@ -240,15 +407,27 @@ object NpcLlmService {
         root.add("messages", messages)
         root.addProperty("temperature", 0.8)
         val url = settings.baseUrl.trimEnd('/') + "/chat/completions"
-        val response = httpClient.send(request(url, settings, root), HttpResponse.BodyHandlers.ofString())
+        val response = try {
+            httpClient.send(request(url, settings, root), HttpResponse.BodyHandlers.ofString())
+        } catch (exception: Exception) {
+            recordLlmError(settings.provider, settings.model, "openai_compatible", null, "request failed: ${exception.javaClass.simpleName}: ${exception.message.orEmpty()}")
+            return NpcLlmCompletion(fallbackMessage)
+        }
         ChowKingdomMod.LOGGER.info("NPC LLM openai-compatible status={} bodyChars={}", response.statusCode(), response.body().length)
         if (response.statusCode() !in 200..299) {
             ChowKingdomMod.LOGGER.warn("NPC LLM openai-compatible error status={} body={}", response.statusCode(), response.body().take(LOG_BODY_LIMIT))
+            recordLlmError(settings.provider, settings.model, "openai_compatible", response.statusCode(), "http error", response.body())
             return NpcLlmCompletion(fallbackMessage)
         }
-        val json = JsonParser.parseString(response.body()).asJsonObject
-        val content = json.getAsJsonArray("choices")?.firstOrNull()?.asJsonObject?.getAsJsonObject("message")?.get("content")?.asString.orEmpty()
-        return parseMessage(content, settings, fallbackMessage)
+        val content = runCatching {
+            val json = JsonParser.parseString(response.body()).asJsonObject
+            json.getAsJsonArray("choices")?.firstOrNull()?.asJsonObject?.getAsJsonObject("message")?.get("content")?.asString.orEmpty()
+        }.getOrElse { exception ->
+            recordLlmError(settings.provider, settings.model, "openai_compatible", response.statusCode(), "response parse failed: ${exception.javaClass.simpleName}", response.body())
+            return NpcLlmCompletion(fallbackMessage)
+        }
+        if (content.isBlank()) recordLlmError(settings.provider, settings.model, "openai_compatible", response.statusCode(), "empty response content", response.body())
+        return parseMessage(content, settings, fallbackMessage, "openai_compatible")
     }
 
     private fun completeGemini(prompt: String, settings: NpcLlmSettingsDefinition, fallbackMessage: String): NpcLlmCompletion {
@@ -257,15 +436,27 @@ object NpcLlmService {
         val contents = JsonArray().apply { add(JsonObject().apply { add("parts", parts) }) }
         root.add("contents", contents)
         val url = settings.baseUrl.trimEnd('/') + "/v1beta/models/${settings.model}:generateContent?key=${settings.apiKey}"
-        val response = httpClient.send(request(url, settings, root, includeAuth = false), HttpResponse.BodyHandlers.ofString())
+        val response = try {
+            httpClient.send(request(url, settings, root, includeAuth = false), HttpResponse.BodyHandlers.ofString())
+        } catch (exception: Exception) {
+            recordLlmError(settings.provider, settings.model, "gemini", null, "request failed: ${exception.javaClass.simpleName}: ${exception.message.orEmpty()}")
+            return NpcLlmCompletion(fallbackMessage)
+        }
         ChowKingdomMod.LOGGER.info("NPC LLM gemini status={} bodyChars={}", response.statusCode(), response.body().length)
         if (response.statusCode() !in 200..299) {
             ChowKingdomMod.LOGGER.warn("NPC LLM gemini error status={} body={}", response.statusCode(), response.body().take(LOG_BODY_LIMIT))
+            recordLlmError(settings.provider, settings.model, "gemini", response.statusCode(), "http error", response.body())
             return NpcLlmCompletion(fallbackMessage)
         }
-        val json = JsonParser.parseString(response.body()).asJsonObject
-        val text = json.getAsJsonArray("candidates")?.firstOrNull()?.asJsonObject?.getAsJsonObject("content")?.getAsJsonArray("parts")?.firstOrNull()?.asJsonObject?.get("text")?.asString.orEmpty()
-        return parseMessage(text, settings, fallbackMessage)
+        val text = runCatching {
+            val json = JsonParser.parseString(response.body()).asJsonObject
+            json.getAsJsonArray("candidates")?.firstOrNull()?.asJsonObject?.getAsJsonObject("content")?.getAsJsonArray("parts")?.firstOrNull()?.asJsonObject?.get("text")?.asString.orEmpty()
+        }.getOrElse { exception ->
+            recordLlmError(settings.provider, settings.model, "gemini", response.statusCode(), "response parse failed: ${exception.javaClass.simpleName}", response.body())
+            return NpcLlmCompletion(fallbackMessage)
+        }
+        if (text.isBlank()) recordLlmError(settings.provider, settings.model, "gemini", response.statusCode(), "empty response text", response.body())
+        return parseMessage(text, settings, fallbackMessage, "gemini")
     }
 
     private fun request(url: String, settings: NpcLlmSettingsDefinition, body: JsonObject, includeAuth: Boolean = true): HttpRequest {
@@ -277,7 +468,7 @@ object NpcLlmService {
         return builder.build()
     }
 
-    private fun parseMessage(content: String, settings: NpcLlmSettingsDefinition, fallbackMessage: String): NpcLlmCompletion {
+    private fun parseMessage(content: String, settings: NpcLlmSettingsDefinition, fallbackMessage: String, source: String): NpcLlmCompletion {
         val cleaned = content.trim().removePrefix("```json").removePrefix("```").removeSuffix("```").trim()
         val parsed = runCatching {
             val obj = JsonParser.parseString(cleaned).asJsonObject
@@ -285,10 +476,26 @@ object NpcLlmService {
             val memorable = obj.get("memorable")?.takeUnless { it.isJsonNull }?.asString.orEmpty()
             NpcLlmCompletion(message, sanitizeMemory(memorable))
         }
-            .onFailure { exception -> ChowKingdomMod.LOGGER.warn("NPC LLM response was not JSON message. raw={}", cleaned.take(LOG_BODY_LIMIT), exception) }
+            .onFailure { exception ->
+                ChowKingdomMod.LOGGER.warn("NPC LLM response was not JSON message. raw={}", cleaned.take(LOG_BODY_LIMIT), exception)
+                recordLlmError(settings.provider, settings.model, source, null, "response was not JSON: ${exception.javaClass.simpleName}", cleaned)
+            }
             .getOrDefault(NpcLlmCompletion(cleaned))
         return parsed.copy(message = sanitizeReply(parsed.message, settings, fallbackMessage))
     }
+
+    private fun recordLlmError(provider: String, model: String, source: String, status: Int?, message: String, body: String = "") {
+        synchronized(recentLlmErrors) {
+            recentLlmErrors.addLast(NpcLlmDebugEntry(System.currentTimeMillis(), provider, model, source, status, message.take(180), body.cleanDebugBody()))
+            while (recentLlmErrors.size > MAX_LLM_DEBUG_ERRORS) recentLlmErrors.removeFirst()
+        }
+    }
+
+    private fun String.cleanDebugBody(): String = replace('\n', ' ')
+        .replace('\r', ' ')
+        .replace(WHITESPACE_PATTERN, " ")
+        .trim()
+        .take(LLM_DEBUG_BODY_LIMIT)
 
     private fun sanitizeMemory(raw: String): String = raw
         .replace("—", "-")
@@ -387,6 +594,56 @@ object NpcLlmService {
         NpcFeature.showBalloonToNearby(npc.level() as ServerLevel, npc, reply, NPC_LLM_REPLY_BALLOON_TICKS)
         NpcFeature.relayNpcDialogToDiscord(speaker, definition, reply)
     }
+
+    private fun sendWorldChatFinal(
+        player: ServerPlayer,
+        definition: NpcDefinition,
+        playerMessage: String,
+        message: String,
+        fallbackMessage: String,
+        channel: String,
+        discordMentionUserId: String?,
+        memorable: String = "",
+    ) {
+        val settings = NpcConfig.settings().llm
+        val reply = sanitizeReply(message, settings, fallbackMessage)
+        NpcStore.recordConversation(definition.id, player, player.gameProfile.name, playerMessage.take(MAX_PLAYER_MESSAGE_LENGTH), "player_world_chat")
+        NpcStore.recordConversation(definition.id, player, definition.name, reply, "npc_world_chat_reply")
+        if (memorable.isNotBlank()) NpcStore.recordPlayerMemory(player, "llm_memorable", memorable)
+        player.server.playerList.broadcastSystemMessage(worldChatLine(definition.name, player.gameProfile.name, reply), false)
+        DiscordRelay.npcWorldChat(definition.id, definition.name, reply, discordMentionUserId) { messageId ->
+            NpcWorldChatService.rememberDiscordNpcMessage(messageId, definition.id)
+        }
+        NpcWorldChatService.recordNpcReply(definition.name, reply, channel)
+        NpcStore.recordGlobalEvent("npc_world_chat", "${definition.name} replied to ${player.gameProfile.name} in $channel")
+    }
+
+    private fun sendDiscordGuestWorldChatFinal(
+        server: MinecraftServer,
+        definition: NpcDefinition,
+        discordAuthorName: String,
+        playerMessage: String,
+        message: String,
+        fallbackMessage: String,
+        memorable: String = "",
+    ) {
+        val settings = NpcConfig.settings().llm
+        val reply = sanitizeReply(message, settings, fallbackMessage)
+        val speakerName = "Discord User $discordAuthorName"
+        server.playerList.broadcastSystemMessage(worldChatLine(definition.name, speakerName, reply), false)
+        DiscordRelay.npcWorldChat(definition.id, definition.name, reply, fallbackName = discordAuthorName) { messageId ->
+            NpcWorldChatService.rememberDiscordNpcMessage(messageId, definition.id)
+        }
+        NpcWorldChatService.recordNpcReply(definition.name, reply, "discord")
+        NpcStore.recordGlobalEvent("npc_world_chat", "${definition.name} replied to $speakerName")
+        if (memorable.isNotBlank()) NpcStore.recordGlobalMemory("discord_user_memory", "$speakerName: $memorable")
+    }
+
+    private fun worldChatLine(npcName: String, targetName: String, message: String): Component = Component.empty()
+        .append(Component.literal(npcName).withStyle(ChatFormatting.WHITE, ChatFormatting.BOLD))
+        .append(Component.literal(" > ").withStyle(ChatFormatting.GRAY))
+        .append(Component.literal(targetName).withStyle(ChatFormatting.WHITE, ChatFormatting.BOLD))
+        .append(Component.literal(": $message").withStyle(ChatFormatting.GRAY))
 
     private fun relayPlayerTalk(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, message: String) {
         val level = npc.level() as? ServerLevel ?: return
@@ -621,6 +878,8 @@ object NpcLlmService {
     private const val NPC_LLM_PENDING_BALLOON_TICKS = 40
     private const val NPC_LLM_REPLY_BALLOON_TICKS = 120
     private const val LOG_BODY_LIMIT = 600
+    private const val LLM_DEBUG_BODY_LIMIT = 220
+    private const val MAX_LLM_DEBUG_ERRORS = 20
     private const val MAX_MEMORY_CHARS = 180
     private const val MAX_GROUP_TURNS = 8
     private val EMOJI_PATTERN = Regex("[\\x{1F000}-\\x{1FAFF}\\x{2600}-\\x{27BF}]")
@@ -631,6 +890,16 @@ object NpcLlmService {
 private data class ActiveNpcRequest(val playerId: UUID, val responseToken: Long)
 
 private data class NpcLlmCompletion(val message: String, val memorable: String = "")
+
+private data class NpcLlmDebugEntry(
+    val timestamp: Long,
+    val provider: String,
+    val model: String,
+    val source: String,
+    val status: Int?,
+    val message: String,
+    val body: String,
+)
 
 private class NpcTalkSession(
     val participants: MutableMap<UUID, NpcTalkParticipant> = linkedMapOf(),

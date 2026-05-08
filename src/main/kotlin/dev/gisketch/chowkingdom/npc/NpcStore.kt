@@ -261,6 +261,16 @@ object NpcStore {
         return llmContext(npcId, player, -1)
     }
 
+    fun recentGlobalEvents(): List<NpcGlobalEvent> {
+        if (!loaded) load()
+        return data.globalEvents.takeLast(MAX_GLOBAL_EVENTS)
+    }
+
+    fun recentGlobalMemories(): List<NpcMemoryRecord> {
+        if (!loaded) load()
+        return data.globalMemories.takeLast(MAX_GLOBAL_MEMORIES)
+    }
+
     fun llmContext(npcId: String, player: ServerPlayer, currentHour: Int): NpcLlmContext {
         val state = state(npcId)
         return NpcLlmContext(

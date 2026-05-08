@@ -2,6 +2,8 @@
 
 NPCs are config-driven characters backed by a small server foundation: definitions, world state, jobs, dialog, and housing contracts.
 
+Conversation-specific runtime rules live in [NPC Conversations](NPC_CONVERSATIONS.md).
+
 ## Current Slice
 
 - One default NPC: `finn`; additional NPC TOML files join the camping-block camper pool.
@@ -47,6 +49,7 @@ Each NPC is one TOML file:
 - `personality`: Future dialog/LLM seed fields: `llm_prompt`, `traits`, `speech_style`, `catchphrases`.
 - `housing`: Move-in rules: `can_move_in`, `requires_bed`.
 - `voice`: Animalese dialog voice settings: `animalese_pitch` (`high`, `med`, `low`, `lowest`), `pitch`, `volume`, and `radius`.
+- `chat`: World chat settings. `call_names` are names/nicknames that can address the NPC from Minecraft or Discord chat; `minecraft_chat` and `discord_chat` toggle those channels.
 - `gifts`: Gift ids/tags grouped by `loved`, `liked`, `disliked`, plus `daily_limit`, `reset_hour`, and reaction message pools for `loved`, `liked`, `disliked`, and `neutral`.
 - `friendship_messages`: Optional per-NPC category message additions for `interact`, `gift`, `hurt`, `wake`, `greeting`, and `first_daily_chat`. Categories are `hatred`, `enemy`, `dislike`, `neutral`, `okay`, `good_friends`, and `best_friends`. Message pools resolve in order: built-in defaults, shared `friendship_messages.toml`, then NPC-specific `friendship_messages`. Each configured layer joins the inherited pool and is inserted twice, so local additions have roughly 2:1 weight against inherited generic lines.
 - `shop_messages`: Optional post-purchase message overrides with `single`, `normal`, and `bulk` buckets. Each bucket has the same friendship categories as `friendship_messages`. Supports `{player}`, `{npc}`, `{item}`, `{quantity}`, `{total}`, `{friendship_level}`, and `{friendship_points}`.
@@ -196,6 +199,7 @@ Home beds are validated against live bed blocks. If the assigned bed is broken o
 - `/npc friendship add <id> <player> <delta>`: add or subtract points, clamped to `-1000..1000`.
 - `/npc debug clock`: toggle live CK clock actionbar with `HH:MM AM/PM`, raw world time, tick-of-cycle, clock source, and daylight gamerule state.
 - `/npc debug`: toggle realtime actionbar debug for the Chow Kingdom NPC under the player's crosshair. Run it on the same NPC again to stop. The actionbar includes current schedule time, tick-of-cycle, activity, task, navigation state, target, and debug time multiplier.
+- `/npc debug llm`: show current NPC LLM enabled/provider/model settings plus the latest in-memory LLM failures, including HTTP status such as `429` or `403` when the provider returns one.
 - `/npc debug time <multiplier>`: speed up day time for debugging schedules. Use `1` to reset. Allowed range is `1` to `240`.
 - `/npc debug balloon <id> <message>`: show a timed test balloon above the spawned NPC for nearby players.
 - `/ck npc ...` and `/chowkingdom npc ...`: aliases.

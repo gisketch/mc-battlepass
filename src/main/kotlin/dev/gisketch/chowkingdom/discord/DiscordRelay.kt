@@ -124,6 +124,37 @@ object DiscordRelay {
         )
     }
 
+    fun npcWorldChat(npcId: String, npcName: String, message: String, mentionUserId: String? = null, fallbackName: String = "", onDiscordMessageId: (String) -> Unit = {}) {
+        val config = DiscordConfig.current()
+        if (!config.enabled) return
+        val mention = mentionUserId?.takeIf(String::isNotBlank)?.let { id -> "<@$id> " }.orEmpty()
+        val prefix = if (mention.isBlank() && fallbackName.isNotBlank()) "${DiscordText.cleanContent(fallbackName)}, " else ""
+        val payload = DiscordWebhookMessage(
+            content = mention + prefix + DiscordText.cleanContent(message),
+            username = npcName,
+            avatarUrl = DiscordQuickSkinSupport.npcAvatarUrl(npcId, config),
+            allowedUserMentions = listOfNotNull(mentionUserId?.takeIf(String::isNotBlank)),
+        )
+        DiscordWebhookClient.sendAndCaptureMessageId(payload, onDiscordMessageId)
+    }
+
+    fun npcWorldChatThinking(npcId: String, npcName: String, onDiscordMessageId: (String) -> Unit) {
+        val config = DiscordConfig.current()
+        if (!config.enabled) return
+        DiscordWebhookClient.sendAndCaptureMessageId(
+            DiscordWebhookMessage(
+                content = "$npcName is thinking...",
+                username = npcName,
+                avatarUrl = DiscordQuickSkinSupport.npcAvatarUrl(npcId, config),
+            ),
+            onDiscordMessageId,
+        )
+    }
+
+    fun deleteNpcWorldChatMessage(messageId: String) {
+        DiscordWebhookClient.deleteMessage(messageId)
+    }
+
     fun npcCamperArrived(server: MinecraftServer, npcId: String, npcName: String) {
         val config = DiscordConfig.current()
         if (!config.enabled) return
