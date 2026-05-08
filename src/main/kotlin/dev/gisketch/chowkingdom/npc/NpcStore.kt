@@ -174,6 +174,56 @@ object NpcStore {
         return if (gift.period == period) gift.count else 0
     }
 
+    fun outgoingGiftReady(npcId: String, player: ServerPlayer, day: Long, hour: Int, scheduledHour: Int): Boolean {
+        val gift = state(npcId).outgoingGifts.getOrPut(player.stringUUID) { NpcOutgoingGiftState() }
+        if (gift.pendingItem.isNotBlank()) return false
+        if (gift.lastOfferDay >= day) return false
+        if (gift.scheduledDay != day) {
+            gift.scheduledDay = day
+            gift.scheduledHour = scheduledHour.coerceIn(0, 23)
+            save()
+        }
+        return hour >= gift.scheduledHour
+    }
+
+    fun pendingOutgoingGift(npcId: String, player: ServerPlayer): NpcPendingOutgoingGift? {
+        val gift = state(npcId).outgoingGifts[player.stringUUID] ?: return null
+        return gift.pendingItem.takeIf(String::isNotBlank)?.let { item -> NpcPendingOutgoingGift(item, gift.pendingQty.coerceAtLeast(1)) }
+    }
+
+    fun pendingOutgoingGiftReady(npcId: String, player: ServerPlayer, day: Long): NpcPendingOutgoingGift? {
+        val gift = state(npcId).outgoingGifts[player.stringUUID] ?: return null
+        if (gift.pendingItem.isBlank() || gift.lastOfferDay >= day) return null
+        return NpcPendingOutgoingGift(gift.pendingItem, gift.pendingQty.coerceAtLeast(1))
+    }
+
+    fun markPendingOutgoingGiftReminder(npcId: String, player: ServerPlayer, day: Long) {
+        val gift = state(npcId).outgoingGifts[player.stringUUID] ?: return
+        if (gift.pendingItem.isBlank()) return
+        gift.lastOfferDay = day
+        save()
+    }
+
+    fun setPendingOutgoingGift(npcId: String, player: ServerPlayer, day: Long, item: String, qty: Int) {
+        val gift = state(npcId).outgoingGifts.getOrPut(player.stringUUID) { NpcOutgoingGiftState() }
+        gift.lastOfferDay = day
+        gift.scheduledDay = day + 1
+        gift.scheduledHour = -1
+        gift.pendingItem = item
+        gift.pendingQty = qty.coerceAtLeast(1)
+        save()
+    }
+
+    fun clearPendingOutgoingGift(npcId: String, player: ServerPlayer, day: Long) {
+        val gift = state(npcId).outgoingGifts.getOrPut(player.stringUUID) { NpcOutgoingGiftState() }
+        gift.pendingItem = ""
+        gift.pendingQty = 0
+        gift.lastOfferDay = maxOf(gift.lastOfferDay, day)
+        gift.scheduledDay = day + 1
+        gift.scheduledHour = -1
+        save()
+    }
+
     fun canShowGreeting(npcId: String, player: ServerPlayer, day: Long, nowMs: Long): Boolean {
         val greeting = state(npcId).greetings.getOrPut(player.stringUUID) { NpcGreetingState() }
         return greeting.firstChatDay != day && nowMs >= greeting.cooldownUntilMs
@@ -379,6 +429,7 @@ class NpcResidentState(
     var hurtHistory: MutableList<NpcHurtRecord> = mutableListOf(),
     var conversations: MutableMap<String, MutableList<NpcConversationRecord>> = linkedMapOf(),
     var giftLimits: MutableMap<String, NpcGiftLimitState> = linkedMapOf(),
+    var outgoingGifts: MutableMap<String, NpcOutgoingGiftState> = linkedMapOf(),
     var greetings: MutableMap<String, NpcGreetingState> = linkedMapOf(),
     var friendships: MutableMap<String, NpcFriendshipState> = linkedMapOf(),
     var dead: Boolean = false,
@@ -409,6 +460,19 @@ class NpcFriendshipSnapshot(
 class NpcGiftLimitState(
     var period: Long = Long.MIN_VALUE,
     var count: Int = 0,
+)
+
+class NpcOutgoingGiftState(
+    var scheduledDay: Long = Long.MIN_VALUE,
+    var scheduledHour: Int = -1,
+    var lastOfferDay: Long = Long.MIN_VALUE,
+    var pendingItem: String = "",
+    var pendingQty: Int = 0,
+)
+
+class NpcPendingOutgoingGift(
+    val item: String,
+    val qty: Int,
 )
 
 class NpcGreetingState(

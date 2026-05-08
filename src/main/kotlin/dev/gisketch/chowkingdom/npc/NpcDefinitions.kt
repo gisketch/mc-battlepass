@@ -558,6 +558,7 @@ class NpcGiftsDefinition(
     @SerializedName("daily_limit") var dailyLimit: Int = 1,
     @SerializedName("reset_hour") var resetHour: Int = 5,
     var reactions: NpcGiftReactionsDefinition = NpcGiftReactionsDefinition(),
+    var outgoing: NpcOutgoingGiftsDefinition = NpcOutgoingGiftsDefinition(),
 ) {
     fun normalized(): NpcGiftsDefinition = apply {
         loved = normalizeGiftList(loved)
@@ -566,9 +567,74 @@ class NpcGiftsDefinition(
         dailyLimit = dailyLimit.coerceIn(0, 64)
         resetHour = resetHour.coerceIn(0, 23)
         reactions = reactions.normalized()
+        outgoing = outgoing.normalized()
     }
 
     private fun normalizeGiftList(values: List<String>): MutableList<String> = values.map(String::trim).filter(String::isNotBlank).distinct().toMutableList()
+}
+
+class NpcOutgoingGiftsDefinition(
+    var enabled: Boolean = true,
+    var radius: Double = 8.0,
+    @SerializedName("min_friendship_level") var minFriendshipLevel: Int = 5,
+    @SerializedName("rare_friendship_level") var rareFriendshipLevel: Int = 9,
+    @SerializedName("follow_seconds") var followSeconds: Int = 10,
+    @SerializedName("offer_messages") var offerMessages: MutableList<String> = mutableListOf(),
+    @SerializedName("fallback_messages") var fallbackMessages: MutableList<String> = mutableListOf(),
+    @SerializedName("llm_enabled") var llmEnabled: Boolean = true,
+    @SerializedName("llm_prompt") var llmPrompt: String = "You are gifting {player} {quantity} x {item}. Reply as {npc} with a short warm gift message.",
+    var pool: MutableList<NpcOutgoingGiftEntryDefinition> = mutableListOf(),
+    @SerializedName("extra_pool") var extraPool: MutableList<NpcOutgoingGiftEntryDefinition> = mutableListOf(),
+    @SerializedName("rare_pool") var rarePool: MutableList<NpcOutgoingGiftEntryDefinition> = mutableListOf(),
+    @SerializedName("extra_rare_pool") var extraRarePool: MutableList<NpcOutgoingGiftEntryDefinition> = mutableListOf(),
+) {
+    fun normalized(): NpcOutgoingGiftsDefinition = apply {
+        radius = radius.coerceIn(2.0, 24.0)
+        minFriendshipLevel = minFriendshipLevel.coerceIn(-10, 10)
+        rareFriendshipLevel = rareFriendshipLevel.coerceIn(minFriendshipLevel, 10)
+        followSeconds = followSeconds.coerceIn(3, 30)
+        offerMessages = offerMessages.map(String::trim).filter(String::isNotBlank).ifEmpty { defaultOfferMessages() }.toMutableList()
+        fallbackMessages = fallbackMessages.map(String::trim).filter(String::isNotBlank).ifEmpty { defaultFallbackMessages() }.toMutableList()
+        llmPrompt = llmPrompt.trim().ifBlank { "You are gifting {player} {quantity} x {item}. Reply as {npc} with a short warm gift message." }
+        pool = cleanPool(pool).ifEmpty { defaultPool() }.plus(cleanPool(extraPool)).toMutableList()
+        rarePool = cleanPool(rarePool).ifEmpty { defaultRarePool() }.plus(cleanPool(extraRarePool)).toMutableList()
+        extraPool = cleanPool(extraPool).toMutableList()
+        extraRarePool = cleanPool(extraRarePool).toMutableList()
+    }
+
+    private fun cleanPool(values: List<NpcOutgoingGiftEntryDefinition>): List<NpcOutgoingGiftEntryDefinition> = values.mapNotNull { entry -> entry.normalized().takeIf { it.item.isNotBlank() && it.weight > 0 && it.qty > 0 } }
+
+    private fun defaultOfferMessages(): List<String> = listOf("@gift.png Hey {player}!", "@gift.png I brought you something, {player}!")
+
+    private fun defaultFallbackMessages(): List<String> = listOf("I brought you {quantity} x {item}, {player}.", "This made me think of you, {player}. Take {quantity} x {item}.")
+
+    private fun defaultPool(): List<NpcOutgoingGiftEntryDefinition> = listOf(
+        NpcOutgoingGiftEntryDefinition("minecraft:oak_log", 16, 5),
+        NpcOutgoingGiftEntryDefinition("minecraft:bread", 4, 4),
+        NpcOutgoingGiftEntryDefinition("minecraft:torch", 16, 4),
+        NpcOutgoingGiftEntryDefinition("minecraft:apple", 3, 3),
+        NpcOutgoingGiftEntryDefinition("minecraft:iron_ingot", 2, 2),
+    )
+
+    private fun defaultRarePool(): List<NpcOutgoingGiftEntryDefinition> = listOf(
+        NpcOutgoingGiftEntryDefinition("minecraft:diamond", 1, 3),
+        NpcOutgoingGiftEntryDefinition("minecraft:emerald", 3, 3),
+        NpcOutgoingGiftEntryDefinition("minecraft:golden_apple", 1, 2),
+        NpcOutgoingGiftEntryDefinition("minecraft:experience_bottle", 8, 2),
+        NpcOutgoingGiftEntryDefinition("minecraft:netherite_scrap", 1, 1),
+    )
+}
+
+class NpcOutgoingGiftEntryDefinition(
+    var item: String = "",
+    var qty: Int = 1,
+    var weight: Int = 1,
+) {
+    fun normalized(): NpcOutgoingGiftEntryDefinition = apply {
+        item = item.trim()
+        qty = qty.coerceIn(1, 64)
+        weight = weight.coerceIn(0, 1000)
+    }
 }
 
 class NpcGiftReactionsDefinition(

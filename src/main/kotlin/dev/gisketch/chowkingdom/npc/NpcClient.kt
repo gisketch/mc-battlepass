@@ -111,9 +111,12 @@ object NpcClient {
         val minecraft = Minecraft.getInstance()
         val guiGraphics = GuiGraphicsAccessor.`chowkingdom$create`(minecraft, poseStack, minecraft.renderBuffers().bufferSource())
         val rotation = Axis.YP.rotationDegrees(toEulerXyzDegrees(minecraft.entityRenderDispatcher.cameraOrientation()).y + 180.0f)
-        val lines = font.split(FormattedText.of(balloon.message), BALLOON_MAX_TEXT_WIDTH)
+        val hasGiftIcon = balloon.message.startsWith(GIFT_BALLOON_MARKER)
+        val balloonMessage = if (hasGiftIcon) balloon.message.removePrefix(GIFT_BALLOON_MARKER).trimStart() else balloon.message
+        val lines = font.split(FormattedText.of(balloonMessage), BALLOON_MAX_TEXT_WIDTH)
         if (lines.isEmpty()) return
-        val greatestTextWidth = lines.maxOf { font.width(it) }
+        val giftIconSpace = if (hasGiftIcon) GIFT_BALLOON_ICON_SIZE + 2 else 0
+        val greatestTextWidth = lines.mapIndexed { index, line -> font.width(line) + if (index == 0) giftIconSpace else 0 }.maxOrNull() ?: 0
         val balloonWidth = (greatestTextWidth + BALLOON_PADDING * 2).coerceAtLeast(BALLOON_MIN_WIDTH)
         val balloonHeight = lines.size * BALLOON_LINE_HEIGHT + BALLOON_PADDING * 2
         val balloonX = -balloonWidth / 2
@@ -134,8 +137,13 @@ object NpcClient {
         RenderSystem.disableBlend()
 
         var textY = balloonY + BALLOON_PADDING
-        lines.forEach { line ->
-            guiGraphics.drawString(font, line, -font.width(line) / 2, textY, BALLOON_TEXT_COLOR, false)
+        lines.forEachIndexed { index, line ->
+            val lineIconSpace = if (hasGiftIcon && index == 0) giftIconSpace else 0
+            val lineWidth = font.width(line) + lineIconSpace
+            val iconX = -lineWidth / 2
+            val textX = iconX + lineIconSpace
+            if (hasGiftIcon && index == 0) guiGraphics.blit(GIFT_BALLOON_ICON, iconX, textY, GIFT_BALLOON_ICON_SIZE, GIFT_BALLOON_ICON_SIZE, 0.0f, 0.0f, GIFT_BALLOON_ICON_TEXTURE_SIZE, GIFT_BALLOON_ICON_TEXTURE_SIZE, GIFT_BALLOON_ICON_TEXTURE_SIZE, GIFT_BALLOON_ICON_TEXTURE_SIZE)
+            guiGraphics.drawString(font, line, textX, textY, BALLOON_TEXT_COLOR, false)
             textY += BALLOON_LINE_HEIGHT
         }
         guiGraphics.flush()
@@ -355,6 +363,10 @@ object NpcClient {
     }
 
     private val BALLOON_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/chat_bubble.png")
+    private val GIFT_BALLOON_ICON = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/gift.png")
+    private const val GIFT_BALLOON_MARKER = "@gift.png"
+    private const val GIFT_BALLOON_ICON_SIZE = 8
+    private const val GIFT_BALLOON_ICON_TEXTURE_SIZE = 16
     private const val BALLOON_SCALE = 0.025f
     private const val BALLOON_ENTITY_Y_OFFSET = 0.9
     private const val BALLOON_MAX_TEXT_WIDTH = 118

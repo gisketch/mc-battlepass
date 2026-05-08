@@ -27,6 +27,7 @@ object NpcJobs {
         register(AdventurerNpcJob)
         register("warrior", AdventurerNpcJob)
         register("fashionista", AdventurerNpcJob)
+        register("professor", AdventurerNpcJob)
     }
 
     fun tick(entity: ChowNpcEntity, definition: NpcDefinition) {

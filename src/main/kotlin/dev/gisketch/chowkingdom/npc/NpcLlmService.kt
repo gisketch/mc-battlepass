@@ -98,22 +98,23 @@ object NpcLlmService {
         inputLabel: String = "Current event",
         sendTalkResponse: Boolean = true,
         excludePlayerFromBalloon: Boolean = true,
+        showBalloon: Boolean = true,
         npcRecordType: String = "npc_llm_event",
         responseToken: Long = NpcDialogTokens.next(),
     ) {
         val settings = NpcConfig.settings().llm
         if (!startRequest(definition.id, player, responseToken)) {
             ChowKingdomMod.LOGGER.info("NPC LLM event busy npc={} player={}", definition.id, player.gameProfile.name)
-            return sendFinal(player, npc, definition, fallbackMessage, fallbackMessage = fallbackMessage, sendTalkResponse = sendTalkResponse, excludePlayerFromBalloon = excludePlayerFromBalloon, npcRecordType = npcRecordType, responseToken = responseToken)
+            return sendFinal(player, npc, definition, fallbackMessage, fallbackMessage = fallbackMessage, sendTalkResponse = sendTalkResponse, excludePlayerFromBalloon = excludePlayerFromBalloon, showBalloon = showBalloon, npcRecordType = npcRecordType, responseToken = responseToken)
         }
-        NpcFeature.showBalloonToNearby(npc.level() as ServerLevel, npc, "...", NPC_LLM_PENDING_BALLOON_TICKS)
+        if (showBalloon) NpcFeature.showBalloonToNearby(npc.level() as ServerLevel, npc, "...", NPC_LLM_PENDING_BALLOON_TICKS)
         CompletableFuture.supplyAsync({ complete(player, definition, input, settings, fallbackMessage, inputLabel) }, executor).whenComplete { result, throwable ->
             player.server.execute {
                 if (!finishRequest(definition.id, responseToken)) return@execute
                 val liveNpc = NpcFeature.existingNpc(player.server, definition.id) ?: return@execute NpcNetwork.sendTalkResponse(player, definition.id, fallbackMessage, responseToken)
                 if (throwable != null) ChowKingdomMod.LOGGER.warn("NPC LLM event request failed npc={} player={}", definition.id, player.gameProfile.name, throwable)
                 val completion = if (throwable == null) result else NpcLlmCompletion(fallbackMessage)
-                sendFinal(player, liveNpc, definition, completion.message, fallbackMessage = fallbackMessage, sendTalkResponse = sendTalkResponse, excludePlayerFromBalloon = excludePlayerFromBalloon, npcRecordType = npcRecordType, responseToken = responseToken, memorable = completion.memorable)
+                sendFinal(player, liveNpc, definition, completion.message, fallbackMessage = fallbackMessage, sendTalkResponse = sendTalkResponse, excludePlayerFromBalloon = excludePlayerFromBalloon, showBalloon = showBalloon, npcRecordType = npcRecordType, responseToken = responseToken, memorable = completion.memorable)
             }
         }
     }
@@ -543,6 +544,7 @@ object NpcLlmService {
         fallbackMessage: String = NpcConfig.settings().llm.fallbackMessage,
         sendTalkResponse: Boolean = true,
         excludePlayerFromBalloon: Boolean = true,
+        showBalloon: Boolean = true,
         npcRecordType: String = "npc_llm_reply",
         responseToken: Long = 0L,
         memorable: String = "",
@@ -555,7 +557,7 @@ object NpcLlmService {
         if (memorable.isNotBlank()) NpcStore.recordPlayerMemory(player, "llm_memorable", memorable)
         if (sendTalkResponse) NpcNetwork.sendTalkResponse(player, definition.id, reply, responseToken)
         relayNpcTalk(player, npc, definition, reply)
-        NpcFeature.showBalloonToNearby(npc.level() as ServerLevel, npc, reply, NPC_LLM_REPLY_BALLOON_TICKS, if (excludePlayerFromBalloon) player.uuid else null)
+        if (showBalloon) NpcFeature.showBalloonToNearby(npc.level() as ServerLevel, npc, reply, NPC_LLM_REPLY_BALLOON_TICKS, if (excludePlayerFromBalloon) player.uuid else null)
         NpcFeature.relayNpcDialogToDiscord(player, definition, reply)
     }
 

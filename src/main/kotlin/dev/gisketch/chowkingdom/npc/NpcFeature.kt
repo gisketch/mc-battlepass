@@ -39,6 +39,7 @@ import net.minecraft.world.entity.ai.attributes.Attributes
 import net.minecraft.world.item.BlockItem
 import net.minecraft.world.item.Item
 import net.minecraft.world.item.ItemStack
+import net.minecraft.world.item.Items
 import net.minecraft.world.level.GameRules
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.Block
@@ -78,6 +79,8 @@ object NpcFeature {
     private val realtimeDebugTargets: MutableMap<UUID, UUID> = linkedMapOf()
     private val clockDebugPlayers: MutableSet<UUID> = linkedSetOf()
     private val greetingRadiusPlayers: MutableMap<UUID, MutableSet<String>> = linkedMapOf()
+    private val outgoingGiftApproaches: MutableMap<UUID, NpcOutgoingGiftApproach> = linkedMapOf()
+    private val camperBalloonRefreshAt: MutableMap<UUID, Long> = linkedMapOf()
     private val pendingShopNpcs: MutableMap<UUID, String> = linkedMapOf()
     private var debugTimeMultiplier: Int = 1
 
@@ -152,6 +155,11 @@ object NpcFeature {
                 "${definition.name} is currently talking to $names."
             }
             NpcNetwork.openDialog(player, dialogPayload(definition, npc, message, false, friendship.level, dialogMode = "join", startTalkMode = activeTalk.contains(player.uuid)))
+            return
+        }
+        val pendingGift = NpcStore.pendingOutgoingGift(definition.id, player)
+        if (pendingGift != null) {
+            claimOutgoingGift(player, npc, definition, pendingGift)
             return
         }
         val wasSleeping = npc.isSleeping
@@ -340,6 +348,7 @@ object NpcFeature {
         val message = friendshipMessage(definition.friendshipMessages.gift, friendship, player, definition, itemName, mood)
         if (!player.abilities.instabuild) stack.shrink(1)
         NpcStore.recordConversation(definition.id, player, player.gameProfile.name, "gifts $itemName to ${definition.name}", "player_gift")
+        NpcStore.recordPlayerMemory(player, "gift_to_npc", "${player.gameProfile.name} gave $itemName to ${definition.name}; reaction mood was $mood.")
         if (NpcConfig.settings().llm.enabled && NpcConfig.settings().llmMessageUsage.gift) {
             val responseToken = NpcDialogTokens.next()
             NpcNetwork.openDialog(player, dialogPayload(definition, npc, "...", false, friendship.level, closeOnly = true, closeLabel = "OKAY", responseToken = responseToken))
@@ -526,7 +535,9 @@ object NpcFeature {
         entity.campPos = entity.campPos ?: NpcStore.campPos(definition.id)
         if (NpcBrainOverrides.tick(entity, definition)) return
         if (tryFollowRentContractHolder(entity, definition)) return
-        if (tryGreetNearbyPlayer(entity, definition)) return
+        tryShowCamperHousingBalloon(entity, definition)
+        if (tryOutgoingGift(entity, definition)) return
+        if (!needsCamperHousingBalloon(entity, definition) && tryGreetNearbyPlayer(entity, definition)) return
         if (entity.isTalking()) return
         NpcBrain.tick(entity, definition)
     }
@@ -554,6 +565,167 @@ object NpcFeature {
     private fun playerHoldsRentContract(player: ServerPlayer, npcId: String): Boolean {
         return NpcRentContractData.readNpcId(player.mainHandItem) == npcId || NpcRentContractData.readNpcId(player.offhandItem) == npcId
     }
+
+    private fun tryShowCamperHousingBalloon(npc: ChowNpcEntity, definition: NpcDefinition) {
+        if (!needsCamperHousingBalloon(npc, definition)) return
+        val level = npc.level() as? ServerLevel ?: return
+        val greeting = NpcConfig.settings().greetings
+        val radiusSqr = greeting.radius * greeting.radius
+        val player = level.players()
+            .asSequence()
+            .filter { player -> player.isAlive && !player.isSpectator && player.distanceToSqr(npc.x, npc.y, npc.z) <= radiusSqr }
+            .minByOrNull { player -> player.distanceToSqr(npc.x, npc.y, npc.z) }
+            ?: return
+        val nextAt = camperBalloonRefreshAt[npc.uuid] ?: 0L
+        if (level.gameTime < nextAt) return
+        val pool = if (NpcStore.camperReturnReason(definition.id) == "lost_house") definition.camperMessages.lostHouseBalloon else definition.camperMessages.needsHouseBalloon
+        sendNpcBalloon(level, npc, camperMessage(pool, player, definition), NPC_CAMPER_HOUSING_BALLOON_TICKS)
+        camperBalloonRefreshAt[npc.uuid] = level.gameTime + NPC_CAMPER_HOUSING_BALLOON_REFRESH_TICKS
+    }
+
+    private fun needsCamperHousingBalloon(npc: ChowNpcEntity, definition: NpcDefinition): Boolean {
+        if (!definition.housing.canMoveIn) return false
+        return validHomePos(npc.level(), definition.id) == null && !NpcStore.contractGiven(definition.id)
+    }
+
+    private fun tryOutgoingGift(npc: ChowNpcEntity, definition: NpcDefinition): Boolean {
+        val config = definition.gifts.outgoing
+        if (!config.enabled || npc.isSleeping) return false
+        val level = npc.level() as? ServerLevel ?: return false
+        outgoingGiftApproaches[npc.uuid]?.let { approach ->
+            val player = level.server.playerList.getPlayer(approach.playerId)
+            if (player == null || player.level() != level || !player.isAlive || player.isSpectator || level.gameTime - approach.startedAtTick > config.followSeconds * 20L) {
+                outgoingGiftApproaches.remove(npc.uuid)
+                return false
+            }
+            npc.debugActivity = "gift"
+            npc.debugGoal = "deliver_gift"
+            npc.debugTargetPos = player.blockPosition().immutable()
+            npc.lookControl.setLookAt(player, 30.0f, 30.0f)
+            if (npc.distanceToSqr(player) > NPC_GIFT_DELIVERY_DISTANCE_SQR) {
+                npc.navigation.moveTo(player.x, player.y, player.z, NPC_GIFT_FOLLOW_SPEED)
+            } else {
+                npc.navigation.stop()
+            }
+            return true
+        }
+
+        if (npc.isTalking()) return false
+
+        val radiusSqr = config.radius * config.radius
+        val day = NpcTime.day(level)
+        val hour = NpcTime.hour(level)
+        val pendingPlayer = level.players()
+            .asSequence()
+            .filter { player -> player.isAlive && !player.isSpectator && player.distanceToSqr(npc.x, npc.y, npc.z) <= radiusSqr }
+            .mapNotNull { player -> NpcStore.pendingOutgoingGiftReady(definition.id, player, day)?.let { gift -> player to gift } }
+            .minByOrNull { (player, _) -> player.distanceToSqr(npc.x, npc.y, npc.z) }
+        if (pendingPlayer != null) {
+            NpcStore.markPendingOutgoingGiftReminder(definition.id, pendingPlayer.first, day)
+            startOutgoingGiftApproach(npc, level, definition, config, pendingPlayer.first)
+            return true
+        }
+        val player = level.players()
+            .asSequence()
+            .filter { player -> player.isAlive && !player.isSpectator && player.distanceToSqr(npc.x, npc.y, npc.z) <= radiusSqr }
+            .filter { player -> NpcStore.friendshipSnapshot(definition.id, player).level >= config.minFriendshipLevel }
+            .filter { player -> NpcStore.outgoingGiftReady(definition.id, player, day, hour, level.random.nextInt(24)) }
+            .minByOrNull { player -> player.distanceToSqr(npc.x, npc.y, npc.z) }
+            ?: return false
+        val friendship = NpcStore.friendshipSnapshot(definition.id, player)
+        val gift = selectOutgoingGift(config, friendship.level, level.random) ?: return false
+        NpcStore.setPendingOutgoingGift(definition.id, player, day, gift.item, gift.qty)
+        startOutgoingGiftApproach(npc, level, definition, config, player)
+        return true
+    }
+
+    private fun startOutgoingGiftApproach(npc: ChowNpcEntity, level: ServerLevel, definition: NpcDefinition, config: NpcOutgoingGiftsDefinition, player: ServerPlayer) {
+        outgoingGiftApproaches[npc.uuid] = NpcOutgoingGiftApproach(player.uuid, level.gameTime)
+        val offer = outgoingGiftOfferMessage(config, player, definition)
+        sendNpcBalloon(level, npc, offer, config.followSeconds * 20)
+        npc.startTalkingTo(player, config.followSeconds * 20)
+    }
+
+    private fun selectOutgoingGift(config: NpcOutgoingGiftsDefinition, friendshipLevel: Int, random: net.minecraft.util.RandomSource): NpcOutgoingGiftEntryDefinition? {
+        val pool = (if (friendshipLevel >= config.rareFriendshipLevel && config.rarePool.isNotEmpty()) config.rarePool else config.pool)
+            .filter { gift -> outgoingGiftStack(gift) != null }
+        val totalWeight = pool.sumOf { gift -> gift.weight.coerceAtLeast(0) }
+        if (totalWeight <= 0) return null
+        var roll = random.nextInt(totalWeight)
+        pool.forEach { gift ->
+            roll -= gift.weight.coerceAtLeast(0)
+            if (roll < 0) return gift
+        }
+        return pool.lastOrNull()
+    }
+
+    private fun claimOutgoingGift(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, gift: NpcPendingOutgoingGift) {
+        val stack = outgoingGiftStack(gift) ?: return
+        val itemName = stack.hoverName.string
+        val quantity = stack.count
+        giveStack(player, stack)
+        val friendship = NpcStore.friendshipSnapshot(definition.id, player)
+        NpcStore.clearPendingOutgoingGift(definition.id, player, NpcTime.day(player.level()))
+        outgoingGiftApproaches.remove(npc.uuid)
+        NpcStore.recordConversation(definition.id, player, definition.name, "gives $quantity x $itemName to ${player.gameProfile.name}", "npc_outgoing_gift_item")
+        NpcStore.recordConversation(definition.id, player, player.gameProfile.name, "receives $quantity x $itemName from ${definition.name}", "player_received_npc_gift")
+        NpcStore.recordPlayerMemory(player, "gift_from_npc", "${definition.name} gave ${player.gameProfile.name} $quantity x $itemName.")
+        val fallback = outgoingGiftFallback(definition.gifts.outgoing, player, definition, itemName, quantity)
+        if (NpcConfig.settings().llm.enabled && definition.gifts.outgoing.llmEnabled) {
+            val responseToken = NpcDialogTokens.next()
+            NpcNetwork.openDialog(player, dialogPayload(definition, npc, "...", false, friendship.level, closeOnly = true, closeLabel = "THANKS", responseToken = responseToken))
+            NpcLlmService.event(
+                player,
+                npc,
+                definition,
+                fallback,
+                outgoingGiftPrompt(definition.gifts.outgoing, player, definition, itemName, quantity),
+                inputLabel = "Gift claim",
+                sendTalkResponse = true,
+                showBalloon = false,
+                excludePlayerFromBalloon = false,
+                npcRecordType = "npc_outgoing_gift",
+                responseToken = responseToken,
+            )
+            return
+        }
+        npc.startTalkingTo(player, NPC_DIALOG_DURATION_TICKS)
+        NpcStore.recordConversation(definition.id, player, definition.name, fallback, "npc_outgoing_gift")
+        NpcNetwork.openDialog(player, dialogPayload(definition, npc, fallback, false, friendship.level, closeOnly = true, closeLabel = "THANKS"))
+        relayNpcDialog(player, npc, definition, fallback)
+    }
+
+    private fun outgoingGiftStack(gift: NpcOutgoingGiftEntryDefinition): ItemStack? {
+        return outgoingGiftStack(gift.item, gift.qty)
+    }
+
+    private fun outgoingGiftStack(gift: NpcPendingOutgoingGift): ItemStack? {
+        return outgoingGiftStack(gift.item, gift.qty)
+    }
+
+    private fun outgoingGiftStack(itemId: String, qty: Int): ItemStack? {
+        val item = runCatching { ResourceLocation.parse(itemId) }.getOrNull()
+            ?.let { id -> BuiltInRegistries.ITEM.getOptional(id).orElse(Items.AIR) }
+            ?: Items.AIR
+        if (item == Items.AIR) return null
+        return ItemStack(item, qty.coerceIn(1, item.defaultMaxStackSize))
+    }
+
+    private fun outgoingGiftOfferMessage(config: NpcOutgoingGiftsDefinition, player: ServerPlayer, definition: NpcDefinition): String = config.offerMessages.randomOrNull()
+        ?.let { outgoingGiftText(it, player, definition, "", 0) }
+        ?: "@gift.png Hey ${player.gameProfile.name}!"
+
+    private fun outgoingGiftFallback(config: NpcOutgoingGiftsDefinition, player: ServerPlayer, definition: NpcDefinition, itemName: String, quantity: Int): String = config.fallbackMessages.randomOrNull()
+        ?.let { outgoingGiftText(it, player, definition, itemName, quantity) }
+        ?: "I brought you $quantity x $itemName, ${player.gameProfile.name}."
+
+    private fun outgoingGiftPrompt(config: NpcOutgoingGiftsDefinition, player: ServerPlayer, definition: NpcDefinition, itemName: String, quantity: Int): String = outgoingGiftText(config.llmPrompt, player, definition, itemName, quantity)
+
+    private fun outgoingGiftText(template: String, player: ServerPlayer, definition: NpcDefinition, itemName: String, quantity: Int): String = template
+        .replace("{player}", player.gameProfile.name)
+        .replace("{npc}", definition.name)
+        .replace("{item}", itemName)
+        .replace("{quantity}", quantity.toString())
 
     private fun tryGreetNearbyPlayer(npc: ChowNpcEntity, definition: NpcDefinition): Boolean {
         val level = npc.level() as? ServerLevel ?: return false
@@ -1473,6 +1645,8 @@ object NpcFeature {
 
     private data class NpcLookHit(val npc: ChowNpcEntity, val along: Double, val distanceSqr: Double)
 
+    private data class NpcOutgoingGiftApproach(val playerId: UUID, val startedAtTick: Long)
+
     private const val DEBUG_REACH = 12.0
     private const val DEBUG_AIM_RADIUS = 1.5
     private const val REALTIME_DEBUG_INTERVAL_TICKS = 10
@@ -1484,7 +1658,11 @@ object NpcFeature {
     private const val NPC_CAMP_SPAWN_RADIUS = 2
     private const val CONTRACT_FOLLOW_SCAN_RADIUS_SQR = 32.0 * 32.0
     private const val CONTRACT_FOLLOW_STOP_DISTANCE_SQR = 2.5 * 2.5
+    private const val NPC_GIFT_DELIVERY_DISTANCE_SQR = 2.5 * 2.5
+    private const val NPC_GIFT_FOLLOW_SPEED = 0.95
     private const val CONTRACT_BED_ASSIGN_RADIUS_SQR = 7.0 * 7.0
+    private const val NPC_CAMPER_HOUSING_BALLOON_TICKS = 120
+    private const val NPC_CAMPER_HOUSING_BALLOON_REFRESH_TICKS = 80L
     private const val FRIENDSHIP_HIT_DELTA = -10
     private const val FRIENDSHIP_KILL_DELTA = -300
     private const val FIRST_DAILY_CHAT_FRIENDSHIP_DELTA = 25

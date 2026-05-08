@@ -33,6 +33,8 @@ While talking, the NPC briefly stops navigating and looks at the interacting pla
 
 When a player comes within the global NPC greeting radius and has not spoken to that NPC yet that in-game day, the NPC pauses briefly, looks at the player, and shows a world-space greeting balloon for the configured duration. If the player does not interact, the same NPC/player pair can greet again after the configured cooldown. If the player leaves the radius, that cooldown resets. Right-clicking the NPC for the first chat of the in-game day grants +25 friendship, stops greeting balloons for that day, and uses the configured first-chat message pool when the NPC already has a home and is awake.
 
+Unhoused move-in NPCs use camper housing balloons instead of daily greeting balloons until they have a home or a rent contract has been issued. While a player is in greeting radius, the needs-house or lost-house balloon refreshes in world-space so it remains visible and is not replaced by normal daily greetings.
+
 ## Definition Fields
 
 Each NPC is one TOML file:
@@ -50,7 +52,7 @@ Each NPC is one TOML file:
 - `housing`: Move-in rules: `can_move_in`, `requires_bed`.
 - `voice`: Animalese dialog voice settings: `animalese_pitch` (`high`, `med`, `low`, `lowest`), `pitch`, `volume`, and `radius`.
 - `chat`: World chat settings. `call_names` are names/nicknames that can address the NPC from Minecraft or Discord chat; `minecraft_chat` and `discord_chat` toggle those channels.
-- `gifts`: Gift ids/tags grouped by `loved`, `liked`, `disliked`, plus `daily_limit`, `reset_hour`, and reaction message pools for `loved`, `liked`, `disliked`, and `neutral`.
+- `gifts`: Gift ids/tags grouped by `loved`, `liked`, `disliked`, plus `daily_limit`, `reset_hour`, and reaction message pools for `loved`, `liked`, `disliked`, and `neutral`. `gifts.outgoing` configures NPC-to-player daily gifts with `enabled`, `radius`, `min_friendship_level`, `rare_friendship_level`, `follow_seconds`, `offer_messages`, `fallback_messages`, `llm_enabled`, `llm_prompt`, weighted `pool`, weighted `rare_pool`, and additive `extra_pool` / `extra_rare_pool` lists. Each pool entry has `item`, `qty`, and `weight`.
 - `friendship_messages`: Optional per-NPC category message additions for `interact`, `gift`, `hurt`, `wake`, `greeting`, and `first_daily_chat`. Categories are `hatred`, `enemy`, `dislike`, `neutral`, `okay`, `good_friends`, and `best_friends`. Message pools resolve in order: built-in defaults, shared `friendship_messages.toml`, then NPC-specific `friendship_messages`. Each configured layer joins the inherited pool and is inserted twice, so local additions have roughly 2:1 weight against inherited generic lines.
 - `shop_messages`: Optional post-purchase message overrides with `single`, `normal`, and `bulk` buckets. Each bucket has the same friendship categories as `friendship_messages`. Supports `{player}`, `{npc}`, `{item}`, `{quantity}`, `{total}`, `{friendship_level}`, and `{friendship_points}`.
 - `camper_messages`: Optional uncategorized camp message pools: `needs_house_balloon`, `needs_house_dialog`, `lost_house_balloon`, and `lost_house_dialog`. Supports `{player}` and `{npc}`.
@@ -131,6 +133,8 @@ Resident state tracks each NPC's entity UUID, camp position, assigned home bed, 
 
 Greeting state is tracked per NPC/player. It stores the last greeting day, the real-time greeting cooldown expiry, and the first-chat day used to stop repeat greetings and prevent duplicate daily friendship rewards.
 
+Outgoing NPC gift state is tracked per NPC/player. It stores the current scheduled gift day/hour and the last offered day, so a ready gift attempt either delivers or times out, then cools down until the next in-game day.
+
 Per NPC/player friendship is stored as points from `-1000` to `1000`, defaulting to `100` (`Lv. 1`). The derived friendship level is `-10` to `10`. Categories map as: `-10 hatred`, `-9..-6 enemy`, `-5..-3 dislike`, `-2..2 neutral`, `3..5 okay`, `6..9 good_friends`, `10 best_friends`.
 
 Each NPC/player conversation keeps at most 30 records. The world also keeps at most 30 global NPC-relevant events. This is the foundation for future LLM prompt context.
@@ -156,10 +160,12 @@ NPC memory records the current player-specific conversation and a small global e
 - NPC death and killer when known.
 - NPC respawn.
 - Player death messages.
+- Player gives an item to an NPC.
+- NPC gives a pending gift item to a player.
 
 Future LLM prompt building should read `NpcStore.llmContext(npcId, player)` and inject global events before player-specific conversation records. The context can also carry the current 24-hour schedule hour.
 
-The LLM context includes the current friendship snapshot: points, level, and category. Treat this as high-priority tone context for future generated NPC replies.
+The LLM context includes the current friendship snapshot: points, level, and category. Gift history is two-way: player-to-NPC gifts and NPC-to-player gifts are both saved into conversation history, and a short player memory is recorded for each gift direction. Treat this as high-priority tone context for future generated NPC replies.
 
 Current built-in activities are `work`, `home`, and `sleep`. If an older NPC config has no schedule, the loader supplies the default `06-20 work`, `20-22 home`, `22-06 sleep` routine. During `sleep`, Finn walks to his assigned bed and uses the sleeping pose when close enough.
 
@@ -172,6 +178,8 @@ The third same-player hit also starts a short brain override. The NPC equips a t
 When Jade is installed, hovering an NPC shows the NPC display name and the hovering player's friendship category for that NPC with a small heart, empty heart, or angry icon.
 
 Gift limits are per NPC/player and reset by in-game schedule period. Finn defaults to one gift per in-game day, resetting at 05:00. Gifts adjust friendship only: neutral `+5`, liked `+25`, loved `+50`, disliked `-50`. Hitting an NPC changes friendship by `-10`; killing one changes friendship by `-300`; first daily chat changes friendship by `+25`.
+
+NPC-to-player gifts start at friendship level 5 by default. Each NPC/player pair rolls one scheduled hour per in-game day. If the player is nearby when the hour is ready, the NPC creates a pending weighted random gift, shows a `@gift.png` balloon, and follows the player for `follow_seconds`. The item is only granted when the player right-clicks the NPC while a pending gift exists. Ignoring the chase does not delete the gift; the pending gift can be claimed later, including on a later in-game day, and the NPC can remind the player again once per day. Claiming opens the normal NPC dialog with a `THANKS` close button. Gift LLM thinking and replies stay in that dialog, not in world-space balloons. Friendship level 9+ uses the rare weighted pool when available. LLM gift messages receive `{player}`, `{npc}`, `{item}`, and `{quantity}` in the prompt; fallback messages use the same placeholders.
 
 If a housed NPC dies, resident state marks it dead. Once the scheduled respawn day is due and the in-game hour is 05:00 or later, the server respawns it at its assigned bed if it has one. If an unhoused camper dies, the active camper remains reserved and respawns at the camping block instead. This is intentionally tolerant of debug time jumps that skip across the exact 05:00 scan window.
 
