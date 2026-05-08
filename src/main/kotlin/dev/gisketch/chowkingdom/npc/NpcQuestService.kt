@@ -141,17 +141,18 @@ object NpcQuestService {
         val state = questState(player)
         state.active[definition.id]?.let { active ->
             val progress = displayProgress(player, active)
-            return NpcQuestFriendSummary("Mission: ${active.description} ($progress/${active.goal})", progress, active.goal)
+            return if (readyForClaim(player, active)) NpcQuestFriendSummary("Quest Finished", progress, active.goal) else NpcQuestFriendSummary("In Progress", progress, active.goal)
         }
+        if (!NpcFeature.isPlazaMeetupHour(player.level())) return NpcQuestFriendSummary("No Quest", 0, 0)
         val period = currentPeriod(player)
         val periodState = questState(player, period)
         val offer = selectedOffer(player, definition, period)
         val canOffer = offer != null && definition.id !in periodState.completedNpcIds && definition.id !in periodState.active && periodState.active.size < MAX_ACTIVE && (periodState.declinedUntilTick[definition.id] ?: Long.MIN_VALUE) <= player.level().dayTime
         if (offer != null && canOffer) {
             val goal = if (offer.category == "fetch") offer.fetchCount else offer.goal
-            return NpcQuestFriendSummary("Mission available: ${missionText(offer, goal)}", 0, goal)
+            return NpcQuestFriendSummary("Quest Available", 0, goal)
         }
-        return NpcQuestFriendSummary("No mission available", 0, 0)
+        return NpcQuestFriendSummary("No Quest", 0, 0)
     }
 
     fun debugFinish(player: ServerPlayer, npcId: String): Boolean {

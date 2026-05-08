@@ -9,6 +9,7 @@ import dev.gisketch.chowkingdom.discord.DiscordQuickSkinSupport
 import dev.gisketch.chowkingdom.mixin.GuiGraphicsAccessor
 import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
+import net.minecraft.client.CameraType
 import net.minecraft.client.gui.Font
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.components.EditBox
@@ -57,6 +58,7 @@ import kotlin.math.atan2
 import kotlin.math.PI
 import kotlin.math.roundToInt
 import kotlin.math.sin
+import kotlin.math.sqrt
 import org.joml.Quaternionf
 import org.joml.Vector3f
 
@@ -589,6 +591,9 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
     private var panelHeightAnimationTarget: Int = BASE_PANEL_HEIGHT
     private var panelHeightAnimationStartedAtMs: Long = openedAtMs
     private var talkInput: EditBox? = null
+    private var keepaliveTicks = 0
+    private var closingSent = false
+    private var previousCameraType: CameraType? = null
 
     override fun isPauseScreen(): Boolean = false
 
@@ -599,6 +604,9 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
     override fun renderBlurredBackground(partialTick: Float) = Unit
 
     override fun init() {
+        val options = Minecraft.getInstance().options
+        previousCameraType = options.cameraType
+        options.cameraType = CameraType.FIRST_PERSON
         val layout = layout()
         talkInput = EditBox(font, layout.inputX, layout.inputY, layout.inputWidth, INPUT_HEIGHT, Component.literal("Message ${payload.name}...")).apply {
             setMaxLength(280)
@@ -612,7 +620,26 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         }
     }
 
+    override fun tick() {
+        super.tick()
+        keepaliveTicks--
+        if (keepaliveTicks <= 0) {
+            NpcNetwork.sendAction(payload.npcId, "dialog_keepalive")
+            keepaliveTicks = DIALOG_KEEPALIVE_CLIENT_TICKS
+        }
+    }
+
+    override fun removed() {
+        previousCameraType?.let { cameraType -> Minecraft.getInstance().options.cameraType = cameraType }
+        if (!closingSent) {
+            closingSent = true
+            NpcNetwork.sendAction(payload.npcId, "dialog_close")
+        }
+        super.removed()
+    }
+
     override fun render(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) {
+        frameNpcCamera()
         val layout = layout()
         updateTalkInput(layout)
         val panelWidth = layout.panelWidth
@@ -816,6 +843,30 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
     private fun giftStack(): ItemStack {
         val player = Minecraft.getInstance().player ?: return ItemStack.EMPTY
         return if (!player.mainHandItem.isEmpty) player.mainHandItem else player.offhandItem
+    }
+
+    private fun frameNpcCamera() {
+        val minecraft = Minecraft.getInstance()
+        val player = minecraft.player ?: return
+        val npc = minecraft.level?.getEntity(payload.npcEntityId) as? LivingEntity ?: return
+        val target = npc.eyePosition.add(0.0, npc.bbHeight * 0.08, 0.0)
+        val eye = player.eyePosition
+        val dx = target.x - eye.x
+        val dy = target.y - eye.y
+        val dz = target.z - eye.z
+        val horizontal = sqrt(dx * dx + dz * dz).coerceAtLeast(0.0001)
+        val targetYaw = (atan2(dz, dx) * 180.0 / PI - 90.0).toFloat()
+        val targetPitch = (-(atan2(dy, horizontal) * 180.0 / PI)).toFloat()
+        player.yRot = easeDegrees(player.yRot, targetYaw, CAMERA_EASE)
+        player.xRot = easeDegrees(player.xRot, targetPitch, CAMERA_EASE).coerceIn(-70.0f, 70.0f)
+        player.yHeadRot = player.yRot
+        player.yBodyRot = player.yRot
+    }
+
+    private fun easeDegrees(current: Float, target: Float, amount: Float): Float {
+        val delta = ((target - current + 540.0f) % 360.0f) - 180.0f
+        val eased = (1.0f - (1.0f - amount) * (1.0f - amount)).coerceIn(0.0f, 1.0f)
+        return current + delta * eased
     }
 
     private fun actionAt(mouseX: Int, mouseY: Int): DialogAction? {
@@ -1135,6 +1186,8 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         private const val ENTRANCE_DURATION_MS = 180.0f
         private const val PANEL_HEIGHT_DURATION_MS = 140.0f
         private const val TALK_LAYOUT_DURATION_MS = 160.0f
+        private const val DIALOG_KEEPALIVE_CLIENT_TICKS = 40
+        private const val CAMERA_EASE = 0.12f
         private const val TYPEWRITER_DELAY_MS = 110L
         private const val TYPEWRITER_CHARS_PER_SECOND = 68.0
         private const val NAME_COLOR = 0xFFFFFFFF.toInt()

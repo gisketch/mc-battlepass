@@ -38,6 +38,7 @@ import java.util.function.Supplier
 object ShippingBinFeature {
     private val BLOCKS: DeferredRegister<Block> = DeferredRegister.create(Registries.BLOCK, ChowKingdomMod.MOD_ID)
     private val ITEMS: DeferredRegister<Item> = DeferredRegister.create(Registries.ITEM, ChowKingdomMod.MOD_ID)
+    private var lastAutoPayoutMinute = Long.MIN_VALUE
 
     val SHIPPING_BIN: DeferredHolder<Block, ShippingBinBlock> = BLOCKS.register("shipping_bin", Supplier { ShippingBinBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.BARREL)) })
 
@@ -69,6 +70,9 @@ object ShippingBinFeature {
         val currentMinuteOfDay = clock.hour * MINUTES_PER_HOUR + clock.minute
         if (currentMinuteOfDay < payoutMinuteOfDay) return
         val day = clock.day
+        val minuteKey = day * MINUTES_PER_DAY + currentMinuteOfDay
+        if (minuteKey == lastAutoPayoutMinute) return
+        lastAutoPayoutMinute = minuteKey
         if (!ShippingBinStore.hasDueSellableItems(day)) return
 
         val sales = mutableListOf<ShippingBinSaleResult>()
@@ -158,6 +162,7 @@ object ShippingBinFeature {
     }
 
     private const val MINUTES_PER_HOUR = 60
+    private const val MINUTES_PER_DAY = 24 * MINUTES_PER_HOUR
     private const val QUALITY_FOOD_SOLD_EVENT = "gisketchs_chowkingdom_mod:shipping_bin_quality_food_sold"
     private const val IRON_QUALITY_FOOD_SOLD_EVENT = "gisketchs_chowkingdom_mod:shipping_bin_iron_quality_food_sold"
     private const val GOLD_QUALITY_FOOD_SOLD_EVENT = "gisketchs_chowkingdom_mod:shipping_bin_gold_quality_food_sold"

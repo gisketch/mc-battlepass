@@ -140,22 +140,24 @@ private class PlayerProfileScreen : Screen(Component.literal("Profile")) {
     }
 
     private fun renderPerkRow(guiGraphics: GuiGraphics, row: Rect, perk: ProfilePerk) {
-        guiGraphics.fill(row.x, row.y, row.right, row.bottom, colorWithRenderAlpha(ROW_FILL))
+        renderNineSlice(guiGraphics, PANEL_TEXTURE, row, PANEL_TEXTURE_WIDTH, PANEL_TEXTURE_HEIGHT, PANEL_SOURCE_CORNER, PANEL_DEST_CORNER, 0.55f)
         renderTexture(guiGraphics, PERK_ICON, row.x + 5, row.y + 3, 12, ICON_TEXTURE_SIZE)
         guiGraphics.drawString(font, fitPlain(perk.label, row.width - 25), row.x + 22, row.y + 4, colorWithRenderAlpha(WHITE), false)
     }
 
     private fun renderStatsGrid(guiGraphics: GuiGraphics, rect: Rect, stats: List<ProfileStat>, zones: MutableList<TooltipZone>) {
-        val gap = 6
-        val cellWidth = (rect.width - gap) / 2
+        val gap = 5
+        val columns = 3
+        val cellWidth = (rect.width - gap * (columns - 1)) / columns
         stats.forEachIndexed { index, stat ->
-            val column = index % 2
-            val row = index / 2
+            val column = index % columns
+            val row = index / columns
             val cell = Rect(rect.x + column * (cellWidth + gap), rect.y + row * (STAT_CELL_HEIGHT + gap), cellWidth, STAT_CELL_HEIGHT)
-            guiGraphics.fill(cell.x, cell.y, cell.right, cell.bottom, colorWithRenderAlpha(ROW_FILL))
-            if (stat.icon != null) renderTexture(guiGraphics, stat.icon, cell.x + 5, cell.y + 6, STAT_ICON_SIZE, ICON_TEXTURE_SIZE) else renderItem(guiGraphics, stat.stack, cell.x + 5, cell.y + 6, STAT_ICON_SIZE)
-            guiGraphics.drawString(font, fitPlain(stat.value, cell.width - 30), cell.x + 27, cell.y + 5, colorWithRenderAlpha(WHITE), false)
-            guiGraphics.drawString(font, fitPlain(stat.label, cell.width - 30), cell.x + 27, cell.y + 17, colorWithRenderAlpha(MUTED), false)
+            renderNineSlice(guiGraphics, PANEL_TEXTURE, cell, PANEL_TEXTURE_WIDTH, PANEL_TEXTURE_HEIGHT, PANEL_SOURCE_CORNER, PANEL_DEST_CORNER, 0.55f)
+            val iconX = cell.x + 5
+            val iconY = cell.y + (cell.height - STAT_ICON_SIZE) / 2
+            if (stat.icon != null) renderTexture(guiGraphics, stat.icon, iconX, iconY, STAT_ICON_SIZE, ICON_TEXTURE_SIZE) else renderItem(guiGraphics, stat.stack, iconX, iconY, STAT_ICON_SIZE)
+            guiGraphics.drawString(font, fitPlain(stat.value, cell.width - 27), cell.x + 24, cell.y + 6, colorWithRenderAlpha(WHITE), false)
             zones += TooltipZone(cell, listOf(Component.literal(stat.label), Component.literal(stat.detail).withStyle(ChatFormatting.GRAY)))
         }
     }
@@ -275,15 +277,15 @@ private class PlayerProfileScreen : Screen(Component.literal("Profile")) {
     private fun ckdmText(text: String, fontId: ResourceLocation): Component = Component.literal(text.uppercase(Locale.ROOT)).withStyle { style -> style.withFont(fontId) }
 
     private fun panelRect(): Rect {
-        val panelWidth = (width * 0.56f).toInt().coerceIn(330, 520).coerceAtMost(width - 24)
-        val panelHeight = (height * 0.82f).toInt().coerceIn(300, 410).coerceAtMost(height - 24)
+        val panelWidth = (width * 0.48f).toInt().coerceIn(300, 450).coerceAtMost(width - 24)
+        val panelHeight = (height * 0.72f).toInt().coerceIn(250, 350).coerceAtMost(height - 24)
         return Rect((width - panelWidth) / 2, (height - panelHeight) / 2, panelWidth, panelHeight)
     }
 
     private fun maxPerkRows(panel: Rect, cursorY: Int): Int {
-        val statsHeight = 15 + STAT_CELL_HEIGHT * 3 + STAT_GRID_GAP * 2 + 26
+        val statsHeight = 15 + STAT_CELL_HEIGHT * 2 + STAT_GRID_GAP + 24
         val available = (panel.bottom - PAD - cursorY - statsHeight).coerceAtLeast(PERK_ROW_HEIGHT)
-        return (available / (PERK_ROW_HEIGHT + 3)).coerceIn(1, 6)
+        return (available / (PERK_ROW_HEIGHT + 3)).coerceIn(1, 4)
     }
 
     private fun xpFor(playerId: UUID?, progress: BattlepassClientState.PlayerProgress?, passId: String): Int =
@@ -359,15 +361,15 @@ private class PlayerProfileScreen : Screen(Component.literal("Profile")) {
     private fun colorWithRenderAlpha(color: Int): Int = ((((color ushr 24) and 0xFF) * renderAlpha).toInt().coerceIn(0, 255) shl 24) or (color and 0x00FFFFFF)
 
     companion object {
-        private const val PAD = 20
-        private const val HEAD_SIZE = 28
-        private const val ROLE_ICON_SIZE = 20
-        private const val ROLE_ICON_GAP = 6
+        private const val PAD = 16
+        private const val HEAD_SIZE = 24
+        private const val ROLE_ICON_SIZE = 18
+        private const val ROLE_ICON_GAP = 5
         private const val SUMMARY_ICON_SIZE = 14
-        private const val STAT_ICON_SIZE = 14
-        private const val PERK_ROW_HEIGHT = 20
-        private const val STAT_CELL_HEIGHT = 34
-        private const val STAT_GRID_GAP = 6
+        private const val STAT_ICON_SIZE = 13
+        private const val PERK_ROW_HEIGHT = 18
+        private const val STAT_CELL_HEIGHT = 24
+        private const val STAT_GRID_GAP = 5
         private const val VANILLA_ITEM_SIZE = 16
         private const val ICON_TEXTURE_SIZE = 16
         private const val PANEL_TEXTURE_WIDTH = 1646

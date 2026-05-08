@@ -139,7 +139,7 @@ object ShippingBinStore {
         return bins.values.any { stacks ->
             stacks.any { stored ->
                 val stack = stored.toItemStack()
-                stored.eligibleDay <= day && !stack.isEmpty && !RelicRouletteFeature.isTransferBlocked(stack) && ShippingBinConfig.priceFor(stack) > 0L
+                eligibleForAutoPayout(stored, day) && !stack.isEmpty && !RelicRouletteFeature.isTransferBlocked(stack) && ShippingBinConfig.priceFor(stack) > 0L
             }
         }
     }
@@ -192,8 +192,10 @@ object ShippingBinStore {
     }
 
     fun payoutDue(playerId: UUID, day: Long): ShippingBinPayout {
-        return payout(playerId) { stored -> stored.eligibleDay <= day }
+        return payout(playerId) { stored -> eligibleForAutoPayout(stored, day) }
     }
+
+    private fun eligibleForAutoPayout(stored: StoredStack, day: Long): Boolean = stored.eligibleDay <= day || stored.eligibleDay == Long.MIN_VALUE || stored.eligibleDay > day + 1
 
     private fun payout(playerId: UUID, shouldSell: (StoredStack) -> Boolean): ShippingBinPayout {
         if (!loaded) load()

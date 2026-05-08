@@ -72,6 +72,7 @@ import kotlin.math.max
 
 object NpcFeature {
     private const val NPC_DIALOG_DURATION_TICKS = 100
+    private const val NPC_DIALOG_KEEPALIVE_TICKS = 80
     private val BLOCKS: DeferredRegister<Block> = DeferredRegister.create(Registries.BLOCK, ChowKingdomMod.MOD_ID)
     private val ITEMS: DeferredRegister<Item> = DeferredRegister.create(Registries.ITEM, ChowKingdomMod.MOD_ID)
     private val ENTITIES: DeferredRegister<EntityType<*>> = DeferredRegister.create(Registries.ENTITY_TYPE, ChowKingdomMod.MOD_ID)
@@ -220,6 +221,16 @@ object NpcFeature {
         val definition = NpcConfig.get(npcId) ?: return
         val npc = existingNpc(player.server, definition.id) ?: return
         if (npc.level() != player.level() || player.distanceToSqr(npc) > NPC_DIALOG_ACTION_DISTANCE_SQR) return
+        when (action.lowercase()) {
+            "dialog_keepalive" -> {
+                npc.continueTalkingTo(player, NPC_DIALOG_KEEPALIVE_TICKS)
+                return
+            }
+            "dialog_close" -> {
+                npc.stopTalkingTo(player)
+                return
+            }
+        }
         if (NpcQuestService.handleAction(player, npc, definition, action)) return
         when (action.lowercase()) {
             "cancel_llm" -> NpcLlmService.cancel(player, definition.id)
@@ -291,11 +302,18 @@ object NpcFeature {
                 giftStatus = if (giftLimit <= 0) "Gifts unavailable" else if (giftCount >= giftLimit) "Gifted today ($giftCount/$giftLimit)" else "Gift available ($giftCount/$giftLimit)",
                 shopStatus = friendShopStatus(definition, currentHour, player),
                 missionStatus = quest.status,
+                aliveStatus = friendAliveStatus(player.server, definition),
                 missionProgress = quest.progress,
                 missionGoal = quest.goal,
             )
         }
         NpcNetwork.syncFriends(player, NpcFriendsSyncPayload(entries))
+    }
+
+    private fun friendAliveStatus(server: MinecraftServer, definition: NpcDefinition): String = when {
+        existingNpc(server, definition.id)?.isAlive == true -> "Alive"
+        NpcStore.isDead(definition.id) -> "Dead"
+        else -> "Away"
     }
 
     private fun friendShopStatus(definition: NpcDefinition, currentHour: Int, player: ServerPlayer): String {
@@ -1123,6 +1141,11 @@ object NpcFeature {
     }
 
     fun plazaMeetupStartHour(): Int = NPC_PLAZA_MEETUP_START_HOUR
+
+    fun isPlazaMeetupHour(level: Level): Boolean {
+        val hour = NpcTime.hour(level)
+        return hour in NPC_PLAZA_MEETUP_START_HOUR until NPC_PLAZA_MEETUP_END_HOUR
+    }
 
     private fun onLivingDamagePre(event: LivingDamageEvent.Pre) {
         val npc = event.entity as? ChowNpcEntity ?: return

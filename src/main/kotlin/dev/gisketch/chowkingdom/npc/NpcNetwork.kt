@@ -458,6 +458,7 @@ data class NpcFriendEntryPayload(
     val giftStatus: String,
     val shopStatus: String,
     val missionStatus: String,
+    val aliveStatus: String,
     val missionProgress: Int,
     val missionGoal: Int,
 ) {
@@ -470,6 +471,7 @@ data class NpcFriendEntryPayload(
         buffer.writeUtf(giftStatus.take(MAX_NPC_FRIEND_STATUS_LENGTH), MAX_NPC_FRIEND_STATUS_LENGTH)
         buffer.writeUtf(shopStatus.take(MAX_NPC_FRIEND_STATUS_LENGTH), MAX_NPC_FRIEND_STATUS_LENGTH)
         buffer.writeUtf(missionStatus.take(MAX_NPC_FRIEND_STATUS_LENGTH), MAX_NPC_FRIEND_STATUS_LENGTH)
+        buffer.writeUtf(aliveStatus.take(MAX_NPC_FRIEND_STATUS_LENGTH), MAX_NPC_FRIEND_STATUS_LENGTH)
         buffer.writeVarInt(missionProgress.coerceAtLeast(0))
         buffer.writeVarInt(missionGoal.coerceAtLeast(0))
     }
@@ -484,6 +486,7 @@ data class NpcFriendEntryPayload(
             giftStatus = buffer.readUtf(MAX_NPC_FRIEND_STATUS_LENGTH),
             shopStatus = buffer.readUtf(MAX_NPC_FRIEND_STATUS_LENGTH),
             missionStatus = buffer.readUtf(MAX_NPC_FRIEND_STATUS_LENGTH),
+            aliveStatus = buffer.readUtf(MAX_NPC_FRIEND_STATUS_LENGTH),
             missionProgress = buffer.readVarInt(),
             missionGoal = buffer.readVarInt(),
         )

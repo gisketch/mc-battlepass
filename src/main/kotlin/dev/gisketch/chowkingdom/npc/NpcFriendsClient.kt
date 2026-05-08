@@ -2,6 +2,7 @@ package dev.gisketch.chowkingdom.npc
 
 import com.mojang.blaze3d.systems.RenderSystem
 import dev.gisketch.chowkingdom.ChowKingdomMod
+import net.minecraft.ChatFormatting
 import net.minecraft.Util
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
@@ -94,27 +95,41 @@ private class NpcFriendsScreen : Screen(Component.literal("Friends")) {
     }
 
     private fun renderFriendRow(guiGraphics: GuiGraphics, row: Rect, friend: NpcFriendEntryPayload) {
-        guiGraphics.fill(row.x, row.y, row.right, row.bottom, colorWithRenderAlpha(ROW_FILL))
+        renderNineSlice(guiGraphics, PANEL_TEXTURE, row, PANEL_TEXTURE_WIDTH, PANEL_TEXTURE_HEIGHT, PANEL_SOURCE_CORNER, PANEL_DEST_CORNER)
         renderNpcHead(guiGraphics, friend.npcId, row.x + 7, row.y + 7, HEAD_SIZE)
         val textX = row.x + HEAD_SIZE + 16
         val name = fitPlain(friend.name, row.width - HEAD_SIZE - 94)
         guiGraphics.drawString(font, name, textX, row.y + 7, colorWithRenderAlpha(WHITE), false)
-        val hearts = heartText(friend.friendshipLevel)
-        guiGraphics.drawString(font, hearts, textX + font.width(name) + 8, row.y + 7, colorWithRenderAlpha(HEART), false)
+        renderFriendship(guiGraphics, textX + font.width(name) + 8, row.y + 7, friend.friendshipLevel)
         val levelLabel = "Lv.${friend.friendshipLevel}"
         guiGraphics.drawString(font, levelLabel, row.right - font.width(levelLabel) - 8, row.y + 7, colorWithRenderAlpha(GOLD), false)
         val status = fitPlain(friend.missionStatus, row.width - HEAD_SIZE - 28)
-        guiGraphics.drawString(font, status, textX, row.y + 23, colorWithRenderAlpha(MUTED), false)
+        renderTexture(guiGraphics, questIcon(friend.missionStatus), textX, row.y + 23, STATUS_ICON_SIZE, ICON_SOURCE_SIZE)
+        renderTexture(guiGraphics, aliveIcon(friend.aliveStatus), row.right - 50, row.y + 23, STATUS_ICON_SIZE, ICON_SOURCE_SIZE)
+        guiGraphics.drawString(font, status, textX + STATUS_ICON_SIZE + 5, row.y + 24, colorWithRenderAlpha(statusColor(friend.missionStatus)), false)
     }
 
     private fun tooltip(friend: NpcFriendEntryPayload): List<Component> = listOf(
-        Component.literal(friend.name),
-        Component.literal(friend.title.ifBlank { friend.npcId }),
-        Component.literal("Friendship: ${friend.friendshipPoints} points, level ${friend.friendshipLevel}"),
-        Component.literal(friend.giftStatus),
-        Component.literal(friend.shopStatus),
-        Component.literal(if (friend.missionGoal > 0) "${friend.missionStatus} (${friend.missionProgress}/${friend.missionGoal})" else friend.missionStatus),
+        Component.literal(friend.name).withStyle(ChatFormatting.GOLD),
+        Component.literal(friend.title.ifBlank { friend.npcId }).withStyle(ChatFormatting.GRAY),
+        Component.literal("${friendshipLabel(friend.friendshipLevel)}: ${friend.friendshipPoints} pts, level ${friend.friendshipLevel}").withStyle(friendshipStyle(friend.friendshipLevel)),
+        Component.literal(friend.aliveStatus).withStyle(if (friend.aliveStatus == "Alive") ChatFormatting.GREEN else ChatFormatting.RED),
+        Component.literal(friend.giftStatus).withStyle(if (friend.giftStatus.startsWith("Gift available")) ChatFormatting.GREEN else ChatFormatting.YELLOW),
+        Component.literal(friend.shopStatus).withStyle(if (friend.shopStatus.startsWith("Shop open")) ChatFormatting.GREEN else ChatFormatting.GRAY),
+        Component.literal(if (friend.missionGoal > 0 && friend.missionStatus == "In Progress") "In Progress (${friend.missionProgress}/${friend.missionGoal})" else friend.missionStatus).withStyle(statusStyle(friend.missionStatus)),
     )
+
+    private fun renderFriendship(guiGraphics: GuiGraphics, x: Int, y: Int, level: Int) {
+        val clamped = level.coerceIn(-FRIENDSHIP_ICON_COUNT, FRIENDSHIP_ICON_COUNT)
+        repeat(FRIENDSHIP_ICON_COUNT) { index ->
+            val texture = when {
+                clamped > 0 && index < clamped -> HEART_TEXTURE
+                clamped < 0 && index < -clamped -> ANGRY_TEXTURE
+                else -> HEART_EMPTY_TEXTURE
+            }
+            renderTexture(guiGraphics, texture, x + index * FRIENDSHIP_ICON_STEP, y, FRIENDSHIP_ICON_SIZE, ICON_SOURCE_SIZE)
+        }
+    }
 
     private fun renderNpcHead(guiGraphics: GuiGraphics, npcId: String, x: Int, y: Int, size: Int) {
         val texture = npcTexture(npcId)
@@ -134,6 +149,14 @@ private class NpcFriendsScreen : Screen(Component.literal("Friends")) {
         val thumbHeight = (area.height * area.height / contentHeight).coerceAtLeast(18)
         val thumbY = area.y + ((area.height - thumbHeight) * scroll / max(1, contentHeight - area.height))
         guiGraphics.fill(track.x, thumbY, track.right, thumbY + thumbHeight, colorWithRenderAlpha(0xAAFFFFFF.toInt()))
+    }
+
+    private fun renderTexture(guiGraphics: GuiGraphics, texture: ResourceLocation, x: Int, y: Int, size: Int, sourceSize: Int) {
+        RenderSystem.enableBlend()
+        RenderSystem.defaultBlendFunc()
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, renderAlpha)
+        guiGraphics.blit(texture, x, y, size, size, 0.0f, 0.0f, sourceSize, sourceSize, sourceSize, sourceSize)
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f)
     }
 
     private fun renderNineSlice(guiGraphics: GuiGraphics, texture: ResourceLocation, rect: Rect, textureWidth: Int, textureHeight: Int, sourceCorner: Int, destinationCorner: Int) {
@@ -189,9 +212,45 @@ private class NpcFriendsScreen : Screen(Component.literal("Friends")) {
 
     private fun maxScroll(): Int = (NpcFriendsClient.snapshot().size * ROW_STEP - listArea.height).coerceAtLeast(0)
 
-    private fun heartText(level: Int): String {
-        val count = level.coerceIn(0, 10)
-        return if (count <= 0) "" else List(count) { "<3" }.joinToString(" ")
+    private fun questIcon(status: String): ResourceLocation = when (status) {
+        "Quest Available" -> QUEST_ICON
+        "Quest Finished" -> CHECK_ICON
+        "In Progress" -> THINKING_ICON
+        else -> INFO_ICON
+    }
+
+    private fun aliveIcon(status: String): ResourceLocation = if (status == "Alive") HEART_TEXTURE else DEAD_ICON
+
+    private fun statusColor(status: String): Int = when (status) {
+        "Quest Available" -> GREEN
+        "Quest Finished" -> GOLD
+        "In Progress" -> MUTED
+        else -> GRAY
+    }
+
+    private fun friendshipStyle(level: Int): ChatFormatting = when {
+        level <= -4 -> ChatFormatting.RED
+        level < 0 -> ChatFormatting.GOLD
+        level <= 2 -> ChatFormatting.GRAY
+        level <= 4 -> ChatFormatting.GREEN
+        else -> ChatFormatting.LIGHT_PURPLE
+    }
+
+    private fun friendshipLabel(level: Int): String = when {
+        level <= -7 -> "Enemy"
+        level <= -4 -> "Enemy"
+        level < 0 -> "Dislike"
+        level <= 2 -> "Neutral"
+        level <= 4 -> "Friend"
+        level <= 7 -> "Good Friend"
+        else -> "Best Friend"
+    }
+
+    private fun statusStyle(status: String): ChatFormatting = when (status) {
+        "Quest Available" -> ChatFormatting.GREEN
+        "Quest Finished" -> ChatFormatting.GOLD
+        "In Progress" -> ChatFormatting.YELLOW
+        else -> ChatFormatting.GRAY
     }
 
     private fun fitPlain(text: String, maxWidth: Int): String {
@@ -215,6 +274,11 @@ private class NpcFriendsScreen : Screen(Component.literal("Friends")) {
         private const val ROW_HEIGHT = 44
         private const val ROW_STEP = 48
         private const val HEAD_SIZE = 30
+        private const val STATUS_ICON_SIZE = 10
+        private const val ICON_SOURCE_SIZE = 16
+        private const val FRIENDSHIP_ICON_COUNT = 10
+        private const val FRIENDSHIP_ICON_SIZE = 9
+        private const val FRIENDSHIP_ICON_STEP = 10
         private const val SCROLL_STEP = 22
         private const val SKIN_TEXTURE_SIZE = 64
         private const val PANEL_TEXTURE_WIDTH = 1646
@@ -226,10 +290,19 @@ private class NpcFriendsScreen : Screen(Component.literal("Friends")) {
         private const val WHITE = 0xFFFFFFFF.toInt()
         private const val MUTED = 0xFFD8D0B8.toInt()
         private const val GOLD = 0xFFFFD66B.toInt()
-        private const val HEART = 0xFFFF7FA6.toInt()
+        private const val GREEN = 0xFF87E98C.toInt()
+        private const val GRAY = 0xFF9D9788.toInt()
         private const val ROW_FILL = 0x26000000
         private val PANEL_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_container_yellow.png")
         private val CKDM_BOLD = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "ckdm_bold")
+        private val HEART_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/heart.png")
+        private val HEART_EMPTY_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/heart_empty.png")
+        private val ANGRY_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/angry.png")
+        private val QUEST_ICON = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/quest_log.png")
+        private val CHECK_ICON = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/checkpoint.png")
+        private val THINKING_ICON = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/thinking.png")
+        private val INFO_ICON = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/info.png")
+        private val DEAD_ICON = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/dead.png")
     }
 }
 

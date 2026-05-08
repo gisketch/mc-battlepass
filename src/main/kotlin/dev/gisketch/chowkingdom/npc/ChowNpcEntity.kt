@@ -73,6 +73,18 @@ class ChowNpcEntity(entityType: EntityType<out PathfinderMob>, level: Level) : P
         lookAt(EntityAnchorArgument.Anchor.EYES, player.getEyePosition())
     }
 
+    fun continueTalkingTo(player: ServerPlayer, durationTicks: Int) {
+        if (talkingTarget != player.uuid) return
+        talkingUntilTick = talkingUntilTick.coerceAtLeast(tickCount + durationTicks)
+        navigation.stop()
+    }
+
+    fun stopTalkingTo(player: ServerPlayer) {
+        if (talkingTarget != player.uuid) return
+        talkingTarget = null
+        talkingUntilTick = 0
+    }
+
     fun isTalking(): Boolean = talkingTarget != null && tickCount <= talkingUntilTick
 
     fun startScriptedAttackAnimation() {
