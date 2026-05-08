@@ -7,6 +7,7 @@ import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.MinecraftServer
 import net.minecraft.world.entity.EquipmentSlotGroup
+import net.minecraft.world.item.ItemStack
 import net.neoforged.bus.api.SubscribeEvent
 import net.neoforged.fml.loading.FMLPaths
 import net.neoforged.neoforge.common.NeoForge
@@ -24,6 +25,11 @@ object RecipeDisablerFeature {
     fun register() {
         reloadConfig()
         NeoForge.EVENT_BUS.register(this)
+    }
+
+    fun isCosmeticized(stack: ItemStack): Boolean {
+        if (stack.isEmpty || cosmeticItemIds.isEmpty()) return false
+        return BuiltInRegistries.ITEM.getKey(stack.item) in cosmeticItemIds
     }
 
     @SubscribeEvent

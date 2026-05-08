@@ -173,6 +173,7 @@ Store categories can define `daily_sets`, `weekly_sets`, or `all_sets`. A set ro
 [[categories]]
 id = "armor_sets"
 item_types_to_sell = 1
+daily_item_types_to_sell = 2
 
 [[categories.weekly_sets]]
 id = "diamond_cosmetic_set"
@@ -193,7 +194,7 @@ stock_count = 1
 weight = 1
 ```
 
-`item_types_to_sell` counts sets and single entries as roll groups. If the set is selected, all set item offers are stocked for the same daily or weekly period.
+`item_types_to_sell` counts sets and single entries as roll groups. Use `daily_item_types_to_sell` or `weekly_item_types_to_sell` when daily and weekly pools need different counts. If the set is selected, all set item offers are stocked for the same daily or weekly period.
 
 ## Discord Webhook
 

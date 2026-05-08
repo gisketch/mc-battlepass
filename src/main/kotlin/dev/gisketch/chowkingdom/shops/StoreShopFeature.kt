@@ -275,10 +275,16 @@ object StoreShopFeature {
             val groups = rollGroupsFor(category, pool)
             val selected = poolState.selected[category.id]
             val validOfferIds = groups.flatMap(StoreOfferRollGroup::offers).map(StoreOffer::id).toSet()
-            val expectedGroups = category.itemTypesToSell.coerceAtLeast(1).coerceAtMost(groups.size)
+            val expectedGroups = itemTypesToSell(category, pool).coerceAtMost(groups.size)
             groups.isNotEmpty() && (selected == null || selected.size < expectedGroups || selected.any { it !in validOfferIds })
         }
     }
+
+    private fun itemTypesToSell(category: StoreCategoryDefinition, pool: ShopViewPool): Int = when (pool) {
+        ShopViewPool.ALL -> category.allItemTypesToSell ?: category.itemTypesToSell
+        ShopViewPool.DAILY -> category.dailyItemTypesToSell ?: category.itemTypesToSell
+        ShopViewPool.WEEKLY -> category.weeklyItemTypesToSell ?: category.itemTypesToSell
+    }.coerceAtLeast(1)
 
     private fun reroll(definition: StoreDefinition, stockKey: String, pool: ShopViewPool) {
         val poolState = stateFor(stockKey).pools.getOrPut(pool.id) { StorePoolState() }
@@ -287,7 +293,7 @@ object StoreShopFeature {
         poolState.stock.clear()
         definition.categories.forEach { category ->
             val groups = rollGroupsFor(category, pool)
-            val selected = (if (pool == ShopViewPool.ALL) groups else weightedSampleGroups(groups, category.itemTypesToSell.coerceAtLeast(1)))
+            val selected = (if (pool == ShopViewPool.ALL) groups else weightedSampleGroups(groups, itemTypesToSell(category, pool)))
                 .flatMap(StoreOfferRollGroup::offers)
                 .distinctBy(StoreOffer::id)
             poolState.selected[category.id] = selected.map(StoreOffer::id).toMutableList()
@@ -496,6 +502,9 @@ class StoreDefinition(
 class StoreCategoryDefinition(
     @SerializedName("id") var id: String = "",
     @SerializedName("item_types_to_sell") var itemTypesToSell: Int = 1,
+    @SerializedName("daily_item_types_to_sell") var dailyItemTypesToSell: Int? = null,
+    @SerializedName("weekly_item_types_to_sell") var weeklyItemTypesToSell: Int? = null,
+    @SerializedName("all_item_types_to_sell") var allItemTypesToSell: Int? = null,
     @SerializedName("daily_items") var dailyItems: MutableList<StoreOffer> = mutableListOf(),
     @SerializedName("weekly_items") var weeklyItems: MutableList<StoreOffer> = mutableListOf(),
     @SerializedName("all_items") var allItems: MutableList<StoreOffer> = mutableListOf(),
