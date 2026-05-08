@@ -81,11 +81,15 @@ object NpcFeature {
     private val greetingRadiusPlayers: MutableMap<UUID, MutableSet<String>> = linkedMapOf()
     private val outgoingGiftApproaches: MutableMap<UUID, NpcOutgoingGiftApproach> = linkedMapOf()
     private val camperBalloonRefreshAt: MutableMap<UUID, Long> = linkedMapOf()
+    private val npcMicroInteractions: MutableMap<UUID, ActiveNpcMicroInteraction> = linkedMapOf()
+    private val npcMicroInteractionCooldownUntil: MutableMap<String, Long> = linkedMapOf()
     private val pendingShopNpcs: MutableMap<UUID, String> = linkedMapOf()
     private var debugTimeMultiplier: Int = 1
 
     val CAMPING_BLOCK: DeferredHolder<Block, CampingBlock> = BLOCKS.register("camping_block", Supplier { CampingBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.OAK_PLANKS).strength(1.5f).noOcclusion()) })
     val CAMPING_BLOCK_ITEM: DeferredHolder<Item, BlockItem> = ITEMS.register("camping_block", Supplier { BlockItem(CAMPING_BLOCK.get(), Item.Properties()) })
+    val TOWN_CENTER_BLOCK: DeferredHolder<Block, TownCenterBlock> = BLOCKS.register("town_center_block", Supplier { TownCenterBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.STONE_BRICKS).strength(1.5f).noOcclusion()) })
+    val TOWN_CENTER_BLOCK_ITEM: DeferredHolder<Item, BlockItem> = ITEMS.register("town_center_block", Supplier { BlockItem(TOWN_CENTER_BLOCK.get(), Item.Properties()) })
     val CAMPING_BLOCK_ENTITY: DeferredHolder<BlockEntityType<*>, BlockEntityType<CampingBlockEntity>> = BLOCK_ENTITIES.register(
         "camping_block",
         Supplier { BlockEntityType.Builder.of(::CampingBlockEntity, CAMPING_BLOCK.get()).build(null) },
@@ -166,6 +170,7 @@ object NpcFeature {
         val currentDay = NpcTime.day(player.level())
         val firstChatToday = NpcStore.markFirstChatIfNeeded(definition.id, player, currentDay)
         val friendship = if (firstChatToday) NpcStore.adjustFriendship(definition.id, player, FIRST_DAILY_CHAT_FRIENDSHIP_DELTA, "first_daily_chat") else NpcStore.friendshipSnapshot(definition.id, player)
+        if (firstChatToday) showFriendshipDelta(npc.level() as? ServerLevel, npc, FIRST_DAILY_CHAT_FRIENDSHIP_DELTA)
         if (wasSleeping) npc.stopSleeping()
         val contractGranted = definition.housing.canMoveIn && !hasHome && !hasRentContract(player, definition.id)
         if (contractGranted) {
@@ -198,12 +203,12 @@ object NpcFeature {
         }
         if (settings.llm.enabled && llmInput != null) {
             val responseToken = NpcDialogTokens.next()
-            NpcNetwork.openDialog(player, dialogPayload(definition, npc, "...", contractGranted, friendship.level, closeOnly = contractGranted, closeLabel = if (contractGranted) "OKAY" else "BYE", responseToken = responseToken))
+            NpcNetwork.openDialog(player, dialogPayload(definition, npc, "...", contractGranted, friendship.level, closeOnly = contractGranted, closeLabel = if (contractGranted) "OKAY" else "BYE", responseToken = responseToken, friendshipDelta = if (firstChatToday) FIRST_DAILY_CHAT_FRIENDSHIP_DELTA else 0))
             NpcLlmService.event(player, npc, definition, message, llmInput, npcRecordType = "npc_llm_interact", responseToken = responseToken)
             return
         }
         NpcStore.recordConversation(definition.id, player, definition.name, message, "npc_message")
-        NpcNetwork.openDialog(player, dialogPayload(definition, npc, message, contractGranted, friendship.level, closeOnly = contractGranted, closeLabel = if (contractGranted) "OKAY" else "BYE"))
+        NpcNetwork.openDialog(player, dialogPayload(definition, npc, message, contractGranted, friendship.level, closeOnly = contractGranted, closeLabel = if (contractGranted) "OKAY" else "BYE", friendshipDelta = if (firstChatToday) FIRST_DAILY_CHAT_FRIENDSHIP_DELTA else 0))
         relayNpcDialog(player, npc, definition, message)
     }
 
@@ -343,15 +348,39 @@ object NpcFeature {
             return
         }
         val itemName = stack.hoverName.string
-        val mood = giftMood(definition, stack)
-        val friendship = NpcStore.adjustFriendship(definition.id, player, giftFriendshipDelta(mood), "gift_$mood")
+        val configuredMood = configuredGiftMood(definition, stack)
+        if (configuredMood == null && NpcConfig.settings().llm.enabled && NpcConfig.settings().llmMessageUsage.gift) {
+            if (!player.abilities.instabuild) stack.shrink(1)
+            val responseToken = NpcDialogTokens.next()
+            val friendship = NpcStore.friendshipSnapshot(definition.id, player)
+            val fallbackMood = "neutral"
+            val fallback = friendshipMessage(definition.friendshipMessages.gift, friendship, player, definition, itemName, fallbackMood)
+            NpcNetwork.openDialog(player, dialogPayload(definition, npc, "...", false, friendship.level, closeOnly = true, closeLabel = "OKAY", responseToken = responseToken))
+            NpcLlmService.giftSentiment(
+                player,
+                npc,
+                definition,
+                fallback,
+                giftSentimentPrompt(definition, player, itemName),
+                responseToken,
+            ) { result ->
+                val mood = normalizeGiftMood(result.giftSentiment)
+                finishGiftToNpc(player, npc, definition, itemName, mood, result.message, responseToken)
+                if (result.memorable.isNotBlank()) NpcStore.recordPlayerMemory(player, "llm_memorable", result.memorable)
+            }
+            return
+        }
+        val mood = configuredMood ?: "neutral"
+        val friendshipDelta = giftFriendshipDelta(mood)
+        val friendship = NpcStore.adjustFriendship(definition.id, player, friendshipDelta, "gift_$mood")
+        showFriendshipDelta(npc.level() as? ServerLevel, npc, friendshipDelta)
         val message = friendshipMessage(definition.friendshipMessages.gift, friendship, player, definition, itemName, mood)
         if (!player.abilities.instabuild) stack.shrink(1)
         NpcStore.recordConversation(definition.id, player, player.gameProfile.name, "gifts $itemName to ${definition.name}", "player_gift")
         NpcStore.recordPlayerMemory(player, "gift_to_npc", "${player.gameProfile.name} gave $itemName to ${definition.name}; reaction mood was $mood.")
         if (NpcConfig.settings().llm.enabled && NpcConfig.settings().llmMessageUsage.gift) {
             val responseToken = NpcDialogTokens.next()
-            NpcNetwork.openDialog(player, dialogPayload(definition, npc, "...", false, friendship.level, closeOnly = true, closeLabel = "OKAY", responseToken = responseToken))
+            NpcNetwork.openDialog(player, dialogPayload(definition, npc, "...", false, friendship.level, closeOnly = true, closeLabel = "OKAY", responseToken = responseToken, friendshipDelta = friendshipDelta))
             NpcLlmService.event(
                 player,
                 npc,
@@ -364,18 +393,44 @@ object NpcFeature {
             return
         }
         NpcStore.recordConversation(definition.id, player, definition.name, message, "npc_gift_$mood")
-        NpcNetwork.openDialog(player, dialogPayload(definition, npc, message, false, friendship.level, closeOnly = true, closeLabel = "OKAY"))
+        NpcNetwork.openDialog(player, dialogPayload(definition, npc, message, false, friendship.level, closeOnly = true, closeLabel = "OKAY", friendshipDelta = friendshipDelta))
         relayNpcDialog(player, npc, definition, message)
+    }
+
+    private fun finishGiftToNpc(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, itemName: String, mood: String, message: String, responseToken: Long) {
+        val friendshipDelta = giftFriendshipDelta(mood)
+        val friendship = NpcStore.adjustFriendship(definition.id, player, friendshipDelta, "gift_$mood")
+        showFriendshipDelta(npc.level() as? ServerLevel, npc, friendshipDelta)
+        val fallback = friendshipMessage(definition.friendshipMessages.gift, friendship, player, definition, itemName, mood)
+        val reply = message.trim().ifBlank { fallback }
+        npc.startTalkingTo(player, NPC_DIALOG_DURATION_TICKS)
+        NpcStore.recordConversation(definition.id, player, player.gameProfile.name, "gifts $itemName to ${definition.name}", "player_gift")
+        NpcStore.recordPlayerMemory(player, "gift_to_npc", "${player.gameProfile.name} gave $itemName to ${definition.name}; reaction mood was $mood.")
+        NpcStore.recordConversation(definition.id, player, definition.name, reply, "npc_gift_$mood")
+        NpcNetwork.openDialog(player, dialogPayload(definition, npc, reply, false, friendship.level, closeOnly = true, closeLabel = "OKAY", friendshipDelta = friendshipDelta))
+        relayNpcDialog(player, npc, definition, reply)
     }
 
     private fun giftStack(player: ServerPlayer): ItemStack = if (!player.mainHandItem.isEmpty) player.mainHandItem else player.offhandItem
 
-    private fun giftMood(definition: NpcDefinition, stack: ItemStack): String = when {
+    private fun configuredGiftMood(definition: NpcDefinition, stack: ItemStack): String? = when {
         matchesGift(definition.gifts.loved, stack) -> "loved"
         matchesGift(definition.gifts.liked, stack) -> "liked"
         matchesGift(definition.gifts.disliked, stack) -> "disliked"
+        else -> null
+    }
+
+    private fun normalizeGiftMood(raw: String): String = when (raw.trim().lowercase()) {
+        "loved", "love" -> "loved"
+        "liked", "like" -> "liked"
+        "disliked", "dislike" -> "disliked"
         else -> "neutral"
     }
+
+    private fun giftSentimentPrompt(definition: NpcDefinition, player: ServerPlayer, itemName: String): String = definition.gifts.llmSentimentPrompt
+        .replace("{player}", player.gameProfile.name)
+        .replace("{npc}", definition.name)
+        .replace("{item}", itemName)
 
     private fun matchesGift(values: List<String>, stack: ItemStack): Boolean = values.any { raw ->
         if (raw.startsWith("#")) {
@@ -397,7 +452,7 @@ object NpcFeature {
         SnackbarNetwork.send(player, SnackbarNotification.item(SnackbarIcons.ERROR, title, content, type, SnackbarSounds.forType(type)))
     }
 
-    private fun dialogPayload(definition: NpcDefinition, npc: ChowNpcEntity, message: String, contractGranted: Boolean, friendshipLevel: Int, closeOnly: Boolean = false, closeLabel: String = "BYE", responseToken: Long = 0L, dialogMode: String = "normal", startTalkMode: Boolean = false): NpcDialogPayload = NpcDialogPayload(
+    private fun dialogPayload(definition: NpcDefinition, npc: ChowNpcEntity, message: String, contractGranted: Boolean, friendshipLevel: Int, closeOnly: Boolean = false, closeLabel: String = "BYE", responseToken: Long = 0L, dialogMode: String = "normal", startTalkMode: Boolean = false, friendshipDelta: Int = 0): NpcDialogPayload = NpcDialogPayload(
         definition.id,
         definition.name,
         definition.title,
@@ -406,6 +461,7 @@ object NpcFeature {
         closeOnly = closeOnly,
         closeLabel = closeLabel,
         friendshipLevel = friendshipLevel,
+        friendshipDelta = friendshipDelta,
         npcEntityId = npc.id,
         animalesePitch = definition.voice.animalesePitch,
         animalesePitchMultiplier = definition.voice.pitch,
@@ -482,6 +538,13 @@ object NpcFeature {
         return recipients
     }
 
+    private fun showFriendshipDelta(level: ServerLevel?, npc: ChowNpcEntity, delta: Int) {
+        if (level == null || delta == 0) return
+        val marker = if (delta > 0) "@heart.png" else "@angry.png"
+        val sign = if (delta > 0) "+" else ""
+        sendNpcBalloon(level, npc, "$marker $sign$delta", NPC_FRIENDSHIP_DELTA_BALLOON_TICKS)
+    }
+
     fun assignHome(player: ServerPlayer, npcId: String, bedPos: BlockPos, stack: ItemStack): Boolean {
         val definition = NpcConfig.get(npcId) ?: run {
             player.displayClientMessage(Component.literal("Unknown NPC '$npcId'."), true)
@@ -499,6 +562,7 @@ object NpcFeature {
         }
         NpcStore.setHome(npcId, homePos)
         NpcStore.clearActiveCamper(npcId)
+        NpcStore.recordGlobalEvent("npc_new_resident", "${definition.name} became a resident on day ${NpcTime.day(player.level())}; ${player.gameProfile.name} gave them a home.")
         scheduleNextCamper(player.level())
         npc.let { npc ->
             npc.homePos = homePos.immutable()
@@ -538,6 +602,7 @@ object NpcFeature {
         tryShowCamperHousingBalloon(entity, definition)
         if (tryOutgoingGift(entity, definition)) return
         if (!needsCamperHousingBalloon(entity, definition) && tryGreetNearbyPlayer(entity, definition)) return
+        if (tryNpcMicroInteraction(entity, definition)) return
         if (entity.isTalking()) return
         NpcBrain.tick(entity, definition)
     }
@@ -629,7 +694,7 @@ object NpcFeature {
             .asSequence()
             .filter { player -> player.isAlive && !player.isSpectator && player.distanceToSqr(npc.x, npc.y, npc.z) <= radiusSqr }
             .filter { player -> NpcStore.friendshipSnapshot(definition.id, player).level >= config.minFriendshipLevel }
-            .filter { player -> NpcStore.outgoingGiftReady(definition.id, player, day, hour, level.random.nextInt(24)) }
+            .filter { player -> NpcStore.outgoingGiftReady(definition.id, player, day, hour, randomOutgoingGiftHour(definition, level.random)) }
             .minByOrNull { player -> player.distanceToSqr(npc.x, npc.y, npc.z) }
             ?: return false
         val friendship = NpcStore.friendshipSnapshot(definition.id, player)
@@ -644,6 +709,12 @@ object NpcFeature {
         val offer = outgoingGiftOfferMessage(config, player, definition)
         sendNpcBalloon(level, npc, offer, config.followSeconds * 20)
         npc.startTalkingTo(player, config.followSeconds * 20)
+    }
+
+    private fun randomOutgoingGiftHour(definition: NpcDefinition, random: net.minecraft.util.RandomSource): Int {
+        val awakeHours = (0..23).filter { hour -> definition.schedule.activityAtHour(hour) != "sleep" }
+        if (awakeHours.isEmpty()) return random.nextInt(24)
+        return awakeHours[random.nextInt(awakeHours.size)]
     }
 
     private fun selectOutgoingGift(config: NpcOutgoingGiftsDefinition, friendshipLevel: Int, random: net.minecraft.util.RandomSource): NpcOutgoingGiftEntryDefinition? {
@@ -664,6 +735,7 @@ object NpcFeature {
         val itemName = stack.hoverName.string
         val quantity = stack.count
         giveStack(player, stack)
+        SnackbarNetwork.send(player, SnackbarNotification.item(BuiltInRegistries.ITEM.getKey(stack.item).toString(), "GIFT RECEIVED", "$quantity x $itemName from ${definition.name}", SnackbarType.SUCCESS, SnackbarSounds.REWARD))
         val friendship = NpcStore.friendshipSnapshot(definition.id, player)
         NpcStore.clearPendingOutgoingGift(definition.id, player, NpcTime.day(player.level()))
         outgoingGiftApproaches.remove(npc.uuid)
@@ -765,6 +837,79 @@ object NpcFeature {
         return true
     }
 
+    private fun tryNpcMicroInteraction(npc: ChowNpcEntity, definition: NpcDefinition): Boolean {
+        val level = npc.level() as? ServerLevel ?: return false
+        npcMicroInteractions[npc.uuid]?.let { active ->
+            val other = findNpc(level.server, active.partnerId) ?: return finishNpcMicroInteraction(npc.uuid, active.partnerId)
+            if (!npc.isAlive || !other.isAlive || npc.isSleeping || other.isSleeping || level.gameTime >= active.untilTick) return finishNpcMicroInteraction(npc.uuid, active.partnerId)
+            npc.debugActivity = "interaction"
+            npc.debugGoal = "talk_npc"
+            npc.debugTargetPos = other.blockPosition().immutable()
+            npc.lookControl.setLookAt(other, 30.0f, 30.0f)
+            if (npc.distanceToSqr(other) > NPC_MICRO_INTERACTION_DISTANCE_SQR) {
+                npc.navigation.moveTo(other.x, other.y, other.z, NPC_MICRO_INTERACTION_SPEED)
+            } else {
+                npc.navigation.stop()
+            }
+            showMicroInteractionBalloonToClosePlayers(level, npc, active)
+            return true
+        }
+
+        val settings = NpcConfig.settings().npcInteractions
+        val plazaMeetup = activityFor(npc, definition) == "meetup"
+        if (!settings.enabled || npc.isSleeping || npc.isTalking() || NpcTime.activityAt(definition.schedule, level) == "sleep") return false
+        if (!plazaMeetup && (npcMicroInteractionCooldownUntil[definition.id] ?: 0L) > level.dayTime) return false
+        val radius = if (plazaMeetup) plazaMeetupRadius().toDouble() else settings.radius
+        val radiusSqr = radius * radius
+        val other = level.getEntities(NPC_ENTITY.get()) { other ->
+            other.uuid != npc.uuid && other.isAlive && !other.isSleeping && !other.isTalking() && other.distanceToSqr(npc) <= radiusSqr && other.uuid !in npcMicroInteractions && other.uuid !in outgoingGiftApproaches
+        }.asSequence()
+            .mapNotNull { other -> NpcConfig.get(other.npcId)?.takeIf { otherDefinition -> NpcTime.activityAt(otherDefinition.schedule, level) != "sleep" && (plazaMeetup || (npcMicroInteractionCooldownUntil[otherDefinition.id] ?: 0L) <= level.dayTime) }?.let { other to it } }
+            .minByOrNull { (other, _) -> other.distanceToSqr(npc) }
+            ?: return false
+        startNpcMicroInteraction(level, npc, definition, other.first, other.second, settings, plazaMeetup)
+        return true
+    }
+
+    private fun finishNpcMicroInteraction(firstId: UUID, secondId: UUID): Boolean {
+        npcMicroInteractions.remove(firstId)
+        npcMicroInteractions.remove(secondId)
+        return false
+    }
+
+    private fun startNpcMicroInteraction(level: ServerLevel, first: ChowNpcEntity, firstDefinition: NpcDefinition, second: ChowNpcEntity, secondDefinition: NpcDefinition, settings: NpcInteractionSettingsDefinition, plazaMeetup: Boolean = false) {
+        val durationTicks = settings.durationSeconds * 20L
+        val firstMessage = npcMicroInteractionMessage(firstDefinition, secondDefinition, settings)
+        val secondMessage = npcMicroInteractionMessage(secondDefinition, firstDefinition, settings)
+        val now = level.gameTime
+        npcMicroInteractions[first.uuid] = ActiveNpcMicroInteraction(second.uuid, firstMessage, now + durationTicks)
+        npcMicroInteractions[second.uuid] = ActiveNpcMicroInteraction(first.uuid, secondMessage, now + durationTicks)
+        val cooldownUntil = if (plazaMeetup) level.dayTime + NPC_PLAZA_MICRO_COOLDOWN_TICKS else {
+            val cooldownHours = if (settings.cooldownMinHours == settings.cooldownMaxHours) settings.cooldownMinHours else settings.cooldownMinHours + level.random.nextInt(settings.cooldownMaxHours - settings.cooldownMinHours + 1)
+            NpcTime.addHours(level.dayTime, cooldownHours)
+        }
+        npcMicroInteractionCooldownUntil[firstDefinition.id] = cooldownUntil
+        npcMicroInteractionCooldownUntil[secondDefinition.id] = cooldownUntil
+        NpcStore.recordGlobalEvent("npc_micro_interaction", "${firstDefinition.name} chatted with ${secondDefinition.name} near ${first.blockPosition().toShortString()}.")
+    }
+
+    private fun showMicroInteractionBalloonToClosePlayers(level: ServerLevel, npc: ChowNpcEntity, active: ActiveNpcMicroInteraction) {
+        level.players().forEach { listener ->
+            if (listener.uuid in active.shownToPlayers) return@forEach
+            if (listener.distanceToSqr(npc.x, npc.y, npc.z) > NPC_BALLOON_CLOSE_RADIUS_SQR) return@forEach
+            NpcNetwork.showBalloon(listener, npc.id, active.message, NPC_MICRO_INTERACTION_BALLOON_TICKS)
+            active.shownToPlayers += listener.uuid
+        }
+    }
+
+    private fun npcMicroInteractionMessage(definition: NpcDefinition, otherDefinition: NpcDefinition, settings: NpcInteractionSettingsDefinition): String {
+        val pool = (settings.messages + definition.npcInteractionMessages + definition.npcInteractionMessages).ifEmpty { listOf("Talking with {other}...") }
+        return pool.randomOrNull()
+            ?.replace("{npc}", definition.name)
+            ?.replace("{other}", otherDefinition.name)
+            ?: "Talking with ${otherDefinition.name}..."
+    }
+
     private fun updateGreetingRadiusState(npc: ChowNpcEntity, definition: NpcDefinition, playersInRadius: List<ServerPlayer>) {
         val current = playersInRadius.map { player -> player.stringUUID }.toSet()
         val previous = greetingRadiusPlayers.getOrPut(npc.uuid) { linkedSetOf() }
@@ -774,6 +919,15 @@ object NpcFeature {
     }
 
     fun moveToActivityTarget(entity: ChowNpcEntity, definition: NpcDefinition, activity: String) {
+        if (activity == "meetup") {
+            val target = randomPlazaTarget(entity) ?: return
+            if (entity.isSleeping) entity.stopSleeping()
+            entity.debugActivity = activity
+            entity.debugGoal = "plaza"
+            entity.debugTargetPos = target.immutable()
+            entity.navigation.moveTo(target.x + 0.5, target.y.toDouble(), target.z + 0.5, 0.8)
+            return
+        }
         if (activity == "sleep" && entity.homePos != null) {
             val home = entity.homePos ?: return
             val target = sleepingBedPos(entity.level(), home)
@@ -810,6 +964,31 @@ object NpcFeature {
         entity.navigation.moveTo(target.x + 0.5, target.y.toDouble(), target.z + 0.5, 0.8)
     }
 
+    fun activityFor(entity: ChowNpcEntity, definition: NpcDefinition): String {
+        val level = entity.level()
+        val activity = NpcTime.activityAt(definition.schedule, level)
+        if (activity == "sleep" || plazaMeetupTarget() == null) return activity
+        val hour = NpcTime.hour(level)
+        return if (hour in NPC_PLAZA_MEETUP_START_HOUR until NPC_PLAZA_MEETUP_END_HOUR) "meetup" else activity
+    }
+
+    private fun randomPlazaTarget(entity: ChowNpcEntity): BlockPos? {
+        val center = plazaMeetupTarget() ?: return null
+        val level = entity.level()
+        val radius = plazaMeetupRadius()
+        repeat(12) {
+            val candidate = center.offset(level.random.nextInt(radius * 2 + 1) - radius, 0, level.random.nextInt(radius * 2 + 1) - radius)
+            listOf(candidate, candidate.above(), candidate.below()).firstOrNull { pos ->
+                level.getBlockState(pos.below()).isSolidRender(level, pos.below()) && level.getBlockState(pos).isAir && level.getBlockState(pos.above()).isAir
+            }?.let { return it }
+        }
+        return center
+    }
+
+    private fun plazaMeetupTarget(): BlockPos? = NpcStore.townCenterPos() ?: NpcStore.campBlockPos()
+
+    private fun plazaMeetupRadius(): Int = if (NpcStore.townCenterPos() != null) NpcStore.townCenterRadius() else NPC_PLAZA_CAMP_FALLBACK_RADIUS
+
     private fun onServerStarted(event: ServerStartedEvent) {
         NpcConfig.load()
         NpcStore.load()
@@ -830,6 +1009,7 @@ object NpcFeature {
         val definition = NpcConfig.get(npc.npcId) ?: return
         val hitCount = NpcStore.recordHurt(definition.id, player, System.currentTimeMillis())
         NpcStore.adjustFriendship(definition.id, player, FRIENDSHIP_HIT_DELTA, "hit")
+        showFriendshipDelta(npc.level() as? ServerLevel, npc, FRIENDSHIP_HIT_DELTA)
         NpcStore.recordConversation(definition.id, player, player.gameProfile.name, "hurts ${definition.name}", "player_hurt")
         if (hitCount % HURT_MESSAGE_INTERVAL == 0) {
             relayNpcHurtMessage(player, npc, definition)
@@ -862,6 +1042,7 @@ object NpcFeature {
             NpcStore.recordGlobalEvent("npc_death", deathText)
             killer?.let { player ->
                 NpcStore.adjustFriendship(definition.id, player, FRIENDSHIP_KILL_DELTA, "kill")
+                showFriendshipDelta(npc.level() as? ServerLevel, npc, FRIENDSHIP_KILL_DELTA)
                 NpcStore.recordConversation(definition.id, player, definition.name, deathText, "npc_death")
             }
             if (validHomePos(npc.level(), definition.id) == null) {
@@ -1040,6 +1221,14 @@ object NpcFeature {
                 ),
         )
         .then(
+            Commands.literal("plaza")
+                .requires { source -> source.hasPermission(2) }
+                .executes(::plazaInfoCommand)
+                .then(Commands.literal("set").executes(::plazaSetCommand))
+                .then(Commands.literal("clear").executes(::plazaClearCommand))
+                .then(Commands.literal("radius").then(Commands.argument("blocks", IntegerArgumentType.integer(4, 64)).executes(::plazaRadiusCommand))),
+        )
+        .then(
             Commands.literal("clear")
                 .requires { source -> source.hasPermission(4) }
                 .then(
@@ -1095,6 +1284,40 @@ object NpcFeature {
         NpcConfig.load()
         context.source.sendSuccess({ Component.literal("Reloaded ${NpcConfig.all().size} NPC definition(s). Clock source: ${ChowClockConfig.sourceName()}.") }, true)
         return NpcConfig.all().size
+    }
+
+    private fun plazaInfoCommand(context: CommandContext<CommandSourceStack>): Int {
+        val center = NpcStore.townCenterPos()
+        val fallback = NpcStore.campBlockPos()
+        val active = center ?: fallback
+        val label = when {
+            center != null -> "town_center"
+            fallback != null -> "camping_block_fallback"
+            else -> "none"
+        }
+        context.source.sendSuccess({ Component.literal("NPC plaza center=$label pos=${active?.toShortString() ?: "unset"} radius=${plazaMeetupRadius()} meetup=${NPC_PLAZA_MEETUP_START_HOUR}:00-${NPC_PLAZA_MEETUP_END_HOUR}:00") }, false)
+        return 1
+    }
+
+    private fun plazaSetCommand(context: CommandContext<CommandSourceStack>): Int {
+        val player = context.source.playerOrException
+        val pos = player.blockPosition()
+        NpcStore.setTownCenter(pos)
+        context.source.sendSuccess({ Component.literal("NPC town center set to ${pos.toShortString()} radius=${NpcStore.townCenterRadius()}.") }, true)
+        return 1
+    }
+
+    private fun plazaClearCommand(context: CommandContext<CommandSourceStack>): Int {
+        NpcStore.clearTownCenter()
+        context.source.sendSuccess({ Component.literal("NPC town center cleared. Meetup falls back to camping block if one exists.") }, true)
+        return 1
+    }
+
+    private fun plazaRadiusCommand(context: CommandContext<CommandSourceStack>): Int {
+        val radius = IntegerArgumentType.getInteger(context, "blocks")
+        NpcStore.setTownCenterRadius(radius)
+        context.source.sendSuccess({ Component.literal("NPC town center radius set to ${NpcStore.townCenterRadius()} blocks.") }, true)
+        return radius
     }
 
     private fun debugCommand(context: CommandContext<CommandSourceStack>): Int {
@@ -1498,6 +1721,7 @@ object NpcFeature {
         level.addFreshEntity(npc)
         NpcStore.setEntity(definition.id, npc.uuid, campPos)
         NpcStore.clearDead(definition.id)
+        NpcStore.recordGlobalEvent("npc_spawned", "${definition.name} appeared near the camping block on day ${NpcTime.day(level)}.")
         if (markActiveCamper) {
             NpcStore.setActiveCamper(definition.id, campPos)
             level.players().firstOrNull()?.let { player ->
@@ -1647,12 +1871,15 @@ object NpcFeature {
 
     private data class NpcOutgoingGiftApproach(val playerId: UUID, val startedAtTick: Long)
 
+    private data class ActiveNpcMicroInteraction(val partnerId: UUID, val message: String, val untilTick: Long, val shownToPlayers: MutableSet<UUID> = linkedSetOf())
+
     private const val DEBUG_REACH = 12.0
     private const val DEBUG_AIM_RADIUS = 1.5
     private const val REALTIME_DEBUG_INTERVAL_TICKS = 10
     private const val SLEEP_REACH_DISTANCE_SQR = 4.0
     private const val SLEEP_PILLOW_OFFSET = 0.5
     private const val NPC_DIALOG_HEAR_RADIUS = 30.0
+    private const val NPC_BALLOON_CLOSE_RADIUS_SQR = 8.0 * 8.0
     private const val NPC_DIALOG_ACTION_DISTANCE_SQR = 64.0
     private const val HURT_MESSAGE_INTERVAL = 3
     private const val NPC_CAMP_SPAWN_RADIUS = 2
@@ -1660,9 +1887,17 @@ object NpcFeature {
     private const val CONTRACT_FOLLOW_STOP_DISTANCE_SQR = 2.5 * 2.5
     private const val NPC_GIFT_DELIVERY_DISTANCE_SQR = 2.5 * 2.5
     private const val NPC_GIFT_FOLLOW_SPEED = 0.95
+    private const val NPC_MICRO_INTERACTION_DISTANCE_SQR = 2.5 * 2.5
+    private const val NPC_MICRO_INTERACTION_SPEED = 0.75
+    private const val NPC_MICRO_INTERACTION_BALLOON_TICKS = 100
+    private const val NPC_PLAZA_MEETUP_START_HOUR = 15
+    private const val NPC_PLAZA_MEETUP_END_HOUR = 20
+    private const val NPC_PLAZA_CAMP_FALLBACK_RADIUS = 10
+    private const val NPC_PLAZA_MICRO_COOLDOWN_TICKS = 120L
     private const val CONTRACT_BED_ASSIGN_RADIUS_SQR = 7.0 * 7.0
     private const val NPC_CAMPER_HOUSING_BALLOON_TICKS = 120
     private const val NPC_CAMPER_HOUSING_BALLOON_REFRESH_TICKS = 80L
+    private const val NPC_FRIENDSHIP_DELTA_BALLOON_TICKS = 50
     private const val FRIENDSHIP_HIT_DELTA = -10
     private const val FRIENDSHIP_KILL_DELTA = -300
     private const val FIRST_DAILY_CHAT_FRIENDSHIP_DELTA = 25

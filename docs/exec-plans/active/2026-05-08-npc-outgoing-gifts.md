@@ -32,3 +32,6 @@ NPCs can gift players once per in-game day when friendship is high enough.
 - 2026-05-08: Added `gifts.outgoing` config with weighted normal/rare pools, daily per-player schedule state, runtime follow gift reminders, right-click gift claims, gift-icon balloon marker rendering, dialog-only LLM/fallback delivery messages, live client NPC TOML config, and NPC docs.
 - 2026-05-08: Fixed nearby unhoused camper balloons so needs-house/lost-house prompts refresh while in vicinity and suppress daily greetings until a home or rent contract exists.
 - 2026-05-08: Added explicit two-way gift memory/context records for player-to-NPC gifts and NPC-to-player gift claims.
+- 2026-05-08: Added NPC-to-NPC micro interactions after greeting priority and before normal schedule, with shared/NPC-specific balloons, cooldown config, live TOML config, and global history summaries.
+- 2026-05-08: Constrained daily outgoing gift schedule rolls to each NPC's non-sleep schedule hours.
+- 2026-05-08: Added received-gift snackbar and LLM gift sentiment classification for player-given items not listed in gift config, with neutral fallback and live TOML prompts.

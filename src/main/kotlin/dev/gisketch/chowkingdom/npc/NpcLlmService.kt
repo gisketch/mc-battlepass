@@ -54,7 +54,6 @@ object NpcLlmService {
                 }
             }
             if (removeSession) talkSessions.remove(npcId, session)
-            return
         }
         val request = activeNpcRequests[npcId] ?: return
         if (request.playerId != player.uuid) return
@@ -115,6 +114,19 @@ object NpcLlmService {
                 if (throwable != null) ChowKingdomMod.LOGGER.warn("NPC LLM event request failed npc={} player={}", definition.id, player.gameProfile.name, throwable)
                 val completion = if (throwable == null) result else NpcLlmCompletion(fallbackMessage)
                 sendFinal(player, liveNpc, definition, completion.message, fallbackMessage = fallbackMessage, sendTalkResponse = sendTalkResponse, excludePlayerFromBalloon = excludePlayerFromBalloon, showBalloon = showBalloon, npcRecordType = npcRecordType, responseToken = responseToken, memorable = completion.memorable)
+            }
+        }
+    }
+
+    fun giftSentiment(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, fallbackMessage: String, input: String, responseToken: Long, onComplete: (NpcGiftSentimentResult) -> Unit) {
+        val settings = NpcConfig.settings().llm
+        if (!startRequest(definition.id, player, responseToken)) return onComplete(NpcGiftSentimentResult(fallbackMessage, "neutral"))
+        CompletableFuture.supplyAsync({ complete(player, definition, input, settings, fallbackMessage, "Gift sentiment") }, executor).whenComplete { result, throwable ->
+            player.server.execute {
+                if (!finishRequest(definition.id, responseToken)) return@execute
+                if (throwable != null) ChowKingdomMod.LOGGER.warn("NPC LLM gift sentiment request failed npc={} player={}", definition.id, player.gameProfile.name, throwable)
+                val completion = if (throwable == null) result else NpcLlmCompletion(fallbackMessage, giftSentiment = "neutral")
+                onComplete(NpcGiftSentimentResult(completion.message, completion.giftSentiment.ifBlank { "neutral" }, completion.memorable))
             }
         }
     }
@@ -475,7 +487,8 @@ object NpcLlmService {
             val obj = JsonParser.parseString(cleaned).asJsonObject
             val message = obj.get("message")?.takeUnless { it.isJsonNull }?.asString.orEmpty()
             val memorable = obj.get("memorable")?.takeUnless { it.isJsonNull }?.asString.orEmpty()
-            NpcLlmCompletion(message, sanitizeMemory(memorable))
+            val giftSentiment = obj.get("gift_sentiment")?.takeUnless { it.isJsonNull }?.asString.orEmpty()
+            NpcLlmCompletion(message, sanitizeMemory(memorable), sanitizeGiftSentiment(giftSentiment))
         }
             .onFailure { exception ->
                 ChowKingdomMod.LOGGER.warn("NPC LLM response was not JSON message. raw={}", cleaned.take(LOG_BODY_LIMIT), exception)
@@ -511,6 +524,14 @@ object NpcLlmService {
         .replace(WHITESPACE_PATTERN, " ")
         .trim()
         .take(MAX_MEMORY_CHARS)
+
+    private fun sanitizeGiftSentiment(raw: String): String = when (raw.trim().lowercase()) {
+        "loved", "love" -> "loved"
+        "liked", "like" -> "liked"
+        "disliked", "dislike" -> "disliked"
+        "neutral" -> "neutral"
+        else -> ""
+    }
 
     private fun sanitizeReply(raw: String, settings: NpcLlmSettingsDefinition, fallbackMessage: String = settings.fallbackMessage): String {
         val normalized = raw
@@ -772,7 +793,7 @@ object NpcLlmService {
 
     private fun buildNpcState(definition: NpcDefinition, player: ServerPlayer): String {
         val liveNpc = NpcFeature.existingNpc(player.server, definition.id)
-        val activity = NpcTime.activityAt(definition.schedule, player.level())
+        val activity = liveNpc?.let { npc -> NpcFeature.activityFor(npc, definition) } ?: NpcTime.activityAt(definition.schedule, player.level())
         val home = NpcStore.homePos(definition.id)?.toShortString() ?: "unset"
         val camp = NpcStore.campPos(definition.id)?.toShortString() ?: "unset"
         val dead = NpcStore.isDead(definition.id)
@@ -885,7 +906,9 @@ object NpcLlmService {
 
 private data class ActiveNpcRequest(val playerId: UUID, val responseToken: Long)
 
-private data class NpcLlmCompletion(val message: String, val memorable: String = "")
+data class NpcGiftSentimentResult(val message: String, val giftSentiment: String, val memorable: String = "")
+
+private data class NpcLlmCompletion(val message: String, val memorable: String = "", val giftSentiment: String = "")
 
 private data class NpcLlmDebugEntry(
     val timestamp: Long,

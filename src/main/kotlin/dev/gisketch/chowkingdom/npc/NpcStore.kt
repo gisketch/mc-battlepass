@@ -68,6 +68,35 @@ object NpcStore {
         return data.campBlock?.toBlockPos()
     }
 
+    fun setTownCenter(pos: BlockPos, radius: Int = townCenterRadius()) {
+        if (!loaded) load()
+        data.townCenter = NpcBlockPosData.from(pos)
+        data.townCenterRadius = radius.coerceIn(4, 64)
+        save()
+    }
+
+    fun setTownCenterRadius(radius: Int) {
+        if (!loaded) load()
+        data.townCenterRadius = radius.coerceIn(4, 64)
+        save()
+    }
+
+    fun clearTownCenter() {
+        if (!loaded) load()
+        data.townCenter = null
+        save()
+    }
+
+    fun townCenterPos(): BlockPos? {
+        if (!loaded) load()
+        return data.townCenter?.toBlockPos()
+    }
+
+    fun townCenterRadius(): Int {
+        if (!loaded) load()
+        return data.townCenterRadius.coerceIn(4, 64)
+    }
+
     fun activeCamperId(): String {
         if (!loaded) load()
         return data.activeCamperId
@@ -413,6 +442,8 @@ class NpcWorldData(
     var globalMemories: MutableList<NpcMemoryRecord> = mutableListOf(),
     var playerMemories: MutableMap<String, MutableList<NpcMemoryRecord>> = linkedMapOf(),
     var campBlock: NpcBlockPosData? = null,
+    var townCenter: NpcBlockPosData? = null,
+    var townCenterRadius: Int = 12,
     var activeCamperId: String = "",
     var camperCooldownUntilTick: Long = -1L,
 )

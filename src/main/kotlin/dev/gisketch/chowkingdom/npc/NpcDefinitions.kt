@@ -20,6 +20,7 @@ class NpcDefinition(
     @SerializedName("friendship_messages") var friendshipMessages: NpcFriendshipMessagesDefinition = NpcFriendshipMessagesDefinition(),
     @SerializedName("shop_messages") var shopMessages: NpcShopMessagesDefinition = NpcShopMessagesDefinition(),
     @SerializedName("camper_messages") var camperMessages: NpcCamperMessagesDefinition = NpcCamperMessagesDefinition(),
+    @SerializedName("npc_interaction_messages") var npcInteractionMessages: MutableList<String> = mutableListOf(),
     @SerializedName("hurt_messages") var hurtMessages: MutableList<String> = mutableListOf(),
     @SerializedName("wake_messages") var wakeMessages: MutableList<String> = mutableListOf(),
     @SerializedName("work_target_blocks") var workTargetBlocks: MutableList<String> = mutableListOf(),
@@ -42,6 +43,7 @@ class NpcDefinition(
         friendshipMessages = friendshipMessages.normalized(friendshipDefaults)
         shopMessages = shopMessages.normalized()
         camperMessages = camperMessages.normalized()
+        npcInteractionMessages = npcInteractionMessages.map(String::trim).filter(String::isNotBlank).distinct().toMutableList()
         hurtMessages = hurtMessages.map(String::trim).filter(String::isNotBlank).ifEmpty { defaultHurtMessages() }.toMutableList()
         wakeMessages = wakeMessages.map(String::trim).filter(String::isNotBlank).ifEmpty { defaultWakeMessages() }.toMutableList()
         workTargetBlocks = workTargetBlocks.map(String::trim).filter(String::isNotBlank).distinct().toMutableList()
@@ -71,13 +73,41 @@ class NpcSettingsDefinition(
     var llm: NpcLlmSettingsDefinition = NpcLlmSettingsDefinition(),
     @SerializedName("llm_message_usage") var llmMessageUsage: NpcLlmMessageUsageDefinition = NpcLlmMessageUsageDefinition(),
     @SerializedName("campers") var campers: NpcCampersSettingsDefinition = NpcCampersSettingsDefinition(),
+    @SerializedName("npc_interactions") var npcInteractions: NpcInteractionSettingsDefinition = NpcInteractionSettingsDefinition(),
 ) {
     fun normalized(): NpcSettingsDefinition = apply {
         greetings = greetings.normalized()
         llm = llm.normalized()
         llmMessageUsage = llmMessageUsage.normalized()
         campers = campers.normalized()
+        npcInteractions = npcInteractions.normalized()
     }
+}
+
+class NpcInteractionSettingsDefinition(
+    var enabled: Boolean = true,
+    var radius: Double = 7.0,
+    @SerializedName("duration_seconds") var durationSeconds: Int = 12,
+    @SerializedName("cooldown_min_hours") var cooldownMinHours: Int = 2,
+    @SerializedName("cooldown_max_hours") var cooldownMaxHours: Int = 4,
+    @SerializedName("balloon_refresh_seconds") var balloonRefreshSeconds: Int = 6,
+    var messages: MutableList<String> = mutableListOf(),
+) {
+    fun normalized(): NpcInteractionSettingsDefinition = apply {
+        radius = radius.coerceIn(2.0, 24.0)
+        durationSeconds = durationSeconds.coerceIn(5, 30)
+        cooldownMinHours = cooldownMinHours.coerceIn(1, 24)
+        cooldownMaxHours = cooldownMaxHours.coerceIn(cooldownMinHours, 24)
+        balloonRefreshSeconds = balloonRefreshSeconds.coerceIn(3, durationSeconds)
+        messages = messages.map(String::trim).filter(String::isNotBlank).ifEmpty { defaultMessages() }.toMutableList()
+    }
+
+    private fun defaultMessages(): List<String> = listOf(
+        "Talking with {other}...",
+        "Catching up with {other}.",
+        "Comparing notes with {other}.",
+        "Small town meeting with {other}.",
+    )
 }
 
 class NpcChatDefinition(
@@ -557,6 +587,7 @@ class NpcGiftsDefinition(
     var disliked: MutableList<String> = mutableListOf(),
     @SerializedName("daily_limit") var dailyLimit: Int = 1,
     @SerializedName("reset_hour") var resetHour: Int = 5,
+    @SerializedName("llm_sentiment_prompt") var llmSentimentPrompt: String = "The player gave you {item}. Based on your personality, decide whether this gift is loved, liked, neutral, or disliked. Respond as JSON only: {\"message\":\"short in-character reaction\",\"gift_sentiment\":\"neutral\"}.",
     var reactions: NpcGiftReactionsDefinition = NpcGiftReactionsDefinition(),
     var outgoing: NpcOutgoingGiftsDefinition = NpcOutgoingGiftsDefinition(),
 ) {
@@ -566,6 +597,7 @@ class NpcGiftsDefinition(
         disliked = normalizeGiftList(disliked)
         dailyLimit = dailyLimit.coerceIn(0, 64)
         resetHour = resetHour.coerceIn(0, 23)
+        llmSentimentPrompt = llmSentimentPrompt.trim().ifBlank { "The player gave you {item}. Based on your personality, decide whether this gift is loved, liked, neutral, or disliked. Respond as JSON only: {\"message\":\"short in-character reaction\",\"gift_sentiment\":\"neutral\"}." }
         reactions = reactions.normalized()
         outgoing = outgoing.normalized()
     }

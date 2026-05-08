@@ -129,6 +129,7 @@ data class NpcDialogPayload(
     val closeOnly: Boolean = false,
     val closeLabel: String = "BYE",
     val friendshipLevel: Int = 0,
+    val friendshipDelta: Int = 0,
     val npcEntityId: Int = -1,
     val animalesePitch: String = "med",
     val animalesePitchMultiplier: Float = 1.0f,
@@ -154,6 +155,7 @@ data class NpcDialogPayload(
                 buffer.readUtf(MAX_NPC_CLOSE_LABEL_LENGTH),
                 buffer.readVarInt(),
                 buffer.readVarInt(),
+                buffer.readVarInt(),
                 buffer.readUtf(MAX_NPC_VOICE_PITCH_LENGTH),
                 buffer.readFloat(),
                 buffer.readFloat(),
@@ -173,6 +175,7 @@ data class NpcDialogPayload(
                 buffer.writeBoolean(value.closeOnly)
                 buffer.writeUtf(value.closeLabel.take(MAX_NPC_CLOSE_LABEL_LENGTH), MAX_NPC_CLOSE_LABEL_LENGTH)
                 buffer.writeVarInt(value.friendshipLevel.coerceIn(-10, 10))
+                buffer.writeVarInt(value.friendshipDelta.coerceIn(-999, 999))
                 buffer.writeVarInt(value.npcEntityId)
                 buffer.writeUtf(value.animalesePitch.take(MAX_NPC_VOICE_PITCH_LENGTH), MAX_NPC_VOICE_PITCH_LENGTH)
                 buffer.writeFloat(value.animalesePitchMultiplier.coerceIn(0.5f, 2.0f))

@@ -62,6 +62,7 @@ import org.joml.Vector3f
 object NpcClient {
     private val WORLD_CHAT_HEADS_LAYER_ID = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "npc_world_chat_heads")
     private val activeBalloons = mutableMapOf<Int, NpcBalloonLine>()
+    private val activeFriendshipDeltas = mutableMapOf<Int, NpcFriendshipDeltaLine>()
     private val worldChatEntries = mutableListOf<NpcWorldChatEntry>()
     private val quickSkinChatTextures = mutableMapOf<UUID, ResourceLocation?>()
     private val skippedTalkResponses = mutableSetOf<Long>()
@@ -73,7 +74,13 @@ object NpcClient {
 
     @JvmStatic
     fun showBalloon(payload: NpcBalloonPayload) {
-        activeBalloons[payload.npcEntityId] = NpcBalloonLine(payload.message, System.currentTimeMillis() + payload.durationTicks.coerceIn(20, 240) * 50L)
+        val now = System.currentTimeMillis()
+        val expiresAtMs = now + payload.durationTicks.coerceIn(20, 240) * 50L
+        friendshipDeltaLine(payload.message, now, expiresAtMs)?.let { delta ->
+            activeFriendshipDeltas[payload.npcEntityId] = delta
+            return
+        }
+        activeBalloons[payload.npcEntityId] = NpcBalloonLine(payload.message, now, expiresAtMs)
     }
 
     @JvmStatic
@@ -102,21 +109,32 @@ object NpcClient {
     fun renderBalloon(entity: LivingEntity, poseStack: PoseStack, bufferSource: MultiBufferSource, font: Font, packedLight: Int) {
         if (entity !is ChowNpcEntity || entity.isInvisible || !entity.isAlive) return
         val now = System.currentTimeMillis()
-        val balloon = activeBalloons[entity.id] ?: return
-        if (balloon.expiresAtMs <= now) {
+        val balloon = activeBalloons[entity.id]
+        if (balloon != null && balloon.expiresAtMs <= now) {
             activeBalloons.remove(entity.id)
-            return
         }
+        val activeBalloon = activeBalloons[entity.id]
+        val delta = activeFriendshipDeltas[entity.id]
+        if (delta != null && delta.expiresAtMs <= now) activeFriendshipDeltas.remove(entity.id)
+        val activeDelta = activeFriendshipDeltas[entity.id]
+        if (activeBalloon == null && activeDelta == null) return
 
         val minecraft = Minecraft.getInstance()
+        if ((minecraft.player?.distanceToSqr(entity) ?: Double.MAX_VALUE) > BALLOON_RENDER_DISTANCE_SQR) return
         val guiGraphics = GuiGraphicsAccessor.`chowkingdom$create`(minecraft, poseStack, minecraft.renderBuffers().bufferSource())
         val rotation = Axis.YP.rotationDegrees(toEulerXyzDegrees(minecraft.entityRenderDispatcher.cameraOrientation()).y + 180.0f)
-        val hasGiftIcon = balloon.message.startsWith(GIFT_BALLOON_MARKER)
-        val balloonMessage = if (hasGiftIcon) balloon.message.removePrefix(GIFT_BALLOON_MARKER).trimStart() else balloon.message
+        if (activeBalloon == null) {
+            renderFriendshipDeltaPopup(entity, poseStack, guiGraphics, rotation, font, activeDelta, now)
+            return
+        }
+        val balloonIcon = balloonIcon(activeBalloon.message)
+        val hasBalloonIcon = balloonIcon != null
+        val balloonMessage = balloonIcon?.let { activeBalloon.message.removePrefix(it.marker).trimStart() } ?: activeBalloon.message
         val lines = font.split(FormattedText.of(balloonMessage), BALLOON_MAX_TEXT_WIDTH)
         if (lines.isEmpty()) return
-        val giftIconSpace = if (hasGiftIcon) GIFT_BALLOON_ICON_SIZE + 2 else 0
-        val greatestTextWidth = lines.mapIndexed { index, line -> font.width(line) + if (index == 0) giftIconSpace else 0 }.maxOrNull() ?: 0
+        val alpha = animationAlpha(activeBalloon.startedAtMs, activeBalloon.expiresAtMs, now, BALLOON_FADE_MS)
+        val iconSpace = if (hasBalloonIcon) BALLOON_ICON_SIZE + 2 else 0
+        val greatestTextWidth = lines.mapIndexed { index, line -> font.width(line) + if (index == 0) iconSpace else 0 }.maxOrNull() ?: 0
         val balloonWidth = (greatestTextWidth + BALLOON_PADDING * 2).coerceAtLeast(BALLOON_MIN_WIDTH)
         val balloonHeight = lines.size * BALLOON_LINE_HEIGHT + BALLOON_PADDING * 2
         val balloonX = -balloonWidth / 2
@@ -125,29 +143,38 @@ object NpcClient {
         poseStack.pushPose()
         poseStack.translate(0.0, entity.bbHeight + BALLOON_ENTITY_Y_OFFSET, 0.0)
         poseStack.mulPose(rotation)
-        poseStack.scale(-BALLOON_SCALE, -BALLOON_SCALE, BALLOON_SCALE)
+        val animatedScale = BALLOON_SCALE * (0.88f + 0.12f * alpha)
+        poseStack.scale(-animatedScale, -animatedScale, animatedScale)
 
         RenderSystem.enableBlend()
         RenderSystem.enableDepthTest()
         RenderSystem.enablePolygonOffset()
         RenderSystem.polygonOffset(3.0f, 3.0f)
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, BALLOON_BG_ALPHA * alpha)
         renderBalloonNineSlice(guiGraphics, balloonX, balloonY, balloonWidth, balloonHeight)
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f)
         RenderSystem.polygonOffset(0.0f, 0.0f)
         RenderSystem.disablePolygonOffset()
         RenderSystem.disableBlend()
 
         var textY = balloonY + BALLOON_PADDING
         lines.forEachIndexed { index, line ->
-            val lineIconSpace = if (hasGiftIcon && index == 0) giftIconSpace else 0
+            val lineIconSpace = if (hasBalloonIcon && index == 0) iconSpace else 0
             val lineWidth = font.width(line) + lineIconSpace
             val iconX = -lineWidth / 2
             val textX = iconX + lineIconSpace
-            if (hasGiftIcon && index == 0) guiGraphics.blit(GIFT_BALLOON_ICON, iconX, textY, GIFT_BALLOON_ICON_SIZE, GIFT_BALLOON_ICON_SIZE, 0.0f, 0.0f, GIFT_BALLOON_ICON_TEXTURE_SIZE, GIFT_BALLOON_ICON_TEXTURE_SIZE, GIFT_BALLOON_ICON_TEXTURE_SIZE, GIFT_BALLOON_ICON_TEXTURE_SIZE)
-            guiGraphics.drawString(font, line, textX, textY, BALLOON_TEXT_COLOR, false)
+            if (balloonIcon != null && index == 0) {
+                RenderSystem.enableBlend()
+                RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, alpha)
+                guiGraphics.blit(balloonIcon.texture, iconX, textY, BALLOON_ICON_SIZE, BALLOON_ICON_SIZE, 0.0f, 0.0f, BALLOON_ICON_TEXTURE_SIZE, BALLOON_ICON_TEXTURE_SIZE, BALLOON_ICON_TEXTURE_SIZE, BALLOON_ICON_TEXTURE_SIZE)
+                RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f)
+            }
+            guiGraphics.drawString(font, line, textX, textY, withAlpha(BALLOON_TEXT_COLOR, alpha), false)
             textY += BALLOON_LINE_HEIGHT
         }
         guiGraphics.flush()
         poseStack.popPose()
+        renderFriendshipDeltaPopup(entity, poseStack, guiGraphics, rotation, font, activeDelta, now)
     }
 
     fun register(modBus: IEventBus) {
@@ -305,7 +332,48 @@ object NpcClient {
 
     private fun withAlpha(rgb: Int, alpha: Float): Int = ((alpha.coerceIn(0.0f, 1.0f) * 255).roundToInt() shl 24) or (rgb and 0x00FFFFFF)
 
-    private data class NpcBalloonLine(val message: String, val expiresAtMs: Long)
+    private fun friendshipDeltaLine(message: String, startedAtMs: Long, expiresAtMs: Long): NpcFriendshipDeltaLine? = when {
+        message.startsWith(HEART_BALLOON_MARKER) -> NpcFriendshipDeltaLine(message.removePrefix(HEART_BALLOON_MARKER).trimStart(), HEART_BALLOON_ICON, FRIENDSHIP_DELTA_WORLD_POSITIVE, startedAtMs, expiresAtMs)
+        message.startsWith(ANGRY_BALLOON_MARKER) -> NpcFriendshipDeltaLine(message.removePrefix(ANGRY_BALLOON_MARKER).trimStart(), ANGRY_BALLOON_ICON, FRIENDSHIP_DELTA_WORLD_NEGATIVE, startedAtMs, expiresAtMs)
+        else -> null
+    }
+
+    private fun animationAlpha(startedAtMs: Long, expiresAtMs: Long, now: Long, fadeMs: Long): Float {
+        val fadeIn = ((now - startedAtMs).toFloat() / fadeMs).coerceIn(0.0f, 1.0f)
+        val fadeOut = ((expiresAtMs - now).toFloat() / fadeMs).coerceIn(0.0f, 1.0f)
+        return minOf(fadeIn, fadeOut)
+    }
+
+    private fun renderFriendshipDeltaPopup(entity: LivingEntity, poseStack: PoseStack, guiGraphics: GuiGraphics, rotation: Quaternionf, font: Font, delta: NpcFriendshipDeltaLine?, now: Long) {
+        if (delta == null) return
+        val duration = (delta.expiresAtMs - delta.startedAtMs).coerceAtLeast(1L)
+        val progress = ((now - delta.startedAtMs).toFloat() / duration).coerceIn(0.0f, 1.0f)
+        val alpha = animationAlpha(delta.startedAtMs, delta.expiresAtMs, now, FRIENDSHIP_DELTA_WORLD_FADE_MS)
+        if (alpha <= 0.0f) return
+        val text = delta.text.ifBlank { return }
+        val popupX = FRIENDSHIP_DELTA_WORLD_X
+        val popupY = FRIENDSHIP_DELTA_WORLD_Y - (progress * FRIENDSHIP_DELTA_WORLD_SLIDE).roundToInt()
+
+        poseStack.pushPose()
+        poseStack.translate(0.0, entity.bbHeight + FRIENDSHIP_DELTA_WORLD_ENTITY_Y_OFFSET, 0.0)
+        poseStack.mulPose(rotation)
+        val scale = FRIENDSHIP_DELTA_WORLD_SCALE * (0.88f + 0.12f * alpha)
+        poseStack.scale(-scale, -scale, scale)
+
+        RenderSystem.enableBlend()
+        RenderSystem.enableDepthTest()
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, alpha)
+        guiGraphics.blit(delta.icon, popupX, popupY, FRIENDSHIP_DELTA_WORLD_ICON_SIZE, FRIENDSHIP_DELTA_WORLD_ICON_SIZE, 0.0f, 0.0f, BALLOON_ICON_TEXTURE_SIZE, BALLOON_ICON_TEXTURE_SIZE, BALLOON_ICON_TEXTURE_SIZE, BALLOON_ICON_TEXTURE_SIZE)
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f)
+        guiGraphics.drawString(font, text, popupX + FRIENDSHIP_DELTA_WORLD_ICON_SIZE + 2, popupY + 1, withAlpha(delta.color, alpha), false)
+        guiGraphics.flush()
+        RenderSystem.disableBlend()
+        poseStack.popPose()
+    }
+
+    private data class NpcBalloonLine(val message: String, val startedAtMs: Long, val expiresAtMs: Long)
+
+    private data class NpcFriendshipDeltaLine(val text: String, val icon: ResourceLocation, val color: Int, val startedAtMs: Long, val expiresAtMs: Long)
 
     private data class NpcWorldChatEntry(
         val npcId: String,
@@ -362,12 +430,28 @@ object NpcClient {
         return Vector3f(Math.toDegrees(radians.x().toDouble()).toFloat(), Math.toDegrees(radians.y().toDouble()).toFloat(), Math.toDegrees(radians.z().toDouble()).toFloat())
     }
 
+    private fun balloonIcon(message: String): NpcBalloonIcon? = when {
+        message.startsWith(GIFT_BALLOON_MARKER) -> NpcBalloonIcon(GIFT_BALLOON_MARKER, GIFT_BALLOON_ICON)
+        message.startsWith(HEART_BALLOON_MARKER) -> NpcBalloonIcon(HEART_BALLOON_MARKER, HEART_BALLOON_ICON)
+        message.startsWith(ANGRY_BALLOON_MARKER) -> NpcBalloonIcon(ANGRY_BALLOON_MARKER, ANGRY_BALLOON_ICON)
+        else -> null
+    }
+
+
+private data class NpcBalloonIcon(val marker: String, val texture: ResourceLocation)
     private val BALLOON_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/chat_bubble.png")
     private val GIFT_BALLOON_ICON = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/gift.png")
+    private val HEART_BALLOON_ICON = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/heart.png")
+    private val ANGRY_BALLOON_ICON = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/angry.png")
     private const val GIFT_BALLOON_MARKER = "@gift.png"
-    private const val GIFT_BALLOON_ICON_SIZE = 8
-    private const val GIFT_BALLOON_ICON_TEXTURE_SIZE = 16
-    private const val BALLOON_SCALE = 0.025f
+    private const val HEART_BALLOON_MARKER = "@heart.png"
+    private const val ANGRY_BALLOON_MARKER = "@angry.png"
+    private const val BALLOON_ICON_SIZE = 8
+    private const val BALLOON_ICON_TEXTURE_SIZE = 16
+    private const val BALLOON_SCALE = 0.020f
+    private const val BALLOON_BG_ALPHA = 0.90f
+    private const val BALLOON_FADE_MS = 180L
+    private const val BALLOON_RENDER_DISTANCE_SQR = 8.0 * 8.0
     private const val BALLOON_ENTITY_Y_OFFSET = 0.9
     private const val BALLOON_MAX_TEXT_WIDTH = 118
     private const val BALLOON_MIN_WIDTH = 45
@@ -376,6 +460,15 @@ object NpcClient {
     private const val BALLOON_TEXTURE_SIZE = 16
     private const val BALLOON_LINE_HEIGHT = 9
     private const val BALLOON_TEXT_COLOR = 0xFF24201C.toInt()
+    private const val FRIENDSHIP_DELTA_WORLD_SCALE = 0.021f
+    private const val FRIENDSHIP_DELTA_WORLD_ENTITY_Y_OFFSET = 1.04
+    private const val FRIENDSHIP_DELTA_WORLD_X = 14
+    private const val FRIENDSHIP_DELTA_WORLD_Y = -22
+    private const val FRIENDSHIP_DELTA_WORLD_SLIDE = 16
+    private const val FRIENDSHIP_DELTA_WORLD_ICON_SIZE = 9
+    private const val FRIENDSHIP_DELTA_WORLD_FADE_MS = 260L
+    private const val FRIENDSHIP_DELTA_WORLD_POSITIVE = 0xFF83F28F.toInt()
+    private const val FRIENDSHIP_DELTA_WORLD_NEGATIVE = 0xFFFF6F6F.toInt()
     private const val CHAT_HEAD_SPACES = "   "
     private const val CHAT_HEAD_SIZE = 8
     private const val CHAT_LEFT_MARGIN = 4
@@ -519,9 +612,9 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         val dialogWidth = buttonX - dialogX - TEXT_GAP
         val buttonTop = buttonTop(panelHeight)
         val name = ckdmText(payload.name)
-        guiGraphics.drawString(font, name, nameX + 1, y + NAME_Y + 1, NAME_SHADOW, false)
-        guiGraphics.drawString(font, name, nameX, y + NAME_Y, NAME_COLOR, false)
+        drawScaledString(guiGraphics, name, nameX, y + NAME_Y, NAME_SCALE, NAME_COLOR, NAME_SHADOW)
         renderFriendship(guiGraphics, nameX, y + FRIENDSHIP_Y, payload.friendshipLevel)
+        renderFriendshipDelta(guiGraphics, nameX + FRIENDSHIP_ICON_COUNT * FRIENDSHIP_ICON_STEP + 5, y + FRIENDSHIP_Y + 1, payload.friendshipDelta)
 
         talkInput?.visible = talkMode
         val visibleCharacters = visibleDialogCharacters()
@@ -530,6 +623,7 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         val lines = font.split(ckdmDialogText(visibleMessage), dialogWidth)
         var lineY = dialogY
         lines.take(layout.dialogLineLimit).forEach { line ->
+            guiGraphics.drawString(font, line, dialogX + 1, lineY + 1, DIALOG_SHADOW, false)
             guiGraphics.drawString(font, line, dialogX, lineY, DIALOG_COLOR, false)
             lineY += LINE_HEIGHT
         }
@@ -632,6 +726,35 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
             }
             guiGraphics.blit(texture, x + index * FRIENDSHIP_ICON_STEP, y, FRIENDSHIP_ICON_SIZE, FRIENDSHIP_ICON_SIZE, 0.0f, 0.0f, ICON_SOURCE_SIZE, ICON_SOURCE_SIZE, ICON_SOURCE_SIZE, ICON_SOURCE_SIZE)
         }
+    }
+
+    private fun renderFriendshipDelta(guiGraphics: GuiGraphics, x: Int, y: Int, delta: Int) {
+        if (delta == 0) return
+        val elapsed = System.currentTimeMillis() - messageStartedAtMs
+        val alpha = when {
+            elapsed < FRIENDSHIP_DELTA_FADE_MS -> elapsed.toFloat() / FRIENDSHIP_DELTA_FADE_MS
+            elapsed > FRIENDSHIP_DELTA_DURATION_MS - FRIENDSHIP_DELTA_FADE_MS -> ((FRIENDSHIP_DELTA_DURATION_MS - elapsed).toFloat() / FRIENDSHIP_DELTA_FADE_MS).coerceAtLeast(0.0f)
+            else -> 1.0f
+        }
+        if (alpha <= 0.0f) return
+        val sign = if (delta > 0) "+" else ""
+        val color = dialogWithAlpha(if (delta > 0) FRIENDSHIP_DELTA_POSITIVE else FRIENDSHIP_DELTA_NEGATIVE, alpha)
+        val shadow = dialogWithAlpha(NAME_SHADOW, alpha)
+        val text = ckdmSmallText("$sign$delta")
+        guiGraphics.drawString(font, text, x + 1, y + 1, shadow, false)
+        guiGraphics.drawString(font, text, x, y, color, false)
+    }
+
+    private fun dialogWithAlpha(rgb: Int, alpha: Float): Int = ((alpha.coerceIn(0.0f, 1.0f) * 255).roundToInt() shl 24) or (rgb and 0x00FFFFFF)
+
+    private fun drawScaledString(guiGraphics: GuiGraphics, text: Component, x: Int, y: Int, scale: Float, color: Int, shadowColor: Int) {
+        val pose = guiGraphics.pose()
+        pose.pushPose()
+        pose.translate(x.toFloat(), y.toFloat(), 0.0f)
+        pose.scale(scale, scale, 1.0f)
+        guiGraphics.drawString(font, text, 1, 1, shadowColor, false)
+        guiGraphics.drawString(font, text, 0, 0, color, false)
+        pose.popPose()
     }
 
     private fun actionLabel(action: DialogAction): String = when {
@@ -904,14 +1027,15 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         private const val SKIN_TEXTURE_SIZE = 64
         private const val TEXT_GAP = 12
         private const val LINE_HEIGHT = 11
-        private const val NAME_Y = 15
-        private const val FRIENDSHIP_Y = 33
+        private const val NAME_Y = 19
+        private const val NAME_SCALE = 1.25f
+        private const val FRIENDSHIP_Y = 43
         private const val BASE_DIALOG_LINES = 4
         private const val MAX_EXTRA_DIALOG_LINES = 5
         private const val INPUT_HEIGHT = 18
         private const val INPUT_GAP = 16
         private const val DYNAMIC_BOTTOM_PAD = 11
-        private const val BUTTON_WIDTH = 132
+        private const val BUTTON_WIDTH = 112
         private const val BUTTON_HEIGHT = 20
         private const val BUTTON_TOP = 14
         private const val BUTTON_STEP = 23
@@ -923,8 +1047,8 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         private const val ICON_SIZE = 14
         private const val ICON_SOURCE_SIZE = 16
         private const val FRIENDSHIP_ICON_COUNT = 10
-        private const val FRIENDSHIP_ICON_SIZE = 8
-        private const val FRIENDSHIP_ICON_STEP = 9
+        private const val FRIENDSHIP_ICON_SIZE = 10
+        private const val FRIENDSHIP_ICON_STEP = 11
         private const val ENTRANCE_DURATION_MS = 180.0f
         private const val PANEL_HEIGHT_DURATION_MS = 140.0f
         private const val TALK_LAYOUT_DURATION_MS = 160.0f
@@ -932,7 +1056,12 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         private const val TYPEWRITER_CHARS_PER_SECOND = 68.0
         private const val NAME_COLOR = 0xFFFFFFFF.toInt()
         private const val NAME_SHADOW = 0xCC050505.toInt()
-        private const val DIALOG_COLOR = 0xBFFFFFFF.toInt()
+        private const val DIALOG_COLOR = 0xFFFFFFFF.toInt()
+        private const val DIALOG_SHADOW = 0xCC050505.toInt()
+        private const val FRIENDSHIP_DELTA_POSITIVE = 0xFF83F28F.toInt()
+        private const val FRIENDSHIP_DELTA_NEGATIVE = 0xFFFF6F6F.toInt()
+        private const val FRIENDSHIP_DELTA_DURATION_MS = 2200L
+        private const val FRIENDSHIP_DELTA_FADE_MS = 260L
         private const val CONTRACT_COLOR = 0xFF83F28F.toInt()
         private const val DISABLED_COLOR = 0xFF8C8778.toInt()
         private val ANIMALESE_PITCHES = setOf("high", "med", "low", "lowest")

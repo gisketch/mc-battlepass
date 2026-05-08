@@ -50,7 +50,7 @@ object NpcJobs {
 
 object NpcBrain {
     fun tick(entity: ChowNpcEntity, definition: NpcDefinition) {
-        val activity = NpcTime.activityAt(definition.schedule, entity.level())
+        val activity = NpcFeature.activityFor(entity, definition)
         entity.debugActivity = activity
         if (activity != "sleep" && entity.isSleeping) entity.stopSleeping()
         if (entity.tickCount % definition.jobDefinition.scanIntervalTicks != 0 || !entity.navigation.isDone) return
