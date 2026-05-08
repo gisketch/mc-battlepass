@@ -5,6 +5,7 @@ import dev.gisketch.chowkingdom.ChatGlyphs
 import dev.gisketch.chowkingdom.ChowKingdomMod
 import dev.gisketch.chowkingdom.config.TomlConfigIO
 import dev.gisketch.chowkingdom.discord.DiscordRelay
+import dev.gisketch.chowkingdom.npc.NpcStore
 import dev.gisketch.chowkingdom.relicroulette.RelicRouletteFeature
 import dev.gisketch.chowkingdom.snackbar.SnackbarIcons
 import dev.gisketch.chowkingdom.snackbar.SnackbarNetwork
@@ -292,6 +293,7 @@ object BattlepassMissionProgressStore {
         BattlepassXpStore.addXp(player, pass.id, xp)
         val currentXp = BattlepassXpStore.getXp(player, pass.id)
         val newlyUnlocked = pass.progression.filter { tier -> previousXp < tier.xp && currentXp >= tier.xp && !BattlepassXpStore.isClaimed(player, pass.id, tier.xp) }
+        recordTierMilestones(player, pass, newlyUnlocked)
         if (newlyUnlocked.isEmpty()) return
         val unclaimedCount = pass.progression.count { tier -> currentXp >= tier.xp && !BattlepassXpStore.isClaimed(player, pass.id, tier.xp) }
         val passName = pass.displayName.ifBlank { pass.id }
@@ -316,6 +318,23 @@ object BattlepassMissionProgressStore {
             .append(Component.literal(title).withStyle(ChatFormatting.WHITE))
         player.server.playerList.broadcastSystemMessage(message, false)
         DiscordRelay.battlepassMissionCompleted(player, pass.displayName.ifBlank { pass.id }, missionTypeLabel(entry.scope), title, BattlepassXpStore.getXp(player, pass.id))
+        val memory = "${player.gameProfile.name} completed ${missionTypeLabel(entry.scope)} in ${pass.displayName.ifBlank { pass.id }}: $title"
+        NpcStore.recordGlobalEvent("mission_completed", memory)
+        NpcStore.recordGlobalMemory("mission_completed", memory)
+        NpcStore.recordPlayerMemory(player, "mission_completed", memory)
+    }
+
+    private fun recordTierMilestones(player: ServerPlayer, pass: BattlepassPassDefinition, newlyUnlocked: List<BattlepassProgressionDefinition>) {
+        if (newlyUnlocked.isEmpty()) return
+        val sortedTiers = pass.progression.sortedBy { tier -> tier.xp }
+        val passName = pass.displayName.ifBlank { pass.id }
+        newlyUnlocked.forEach { tier ->
+            val tierNumber = sortedTiers.indexOfFirst { candidate -> candidate.xp == tier.xp } + 1
+            if (tierNumber <= 0 || tierNumber % 10 != 0) return@forEach
+            val memory = "${player.gameProfile.name} reached $passName level $tierNumber (${tier.xp} XP)"
+            NpcStore.recordGlobalMemory("battlepass_level", memory)
+            NpcStore.recordPlayerMemory(player, "battlepass_level", memory)
+        }
     }
 
     private fun missionTypeLabel(scope: BattlepassMissionScope): String = when (scope) {

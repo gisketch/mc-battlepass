@@ -57,6 +57,7 @@ import net.neoforged.neoforge.event.RegisterCommandsEvent
 import net.neoforged.neoforge.event.entity.EntityAttributeCreationEvent
 import net.neoforged.neoforge.event.entity.living.LivingDamageEvent
 import net.neoforged.neoforge.event.entity.living.LivingDeathEvent
+import net.neoforged.neoforge.event.entity.player.PlayerEvent
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent
 import net.neoforged.neoforge.event.level.BlockEvent
 import net.neoforged.neoforge.event.server.ServerStartedEvent
@@ -109,6 +110,8 @@ object NpcFeature {
         NeoForge.EVENT_BUS.addListener(::onServerTick)
         NeoForge.EVENT_BUS.addListener(::onLivingDamagePre)
         NeoForge.EVENT_BUS.addListener(::onLivingDeath)
+        NeoForge.EVENT_BUS.addListener(::onPlayerLoggedIn)
+        NeoForge.EVENT_BUS.addListener(::onPlayerLoggedOut)
         NeoForge.EVENT_BUS.addListener(::onBlockBreak)
         NeoForge.EVENT_BUS.addListener(::onRegisterCommands)
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, ::onRightClickBlock)
@@ -643,6 +646,16 @@ object NpcFeature {
         }
     }
 
+    private fun onPlayerLoggedIn(event: PlayerEvent.PlayerLoggedInEvent) {
+        val player = event.entity as? ServerPlayer ?: return
+        NpcStore.recordGlobalEvent("player_join", "${player.gameProfile.name} joined the server")
+    }
+
+    private fun onPlayerLoggedOut(event: PlayerEvent.PlayerLoggedOutEvent) {
+        val player = event.entity as? ServerPlayer ?: return
+        NpcStore.recordGlobalEvent("player_leave", "${player.gameProfile.name} left the server")
+    }
+
     private fun onLivingDeath(event: LivingDeathEvent) {
         val npc = event.entity as? ChowNpcEntity
         if (npc != null) {
@@ -665,8 +678,22 @@ object NpcFeature {
             NpcStore.markDead(definition.id, nextRespawnDay(npc.level().dayTime))
             return
         }
-        val player = event.entity as? ServerPlayer ?: return
-        NpcStore.recordGlobalEvent("player_death", event.source.getLocalizedDeathMessage(player).string)
+        val player = event.entity as? ServerPlayer
+        if (player != null) {
+            val deathMessage = event.source.getLocalizedDeathMessage(player).string
+            NpcStore.recordGlobalEvent("player_death", deathMessage)
+            NpcStore.recordGlobalMemory("player_death", deathMessage)
+            NpcStore.recordPlayerMemory(player, "death", deathMessage)
+            return
+        }
+
+        val killer = event.source.entity as? ServerPlayer ?: return
+        if (event.entity.maxHealth < NOTABLE_KILL_HEALTH_THRESHOLD) return
+        val targetName = event.entity.displayName?.string ?: event.entity.type.description.string
+        val killMessage = "${killer.gameProfile.name} defeated $targetName"
+        NpcStore.recordGlobalEvent("notable_kill", killMessage)
+        NpcStore.recordGlobalMemory("notable_kill", killMessage)
+        NpcStore.recordPlayerMemory(killer, "notable_kill", killMessage)
     }
 
     private fun onBlockBreak(event: BlockEvent.BreakEvent) {
@@ -1421,6 +1448,7 @@ object NpcFeature {
     private const val FRIENDSHIP_HIT_DELTA = -10
     private const val FRIENDSHIP_KILL_DELTA = -300
     private const val FIRST_DAILY_CHAT_FRIENDSHIP_DELTA = 25
+    private const val NOTABLE_KILL_HEALTH_THRESHOLD = 100.0f
     private const val RESPAWN_SCAN_INTERVAL_TICKS = 20
     private const val NPC_RESPAWN_HOUR = 5
 }

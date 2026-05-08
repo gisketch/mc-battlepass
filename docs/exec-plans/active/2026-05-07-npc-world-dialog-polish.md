@@ -44,6 +44,7 @@ Polish the restored NPC screen dialog and relay NPC speech to nearby players plu
 - `/npc debug balloon <id> <message>` can force a nearby test balloon for visual checks.
 - NPCs greet nearby players with globally configurable radius/timing and friendship-category balloons until that player has the first chat of the in-game day.
 - First NPC chat of the in-game day grants +25 friendship and can use configurable friendship-category first-chat dialog.
+- NPC LLM context includes bounded durable player/global memories, recent join/leave events, player deaths, notable kills, mission completions, and every tenth battlepass tier milestone.
 
 ## Plan
 
@@ -73,6 +74,7 @@ Polish the restored NPC screen dialog and relay NPC speech to nearby players plu
 24. Replace nearby NPC chat relay with NPC world balloons.
 25. Add a direct debug command for balloon testing.
 26. Add NPC greeting microinteractions and daily first-chat friendship reward.
+27. Add sparse durable player/global memory context for NPC LLM prompts.
 
 ## Progress
 
@@ -108,3 +110,4 @@ Polish the restored NPC screen dialog and relay NPC speech to nearby players plu
 - 2026-05-08: Added NPC balloon payloads, renderer hook, original balloon texture, and routed NPC hurt/eavesdrop speech out of chat into timed world balloons.
 - 2026-05-08: Added `/npc debug balloon <id> <message>` to test the exact balloon payload/render path near a spawned NPC.
 - 2026-05-08: Added globally configurable proximity greeting balloons, per-player greeting state with radius-leave cooldown reset, and first daily chat +25 friendship reward with special dialog messages.
+- 2026-05-08: Added bounded player/global NPC memories, JSON LLM `memorable` capture, join/leave context, death/notable-kill memory hooks, and battlepass mission/tier milestone hooks.

@@ -238,6 +238,25 @@ object NpcStore {
         save()
     }
 
+    fun recordGlobalMemory(type: String, text: String) {
+        if (!loaded) load()
+        val cleanText = text.trim().take(MAX_MEMORY_TEXT_LENGTH)
+        if (cleanText.isBlank()) return
+        data.globalMemories += NpcMemoryRecord(System.currentTimeMillis(), type, cleanText)
+        if (data.globalMemories.size > MAX_GLOBAL_MEMORIES) data.globalMemories = data.globalMemories.takeLast(MAX_GLOBAL_MEMORIES).toMutableList()
+        save()
+    }
+
+    fun recordPlayerMemory(player: ServerPlayer, type: String, text: String) {
+        if (!loaded) load()
+        val cleanText = text.trim().take(MAX_MEMORY_TEXT_LENGTH)
+        if (cleanText.isBlank()) return
+        val memories = data.playerMemories.getOrPut(player.stringUUID) { mutableListOf() }
+        memories += NpcMemoryRecord(System.currentTimeMillis(), type, cleanText, player.stringUUID, player.gameProfile.name)
+        data.playerMemories[player.stringUUID] = memories.takeLast(MAX_PLAYER_MEMORIES).toMutableList()
+        save()
+    }
+
     fun llmContext(npcId: String, player: ServerPlayer): NpcLlmContext {
         return llmContext(npcId, player, -1)
     }
@@ -248,6 +267,8 @@ object NpcStore {
             currentHour = currentHour,
             friendship = friendshipSnapshot(npcId, player),
             globalEvents = data.globalEvents.takeLast(MAX_GLOBAL_EVENTS),
+            globalMemories = data.globalMemories.takeLast(MAX_GLOBAL_MEMORIES),
+            playerMemories = data.playerMemories[player.stringUUID].orEmpty().takeLast(MAX_PLAYER_MEMORIES),
             conversation = state.conversations[player.stringUUID].orEmpty().takeLast(MAX_CONVERSATION_HISTORY),
             lastHurtAt = state.lastHurtAt,
             lastHurtPlayerName = state.lastHurtPlayerName,
@@ -329,6 +350,8 @@ object NpcStore {
 class NpcWorldData(
     var npcs: MutableMap<String, NpcResidentState> = linkedMapOf(),
     var globalEvents: MutableList<NpcGlobalEvent> = mutableListOf(),
+    var globalMemories: MutableList<NpcMemoryRecord> = mutableListOf(),
+    var playerMemories: MutableMap<String, MutableList<NpcMemoryRecord>> = linkedMapOf(),
     var campBlock: NpcBlockPosData? = null,
     var activeCamperId: String = "",
     var camperCooldownUntilTick: Long = -1L,
@@ -405,10 +428,20 @@ class NpcGlobalEvent(
     var text: String = "",
 )
 
+class NpcMemoryRecord(
+    var timestamp: Long = 0L,
+    var type: String = "",
+    var text: String = "",
+    var playerUuid: String = "",
+    var playerName: String = "",
+)
+
 class NpcLlmContext(
     val currentHour: Int,
     val friendship: NpcFriendshipSnapshot,
     val globalEvents: List<NpcGlobalEvent>,
+    val globalMemories: List<NpcMemoryRecord>,
+    val playerMemories: List<NpcMemoryRecord>,
     val conversation: List<NpcConversationRecord>,
     val lastHurtAt: Long,
     val lastHurtPlayerName: String,
@@ -432,3 +465,6 @@ private const val MAX_HURT_HISTORY = 10
 private const val HURT_HISTORY_RECORD_INTERVAL = 3
 private const val MAX_CONVERSATION_HISTORY = 30
 private const val MAX_GLOBAL_EVENTS = 30
+private const val MAX_GLOBAL_MEMORIES = 60
+private const val MAX_PLAYER_MEMORIES = 30
+private const val MAX_MEMORY_TEXT_LENGTH = 180

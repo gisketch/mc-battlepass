@@ -71,7 +71,8 @@ object NpcLlmService {
                 if (!finishRequest(definition.id, responseToken)) return@execute
                 val liveNpc = NpcFeature.existingNpc(player.server, definition.id) ?: return@execute NpcNetwork.sendTalkResponse(player, definition.id, fallbackMessage, responseToken)
                 if (throwable != null) ChowKingdomMod.LOGGER.warn("NPC LLM event request failed npc={} player={}", definition.id, player.gameProfile.name, throwable)
-                sendFinal(player, liveNpc, definition, if (throwable == null) result else fallbackMessage, fallbackMessage = fallbackMessage, sendTalkResponse = sendTalkResponse, excludePlayerFromBalloon = excludePlayerFromBalloon, npcRecordType = npcRecordType, responseToken = responseToken)
+                val completion = if (throwable == null) result else NpcLlmCompletion(fallbackMessage)
+                sendFinal(player, liveNpc, definition, completion.message, fallbackMessage = fallbackMessage, sendTalkResponse = sendTalkResponse, excludePlayerFromBalloon = excludePlayerFromBalloon, npcRecordType = npcRecordType, responseToken = responseToken, memorable = completion.memorable)
             }
         }
     }
@@ -107,8 +108,8 @@ object NpcLlmService {
                 if (!finishRequest(definition.id, responseToken)) return@execute
                 val liveNpc = NpcFeature.existingNpc(player.server, definition.id) ?: return@execute NpcNetwork.sendTalkResponse(player, definition.id, settings.errorMessage, responseToken)
                 if (throwable != null) ChowKingdomMod.LOGGER.warn("NPC LLM request failed npc={} player={}", definition.id, player.gameProfile.name, throwable)
-                val reply = if (throwable == null) result else settings.errorMessage
-                sendFinal(player, liveNpc, definition, reply, message, responseToken = responseToken)
+                val completion = if (throwable == null) result else NpcLlmCompletion(settings.errorMessage)
+                sendFinal(player, liveNpc, definition, completion.message, message, responseToken = responseToken, memorable = completion.memorable)
             }
         }
     }
@@ -140,10 +141,10 @@ object NpcLlmService {
         settings: NpcLlmSettingsDefinition,
         fallbackMessage: String = settings.fallbackMessage,
         inputLabel: String = "Player says",
-    ): String {
+    ): NpcLlmCompletion {
         if (settings.apiKey.isBlank()) {
             ChowKingdomMod.LOGGER.warn("NPC LLM missing api_key provider={} model={}", settings.provider, settings.model)
-            return fallbackMessage
+            return NpcLlmCompletion(fallbackMessage)
         }
         val prompt = buildPrompt(player, definition, playerMessage, settings, inputLabel)
         ChowKingdomMod.LOGGER.info("NPC LLM request provider={} model={} npc={} player={} promptChars={}", settings.provider, settings.model, definition.id, player.gameProfile.name, prompt.length)
@@ -152,10 +153,10 @@ object NpcLlmService {
             "gemini" -> completeGemini(prompt, settings, fallbackMessage)
             else -> completeOpenAiCompatible(prompt, settings, fallbackMessage)
         }
-        return sanitizeReply(raw, settings, fallbackMessage)
+        return raw.copy(message = sanitizeReply(raw.message, settings, fallbackMessage))
     }
 
-    private fun completeOpenAiCompatible(prompt: String, settings: NpcLlmSettingsDefinition, fallbackMessage: String): String {
+    private fun completeOpenAiCompatible(prompt: String, settings: NpcLlmSettingsDefinition, fallbackMessage: String): NpcLlmCompletion {
         val root = JsonObject()
         root.addProperty("model", settings.model)
         val messages = JsonArray()
@@ -170,14 +171,14 @@ object NpcLlmService {
         ChowKingdomMod.LOGGER.info("NPC LLM openai-compatible status={} bodyChars={}", response.statusCode(), response.body().length)
         if (response.statusCode() !in 200..299) {
             ChowKingdomMod.LOGGER.warn("NPC LLM openai-compatible error status={} body={}", response.statusCode(), response.body().take(LOG_BODY_LIMIT))
-            return fallbackMessage
+            return NpcLlmCompletion(fallbackMessage)
         }
         val json = JsonParser.parseString(response.body()).asJsonObject
         val content = json.getAsJsonArray("choices")?.firstOrNull()?.asJsonObject?.getAsJsonObject("message")?.get("content")?.asString.orEmpty()
         return parseMessage(content, settings, fallbackMessage)
     }
 
-    private fun completeGemini(prompt: String, settings: NpcLlmSettingsDefinition, fallbackMessage: String): String {
+    private fun completeGemini(prompt: String, settings: NpcLlmSettingsDefinition, fallbackMessage: String): NpcLlmCompletion {
         val root = JsonObject()
         val parts = JsonArray().apply { add(JsonObject().apply { addProperty("text", prompt) }) }
         val contents = JsonArray().apply { add(JsonObject().apply { add("parts", parts) }) }
@@ -187,7 +188,7 @@ object NpcLlmService {
         ChowKingdomMod.LOGGER.info("NPC LLM gemini status={} bodyChars={}", response.statusCode(), response.body().length)
         if (response.statusCode() !in 200..299) {
             ChowKingdomMod.LOGGER.warn("NPC LLM gemini error status={} body={}", response.statusCode(), response.body().take(LOG_BODY_LIMIT))
-            return fallbackMessage
+            return NpcLlmCompletion(fallbackMessage)
         }
         val json = JsonParser.parseString(response.body()).asJsonObject
         val text = json.getAsJsonArray("candidates")?.firstOrNull()?.asJsonObject?.getAsJsonObject("content")?.getAsJsonArray("parts")?.firstOrNull()?.asJsonObject?.get("text")?.asString.orEmpty()
@@ -203,13 +204,32 @@ object NpcLlmService {
         return builder.build()
     }
 
-    private fun parseMessage(content: String, settings: NpcLlmSettingsDefinition, fallbackMessage: String): String {
+    private fun parseMessage(content: String, settings: NpcLlmSettingsDefinition, fallbackMessage: String): NpcLlmCompletion {
         val cleaned = content.trim().removePrefix("```json").removePrefix("```").removeSuffix("```").trim()
-        val message = runCatching { JsonParser.parseString(cleaned).asJsonObject.get("message")?.asString.orEmpty() }
+        val parsed = runCatching {
+            val obj = JsonParser.parseString(cleaned).asJsonObject
+            val message = obj.get("message")?.takeUnless { it.isJsonNull }?.asString.orEmpty()
+            val memorable = obj.get("memorable")?.takeUnless { it.isJsonNull }?.asString.orEmpty()
+            NpcLlmCompletion(message, sanitizeMemory(memorable))
+        }
             .onFailure { exception -> ChowKingdomMod.LOGGER.warn("NPC LLM response was not JSON message. raw={}", cleaned.take(LOG_BODY_LIMIT), exception) }
-            .getOrDefault(cleaned)
-        return sanitizeReply(message, settings, fallbackMessage)
+            .getOrDefault(NpcLlmCompletion(cleaned))
+        return parsed.copy(message = sanitizeReply(parsed.message, settings, fallbackMessage))
     }
+
+    private fun sanitizeMemory(raw: String): String = raw
+        .replace("—", "-")
+        .replace("–", "-")
+        .replace("…", "...")
+        .replace('“', '"')
+        .replace('”', '"')
+        .replace('‘', '\'')
+        .replace('’', '\'')
+        .replace(NON_ASCII_PATTERN, "")
+        .replace('\n', ' ')
+        .replace(WHITESPACE_PATTERN, " ")
+        .trim()
+        .take(MAX_MEMORY_CHARS)
 
     private fun sanitizeReply(raw: String, settings: NpcLlmSettingsDefinition, fallbackMessage: String = settings.fallbackMessage): String {
         val normalized = raw
@@ -245,12 +265,14 @@ object NpcLlmService {
         excludePlayerFromBalloon: Boolean = true,
         npcRecordType: String = "npc_llm_reply",
         responseToken: Long = 0L,
+        memorable: String = "",
     ) {
         val settings = NpcConfig.settings().llm
         val reply = sanitizeReply(message, settings, fallbackMessage)
         npc.startTalkingTo(player, NPC_LLM_TALK_DURATION_TICKS)
         if (playerMessage.isNotBlank()) NpcStore.recordConversation(definition.id, player, player.gameProfile.name, playerMessage.take(MAX_PLAYER_MESSAGE_LENGTH), "player_llm_talk")
         NpcStore.recordConversation(definition.id, player, definition.name, reply, npcRecordType)
+        if (memorable.isNotBlank()) NpcStore.recordPlayerMemory(player, "llm_memorable", memorable)
         if (sendTalkResponse) NpcNetwork.sendTalkResponse(player, definition.id, reply, responseToken)
         relayNpcTalk(player, npc, definition, reply)
         NpcFeature.showBalloonToNearby(npc.level() as ServerLevel, npc, reply, NPC_LLM_REPLY_BALLOON_TICKS, if (excludePlayerFromBalloon) player.uuid else null)
@@ -289,6 +311,8 @@ object NpcLlmService {
         val npcState = buildNpcState(definition, player)
         val storeContext = buildStoreContext(definition)
         val globalEvents = buildGlobalEvents(context)
+        val playerMemories = buildMemories(context.playerMemories)
+        val globalMemories = buildMemories(context.globalMemories)
         return """
             You are roleplaying as an NPC in a Minecraft multiplayer server.
 
@@ -310,7 +334,8 @@ object NpcLlmService {
             - Do not use emojis, em dashes, smart quotes, or other Unicode symbols.
             - Do not claim you gave items, changed friendship, changed prices, completed quests, teleported anyone, healed anyone, or changed the world.
             - If asked to do a game action, suggest the real UI action instead.
-            - Return JSON only: {"message":"NPC reply here"}
+            - Return JSON only: {"message":"NPC reply here","memorable":null}
+            - Set memorable to one short player-specific fact only when the player reveals something important, lasting, and useful later. Otherwise use null.
 
             Relationship:
             - Player: ${player.gameProfile.name}
@@ -335,6 +360,12 @@ object NpcLlmService {
 
             Recent global events:
             $globalEvents
+
+            Important player memories:
+            $playerMemories
+
+            Important global memories:
+            $globalMemories
 
             Hurt context:
             $hurtContext
@@ -408,6 +439,11 @@ object NpcLlmService {
         .joinToString("\n") { event -> "- ${formatAge(event.timestamp)}: ${event.type}: ${event.text}" }
         .ifBlank { "None." }
 
+    private fun buildMemories(memories: List<NpcMemoryRecord>): String = memories
+        .takeLast(8)
+        .joinToString("\n") { memory -> "- ${formatAge(memory.timestamp)}: ${memory.type}: ${memory.text}" }
+        .ifBlank { "None." }
+
     private fun formatHistoryRecord(record: NpcConversationRecord, npcName: String): String {
         val age = formatAge(record.timestamp)
         return when (record.type) {
@@ -467,9 +503,12 @@ object NpcLlmService {
     private const val NPC_LLM_PENDING_BALLOON_TICKS = 40
     private const val NPC_LLM_REPLY_BALLOON_TICKS = 120
     private const val LOG_BODY_LIMIT = 600
+    private const val MAX_MEMORY_CHARS = 180
     private val EMOJI_PATTERN = Regex("[\\x{1F000}-\\x{1FAFF}\\x{2600}-\\x{27BF}]")
     private val NON_ASCII_PATTERN = Regex("[^\\x20-\\x7E]")
     private val WHITESPACE_PATTERN = Regex("\\s+")
 }
 
 private data class ActiveNpcRequest(val playerId: UUID, val responseToken: Long)
+
+private data class NpcLlmCompletion(val message: String, val memorable: String = "")
