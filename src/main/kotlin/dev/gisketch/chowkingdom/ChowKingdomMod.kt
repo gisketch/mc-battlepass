@@ -23,6 +23,7 @@ import dev.gisketch.chowkingdom.discord.DiscordFeature
 import dev.gisketch.chowkingdom.discord.DiscordScreenshotClient
 import dev.gisketch.chowkingdom.npc.NpcClient
 import dev.gisketch.chowkingdom.npc.NpcFeature
+import dev.gisketch.chowkingdom.recipes.RecipeDisablerFeature
 import dev.gisketch.chowkingdom.relicroulette.RelicRouletteFeature
 import dev.gisketch.chowkingdom.revive.ReviveClient
 import dev.gisketch.chowkingdom.revive.ReviveFeature
@@ -72,6 +73,7 @@ class ChowKingdomMod(modBus: IEventBus, container: ModContainer) {
         DiscordFeature.register()
         SnackbarFeature.register(modBus)
         RelicRouletteFeature.register(modBus)
+        RecipeDisablerFeature.register()
         NpcFeature.register(modBus)
         if (FMLEnvironment.dist == Dist.CLIENT) {
             container.registerExtensionPoint(IConfigScreenFactory::class.java) {

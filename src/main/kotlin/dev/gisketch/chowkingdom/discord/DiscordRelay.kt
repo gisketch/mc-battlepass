@@ -127,16 +127,11 @@ object DiscordRelay {
     fun npcDialog(player: ServerPlayer, npcId: String, npcName: String, message: String) {
         val config = DiscordConfig.current()
         if (!config.enabled) return
-        val link = DiscordAccountLinkStore.linkFor(player)
-        val mentionUserId = link?.discordId?.takeIf(String::isNotBlank)
-        val mention = mentionUserId?.let { id -> "<@$id> " }.orEmpty()
-        val fallback = if (mention.isBlank()) "${DiscordText.cleanContent(NicknameStore.displayName(player))}, " else ""
         DiscordWebhookClient.send(
             DiscordWebhookMessage(
-                content = mention + fallback + DiscordText.cleanContent(message),
+                content = DiscordText.cleanContent(message),
                 username = npcName,
                 avatarUrl = DiscordQuickSkinSupport.npcAvatarUrl(npcId, config),
-                allowedUserMentions = listOfNotNull(mentionUserId),
             ),
         )
     }
@@ -156,13 +151,10 @@ object DiscordRelay {
     fun npcWorldChat(npcId: String, npcName: String, message: String, mentionUserId: String? = null, fallbackName: String = "", onDiscordMessageId: (String) -> Unit = {}) {
         val config = DiscordConfig.current()
         if (!config.enabled) return
-        val mention = mentionUserId?.takeIf(String::isNotBlank)?.let { id -> "<@$id> " }.orEmpty()
-        val prefix = if (mention.isBlank() && fallbackName.isNotBlank()) "${DiscordText.cleanContent(fallbackName)}, " else ""
         val payload = DiscordWebhookMessage(
-            content = mention + prefix + DiscordText.cleanContent(message),
+            content = DiscordText.cleanContent(message),
             username = npcName,
             avatarUrl = DiscordQuickSkinSupport.npcAvatarUrl(npcId, config),
-            allowedUserMentions = listOfNotNull(mentionUserId?.takeIf(String::isNotBlank)),
         )
         DiscordWebhookClient.sendAndCaptureMessageId(payload, onDiscordMessageId)
     }

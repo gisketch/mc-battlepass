@@ -960,9 +960,10 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
     }
 
     private fun dialogLineCount(dialogWidth: Int): Int {
-        val wrapped = font.split(ckdmDialogText(displayMessage), dialogWidth).size.coerceAtLeast(1)
+        val visibleMessage = stripDialogMarkup(displayMessage)
+        val wrapped = font.split(ckdmDialogText(visibleMessage), dialogWidth).size.coerceAtLeast(1)
         val averageCharsPerLine = (dialogWidth / 6).coerceAtLeast(24)
-        val estimated = (displayMessage.length + averageCharsPerLine - 1) / averageCharsPerLine
+        val estimated = (visibleMessage.length + averageCharsPerLine - 1) / averageCharsPerLine
         return maxOf(wrapped, estimated)
     }
 

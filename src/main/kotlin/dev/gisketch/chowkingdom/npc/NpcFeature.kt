@@ -601,6 +601,17 @@ object NpcFeature {
 
     fun showBalloonToNearby(level: ServerLevel, npc: ChowNpcEntity, message: String, durationTicks: Int = 90, excludePlayer: UUID? = null): Int = sendNpcBalloon(level, npc, message, durationTicks, excludePlayer)
 
+    fun showBalloonToNearbyExcept(level: ServerLevel, npc: ChowNpcEntity, message: String, durationTicks: Int = 90, excludePlayers: Set<UUID>): Int {
+        var recipients = 0
+        level.players().forEach { listener ->
+            if (listener.uuid !in excludePlayers && listener.distanceToSqr(npc.x, npc.y, npc.z) <= NPC_DIALOG_HEAR_RADIUS * NPC_DIALOG_HEAR_RADIUS) {
+                NpcNetwork.showBalloon(listener, npc.id, message, durationTicks)
+                recipients++
+            }
+        }
+        return recipients
+    }
+
     private fun sendNpcBalloon(level: ServerLevel, npc: ChowNpcEntity, message: String, durationTicks: Int = 90, excludePlayer: UUID? = null): Int {
         var recipients = 0
         level.players().forEach { listener ->

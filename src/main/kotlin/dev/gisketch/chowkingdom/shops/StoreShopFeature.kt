@@ -264,7 +264,12 @@ object StoreShopFeature {
     private fun ensurePool(definition: StoreDefinition, stockKey: String, pool: ShopViewPool) {
         val period = periodKey(definition, pool)
         val poolState = stateFor(stockKey).pools.getOrPut(pool.id) { StorePoolState() }
-        if (poolState.period != period) reroll(definition, stockKey, pool)
+        if (poolState.period != period || missingSelectedCategories(definition, poolState, pool)) reroll(definition, stockKey, pool)
+    }
+
+    private fun missingSelectedCategories(definition: StoreDefinition, poolState: StorePoolState, pool: ShopViewPool): Boolean {
+        if (pool == ShopViewPool.ALL) return false
+        return definition.categories.any { category -> rollGroupsFor(category, pool).isNotEmpty() && category.id !in poolState.selected }
     }
 
     private fun reroll(definition: StoreDefinition, stockKey: String, pool: ShopViewPool) {
@@ -273,18 +278,39 @@ object StoreShopFeature {
         poolState.selected.clear()
         poolState.stock.clear()
         definition.categories.forEach { category ->
-            val offers = offersFor(category, pool)
-            val selected = if (pool == ShopViewPool.ALL) offers else weightedSample(offers, category.itemTypesToSell.coerceAtLeast(1))
+            val groups = rollGroupsFor(category, pool)
+            val selected = (if (pool == ShopViewPool.ALL) groups else weightedSampleGroups(groups, category.itemTypesToSell.coerceAtLeast(1)))
+                .flatMap(StoreOfferRollGroup::offers)
+                .distinctBy(StoreOffer::id)
             poolState.selected[category.id] = selected.map(StoreOffer::id).toMutableList()
             selected.forEach { offer -> poolState.stock[offer.id] = offer.stockCount.coerceAtLeast(0) }
         }
     }
 
     private fun offersFor(category: StoreCategoryDefinition, pool: ShopViewPool): List<StoreOffer> = when (pool) {
-        ShopViewPool.ALL -> category.allItems
-        ShopViewPool.DAILY -> category.dailyItems
-        ShopViewPool.WEEKLY -> category.weeklyItems
-    }.filter { it.id.isNotBlank() && it.item.isNotBlank() }
+        ShopViewPool.ALL -> category.allItems + category.allSets.flatMap(StoreOfferSet::items)
+        ShopViewPool.DAILY -> category.dailyItems + category.dailySets.flatMap(StoreOfferSet::items)
+        ShopViewPool.WEEKLY -> category.weeklyItems + category.weeklySets.flatMap(StoreOfferSet::items)
+    }.filterValidOffers()
+
+    private fun rollGroupsFor(category: StoreCategoryDefinition, pool: ShopViewPool): List<StoreOfferRollGroup> {
+        val singles = when (pool) {
+            ShopViewPool.ALL -> category.allItems
+            ShopViewPool.DAILY -> category.dailyItems
+            ShopViewPool.WEEKLY -> category.weeklyItems
+        }.filterValidOffers().map { offer -> StoreOfferRollGroup(offer.id, offer.weight, listOf(offer)) }
+        val sets = when (pool) {
+            ShopViewPool.ALL -> category.allSets
+            ShopViewPool.DAILY -> category.dailySets
+            ShopViewPool.WEEKLY -> category.weeklySets
+        }.mapNotNull { set ->
+            val offers = set.items.filterValidOffers().distinctBy(StoreOffer::id)
+            if (set.id.isBlank() || offers.isEmpty()) null else StoreOfferRollGroup(set.id, set.weight, offers)
+        }
+        return singles + sets
+    }
+
+    private fun List<StoreOffer>.filterValidOffers(): List<StoreOffer> = filter { it.id.isNotBlank() && it.item.isNotBlank() }
 
     private fun stock(stockKey: String, pool: ShopViewPool, offerId: String): Int =
         stateFor(stockKey).pools[pool.id]?.stock?.get(offerId) ?: 0
@@ -308,6 +334,21 @@ object StoreShopFeature {
             var roll = Random.nextInt(totalWeight)
             val pickedIndex = remaining.indexOfFirst { offer ->
                 roll -= offer.weight.coerceAtLeast(1)
+                roll < 0
+            }.coerceAtLeast(0)
+            selected += remaining.removeAt(pickedIndex)
+        }
+        return selected
+    }
+
+    private fun weightedSampleGroups(groups: List<StoreOfferRollGroup>, count: Int): List<StoreOfferRollGroup> {
+        val remaining = groups.toMutableList()
+        val selected = mutableListOf<StoreOfferRollGroup>()
+        repeat(count.coerceAtMost(remaining.size)) {
+            val totalWeight = remaining.sumOf { group -> group.weight.coerceAtLeast(1) }
+            var roll = Random.nextInt(totalWeight)
+            val pickedIndex = remaining.indexOfFirst { group ->
+                roll -= group.weight.coerceAtLeast(1)
                 roll < 0
             }.coerceAtLeast(0)
             selected += remaining.removeAt(pickedIndex)
@@ -412,6 +453,7 @@ object StoreShopFeature {
 
     private data class ActiveStoreOffer(val category: StoreCategoryDefinition, val pool: ShopViewPool, val offer: StoreOffer)
     private data class PendingStoreBuy(val active: ActiveStoreOffer, val quantity: Int, val total: Long, val stack: ItemStack)
+    private data class StoreOfferRollGroup(val id: String, val weight: Int, val offers: List<StoreOffer>)
 }
 
 class StoreDefinition(
@@ -436,6 +478,15 @@ class StoreCategoryDefinition(
     @SerializedName("daily_items") var dailyItems: MutableList<StoreOffer> = mutableListOf(),
     @SerializedName("weekly_items") var weeklyItems: MutableList<StoreOffer> = mutableListOf(),
     @SerializedName("all_items") var allItems: MutableList<StoreOffer> = mutableListOf(),
+    @SerializedName("daily_sets") var dailySets: MutableList<StoreOfferSet> = mutableListOf(),
+    @SerializedName("weekly_sets") var weeklySets: MutableList<StoreOfferSet> = mutableListOf(),
+    @SerializedName("all_sets") var allSets: MutableList<StoreOfferSet> = mutableListOf(),
+)
+
+class StoreOfferSet(
+    @SerializedName("id") var id: String = "",
+    @SerializedName("weight") var weight: Int = 1,
+    @SerializedName("items") var items: MutableList<StoreOffer> = mutableListOf(),
 )
 
 class StoreOffer(

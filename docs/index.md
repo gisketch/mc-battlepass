@@ -17,6 +17,7 @@
 - [Shipping Bin](SHIPPING_BIN.md)
 - [Trading](TRADING.md)
 - [Relic Roulette](RELIC_ROULETTE.md)
+- [RecipeDisabler](RECIPE_DISABLER.md)
 - [NPCs](NPCS.md)
 - [NPC Conversations](NPC_CONVERSATIONS.md)
 - [Revive](REVIVE.md)

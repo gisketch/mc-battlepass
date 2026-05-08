@@ -44,13 +44,13 @@ object NpcQuestService {
     }
 
     fun tryOpenQuest(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition): Boolean {
-        if (!isMeetup(npc, definition)) return false
         val period = currentPeriod(player)
         val playerState = questState(player, period)
         playerState.active[definition.id]?.let { active ->
             if (tryClaim(player, npc, definition, active, playerState)) return true
             return false
         }
+        if (!isMeetup(npc, definition)) return false
         val offer = selectedOffer(player, definition, period) ?: return false
         if (!canOffer(player, npc, definition, playerState)) return false
         openOfferDialog(player, npc, definition, offer)

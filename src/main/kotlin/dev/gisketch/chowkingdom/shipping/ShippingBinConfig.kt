@@ -31,6 +31,7 @@ object ShippingBinConfig {
             ChowKingdomMod.LOGGER.warn("Failed to load shipping bin config {}", file, exception)
             ShippingBinPriceConfig()
         }
+        warnMissingEntries()
     }
 
     fun payoutHour(): Int = config.payoutHour.coerceIn(0, 23)
@@ -46,7 +47,7 @@ object ShippingBinConfig {
     private fun basePriceFor(stack: ItemStack): Long {
         val itemId = BuiltInRegistries.ITEM.getKey(stack.item).toString()
         config.entries.firstOrNull { entry -> entry.item == itemId }?.let { entry -> return entry.priceAmount.coerceAtLeast(0L) }
-        config.entries.firstOrNull { entry -> entry.tag?.let { tag -> stack.`is`(itemTag(tag)) } == true }?.let { entry -> return entry.priceAmount.coerceAtLeast(0L) }
+        config.entries.firstOrNull { entry -> entry.tag?.let { tag -> itemTag(tag)?.let { key -> stack.`is`(key) } } == true }?.let { entry -> return entry.priceAmount.coerceAtLeast(0L) }
         return 0L
     }
 
@@ -72,9 +73,25 @@ object ShippingBinConfig {
         .getOptional(ResourceLocation.fromNamespaceAndPath("quality_food", "quality"))
         .orElse(null) as? DataComponentType<Any>
 
-    private fun itemTag(raw: String): TagKey<Item> {
+    private fun itemTag(raw: String): TagKey<Item>? {
         val id = raw.removePrefix("#")
-        return TagKey.create(Registries.ITEM, ResourceLocation.parse(id))
+        return runCatching { TagKey.create(Registries.ITEM, ResourceLocation.parse(id)) }.getOrNull()
+    }
+
+    private fun warnMissingEntries() {
+        config.entries.forEach { entry ->
+            entry.item?.takeIf(String::isNotBlank)?.let { itemId ->
+                val id = runCatching { ResourceLocation.parse(itemId) }.getOrNull()
+                if (id == null) {
+                    ChowKingdomMod.LOGGER.warn("Shipping bin price entry has invalid item id {}; keeping config entry but it will not match items.", itemId)
+                } else if (BuiltInRegistries.ITEM.getOptional(id).isEmpty) {
+                    ChowKingdomMod.LOGGER.warn("Shipping bin price entry {} is not present in the current modlist; keeping config entry.", itemId)
+                }
+            }
+            entry.tag?.takeIf(String::isNotBlank)?.let { tagId ->
+                if (itemTag(tagId) == null) ChowKingdomMod.LOGGER.warn("Shipping bin price entry has invalid item tag {}; keeping config entry but it will not match items.", tagId)
+            }
+        }
     }
 
     private fun writeDefault() {

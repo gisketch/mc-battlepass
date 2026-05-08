@@ -165,6 +165,36 @@ Rules:
 - Hover tooltips append a `coins.png <amount>` custom tooltip row for items priced by config.
 - Quality Food compatibility is optional and reads the `quality_food:quality` data component by registry/reflection.
 
+## Store Sets
+
+Store categories can define `daily_sets`, `weekly_sets`, or `all_sets`. A set rolls as one stock group, then expands into every item inside it, so armor pieces can appear together.
+
+```toml
+[[categories]]
+id = "armor_sets"
+item_types_to_sell = 1
+
+[[categories.weekly_sets]]
+id = "diamond_cosmetic_set"
+weight = 1
+
+[[categories.weekly_sets.items]]
+id = "diamond_cosmetic_helmet"
+item = "minecraft:diamond_helmet"
+price_amount = 450
+stock_count = 1
+weight = 1
+
+[[categories.weekly_sets.items]]
+id = "diamond_cosmetic_chestplate"
+item = "minecraft:diamond_chestplate"
+price_amount = 700
+stock_count = 1
+weight = 1
+```
+
+`item_types_to_sell` counts sets and single entries as roll groups. If the set is selected, all set item offers are stocked for the same daily or weekly period.
+
 ## Discord Webhook
 
 Discord config lives in `config/gisketchs_chowkingdom_mod/discord/webhook.toml`.

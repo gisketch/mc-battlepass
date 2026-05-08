@@ -106,7 +106,7 @@ object NpcLlmService {
             ChowKingdomMod.LOGGER.info("NPC LLM event busy npc={} player={}", definition.id, player.gameProfile.name)
             return sendFinal(player, npc, definition, fallbackMessage, fallbackMessage = fallbackMessage, sendTalkResponse = sendTalkResponse, excludePlayerFromBalloon = excludePlayerFromBalloon, showBalloon = showBalloon, npcRecordType = npcRecordType, responseToken = responseToken)
         }
-        if (showBalloon) NpcFeature.showBalloonToNearby(npc.level() as ServerLevel, npc, "...", NPC_LLM_PENDING_BALLOON_TICKS)
+        if (showBalloon) NpcFeature.showBalloonToNearby(npc.level() as ServerLevel, npc, "...", NPC_LLM_PENDING_BALLOON_TICKS, if (excludePlayerFromBalloon) player.uuid else null)
         CompletableFuture.supplyAsync({ complete(player, definition, input, settings, fallbackMessage, inputLabel) { partial -> player.server.execute { NpcNetwork.sendTalkResponse(player, definition.id, partial, responseToken, partial = true) } } }, executor).whenComplete { result, throwable ->
             player.server.execute {
                 if (!finishRequest(definition.id, responseToken)) return@execute
@@ -151,7 +151,7 @@ object NpcLlmService {
         nextAllowedAtMs[player.uuid] = now + settings.cooldownSeconds * 1000L
         npc.startTalkingTo(player, NPC_LLM_TALK_DURATION_TICKS)
         relayPlayerTalk(player, npc, definition, message)
-        NpcFeature.showBalloonToNearby(npc.level() as ServerLevel, npc, "...", NPC_LLM_PENDING_BALLOON_TICKS)
+        NpcFeature.showBalloonToNearby(npc.level() as ServerLevel, npc, "...", NPC_LLM_PENDING_BALLOON_TICKS, player.uuid)
         if (!settings.enabled) {
             ChowKingdomMod.LOGGER.info("NPC LLM disabled npc={} player={}", definition.id, player.gameProfile.name)
             finishTalkRequest(definition.id, session, responseToken)?.let { target ->
@@ -708,8 +708,9 @@ object NpcLlmService {
                 NpcStore.recordGlobalMemory("llm_group_memorable", memorable)
             }
         }
-        relayNpcGroupTalk(speaker, npc, definition, onlineParticipants.map { it.first.name }, reply)
-        NpcFeature.showBalloonToNearby(npc.level() as ServerLevel, npc, reply, NPC_LLM_REPLY_BALLOON_TICKS)
+        val participantIds = onlineParticipants.map { it.second.uuid }.toSet()
+        relayNpcGroupTalk(speaker, npc, definition, onlineParticipants.map { it.first.name }, participantIds, reply)
+        NpcFeature.showBalloonToNearbyExcept(npc.level() as ServerLevel, npc, reply, NPC_LLM_REPLY_BALLOON_TICKS, participantIds)
         NpcFeature.relayNpcDialogToDiscord(speaker, definition, reply)
     }
 
@@ -774,12 +775,12 @@ object NpcLlmService {
         }
     }
 
-    private fun relayNpcGroupTalk(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, participantNames: List<String>, message: String) {
+    private fun relayNpcGroupTalk(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, participantNames: List<String>, participantIds: Set<UUID>, message: String) {
         val level = npc.level() as? ServerLevel ?: return
         val names = participantNames.distinct().joinToString(", ").ifBlank { player.gameProfile.name }
         val line = Component.literal("${definition.name} > $names: $message").withStyle(ChatFormatting.GRAY)
         level.players().forEach { listener ->
-            if (listener.distanceToSqr(npc.x, npc.y, npc.z) <= NPC_LLM_HEAR_RADIUS_SQR) listener.sendSystemMessage(line)
+            if (listener.uuid !in participantIds && listener.distanceToSqr(npc.x, npc.y, npc.z) <= NPC_LLM_HEAR_RADIUS_SQR) listener.sendSystemMessage(line)
         }
     }
 
