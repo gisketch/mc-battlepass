@@ -25,6 +25,7 @@ import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 import net.minecraft.world.level.block.CropBlock
 import net.neoforged.bus.api.IEventBus
+import net.neoforged.fml.loading.FMLEnvironment
 import net.neoforged.neoforge.common.NeoForge
 import net.neoforged.neoforge.event.RegisterCommandsEvent
 import net.neoforged.neoforge.event.entity.living.LivingDamageEvent
@@ -49,6 +50,7 @@ object RolesFeature {
         RolesConfig.load()
         RoleStore.load()
         RolesNetwork.register(modBus)
+        if (FMLEnvironment.dist.isClient) registerClientHooks()
         NeoForge.EVENT_BUS.addListener(::onRegisterCommands)
         NeoForge.EVENT_BUS.addListener(::onServerStarted)
         NeoForge.EVENT_BUS.addListener(::onPlayerLoggedIn)
@@ -59,10 +61,23 @@ object RolesFeature {
         NeoForge.EVENT_BUS.addListener(::onItemTooltip)
     }
 
+    private fun registerClientHooks() {
+        runCatching {
+            val client = Class.forName("dev.gisketch.chowkingdom.roles.RolesClient")
+            client.getMethod("register").invoke(client.getField("INSTANCE").get(null))
+        }.onFailure { exception ->
+            ChowKingdomMod.LOGGER.warn("Failed to register roles client hooks", exception)
+        }
+    }
+
     private fun onServerStarted(event: ServerStartedEvent) {
         RolesConfig.load()
         RoleStore.load()
-        event.server.playerList.players.forEach { player -> syncAndMaybeOpenOnboarding(player) }
+        val onboardingPlayers = event.server.playerList.players.onEach { player ->
+            RoleStore.ensureRecord(player)
+            grantStartingItems(player)
+        }.filter(RoleStore::needsOnboarding).map { player -> player.uuid }.toSet()
+        RolesNetwork.syncAllPlayers(openOnboardingFor = onboardingPlayers)
     }
 
     private fun onPlayerLoggedIn(event: PlayerEvent.PlayerLoggedInEvent) {
@@ -72,7 +87,8 @@ object RolesFeature {
     private fun syncAndMaybeOpenOnboarding(player: ServerPlayer) {
         RoleStore.ensureRecord(player)
         grantStartingItems(player)
-        RolesNetwork.syncTo(player, openOnboarding = RoleStore.needsOnboarding(player))
+        val onboardingPlayers = if (RoleStore.needsOnboarding(player)) setOf(player.uuid) else emptySet()
+        RolesNetwork.syncAllPlayers(openOnboardingFor = onboardingPlayers)
     }
 
     fun applyOnboardingChoice(player: ServerPlayer, jobId: String, classId: String): Boolean {
@@ -88,13 +104,14 @@ object RolesFeature {
         }
         RoleStore.setPrimaryRoles(player, job.id, roleClass.id)
         grantStartingItems(player, roleClass.id)
-        RolesNetwork.syncTo(player, openOnboarding = false)
+        RolesNetwork.syncAllPlayers()
         return true
     }
 
     private fun onRegisterCommands(event: RegisterCommandsEvent) {
         event.dispatcher.register(
             Commands.literal("ck")
+                .then(Commands.literal("onboarding").requires { source -> source.hasPermission(2) }.executes(::resetOnboarding))
                 .then(
                     Commands.literal("roles")
                         .requires { source -> source.hasPermission(2) }
@@ -159,6 +176,14 @@ object RolesFeature {
         )
     }
 
+    private fun resetOnboarding(context: CommandContext<CommandSourceStack>): Int {
+        val player = context.source.playerOrException
+        RoleStore.resetOnboarding(player)
+        RolesNetwork.syncAllPlayers(openOnboardingFor = setOf(player.uuid))
+        context.source.sendSuccess({ Component.literal("Cleared your jobs and classes. Reopened onboarding.") }, true)
+        return 1
+    }
+
     private fun reloadRoles(context: CommandContext<CommandSourceStack>): Int {
         RolesConfig.load()
         RoleStore.load()
@@ -191,7 +216,7 @@ object RolesFeature {
             return 0
         }
         RoleStore.setJob(player, role.id)
-        RolesNetwork.syncTo(player, openOnboarding = false)
+        RolesNetwork.syncAllPlayers()
         context.source.sendSuccess({ Component.literal("Set ${player.gameProfile.name} job to ${role.displayName.ifBlank { role.id }}.") }, true)
         return 1
     }
@@ -205,7 +230,7 @@ object RolesFeature {
         }
         RoleStore.setClass(player, role.id)
         grantStartingItems(player, role.id)
-        RolesNetwork.syncTo(player, openOnboarding = false)
+        RolesNetwork.syncAllPlayers()
         context.source.sendSuccess({ Component.literal("Set ${player.gameProfile.name} class to ${role.displayName.ifBlank { role.id }}.") }, true)
         return 1
     }
@@ -218,7 +243,7 @@ object RolesFeature {
             return 0
         }
         val changed = RoleStore.addJob(player, role.id)
-        RolesNetwork.syncTo(player, openOnboarding = false)
+        RolesNetwork.syncAllPlayers()
         val message = if (changed) "Added" else "Already has"
         context.source.sendSuccess({ Component.literal("$message ${role.displayName.ifBlank { role.id }} job for ${player.gameProfile.name}.") }, true)
         return if (changed) 1 else 0
@@ -233,7 +258,7 @@ object RolesFeature {
         }
         val changed = RoleStore.addClass(player, role.id)
         grantStartingItems(player, role.id)
-        RolesNetwork.syncTo(player, openOnboarding = false)
+        RolesNetwork.syncAllPlayers()
         val message = if (changed) "Added" else "Already has"
         context.source.sendSuccess({ Component.literal("$message ${role.displayName.ifBlank { role.id }} class for ${player.gameProfile.name}.") }, true)
         return if (changed) 1 else 0
@@ -250,7 +275,7 @@ object RolesFeature {
             context.source.sendFailure(Component.literal("${player.gameProfile.name} does not have job $jobId active."))
             return 0
         }
-        RolesNetwork.syncTo(player, openOnboarding = false)
+        RolesNetwork.syncAllPlayers()
         context.source.sendSuccess({ Component.literal("Removed $jobId job from ${player.gameProfile.name}.") }, true)
         return 1
     }
@@ -266,7 +291,7 @@ object RolesFeature {
             context.source.sendFailure(Component.literal("${player.gameProfile.name} does not have class $classId active."))
             return 0
         }
-        RolesNetwork.syncTo(player, openOnboarding = false)
+        RolesNetwork.syncAllPlayers()
         context.source.sendSuccess({ Component.literal("Removed $classId class from ${player.gameProfile.name}.") }, true)
         return 1
     }

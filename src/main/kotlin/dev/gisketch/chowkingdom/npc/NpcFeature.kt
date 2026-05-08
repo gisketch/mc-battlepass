@@ -195,6 +195,7 @@ object NpcFeature {
         }
         npc.startTalkingTo(player, NPC_DIALOG_DURATION_TICKS)
         NpcStore.recordConversation(definition.id, player, player.gameProfile.name, "interacts with ${definition.name}", "player_interact")
+        DiscordRelay.npcInteraction(player, definition.name)
         val settings = NpcConfig.settings()
         val llmInput = when {
             wasSleeping && settings.llmMessageUsage.wake -> "${player.gameProfile.name} woke you up. Reply naturally as ${definition.name}, with the context that you were just sleeping."
@@ -271,6 +272,57 @@ object NpcFeature {
         val workStarts = definition.schedule.activities.filter { entry -> entry.activity == "work" }.map { entry -> entry.fromHour }
         if (workStarts.isEmpty()) return null
         return workStarts.filter { hour -> hour > currentHour }.minOrNull() ?: workStarts.minOrNull()
+    }
+
+    fun syncFriends(player: ServerPlayer) {
+        val currentHour = NpcTime.hour(player.level())
+        val entries = NpcConfig.all().sortedBy { definition -> definition.name }.map { definition ->
+            val friendship = NpcStore.friendshipSnapshot(definition.id, player)
+            val giftPeriod = NpcTime.periodForReset(player.level().dayTime, definition.gifts.resetHour)
+            val giftCount = NpcStore.giftCount(definition.id, player, giftPeriod)
+            val giftLimit = definition.gifts.dailyLimit.coerceAtLeast(0)
+            val quest = NpcQuestService.friendSummary(player, definition)
+            NpcFriendEntryPayload(
+                npcId = definition.id,
+                name = definition.name,
+                title = definition.title,
+                friendshipPoints = friendship.points,
+                friendshipLevel = friendship.level,
+                giftStatus = if (giftLimit <= 0) "Gifts unavailable" else if (giftCount >= giftLimit) "Gifted today ($giftCount/$giftLimit)" else "Gift available ($giftCount/$giftLimit)",
+                shopStatus = friendShopStatus(definition, currentHour, player),
+                missionStatus = quest.status,
+                missionProgress = quest.progress,
+                missionGoal = quest.goal,
+            )
+        }
+        NpcNetwork.syncFriends(player, NpcFriendsSyncPayload(entries))
+    }
+
+    private fun friendShopStatus(definition: NpcDefinition, currentHour: Int, player: ServerPlayer): String {
+        if (definition.storeId().isBlank()) return "No shop"
+        return if (NpcTime.activityAt(definition.schedule, player.level()) == "work") {
+            val close = currentWorkClose(definition, currentHour)
+            if (close == null) "Shop Open" else "Shop Open (closes at ${formatHour(close)})"
+        } else {
+            val open = nextWorkOpening(definition, currentHour)
+            if (open == null) "Shop closed" else "Shop closed (opens at ${formatHour(open)})"
+        }
+    }
+
+    private fun currentWorkClose(definition: NpcDefinition, currentHour: Int): Int? = definition.schedule.activities
+        .firstOrNull { entry -> entry.activity == "work" && hourInRange(currentHour, entry.fromHour, entry.toHour) }
+        ?.toHour
+
+    private fun hourInRange(hour: Int, from: Int, to: Int): Boolean = if (from <= to) hour in from until to else hour >= from || hour < to
+
+    private fun formatHour(hour: Int): String {
+        val normalized = Math.floorMod(hour, 24)
+        val displayHour = when (val value = normalized % 12) {
+            0 -> 12
+            else -> value
+        }
+        val suffix = if (normalized < 12) "AM" else "PM"
+        return "$displayHour:00 $suffix"
     }
 
     fun onStorePurchase(player: ServerPlayer, storeId: String, stockKey: String, quantity: Int, itemName: String, totalCost: Long) {
@@ -1066,8 +1118,11 @@ object NpcFeature {
         tickCamperSpawner(event.server)
         tickClockDebug(event.server)
         tickRealtimeDebug(event.server)
+        NpcQuestService.tick(event.server)
         NpcWorldChatService.tick(event.server)
     }
+
+    fun plazaMeetupStartHour(): Int = NPC_PLAZA_MEETUP_START_HOUR
 
     private fun onLivingDamagePre(event: LivingDamageEvent.Pre) {
         val npc = event.entity as? ChowNpcEntity ?: return

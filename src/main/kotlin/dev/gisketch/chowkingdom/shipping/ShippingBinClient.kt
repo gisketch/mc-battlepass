@@ -46,7 +46,7 @@ object ShippingBinClient {
         val price = stackValue(event.itemStack, mutableMapOf())
         if (price <= 0L) return
         val itemKey = ShippingBinRules.itemKey(event.itemStack)
-        event.tooltipElements.add(1.coerceAtMost(event.tooltipElements.size), Either.right(ShippingBinPriceTooltip(ShippingBinClientState.quotaUsed(itemKey), ShippingBinClientState.weeklyQuota())))
+        event.tooltipElements.add(1.coerceAtMost(event.tooltipElements.size), Either.right(ShippingBinPriceTooltip(price, ShippingBinClientState.quotaUsed(itemKey), ShippingBinClientState.weeklyQuota())))
     }
 
     private fun onScreenRenderPost(event: ScreenEvent.Render.Post) {
@@ -132,7 +132,7 @@ object ShippingBinClient {
     private fun renderIcon(guiGraphics: GuiGraphics, x: Int, y: Int) {
         RenderSystem.enableBlend()
         RenderSystem.defaultBlendFunc()
-        guiGraphics.blit(CHOWCOIN_TEXTURE, x, y, TITLE_ICON_SIZE, TITLE_ICON_SIZE, 0.0f, 0.0f, COINS_TEXTURE_SIZE, COINS_TEXTURE_SIZE, COINS_TEXTURE_SIZE, COINS_TEXTURE_SIZE)
+        guiGraphics.blit(CHOWCOIN_TEXTURE, x, y, TITLE_ICON_SIZE, TITLE_ICON_SIZE, 0.0f, 0.0f, CHOWCOIN_TEXTURE_SIZE, CHOWCOIN_TEXTURE_SIZE, CHOWCOIN_TEXTURE_SIZE, CHOWCOIN_TEXTURE_SIZE)
     }
 
     private fun renderLockedSlots(guiGraphics: GuiGraphics, screen: Screen, menu: ChestMenu, mouseX: Int, mouseY: Int) {
@@ -173,7 +173,7 @@ object ShippingBinClient {
     private const val HEADER_TOP_GAP = 14
     private const val TITLE_ICON_SIZE = 12
     private const val TITLE_ICON_GAP = 4
-    private const val COINS_TEXTURE_SIZE = 16
+    private const val CHOWCOIN_TEXTURE_SIZE = 16
     private const val PREVIEW_GAP = 10
     private const val PREVIEW_SLIDE = 7
     private const val PREVIEW_ANIMATION_MS = 160L
@@ -188,15 +188,22 @@ object ShippingBinClient {
 
 private fun formatChowcoins(amount: Long): String = String.format(Locale.US, "%,d", amount)
 
-class ShippingBinPriceTooltip(val quotaUsed: Int, val quotaLimit: Int) : TooltipComponent
+class ShippingBinPriceTooltip(val amount: Long, val quotaUsed: Int, val quotaLimit: Int) : TooltipComponent
 
 class ShippingBinPriceClientTooltip(private val tooltip: ShippingBinPriceTooltip) : ClientTooltipComponent {
-    override fun getHeight(): Int = 11
+    override fun getHeight(): Int = 24
 
-    override fun getWidth(font: Font): Int = font.width(quotaLine())
+    override fun getWidth(font: Font): Int = maxOf(
+        TOOLTIP_ICON_SIZE + TOOLTIP_TEXT_GAP + font.width(formatChowcoins(tooltip.amount)),
+        font.width(quotaLine()),
+    )
 
     override fun renderImage(font: Font, x: Int, y: Int, guiGraphics: GuiGraphics) {
-        guiGraphics.drawString(font, quotaLine(), x, y + 1, TOOLTIP_TEXT_COLOR, false)
+        RenderSystem.enableBlend()
+        RenderSystem.defaultBlendFunc()
+        guiGraphics.blit(CHOWCOIN_TEXTURE, x, y, TOOLTIP_ICON_SIZE, TOOLTIP_ICON_SIZE, 0.0f, 0.0f, CHOWCOIN_TEXTURE_SIZE, CHOWCOIN_TEXTURE_SIZE, CHOWCOIN_TEXTURE_SIZE, CHOWCOIN_TEXTURE_SIZE)
+        guiGraphics.drawString(font, formatChowcoins(tooltip.amount), x + TOOLTIP_ICON_SIZE + TOOLTIP_TEXT_GAP, y + 2, TOOLTIP_TEXT_COLOR, false)
+        guiGraphics.drawString(font, quotaLine(), x, y + 14, TOOLTIP_TEXT_COLOR, false)
     }
 
     private fun quotaLine(): String {
@@ -206,6 +213,10 @@ class ShippingBinPriceClientTooltip(private val tooltip: ShippingBinPriceTooltip
     }
 
     companion object {
+        private val CHOWCOIN_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/chowcoin.png")
+        private const val CHOWCOIN_TEXTURE_SIZE = 16
+        private const val TOOLTIP_ICON_SIZE = 10
+        private const val TOOLTIP_TEXT_GAP = 4
         private const val TOOLTIP_TEXT_COLOR = 0xFFFFFFFF.toInt()
     }
 }

@@ -1,6 +1,8 @@
 package dev.gisketch.chowkingdom.shipping
 
 import com.google.gson.GsonBuilder
+import dev.gisketch.chowkingdom.ChowClock
+import dev.gisketch.chowkingdom.ChowClockConfig
 import dev.gisketch.chowkingdom.battlepass.BattlepassMissionScope
 import dev.gisketch.chowkingdom.battlepass.BattlepassMissionService
 import dev.gisketch.chowkingdom.battlepass.BattlepassPassRegistry
@@ -131,12 +133,15 @@ object ShippingBinStore {
         return quotaPeriodKey
     }
 
-    fun tryMarkPayoutDay(day: Long): Boolean {
+    fun hasDueSellableItems(day: Long): Boolean {
         if (!loaded) load()
-        if (lastPayoutDay >= day) return false
-        lastPayoutDay = day
-        save()
-        return true
+        refreshQuotaPeriod()
+        return bins.values.any { stacks ->
+            stacks.any { stored ->
+                val stack = stored.toItemStack()
+                stored.eligibleDay <= day && !stack.isEmpty && !RelicRouletteFeature.isTransferBlocked(stack) && ShippingBinConfig.priceFor(stack) > 0L
+            }
+        }
     }
 
     fun playerIds(): List<UUID> {
@@ -183,6 +188,14 @@ object ShippingBinStore {
     }
 
     fun payout(playerId: UUID): ShippingBinPayout {
+        return payout(playerId) { true }
+    }
+
+    fun payoutDue(playerId: UUID, day: Long): ShippingBinPayout {
+        return payout(playerId) { stored -> stored.eligibleDay <= day }
+    }
+
+    private fun payout(playerId: UUID, shouldSell: (StoredStack) -> Boolean): ShippingBinPayout {
         if (!loaded) load()
         refreshQuotaPeriod()
         val key = playerId.toString()
@@ -198,6 +211,10 @@ object ShippingBinStore {
         val quotaDeltas: MutableMap<String, Int> = linkedMapOf()
         stacks.forEach { stored ->
             val stack = stored.toItemStack()
+            if (!shouldSell(stored)) {
+                remaining += stored
+                return@forEach
+            }
             if (RelicRouletteFeature.isTransferBlocked(stack)) {
                 remaining += stored
                 return@forEach
@@ -240,11 +257,22 @@ object ShippingBinStore {
     }
 
     private fun saveContainer(playerId: UUID, container: SimpleContainer) {
+        val key = playerId.toString()
+        val currentDay = currentShippingDay(playerId)
+        val previousBySlot = bins[key].orEmpty().associateBy { stored -> stored.slot }
         bins[playerId.toString()] = (0 until SLOT_COUNT)
             .map { slot -> container.getItem(slot) }
-            .mapIndexedNotNull { slot, stack -> if (RelicRouletteFeature.isTransferBlocked(stack)) null else StoredStack.from(slot, stack) }
+            .mapIndexedNotNull { slot, stack ->
+                if (RelicRouletteFeature.isTransferBlocked(stack)) null else StoredStack.from(slot, stack, previousBySlot[slot], currentDay)
+            }
             .toMutableList()
         save()
+    }
+
+    private fun currentShippingDay(playerId: UUID): Long {
+        val server = ServerLifecycleHooks.getCurrentServer() ?: return Long.MIN_VALUE
+        val level = server.playerList.getPlayer(playerId)?.level() ?: server.overworld()
+        return ChowClock.now(level, ChowClockConfig.current()).day
     }
 
     private fun sanitizeContainer(playerId: UUID, container: SimpleContainer) {
@@ -370,6 +398,8 @@ class StoredStack(
     var item: String = "minecraft:air",
     var count: Int = 0,
     var data: String? = null,
+    var depositedDay: Long = Long.MIN_VALUE,
+    var eligibleDay: Long = Long.MIN_VALUE,
 ) {
     fun toItemStack(): ItemStack {
         data?.let { raw ->
@@ -384,11 +414,16 @@ class StoredStack(
     }
 
     companion object {
-        fun from(slot: Int, stack: ItemStack): StoredStack {
+        fun from(slot: Int, stack: ItemStack, previous: StoredStack? = null, currentDay: Long = Long.MIN_VALUE): StoredStack {
             if (stack.isEmpty) return StoredStack(slot)
             val registryAccess = ServerLifecycleHooks.getCurrentServer()?.registryAccess()
             val data = registryAccess?.let { access -> runCatching { StringTagVisitor().visit(stack.saveOptional(access)) }.getOrNull() }
-            return StoredStack(slot, BuiltInRegistries.ITEM.getKey(stack.item).toString(), stack.count, data)
+            val itemKey = BuiltInRegistries.ITEM.getKey(stack.item).toString()
+            val previousStack = previous?.toItemStack()
+            val preserveDeposit = previous != null && previous.item == itemKey && previousStack != null && !previousStack.isEmpty && stack.count <= previousStack.count
+            val depositedDay = if (preserveDeposit) previous.depositedDay else currentDay
+            val eligibleDay = if (preserveDeposit) previous.eligibleDay else currentDay + 1
+            return StoredStack(slot, itemKey, stack.count, data, depositedDay, eligibleDay)
         }
     }
 }

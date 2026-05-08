@@ -32,7 +32,8 @@ Brand-new players are not auto-assigned default roles. If their player record ha
 
 ## Commands
 
-- `/ck roles reload`: reload role JSON and grant any missing starter items.
+- `/ck onboarding`: admin-only self reset. Clears the command caller's jobs/classes and opens onboarding again.
+- `/ck roles reload`: reload role TOML and grant any missing starter items.
 - `/ck roles list`: show role ids.
 - `/ck roles get <player>`: show active jobs/classes.
 - `/ck roles set job <player> <job>`: replace active jobs with one job.
@@ -49,13 +50,12 @@ Commands require permission level 2.
 Create `runs/client/config/gisketchs_chowkingdom_mod/roles/jobs/<id>.toml`.
 
 ```toml
-id = "farmer"
-display_name = "Farmer"
-icon = "minecraft:grass_block"
-description = "Tend crops, protect farmland, and coax better harvests from the kingdom soil."
+id = "botanist"
+display_name = "Botanist"
+icon = "textures/gui/jobs/botanist.png"
+description = "Reads leaf, vine, and bloom signs to work with Grass Pokemon."
 perks = [
-  { type = "prevent_crop_trample" },
-  { type = "quality_food_harvest_bonus", multiplier = 1.15 },
+  { type = "cobblemon_catch_rate", pokemon_type = "grass", multiplier = 1.5 },
 ]
 ```
 
@@ -63,7 +63,7 @@ Current job perk types:
 
 - `prevent_crop_trample`: cancels farmland trampling for active players.
 - `quality_food_harvest_bonus`: rerolls Quality Food quality on crop drops. Uses `multiplier`.
-- `cobblemon_catch_rate`: data hook for Pokemon type catch scaling. Uses `pokemon_type` and `multiplier`.
+- `cobblemon_catch_rate`: data hook for Pokemon type catch scaling. Uses `pokemon_type` and `multiplier`. Defaults use `1.5`, but the Cobblemon capture hook is not implemented yet.
 - `mount_speed`: data hook for Pokemon type mount speed scaling. Uses `pokemon_type` and `multiplier`.
 
 ## Class TOML Shape
@@ -89,7 +89,7 @@ Current class perk types:
 ## Role UI Metadata
 
 - `description`: shown in onboarding when the role is hovered or selected.
-- `icon`: item id first, texture resource id second. Use item ids like `minecraft:grass_block` for quick testing. Texture ids can point at bundled assets, for example `gisketchs_chowkingdom_mod:textures/gui/icons/star.png`.
+- `icon`: item id first, texture resource id second. Use item ids like `minecraft:grass_block` for quick testing. Texture paths can point at bundled assets, for example `textures/gui/jobs/botanist.png`.
 
 ## Onboarding TOML Shape
 
@@ -108,11 +108,11 @@ One non-empty line is chosen when the onboarding screen is opened.
 
 Use item ids, optionally with count syntax:
 
-```json
-"starting_items": [
+```toml
+starting_items = [
   "minecraft:bread*16",
   "minecraft:wooden_sword",
-  "minecraft:leather_boots"
+  "minecraft:leather_boots",
 ]
 ```
 
@@ -127,27 +127,18 @@ Rules:
 
 Allowed weapons and armor can come from one tag, many tags, direct glob patterns, or any mix.
 
-```json
-{
-  "type": "equipment_affinity",
-  "weapon_tag": "gisketchs_chowkingdom_mod:class/rogue_weapons",
-  "weapon_tags": [
-    "c:tools/daggers"
-  ],
-  "weapon_patterns": [
-    "rogues:*_dagger",
-    "simplyswords:*dagger*"
-  ],
-  "armor_tag": "gisketchs_chowkingdom_mod:class/rogue_armor",
-  "armor_patterns": [
-    "rogues:*rogue_armor*",
-    "rogues:*assassin_armor*"
-  ],
-  "wrong_weapon_damage_multiplier": 0.2,
-  "wrong_weapon_attack_speed_multiplier": 0.1,
-  "wrong_weapon_cooldown_ticks": 12,
-  "wrong_armor_disables_sprint": true
-}
+```toml
+[[perks]]
+type = "equipment_affinity"
+weapon_tag = "gisketchs_chowkingdom_mod:class/rogue_weapons"
+weapon_tags = ["c:tools/daggers"]
+weapon_patterns = ["rogues:*_dagger", "simplyswords:*dagger*"]
+armor_tag = "gisketchs_chowkingdom_mod:class/rogue_armor"
+armor_patterns = ["rogues:*rogue_armor*", "rogues:*assassin_armor*"]
+wrong_weapon_damage_multiplier = 0.2
+wrong_weapon_attack_speed_multiplier = 0.1
+wrong_weapon_cooldown_ticks = 12
+wrong_armor_disables_sprint = true
 ```
 
 Penalty fields:
@@ -184,7 +175,7 @@ Use `required: false` for optional modded tags/items so the datapack still loads
 
 ## Adding A New Job
 
-1. Copy an existing job JSON from `runs/client/config/gisketchs_chowkingdom_mod/roles/jobs/`.
+1. Copy an existing job TOML from `runs/client/config/gisketchs_chowkingdom_mod/roles/jobs/`.
 2. Change `id`, `display_name`, and `icon`.
 3. Add supported job perks.
 4. Run `/ck roles reload`.
@@ -194,14 +185,14 @@ Use `required: false` for optional modded tags/items so the datapack still loads
 
 ## Adding A New Class
 
-1. Copy an existing class JSON from `runs/client/config/gisketchs_chowkingdom_mod/roles/classes/`.
+1. Copy an existing class TOML from `runs/client/config/gisketchs_chowkingdom_mod/roles/classes/`.
 2. Change `id`, `display_name`, and `icon`.
 3. Edit `starting_items` for inventory grants.
 4. Create or reuse weapon and armor tags under `src/main/resources/data/gisketchs_chowkingdom_mod/tags/item/class/`.
 5. Point `equipment_affinity` to those tags or add patterns.
 6. Set wrong-equipment penalties.
 7. Restart the client if tags changed, because datapack resources need reload.
-8. Run `/ck roles reload` if only JSON config changed.
+8. Run `/ck roles reload` if only TOML config changed.
 9. Assign it with `/ck roles set class <player> <id>` or `/ck roles add class <player> <id>`.
 10. Test allowed and disallowed weapons/armor.
 
@@ -221,9 +212,9 @@ Expected behavior:
 
 ## Troubleshooting
 
-- Role id not listed: run `/ck roles reload`, then check JSON syntax and file path.
-- New fields do not work: edit the existing runtime JSON; source defaults do not overwrite existing files.
+- Role id not listed: run `/ck roles reload`, then check TOML syntax and file path.
+- New fields do not work: edit the existing runtime TOML; source defaults do not overwrite existing files.
 - Weapon still allowed: check `/ck roles get <player>`; another active class may allow it.
 - Weapon tag changed but behavior did not: restart the client/server so datapack tags reload.
 - Starter items did not appear: check `grantedStartingItems` in the world role state; grants are once per class.
-- Wrong weapon damage works but attack speed does not: confirm the live class JSON has `wrong_weapon_attack_speed_multiplier` below `1.0`.
+- Wrong weapon damage works but attack speed does not: confirm the live class TOML has `wrong_weapon_attack_speed_multiplier` below `1.0`.

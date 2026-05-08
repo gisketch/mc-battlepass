@@ -29,6 +29,8 @@ private const val MAX_NPC_WORLD_CHAT_TARGET_KIND_LENGTH = 16
 private const val MAX_NPC_WORLD_CHAT_MESSAGE_LENGTH = 512
 private const val MAX_NPC_QUEST_DESCRIPTION_LENGTH = 160
 private const val MAX_NPC_QUEST_PASS_LENGTH = 32
+private const val MAX_NPC_FRIENDS = 128
+private const val MAX_NPC_FRIEND_STATUS_LENGTH = 160
 
 object NpcNetwork {
     fun register(modBus: IEventBus) {
@@ -59,6 +61,14 @@ object NpcNetwork {
         PacketDistributor.sendToPlayer(player, payload)
     }
 
+    fun requestFriends() {
+        runCatching { PacketDistributor.sendToServer(NpcFriendsRequestPayload) }
+    }
+
+    fun syncFriends(player: ServerPlayer, payload: NpcFriendsSyncPayload) {
+        PacketDistributor.sendToPlayer(player, payload)
+    }
+
     fun broadcastWorldChat(server: MinecraftServer, payload: NpcWorldChatPayload) {
         server.playerList.players.forEach { player -> PacketDistributor.sendToPlayer(player, payload) }
     }
@@ -70,8 +80,10 @@ object NpcNetwork {
         registrar.playToClient(NpcTalkResponsePayload.TYPE, NpcTalkResponsePayload.STREAM_CODEC, ::handleTalkResponse)
         registrar.playToClient(NpcWorldChatPayload.TYPE, NpcWorldChatPayload.STREAM_CODEC, ::handleWorldChat)
         registrar.playToClient(NpcQuestSyncPayload.TYPE, NpcQuestSyncPayload.STREAM_CODEC, ::handleQuestSync)
+        registrar.playToClient(NpcFriendsSyncPayload.TYPE, NpcFriendsSyncPayload.STREAM_CODEC, ::handleFriendsSync)
         registrar.playToServer(NpcDialogActionPayload.TYPE, NpcDialogActionPayload.STREAM_CODEC, ::handleAction)
         registrar.playToServer(NpcTalkRequestPayload.TYPE, NpcTalkRequestPayload.STREAM_CODEC, ::handleTalkRequest)
+        registrar.playToServer(NpcFriendsRequestPayload.TYPE, NpcFriendsRequestPayload.STREAM_CODEC, ::handleFriendsRequest)
     }
 
     private fun handleDialog(payload: NpcDialogPayload, context: IPayloadContext) {
@@ -122,6 +134,20 @@ object NpcNetwork {
 
     private fun handleQuestSync(payload: NpcQuestSyncPayload, context: IPayloadContext) {
         if (FMLEnvironment.dist.isClient) context.enqueueWork { NpcQuestClientState.apply(payload) }
+    }
+
+    private fun handleFriendsSync(payload: NpcFriendsSyncPayload, context: IPayloadContext) {
+        if (FMLEnvironment.dist.isClient) {
+            context.enqueueWork {
+                val client = Class.forName("dev.gisketch.chowkingdom.npc.NpcFriendsClient")
+                client.getMethod("apply", NpcFriendsSyncPayload::class.java).invoke(client.getField("INSTANCE").get(null), payload)
+            }
+        }
+    }
+
+    private fun handleFriendsRequest(payload: NpcFriendsRequestPayload, context: IPayloadContext) {
+        val player = context.player() as? ServerPlayer ?: return
+        NpcFeature.syncFriends(player)
     }
 }
 
@@ -388,6 +414,78 @@ data class NpcQuestHudEntryPayload(
             buffer.readVarInt(),
             buffer.readVarInt(),
             buffer.readLong(),
+        )
+    }
+}
+
+object NpcFriendsRequestPayload : CustomPacketPayload {
+    override fun type(): CustomPacketPayload.Type<NpcFriendsRequestPayload> = TYPE
+
+    val TYPE: CustomPacketPayload.Type<NpcFriendsRequestPayload> = CustomPacketPayload.Type(ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "npc/friends_request"))
+    val STREAM_CODEC: StreamCodec<RegistryFriendlyByteBuf, NpcFriendsRequestPayload> = object : StreamCodec<RegistryFriendlyByteBuf, NpcFriendsRequestPayload> {
+        override fun decode(buffer: RegistryFriendlyByteBuf): NpcFriendsRequestPayload = NpcFriendsRequestPayload
+        override fun encode(buffer: RegistryFriendlyByteBuf, value: NpcFriendsRequestPayload) = Unit
+    }
+}
+
+data class NpcFriendsSyncPayload(
+    val friends: List<NpcFriendEntryPayload>,
+) : CustomPacketPayload {
+    override fun type(): CustomPacketPayload.Type<NpcFriendsSyncPayload> = TYPE
+
+    companion object {
+        val TYPE: CustomPacketPayload.Type<NpcFriendsSyncPayload> = CustomPacketPayload.Type(ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "npc/friends_sync"))
+        val STREAM_CODEC: StreamCodec<RegistryFriendlyByteBuf, NpcFriendsSyncPayload> = object : StreamCodec<RegistryFriendlyByteBuf, NpcFriendsSyncPayload> {
+            override fun decode(buffer: RegistryFriendlyByteBuf): NpcFriendsSyncPayload = NpcFriendsSyncPayload(
+                List(buffer.readVarInt().coerceIn(0, MAX_NPC_FRIENDS)) { NpcFriendEntryPayload.decode(buffer) },
+            )
+
+            override fun encode(buffer: RegistryFriendlyByteBuf, value: NpcFriendsSyncPayload) {
+                val friends = value.friends.take(MAX_NPC_FRIENDS)
+                buffer.writeVarInt(friends.size)
+                friends.forEach { friend -> friend.encode(buffer) }
+            }
+        }
+    }
+}
+
+data class NpcFriendEntryPayload(
+    val npcId: String,
+    val name: String,
+    val title: String,
+    val friendshipPoints: Int,
+    val friendshipLevel: Int,
+    val giftStatus: String,
+    val shopStatus: String,
+    val missionStatus: String,
+    val missionProgress: Int,
+    val missionGoal: Int,
+) {
+    fun encode(buffer: RegistryFriendlyByteBuf) {
+        buffer.writeUtf(npcId.take(MAX_NPC_ID_LENGTH), MAX_NPC_ID_LENGTH)
+        buffer.writeUtf(name.take(MAX_NPC_NAME_LENGTH), MAX_NPC_NAME_LENGTH)
+        buffer.writeUtf(title.take(MAX_NPC_TITLE_LENGTH), MAX_NPC_TITLE_LENGTH)
+        buffer.writeVarInt(friendshipPoints.coerceIn(-1000, 1000))
+        buffer.writeVarInt(friendshipLevel.coerceIn(-10, 10))
+        buffer.writeUtf(giftStatus.take(MAX_NPC_FRIEND_STATUS_LENGTH), MAX_NPC_FRIEND_STATUS_LENGTH)
+        buffer.writeUtf(shopStatus.take(MAX_NPC_FRIEND_STATUS_LENGTH), MAX_NPC_FRIEND_STATUS_LENGTH)
+        buffer.writeUtf(missionStatus.take(MAX_NPC_FRIEND_STATUS_LENGTH), MAX_NPC_FRIEND_STATUS_LENGTH)
+        buffer.writeVarInt(missionProgress.coerceAtLeast(0))
+        buffer.writeVarInt(missionGoal.coerceAtLeast(0))
+    }
+
+    companion object {
+        fun decode(buffer: RegistryFriendlyByteBuf): NpcFriendEntryPayload = NpcFriendEntryPayload(
+            npcId = buffer.readUtf(MAX_NPC_ID_LENGTH),
+            name = buffer.readUtf(MAX_NPC_NAME_LENGTH),
+            title = buffer.readUtf(MAX_NPC_TITLE_LENGTH),
+            friendshipPoints = buffer.readVarInt(),
+            friendshipLevel = buffer.readVarInt(),
+            giftStatus = buffer.readUtf(MAX_NPC_FRIEND_STATUS_LENGTH),
+            shopStatus = buffer.readUtf(MAX_NPC_FRIEND_STATUS_LENGTH),
+            missionStatus = buffer.readUtf(MAX_NPC_FRIEND_STATUS_LENGTH),
+            missionProgress = buffer.readVarInt(),
+            missionGoal = buffer.readVarInt(),
         )
     }
 }

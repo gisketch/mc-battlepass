@@ -1,26 +1,45 @@
 package dev.gisketch.chowkingdom.roles
 
 import com.mojang.blaze3d.systems.RenderSystem
+import com.mojang.blaze3d.vertex.PoseStack
 import dev.gisketch.chowkingdom.ChowKingdomMod
 import net.minecraft.Util
 import net.minecraft.client.Minecraft
+import net.minecraft.client.gui.Font
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.gui.screens.inventory.InventoryScreen
+import net.minecraft.client.renderer.MultiBufferSource
+import net.minecraft.client.renderer.RenderType
+import net.minecraft.client.renderer.texture.OverlayTexture
 import net.minecraft.client.resources.sounds.SimpleSoundInstance
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.sounds.SoundEvents
 import net.minecraft.util.Mth
+import net.minecraft.world.entity.EntityAttachment
+import net.minecraft.world.entity.player.Player
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
+import net.minecraft.world.item.ItemDisplayContext
+import net.neoforged.neoforge.client.ClientHooks
+import net.neoforged.neoforge.client.event.RenderNameTagEvent
+import net.neoforged.neoforge.common.NeoForge
+import net.neoforged.neoforge.common.util.TriState
+import org.joml.Matrix4f
 import java.util.Locale
+import java.util.UUID
 import kotlin.math.max
 
 object RolesClient {
+    fun register() {
+        NeoForge.EVENT_BUS.addListener(::onRenderNameTag)
+    }
+
     @JvmStatic
     fun sync(payload: RolesSyncPayload) {
+        RolesClientState.apply(payload)
         val minecraft = Minecraft.getInstance()
         val current = minecraft.screen as? RolesOnboardingScreen
         current?.updatePayload(payload)
@@ -28,7 +47,176 @@ object RolesClient {
             minecraft.setScreen(RolesOnboardingScreen(payload))
         }
     }
+
+    private fun onRenderNameTag(event: RenderNameTagEvent) {
+        val player = event.entity as? Player ?: return
+        val icons = RolesClientState.iconsFor(player.uuid)
+        if (icons.jobIcons.isEmpty() && icons.classIcons.isEmpty()) return
+        event.setCanRender(TriState.FALSE)
+        renderRoleNameTag(event, icons)
+    }
+
+    private fun renderRoleNameTag(event: RenderNameTagEvent, icons: RoleNametagIcons) {
+        val entity = event.entity
+        val minecraft = Minecraft.getInstance()
+        val distance = minecraft.entityRenderDispatcher.distanceToSqr(entity)
+        if (!ClientHooks.isNameplateInRenderDistance(entity, distance)) return
+        val attachment = entity.attachments.getNullable(EntityAttachment.NAME_TAG, 0, entity.getViewYRot(event.partialTick)) ?: return
+        val visibleThroughWalls = !entity.isDiscrete
+        val y = if (event.content.string == "deadmau5") -10.0f else 0.0f
+        val poseStack = event.poseStack
+        poseStack.pushPose()
+        poseStack.translate(attachment.x, attachment.y + 0.5, attachment.z)
+        poseStack.mulPose(minecraft.entityRenderDispatcher.cameraOrientation())
+        poseStack.scale(0.025f, -0.025f, 0.025f)
+        val matrix = poseStack.last().pose()
+        val backgroundAlpha = (minecraft.options.getBackgroundOpacity(0.25f) * 255.0f).toInt() shl 24
+        val font = event.entityRenderer.font
+        val textWidth = font.width(event.content).toFloat()
+        val jobWidth = iconGroupWidth(icons.jobIcons.size)
+        val classWidth = iconGroupWidth(icons.classIcons.size)
+        val jobTextGap = if (icons.jobIcons.isEmpty()) 0.0f else NAMETAG_ICON_TEXT_GAP
+        val classTextGap = if (icons.classIcons.isEmpty()) 0.0f else NAMETAG_ICON_TEXT_GAP
+        val totalWidth = jobWidth + jobTextGap + textWidth + classTextGap + classWidth
+        val startX = -totalWidth / 2.0f
+        if (visibleThroughWalls) {
+            renderRoleNameTagPass(event.content, icons, startX, y, true, matrix, poseStack, event.multiBufferSource, backgroundAlpha, event.packedLight)
+        }
+        renderRoleNameTagPass(event.content, icons, startX, y, false, matrix, poseStack, event.multiBufferSource, 0, event.packedLight)
+        poseStack.popPose()
+    }
+
+    private fun renderRoleNameTagPass(
+        content: Component,
+        icons: RoleNametagIcons,
+        startX: Float,
+        y: Float,
+        seeThrough: Boolean,
+        matrix: Matrix4f,
+        poseStack: PoseStack,
+        bufferSource: MultiBufferSource,
+        backgroundColor: Int,
+        packedLight: Int,
+    ) {
+        val minecraft = Minecraft.getInstance()
+        val font = minecraft.font
+        var cursor = startX
+        icons.jobIcons.forEach { icon ->
+            renderNametagIcon(icon, cursor, y + NAMETAG_ICON_Y_OFFSET, seeThrough, matrix, poseStack, bufferSource, packedLight)
+            cursor += NAMETAG_ICON_SIZE + NAMETAG_ICON_GAP
+        }
+        if (icons.jobIcons.isNotEmpty()) cursor += NAMETAG_ICON_TEXT_GAP - NAMETAG_ICON_GAP
+        val displayMode = if (seeThrough) Font.DisplayMode.SEE_THROUGH else Font.DisplayMode.NORMAL
+        val color = if (seeThrough) NAMETAG_SEE_THROUGH_TEXT else NAMETAG_TEXT
+        font.drawInBatch(content, cursor, y, color, false, matrix, bufferSource, displayMode, backgroundColor, packedLight)
+        cursor += font.width(content).toFloat() + if (icons.classIcons.isEmpty()) 0.0f else NAMETAG_ICON_TEXT_GAP
+        icons.classIcons.forEach { icon ->
+            renderNametagIcon(icon, cursor, y + NAMETAG_ICON_Y_OFFSET, seeThrough, matrix, poseStack, bufferSource, packedLight)
+            cursor += NAMETAG_ICON_SIZE + NAMETAG_ICON_GAP
+        }
+    }
+
+    private fun renderNametagIcon(rawIcon: String, x: Float, y: Float, seeThrough: Boolean, matrix: Matrix4f, poseStack: PoseStack, bufferSource: MultiBufferSource, packedLight: Int) {
+        val stack = roleIconStack(rawIcon)
+        if (!stack.isEmpty) {
+            if (!seeThrough) renderNametagItem(stack, x, y, poseStack, bufferSource, packedLight)
+            return
+        }
+        val texture = roleIconTexture(rawIcon) ?: return
+        val renderType = if (seeThrough) RenderType.textSeeThrough(texture) else RenderType.text(texture)
+        val consumer = bufferSource.getBuffer(renderType)
+        val alpha = if (seeThrough) NAMETAG_SEE_THROUGH_ICON_ALPHA else 255
+        val right = x + NAMETAG_ICON_SIZE
+        val bottom = y + NAMETAG_ICON_SIZE
+        consumer.addVertex(matrix, x, bottom, 0.0f).setColor(255, 255, 255, alpha).setUv(0.0f, 1.0f).setLight(packedLight)
+        consumer.addVertex(matrix, right, bottom, 0.0f).setColor(255, 255, 255, alpha).setUv(1.0f, 1.0f).setLight(packedLight)
+        consumer.addVertex(matrix, right, y, 0.0f).setColor(255, 255, 255, alpha).setUv(1.0f, 0.0f).setLight(packedLight)
+        consumer.addVertex(matrix, x, y, 0.0f).setColor(255, 255, 255, alpha).setUv(0.0f, 0.0f).setLight(packedLight)
+    }
+
+    private fun renderNametagItem(stack: ItemStack, x: Float, y: Float, poseStack: PoseStack, bufferSource: MultiBufferSource, packedLight: Int) {
+        val minecraft = Minecraft.getInstance()
+        poseStack.pushPose()
+        poseStack.translate((x + NAMETAG_ICON_SIZE / 2.0f).toDouble(), (y + NAMETAG_ICON_SIZE / 2.0f).toDouble(), 0.0)
+        val scale = NAMETAG_ICON_SIZE / 16.0f
+        poseStack.scale(scale, scale, scale)
+        poseStack.translate(-8.0, -8.0, 0.0)
+        minecraft.itemRenderer.renderStatic(stack, ItemDisplayContext.GUI, packedLight, OverlayTexture.NO_OVERLAY, poseStack, bufferSource, minecraft.level, 0)
+        poseStack.popPose()
+    }
+
+    private fun iconGroupWidth(count: Int): Float = if (count <= 0) 0.0f else count * NAMETAG_ICON_SIZE + (count - 1) * NAMETAG_ICON_GAP
 }
+
+object RolesClientState {
+    private var jobsById: Map<String, RoleUiDefinitionPayload> = emptyMap()
+    private var classesById: Map<String, RoleUiDefinitionPayload> = emptyMap()
+    private val playerIcons: MutableMap<UUID, RoleNametagIcons> = linkedMapOf()
+    private val playerRoleIds: MutableMap<UUID, RoleProfileIds> = linkedMapOf()
+
+    fun apply(payload: RolesSyncPayload) {
+        jobsById = payload.jobs.associateBy { role -> role.id }
+        classesById = payload.classes.associateBy { role -> role.id }
+        playerIcons.clear()
+        playerRoleIds.clear()
+        payload.players.forEach { player ->
+            playerRoleIds[player.playerId] = RoleProfileIds(player.jobIds, player.classIds)
+            playerIcons[player.playerId] = RoleNametagIcons(
+                jobIcons = player.jobIds.mapNotNull { id -> jobsById[id]?.icon },
+                classIcons = player.classIds.mapNotNull { id -> classesById[id]?.icon },
+            )
+        }
+    }
+
+    fun iconsFor(playerId: UUID): RoleNametagIcons = playerIcons[playerId] ?: RoleNametagIcons()
+
+    fun profileFor(playerId: UUID): RoleProfile = playerRoleIds[playerId]?.let { ids ->
+        RoleProfile(
+            jobs = ids.jobIds.mapNotNull(jobsById::get),
+            classes = ids.classIds.mapNotNull(classesById::get),
+        )
+    } ?: RoleProfile()
+}
+
+private data class RoleProfileIds(val jobIds: List<String>, val classIds: List<String>)
+
+data class RoleProfile(
+    val jobs: List<RoleUiDefinitionPayload> = emptyList(),
+    val classes: List<RoleUiDefinitionPayload> = emptyList(),
+)
+
+data class RoleNametagIcons(
+    val jobIcons: List<String> = emptyList(),
+    val classIcons: List<String> = emptyList(),
+)
+
+private fun roleIconTexture(rawIcon: String): ResourceLocation? {
+    val icon = rawIcon.trim()
+    if (icon.isBlank()) return null
+    return runCatching {
+        when {
+            icon.startsWith("textures/") -> ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, icon)
+            icon.contains(":textures/") -> ResourceLocation.parse(icon)
+            icon.endsWith(".png") && icon.contains(":") -> ResourceLocation.parse(icon)
+            icon.endsWith(".png") -> ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/$icon")
+            else -> null
+        }
+    }.getOrNull()
+}
+
+private fun roleIconStack(rawIcon: String): ItemStack {
+    val id = runCatching { ResourceLocation.parse(rawIcon.trim()) }.getOrNull() ?: return ItemStack.EMPTY
+    val item = BuiltInRegistries.ITEM.getOptional(id).orElse(Items.AIR)
+    return if (item == Items.AIR) ItemStack.EMPTY else ItemStack(item)
+}
+
+private const val NAMETAG_ICON_SIZE = 9.0f
+private const val NAMETAG_ICON_GAP = 1.0f
+private const val NAMETAG_ICON_TEXT_GAP = 3.0f
+private const val NAMETAG_ICON_Y_OFFSET = -1.0f
+private const val NAMETAG_TEXT = -1
+private const val NAMETAG_SEE_THROUGH_TEXT = 553648127
+private const val NAMETAG_SEE_THROUGH_ICON_ALPHA = 96
 
 private class RolesOnboardingScreen(private var payload: RolesSyncPayload) : Screen(Component.literal("Roles Onboarding")) {
     private enum class Step { WELCOME, JOB, CLASS }

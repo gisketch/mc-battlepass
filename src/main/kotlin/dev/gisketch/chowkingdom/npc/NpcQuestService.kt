@@ -15,17 +15,33 @@ import dev.gisketch.chowkingdom.wallets.ChowcoinStore
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
+import net.minecraft.server.MinecraftServer
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
+import net.minecraft.world.level.Level
 import java.util.UUID
 
 object NpcQuestService {
-    private const val RESET_HOUR = 15
     private const val MAX_ACTIVE = 4
     private const val OFFER_REFRESH_TICKS = 20L * 10L
     private val nextOfferBalloonAt: MutableMap<String, Long> = linkedMapOf()
+    private var lastObservedPeriod = Long.MIN_VALUE
+
+    fun tick(server: MinecraftServer) {
+        val period = currentPeriod(server.overworld())
+        if (period == lastObservedPeriod) return
+        lastObservedPeriod = period
+        server.playerList.players.forEach { player ->
+            val expired = mutableListOf<NpcAcceptedQuestState>()
+            val state = NpcStore.questState(player, period) { quests ->
+                expired += quests
+                notifyExpired(player, quests)
+            }
+            if (expired.isNotEmpty() || state.active.isNotEmpty()) syncTo(player)
+        }
+    }
 
     fun tryOpenQuest(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition): Boolean {
         if (!isMeetup(npc, definition)) return false
@@ -49,15 +65,15 @@ object NpcQuestService {
         val player = level.players().asSequence()
             .filter { player -> player.isAlive && !player.isSpectator && player.distanceToSqr(npc) <= radiusSqr }
             .filter { player ->
-                val period = NpcTime.periodForReset(level.dayTime, RESET_HOUR)
+                val period = currentPeriod(level)
                 val state = questState(player, period)
                 selectedOffer(player, definition, period) != null && canOffer(player, npc, definition, state)
             }
             .minByOrNull { player -> player.distanceToSqr(npc) }
             ?: return false
-        val key = "${npc.uuid}:${player.uuid}:${NpcTime.periodForReset(level.dayTime, RESET_HOUR)}"
+        val key = "${npc.uuid}:${player.uuid}:${currentPeriod(level)}"
         if ((nextOfferBalloonAt[key] ?: 0L) > level.gameTime) return false
-        val offer = selectedOffer(player, definition, NpcTime.periodForReset(level.dayTime, RESET_HOUR)) ?: return false
+        val offer = selectedOffer(player, definition, currentPeriod(level)) ?: return false
         val message = template(definition.missions.offerBalloonMessages.randomOrNull() ?: "@quest_log.png {quest_text}", player, definition, offer, 0)
         NpcNetwork.showBalloon(player, npc.id, message, 100)
         nextOfferBalloonAt[key] = level.gameTime + OFFER_REFRESH_TICKS
@@ -119,6 +135,23 @@ object NpcQuestService {
             )
         }
         NpcNetwork.syncQuests(player, NpcQuestSyncPayload(quests))
+    }
+
+    fun friendSummary(player: ServerPlayer, definition: NpcDefinition): NpcQuestFriendSummary {
+        val state = questState(player)
+        state.active[definition.id]?.let { active ->
+            val progress = displayProgress(player, active)
+            return NpcQuestFriendSummary("Mission: ${active.description} ($progress/${active.goal})", progress, active.goal)
+        }
+        val period = currentPeriod(player)
+        val periodState = questState(player, period)
+        val offer = selectedOffer(player, definition, period)
+        val canOffer = offer != null && definition.id !in periodState.completedNpcIds && definition.id !in periodState.active && periodState.active.size < MAX_ACTIVE && (periodState.declinedUntilTick[definition.id] ?: Long.MIN_VALUE) <= player.level().dayTime
+        if (offer != null && canOffer) {
+            val goal = if (offer.category == "fetch") offer.fetchCount else offer.goal
+            return NpcQuestFriendSummary("Mission available: ${missionText(offer, goal)}", 0, goal)
+        }
+        return NpcQuestFriendSummary("No mission available", 0, 0)
     }
 
     fun debugFinish(player: ServerPlayer, npcId: String): Boolean {
@@ -258,7 +291,9 @@ object NpcQuestService {
         return player.distanceToSqr(npc) <= definition.missions.offerRadius * definition.missions.offerRadius
     }
 
-    private fun currentPeriod(player: ServerPlayer): Long = NpcTime.periodForReset(player.level().dayTime, RESET_HOUR)
+    private fun currentPeriod(player: ServerPlayer): Long = currentPeriod(player.level())
+
+    private fun currentPeriod(level: Level): Long = NpcTime.periodForReset(level.dayTime, NpcFeature.plazaMeetupStartHour())
 
     private fun questState(player: ServerPlayer, period: Long = currentPeriod(player)): NpcPlayerQuestState =
         NpcStore.questState(player, period) { expired -> notifyExpired(player, expired) }
@@ -334,3 +369,5 @@ object NpcQuestService {
 
     private fun displayProgress(player: ServerPlayer, quest: NpcAcceptedQuestState): Int = if (quest.category == "fetch") countItem(player, quest.fetchItem).coerceAtMost(quest.goal) else quest.progress
 }
+
+data class NpcQuestFriendSummary(val status: String, val progress: Int, val goal: Int)

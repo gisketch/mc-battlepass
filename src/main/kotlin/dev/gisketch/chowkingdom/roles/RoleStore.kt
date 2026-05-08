@@ -72,6 +72,11 @@ object RoleStore {
 
     fun activeJobIds(player: ServerPlayer): Set<String> = role(player).activeJobIds.toSet()
 
+    fun activeJobIds(playerId: UUID): Set<String> {
+        if (!loaded) load()
+        return players[playerId.toString()]?.activeJobIds?.toSet().orEmpty()
+    }
+
     fun activeClassIds(player: ServerPlayer): Set<String> = role(player).activeClassIds.toSet()
 
     fun activeClassIds(playerId: UUID): Set<String> {
@@ -107,6 +112,18 @@ object RoleStore {
         record.activeClassIds.add(classId)
         record.unlockedJobs.add(jobId)
         record.unlockedClasses.add(classId)
+        save()
+    }
+
+    fun resetOnboarding(player: ServerPlayer) {
+        val record = ensureRecord(player)
+        record.jobId = ""
+        record.classId = ""
+        record.activeJobIds.clear()
+        record.activeClassIds.clear()
+        record.unlockedJobs.clear()
+        record.unlockedClasses.clear()
+        record.grantedStartingItems.clear()
         save()
     }
 

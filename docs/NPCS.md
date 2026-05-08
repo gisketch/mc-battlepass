@@ -27,6 +27,8 @@ Talk opens a text input inside the existing dialog. Submitting sends the message
 
 The dialog header shows the NPC avatar, name, and a 10-icon friendship row. Positive levels render filled hearts, negative levels render angry icons, and remaining slots render empty hearts. Dialog body text uses the CKDM small bold font at 75% white opacity.
 
+The inventory side menu has a Friends screen listing configured NPCs. Each row shows the NPC head, name, friendship hearts, friendship level, and mission summary. Hovering a row shows friendship points, gift availability for the current reset period, shop open/close timing, and active or available mission progress.
+
 In multiplayer, the interacting player sees the dialog screen only. Other players within 30 blocks of the NPC see the overheard NPC line as a world-space balloon above the NPC. Discord receives every NPC dialog through the webhook, with the NPC name/avatar as the webhook identity and a linked Discord user mention when the interacting player has an account link.
 
 While talking, the NPC briefly stops navigating and looks at the interacting player. During the local dialog typewriter reveal, NPCs play proximity-faded animalese sounds using the configured voice pitch. Nearby NPC balloons and hurt balloons do not play animalese.

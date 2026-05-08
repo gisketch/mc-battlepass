@@ -22,7 +22,7 @@ object RolesConfig {
         root.resolve("jobs").createDirectories()
         root.resolve("classes").createDirectories()
         writeDefaultIfMissing(root.resolve("onboarding.toml"), defaultOnboarding())
-        writeDefaultIfMissing(root.resolve("jobs").resolve("farmer.toml"), defaultFarmer())
+        defaultJobs().forEach { definition -> writeDefaultIfMissing(root.resolve("jobs").resolve("${definition.id}.toml"), definition) }
         writeDefaultIfMissing(root.resolve("classes").resolve("rogue.toml"), defaultRogue())
         writeDefaultIfMissing(root.resolve("classes").resolve("warrior.toml"), defaultWarrior())
         onboardingDefinition = readOnboarding(root.resolve("onboarding.toml"))
@@ -38,7 +38,7 @@ object RolesConfig {
 
     fun roleClass(id: String): RoleDefinition? = classesById[id]
 
-    fun defaultJobId(): String = job("farmer")?.id ?: jobsById.keys.firstOrNull().orEmpty()
+    fun defaultJobId(): String = job("botanist")?.id ?: jobsById.keys.firstOrNull().orEmpty()
 
     fun defaultClassId(): String = roleClass("rogue")?.id ?: classesById.keys.firstOrNull().orEmpty()
 
@@ -78,16 +78,34 @@ object RolesConfig {
         }
     }
 
-    private fun defaultFarmer(): RoleDefinition = RoleDefinition(
-        id = "farmer",
-        displayName = "Farmer",
-        icon = "minecraft:grass_block",
-        description = "Tend crops, protect farmland, and coax better harvests from the kingdom soil.",
+    private fun defaultJobs(): List<RoleDefinition> = listOf(
+        typedJob("botanist", "Botanist", "grass", "Reads leaf, vine, and bloom signs to work with Grass Pokemon."),
+        typedJob("diver", "Diver", "water", "Works rivers, reefs, and rain routes to track Water Pokemon."),
+        typedJob("magma_scout", "Magma Scout", "fire", "Scouts hot springs, ash fields, and lava paths for Fire Pokemon."),
+        typedJob("engineer", "Engineer", "electric", "Tunes circuits, rails, and storms to find Electric Pokemon."),
+        typedJob("field_researcher", "Field Researcher", "normal", "Studies everyday habitats and migration trails for Normal Pokemon."),
+        typedJob("bug_scout", "Bug Scout", "bug", "Checks groves, flowers, and old logs for Bug Pokemon."),
+        typedJob("falconer", "Falconer", "flying", "Reads wind lanes and high nests to work with Flying Pokemon."),
+        typedJob("shade_runner", "Shade Runner", "dark", "Moves through alleys, caves, and moonlit routes for Dark Pokemon."),
+        typedJob("esper", "Esper", "psychic", "Follows strange signals and quiet pressure around Psychic Pokemon."),
+        typedJob("martial_artist", "Martial Artist", "fighting", "Studies training grounds and hard roads for Fighting Pokemon."),
+        typedJob("mountaineer", "Mountaineer", "ice", "Crosses frost lines and high passes to find Ice Pokemon."),
+        typedJob("shinobi", "Shinobi", "poison", "Tracks marshes, spores, and hidden dens for Poison Pokemon."),
+        typedJob("mason", "Mason", "rock", "Reads cliffs, ruins, and quarry marks to find Rock Pokemon."),
+        typedJob("excavator", "Excavator", "ground", "Cuts tunnels and studies soil shifts for Ground Pokemon."),
+        typedJob("blacksmith", "Blacksmith", "steel", "Works anvils, ore, and machine scrap around Steel Pokemon."),
+        typedJob("spirit_medium", "Spirit Medium", "ghost", "Listens at old paths and quiet places for Ghost Pokemon."),
+        typedJob("drake_tamer", "Drake Tamer", "dragon", "Studies old scales, high dens, and legends around Dragon Pokemon."),
+        typedJob("performer", "Performer", "fairy", "Uses rhythm, charm, and bright places to meet Fairy Pokemon."),
+    )
+
+    private fun typedJob(id: String, displayName: String, pokemonType: String, description: String): RoleDefinition = RoleDefinition(
+        id = id,
+        displayName = displayName,
+        icon = "textures/gui/jobs/$id.png",
+        description = description,
         perks = mutableListOf(
-            RolePerkDefinition(type = "prevent_crop_trample"),
-            RolePerkDefinition(type = "cobblemon_catch_rate", pokemonType = "grass", multiplier = 1.5),
-            RolePerkDefinition(type = "mount_speed", pokemonType = "grass", multiplier = 1.25),
-            RolePerkDefinition(type = "quality_food_harvest_bonus", multiplier = 1.15),
+            RolePerkDefinition(type = "cobblemon_catch_rate", pokemonType = pokemonType, multiplier = 1.5),
         ),
     )
 

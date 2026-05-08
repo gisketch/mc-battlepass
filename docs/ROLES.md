@@ -20,6 +20,7 @@ The source defaults create editable job/class TOML, but they no longer auto-assi
 
 ## Commands
 
+- `/ck onboarding`
 - `/ck roles reload`
 - `/ck roles list`
 - `/ck roles get <player>`
@@ -34,11 +35,14 @@ Commands require permission level 2.
 
 ## Current Defaults
 
-- `farmer`: prevents farmland trampling. Also defines data-only hooks for Grass catch rate, Grass mount speed, and Quality Food harvest bonus.
+- Jobs: `botanist` Grass, `diver` Water, `magma_scout` Fire, `engineer` Electric, `field_researcher` Normal, `bug_scout` Bug, `falconer` Flying, `shade_runner` Dark, `esper` Psychic, `martial_artist` Fighting, `mountaineer` Ice, `shinobi` Poison, `mason` Rock, `excavator` Ground, `blacksmith` Steel, `spirit_medium` Ghost, `drake_tamer` Dragon, and `performer` Fairy.
+- Each default job defines a data-only `cobblemon_catch_rate` hook for its Pokemon type with multiplier `1.5`.
 - `rogue`: starts with a book, diamond axe, and leather boots. Only Rogue-tagged equipment avoids class penalties.
 - `warrior`: starts with a book, wooden sword, and iron boots. Only Warrior-tagged equipment avoids class penalties.
 
-Role definitions include `icon` and `description` for onboarding UI. `icon` accepts an item id first, then falls back to a texture resource id. Current defaults use `minecraft:grass_block` as a placeholder test icon.
+Role definitions include `icon` and `description` for onboarding UI. `icon` accepts an item id first, then falls back to a texture resource id. Current job defaults point to `textures/gui/jobs/<job_id>.png`.
+
+Nametags render active job icons before the player name and active class icons after it. Multiple active roles append multiple icons on their side.
 
 ## Class Equipment
 
@@ -87,8 +91,6 @@ To add Simply Swords, RPG Series, or Rogues later, use either tags or wildcard p
 
 Patterns match item ids. `rogues:*_dagger` allows every Rogues dagger without listing tiers one by one.
 
-## Quality Food
+## Cobblemon Hooks
 
-Farmer has `quality_food_harvest_bonus`. On crop drops, the role system calls Quality Food's `QualityUtils.applyQuality` reflectively for extra rerolls based on the configured multiplier. This keeps the integration optional.
-
-The same helper can be reused later for chef/cook perks when cooking output hooks are added.
+Default jobs define `cobblemon_catch_rate` data for their matching Pokemon type. The helper exists, but no Cobblemon capture-rate event or mixin applies it yet.

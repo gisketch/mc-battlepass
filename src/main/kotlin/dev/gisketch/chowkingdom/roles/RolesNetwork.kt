@@ -11,6 +11,8 @@ import net.neoforged.fml.loading.FMLEnvironment
 import net.neoforged.neoforge.network.PacketDistributor
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent
 import net.neoforged.neoforge.network.handling.IPayloadContext
+import net.neoforged.neoforge.server.ServerLifecycleHooks
+import java.util.UUID
 
 object RolesNetwork {
     fun register(modBus: IEventBus) {
@@ -19,6 +21,11 @@ object RolesNetwork {
 
     fun syncTo(player: ServerPlayer, openOnboarding: Boolean) {
         PacketDistributor.sendToPlayer(player, createSyncPayload(player, openOnboarding))
+    }
+
+    fun syncAllPlayers(openOnboardingFor: Set<UUID> = emptySet()) {
+        val server = ServerLifecycleHooks.getCurrentServer() ?: return
+        server.playerList.players.forEach { player -> syncTo(player, openOnboarding = player.uuid in openOnboardingFor) }
     }
 
     fun choose(jobId: String, classId: String) {
@@ -55,8 +62,17 @@ object RolesNetwork {
             classes = RolesConfig.classes().map(::definitionPayload),
             activeJobIds = record.activeJobIds.toList(),
             activeClassIds = record.activeClassIds.toList(),
+            players = playerStates(player),
             welcomeContent = RolesConfig.welcomeContent(),
             openOnboarding = openOnboarding,
+        )
+    }
+
+    private fun playerStates(receiver: ServerPlayer): List<RolePlayerStatePayload> = receiver.server.playerList.players.map { player ->
+        RolePlayerStatePayload(
+            playerId = player.uuid,
+            jobIds = RoleStore.activeJobIds(player).toList(),
+            classIds = RoleStore.activeClassIds(player).toList(),
         )
     }
 
@@ -65,6 +81,20 @@ object RolesNetwork {
         displayName = role.displayName.ifBlank { role.id },
         icon = role.icon.ifBlank { DEFAULT_ROLE_ICON },
         description = role.description.ifBlank { "A Chowkingdom role waiting for a proper description." },
+        perks = role.perks.map(::perkPayload),
+    )
+
+    private fun perkPayload(perk: RolePerkDefinition): RolePerkUiPayload = RolePerkUiPayload(
+        type = perk.type,
+        pokemonType = perk.pokemonType.orEmpty(),
+        multiplier = perk.multiplier,
+        weaponTag = perk.weaponTag.orEmpty(),
+        armorTag = perk.armorTag.orEmpty(),
+        weaponTags = perk.weaponTags.toList(),
+        armorTags = perk.armorTags.toList(),
+        weaponPatterns = perk.weaponPatterns.toList(),
+        armorPatterns = perk.armorPatterns.toList(),
+        startingItems = perk.startingItems.toList(),
     )
 }
 
@@ -73,6 +103,7 @@ data class RolesSyncPayload(
     val classes: List<RoleUiDefinitionPayload>,
     val activeJobIds: List<String>,
     val activeClassIds: List<String>,
+    val players: List<RolePlayerStatePayload>,
     val welcomeContent: String,
     val openOnboarding: Boolean,
 ) : CustomPacketPayload {
@@ -86,6 +117,7 @@ data class RolesSyncPayload(
                 classes = List(buffer.readVarInt().coerceIn(0, MAX_ROLES)) { RoleUiDefinitionPayload.decode(buffer) },
                 activeJobIds = readStringList(buffer, MAX_ACTIVE_ROLES, MAX_ID_LENGTH),
                 activeClassIds = readStringList(buffer, MAX_ACTIVE_ROLES, MAX_ID_LENGTH),
+                players = List(buffer.readVarInt().coerceIn(0, MAX_PLAYERS)) { RolePlayerStatePayload.decode(buffer) },
                 welcomeContent = buffer.readUtf(MAX_DESCRIPTION_LENGTH),
                 openOnboarding = buffer.readBoolean(),
             )
@@ -99,10 +131,33 @@ data class RolesSyncPayload(
                 classes.forEach { role -> role.encode(buffer) }
                 writeStringList(buffer, value.activeJobIds, MAX_ACTIVE_ROLES, MAX_ID_LENGTH)
                 writeStringList(buffer, value.activeClassIds, MAX_ACTIVE_ROLES, MAX_ID_LENGTH)
+                val players = value.players.take(MAX_PLAYERS)
+                buffer.writeVarInt(players.size)
+                players.forEach { player -> player.encode(buffer) }
                 buffer.writeUtf(value.welcomeContent.take(MAX_DESCRIPTION_LENGTH), MAX_DESCRIPTION_LENGTH)
                 buffer.writeBoolean(value.openOnboarding)
             }
         }
+    }
+}
+
+data class RolePlayerStatePayload(
+    val playerId: UUID,
+    val jobIds: List<String>,
+    val classIds: List<String>,
+) {
+    fun encode(buffer: RegistryFriendlyByteBuf) {
+        buffer.writeUUID(playerId)
+        writeStringList(buffer, jobIds, MAX_ACTIVE_ROLES, MAX_ID_LENGTH)
+        writeStringList(buffer, classIds, MAX_ACTIVE_ROLES, MAX_ID_LENGTH)
+    }
+
+    companion object {
+        fun decode(buffer: RegistryFriendlyByteBuf): RolePlayerStatePayload = RolePlayerStatePayload(
+            playerId = buffer.readUUID(),
+            jobIds = readStringList(buffer, MAX_ACTIVE_ROLES, MAX_ID_LENGTH),
+            classIds = readStringList(buffer, MAX_ACTIVE_ROLES, MAX_ID_LENGTH),
+        )
     }
 }
 
@@ -111,12 +166,16 @@ data class RoleUiDefinitionPayload(
     val displayName: String,
     val icon: String,
     val description: String,
+    val perks: List<RolePerkUiPayload>,
 ) {
     fun encode(buffer: RegistryFriendlyByteBuf) {
         buffer.writeUtf(id.take(MAX_ID_LENGTH), MAX_ID_LENGTH)
         buffer.writeUtf(displayName.take(MAX_DISPLAY_LENGTH), MAX_DISPLAY_LENGTH)
         buffer.writeUtf(icon.take(MAX_ICON_LENGTH), MAX_ICON_LENGTH)
         buffer.writeUtf(description.take(MAX_DESCRIPTION_LENGTH), MAX_DESCRIPTION_LENGTH)
+        val perks = perks.take(MAX_PERKS)
+        buffer.writeVarInt(perks.size)
+        perks.forEach { perk -> perk.encode(buffer) }
     }
 
     companion object {
@@ -125,6 +184,48 @@ data class RoleUiDefinitionPayload(
             displayName = buffer.readUtf(MAX_DISPLAY_LENGTH),
             icon = buffer.readUtf(MAX_ICON_LENGTH),
             description = buffer.readUtf(MAX_DESCRIPTION_LENGTH),
+            perks = List(buffer.readVarInt().coerceIn(0, MAX_PERKS)) { RolePerkUiPayload.decode(buffer) },
+        )
+    }
+}
+
+data class RolePerkUiPayload(
+    val type: String,
+    val pokemonType: String,
+    val multiplier: Double,
+    val weaponTag: String,
+    val armorTag: String,
+    val weaponTags: List<String>,
+    val armorTags: List<String>,
+    val weaponPatterns: List<String>,
+    val armorPatterns: List<String>,
+    val startingItems: List<String>,
+) {
+    fun encode(buffer: RegistryFriendlyByteBuf) {
+        buffer.writeUtf(type.take(MAX_ID_LENGTH), MAX_ID_LENGTH)
+        buffer.writeUtf(pokemonType.take(MAX_ID_LENGTH), MAX_ID_LENGTH)
+        buffer.writeDouble(multiplier)
+        buffer.writeUtf(weaponTag.take(MAX_ICON_LENGTH), MAX_ICON_LENGTH)
+        buffer.writeUtf(armorTag.take(MAX_ICON_LENGTH), MAX_ICON_LENGTH)
+        writeStringList(buffer, weaponTags, MAX_PERK_VALUES, MAX_ICON_LENGTH)
+        writeStringList(buffer, armorTags, MAX_PERK_VALUES, MAX_ICON_LENGTH)
+        writeStringList(buffer, weaponPatterns, MAX_PERK_VALUES, MAX_ICON_LENGTH)
+        writeStringList(buffer, armorPatterns, MAX_PERK_VALUES, MAX_ICON_LENGTH)
+        writeStringList(buffer, startingItems, MAX_PERK_VALUES, MAX_ICON_LENGTH)
+    }
+
+    companion object {
+        fun decode(buffer: RegistryFriendlyByteBuf): RolePerkUiPayload = RolePerkUiPayload(
+            type = buffer.readUtf(MAX_ID_LENGTH),
+            pokemonType = buffer.readUtf(MAX_ID_LENGTH),
+            multiplier = buffer.readDouble(),
+            weaponTag = buffer.readUtf(MAX_ICON_LENGTH),
+            armorTag = buffer.readUtf(MAX_ICON_LENGTH),
+            weaponTags = readStringList(buffer, MAX_PERK_VALUES, MAX_ICON_LENGTH),
+            armorTags = readStringList(buffer, MAX_PERK_VALUES, MAX_ICON_LENGTH),
+            weaponPatterns = readStringList(buffer, MAX_PERK_VALUES, MAX_ICON_LENGTH),
+            armorPatterns = readStringList(buffer, MAX_PERK_VALUES, MAX_ICON_LENGTH),
+            startingItems = readStringList(buffer, MAX_PERK_VALUES, MAX_ICON_LENGTH),
         )
     }
 }
@@ -162,7 +263,10 @@ private fun writeStringList(buffer: RegistryFriendlyByteBuf, values: List<String
 
 private const val DEFAULT_ROLE_ICON = "minecraft:grass_block"
 private const val MAX_ROLES = 128
+private const val MAX_PLAYERS = 256
 private const val MAX_ACTIVE_ROLES = 32
+private const val MAX_PERKS = 32
+private const val MAX_PERK_VALUES = 32
 private const val MAX_ID_LENGTH = 64
 private const val MAX_DISPLAY_LENGTH = 96
 private const val MAX_ICON_LENGTH = 128

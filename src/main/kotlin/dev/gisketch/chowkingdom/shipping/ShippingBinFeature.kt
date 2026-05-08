@@ -43,8 +43,6 @@ object ShippingBinFeature {
 
     val SHIPPING_BIN_ITEM: DeferredHolder<Item, BlockItem> = ITEMS.register("shipping_bin", Supplier { BlockItem(SHIPPING_BIN.get(), Item.Properties()) })
 
-    private var tickCounter = 0
-
     fun register(modBus: IEventBus) {
         BLOCKS.register(modBus)
         ITEMS.register(modBus)
@@ -63,19 +61,19 @@ object ShippingBinFeature {
     }
 
     private fun onServerTick(event: ServerTickEvent.Post) {
-        tickCounter = (tickCounter + 1) % PAYOUT_CHECK_INTERVAL_TICKS
-        if (tickCounter != 0) return
-
         val level = event.server.overworld()
         val clock = ChowClock.now(level, ChowClockConfig.current())
         val payoutHour = ShippingBinConfig.payoutHour()
-        val day = if (clock.hour >= payoutHour) clock.day else clock.day - 1
-        if (clock.hour < payoutHour) return
-        if (!ShippingBinStore.tryMarkPayoutDay(day)) return
+        val payoutMinute = ShippingBinConfig.payoutMinute()
+        val payoutMinuteOfDay = payoutHour * MINUTES_PER_HOUR + payoutMinute
+        val currentMinuteOfDay = clock.hour * MINUTES_PER_HOUR + clock.minute
+        if (currentMinuteOfDay < payoutMinuteOfDay) return
+        val day = clock.day
+        if (!ShippingBinStore.hasDueSellableItems(day)) return
 
         val sales = mutableListOf<ShippingBinSaleResult>()
         ShippingBinStore.playerIds().forEach { playerId ->
-            val payout = ShippingBinStore.payout(playerId)
+            val payout = ShippingBinStore.payoutDue(playerId, day)
             if (payout.hasReward()) {
                 val player = event.server.playerList.getPlayer(playerId)
                 val playerName = player?.let(NicknameStore::displayName) ?: playerId.toString().take(8)
@@ -159,7 +157,7 @@ object ShippingBinFeature {
         DiscordRelay.shippingTopSeller(server, top.playerName, top.payout.itemCount, top.payout.amount)
     }
 
-    private const val PAYOUT_CHECK_INTERVAL_TICKS = 200
+    private const val MINUTES_PER_HOUR = 60
     private const val QUALITY_FOOD_SOLD_EVENT = "gisketchs_chowkingdom_mod:shipping_bin_quality_food_sold"
     private const val IRON_QUALITY_FOOD_SOLD_EVENT = "gisketchs_chowkingdom_mod:shipping_bin_iron_quality_food_sold"
     private const val GOLD_QUALITY_FOOD_SOLD_EVENT = "gisketchs_chowkingdom_mod:shipping_bin_gold_quality_food_sold"

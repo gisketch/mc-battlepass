@@ -117,6 +117,8 @@ object BattlepassNetwork {
                 eventProgress(player, passes, "minecraft:monster_killed"),
                 ReviveStore.incapacitatedCount(player.uuid),
                 player.stats.getValue(Stats.CUSTOM.get(Stats.DEATHS)),
+                ReviveStore.revivedCount(player.uuid),
+                ReviveStore.revivedOthersCount(player.uuid),
                 ChowcoinStore.get(player.uuid),
                 player.stats.getValue(Stats.CUSTOM.get(Stats.PLAY_TIME)).toLong(),
             )
@@ -258,6 +260,8 @@ data class BattlepassPlayerProgressPayload(
     val hostileMonstersKilled: Int,
     val koCount: Int,
     val deaths: Int,
+    val revivedCount: Int,
+    val revivedOthersCount: Int,
     val chowcoins: Long,
     val playtimeTicks: Long,
 ) {
@@ -294,6 +298,8 @@ data class BattlepassPlayerProgressPayload(
         buffer.writeVarInt(hostileMonstersKilled)
         buffer.writeVarInt(koCount)
         buffer.writeVarInt(deaths)
+        buffer.writeVarInt(revivedCount)
+        buffer.writeVarInt(revivedOthersCount)
         buffer.writeVarLong(chowcoins)
         buffer.writeVarLong(playtimeTicks)
     }
@@ -329,9 +335,11 @@ data class BattlepassPlayerProgressPayload(
             val hostileMonstersKilled = buffer.readVarInt()
             val koCount = buffer.readVarInt()
             val deaths = buffer.readVarInt()
+            val revivedCount = buffer.readVarInt()
+            val revivedOthersCount = buffer.readVarInt()
             val chowcoins = buffer.readVarLong()
             val playtimeTicks = buffer.readVarLong()
-            return BattlepassPlayerProgressPayload(uuid, name, xpByPass, claimedByPass, missionProgressByPass, completedMissionKeysByPass, uniquePokemonCaught, hostileMonstersKilled, koCount, deaths, chowcoins, playtimeTicks)
+            return BattlepassPlayerProgressPayload(uuid, name, xpByPass, claimedByPass, missionProgressByPass, completedMissionKeysByPass, uniquePokemonCaught, hostileMonstersKilled, koCount, deaths, revivedCount, revivedOthersCount, chowcoins, playtimeTicks)
         }
     }
 }

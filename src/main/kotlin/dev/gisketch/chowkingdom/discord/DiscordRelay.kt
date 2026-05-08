@@ -127,20 +127,28 @@ object DiscordRelay {
     fun npcDialog(player: ServerPlayer, npcId: String, npcName: String, message: String) {
         val config = DiscordConfig.current()
         if (!config.enabled) return
-        val playerName = NicknameStore.displayName(player)
-        val friendship = NpcStore.friendshipSnapshot(npcId, player)
+        val link = DiscordAccountLinkStore.linkFor(player)
+        val mentionUserId = link?.discordId?.takeIf(String::isNotBlank)
+        val mention = mentionUserId?.let { id -> "<@$id> " }.orEmpty()
+        val fallback = if (mention.isBlank()) "${DiscordText.cleanContent(NicknameStore.displayName(player))}, " else ""
         DiscordWebhookClient.send(
             DiscordWebhookMessage(
+                content = mention + fallback + DiscordText.cleanContent(message),
                 username = npcName,
                 avatarUrl = DiscordQuickSkinSupport.npcAvatarUrl(npcId, config),
-                embeds = listOf(
-                    DiscordEmbed(
-                        description = DiscordText.cleanContent(message),
-                        authorName = "Talking to $playerName",
-                        authorIconUrl = DiscordQuickSkinSupport.avatarUrl(player, config),
-                        footerText = friendshipEmojis(friendship.level),
-                    ),
-                ),
+                allowedUserMentions = listOfNotNull(mentionUserId),
+            ),
+        )
+    }
+
+    fun npcInteraction(player: ServerPlayer, npcName: String) {
+        val config = DiscordConfig.current()
+        if (!config.enabled) return
+        DiscordWebhookClient.send(
+            DiscordWebhookMessage(
+                content = "*interacts with ${DiscordText.cleanContent(npcName)}*",
+                username = NicknameStore.displayName(player),
+                avatarUrl = DiscordQuickSkinSupport.avatarUrl(player, config),
             ),
         )
     }
@@ -196,12 +204,6 @@ object DiscordRelay {
                 ),
             ),
         )
-    }
-
-    private fun friendshipEmojis(level: Int): String {
-        val clampedLevel = level.coerceIn(-10, 10)
-        val filled = if (clampedLevel >= 0) "❤️".repeat(clampedLevel) else "😠".repeat(-clampedLevel)
-        return filled + "🖤".repeat(10 - kotlin.math.abs(clampedLevel))
     }
 
     private fun embedMessage(title: String, description: String, color: String, values: Map<String, String>): DiscordWebhookMessage = DiscordWebhookMessage(

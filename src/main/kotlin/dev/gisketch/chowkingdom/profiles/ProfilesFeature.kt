@@ -70,7 +70,7 @@ object ProfilesFeature {
     @SubscribeEvent
     fun onNameFormat(event: PlayerEvent.NameFormat) {
         val displayName = NicknameStore.nicknameFor(event.entity.uuid)?.let(Component::literal) ?: event.username.copy()
-        event.displayname = displayName.withStyle { style -> style.withBold(true) }
+        event.displayname = displayName.withStyle { style -> style.withBold(false) }
     }
 
     @SubscribeEvent

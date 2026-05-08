@@ -21,6 +21,8 @@ object BattlepassClientState {
         val hostileMonstersKilled: Int,
         val koCount: Int,
         val deaths: Int,
+        val revivedCount: Int,
+        val revivedOthersCount: Int,
         val chowcoins: Long,
         val playtimeTicks: Long,
     )
@@ -65,6 +67,8 @@ object BattlepassClientState {
                     player.hostileMonstersKilled,
                     player.koCount,
                     player.deaths,
+                    player.revivedCount,
+                    player.revivedOthersCount,
                     player.chowcoins,
                     player.playtimeTicks,
                 )
