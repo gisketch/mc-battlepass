@@ -18,7 +18,7 @@ import java.util.concurrent.CompletableFuture
 
 object BattlepassCommands {
     private val unknownPass = SimpleCommandExceptionType(Component.literal("Unknown battlepass pass"))
-    private val noDailyPass = SimpleCommandExceptionType(Component.literal("No loaded pass can accept a daily mission"))
+    private val noDailyPass = SimpleCommandExceptionType(Component.literal("Daily battlepass missions were removed. Use NPC mission pools instead."))
     private val noMilestone = SimpleCommandExceptionType(Component.literal("No active incomplete milestone found"))
 
     fun register() {

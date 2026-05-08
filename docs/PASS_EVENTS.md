@@ -4,22 +4,20 @@ Use this when curating pass JSON under `config/gisketchs_chowkingdom_mod/battlep
 
 ## Event Shapes
 
-For quick in-game testing, replace the first daily mission in the first loaded pass:
+Daily battlepass missions are removed. Battlepasses expose Weekly and CKDM missions only. Former daily-sized task ideas now belong in NPC quest `missions.pool` entries.
+
+For quick in-game testing of event progress, use NPC quests or complete a random active progressive mission:
 
 ```text
-/battlepass daily replace farmersdelight:cutting_board_used 10
-/battlepass daily replace gisketchs_chowkingdom_mod:shipping_bin_value_sold 5000,25000,50000
-/battlepass daily replace gisketchs_chowkingdom_mod:shop_value_sold 5000,25000,50000
 /battlepass milestone complete
 ```
 
-`quest_event` has autocomplete for implemented hooks. `qty` accepts one number or comma-separated progressive goals.
-`/battlepass milestone complete` is admin-only and completes a random active incomplete progressive mission for the command player, useful for testing completion broadcasts.
+`quest_event` has autocomplete for implemented hooks. `/battlepass milestone complete` is admin-only and completes a random active incomplete progressive mission for the command player, useful for testing completion broadcasts.
 
-Repeating event:
+Repeating event shape, now best used inside an NPC quest pool or other non-daily config:
 
 ```json
-{ "id": "daily_fish", "event": "minecraft:fish_caught", "type": "repeating", "event_desc": "Catch Fish", "xp": 10, "xp_cap": 50 }
+{ "id": "npc_fish", "event": "minecraft:fish_caught", "type": "repeating", "event_desc": "Catch Fish", "xp": 10, "xp_cap": 50 }
 ```
 
 Progressive event:
@@ -28,7 +26,7 @@ Progressive event:
 { "id": "weekly_ship_value", "event": "gisketchs_chowkingdom_mod:shipping_bin_value_sold", "type": "progressive", "event_desc": "Ship {goal} Chowcoins Worth", "progress": 0, "progress_goals": [50000], "progress_xp": [350] }
 ```
 
-Progressive events work in permanent, daily, and weekly pools. Daily/weekly progressive missions reset by their rotating period.
+Progressive events work in permanent and weekly pools. Weekly progressive missions reset by their rotating period. NPC task quests can also reference these event ids and reset daily at in-game 15:00.
 
 Daily/weekly randomization chooses one mission per rotation family before filling a pool. For example, all `cobblemon:catch_*` variants share one catch family, so one weekly roll cannot become five catch-type missions. Auto families cover Cobblemon catch, send-out, max-friendship, friendship, and befriend variants; Quality Food harvest/cook/eat variants; shipping-bin quality-food variants; shipping value missions; and Farmer's Delight cutting-board missions.
 
@@ -171,7 +169,7 @@ Filterable attributes:
 Examples:
 
 ```json
-{ "id": "daily_gold_food", "event": "quality_food:quality_food_cooked", "type": "progressive", "event_desc": "Cook {goal} Gold Quality Foods", "progress_goals": [10], "progress_xp": [100], "filters": { "quality.tier": "gold" } }
+{ "id": "npc_gold_food", "event": "quality_food:quality_food_cooked", "type": "progressive", "event_desc": "Cook {goal} Gold Quality Foods", "progress_goals": [10], "progress_xp": [100], "filters": { "quality.tier": "gold" } }
 ```
 
 ```json
@@ -290,8 +288,8 @@ Battlepass mission rows choose an icon from the event id. If the target mod item
 
 ## Curation Notes
 
-- Use daily missions for small goals: 10 cooks, 16 shipped items, 5,000 value.
+- Use NPC quests for daily-sized goals: 10 cooks, 16 shipped items, 5,000 value.
 - Use weekly missions for medium goals: 64 cooks, 128 shipped items, 50,000 value.
-- Use permanent missions for broad milestones with multiple `progress_goals`.
+- Use CKDM missions for broad milestones with multiple `progress_goals`.
 - Prefer progressive for count goals with `{goal}` text.
 - Prefer repeating with `xp_cap` for drip XP where each action gives small XP.

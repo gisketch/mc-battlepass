@@ -24,7 +24,7 @@ data class BattlepassMissionEntry(
 
 object BattlepassMissionService {
     fun allEntries(pass: BattlepassPassDefinition): List<BattlepassMissionEntry> =
-        permanentEntries(pass) + rotatingEntries(BattlepassMissionScope.DAILY, pass.dailyEvents.events) + rotatingEntries(BattlepassMissionScope.WEEKLY, pass.weeklyEvents.events)
+        permanentEntries(pass) + rotatingEntries(BattlepassMissionScope.WEEKLY, pass.weeklyEvents.events)
 
     fun permanentEntries(pass: BattlepassPassDefinition): List<BattlepassMissionEntry> {
         val events = pass.permanentEvents.ifEmpty { pass.xpEvents }

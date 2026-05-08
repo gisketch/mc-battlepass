@@ -152,6 +152,13 @@ object NpcConfig {
                 neutral = mutableListOf("Thanks for {item}.", "I'll keep {item} safe."),
             ),
         ),
+        missions = NpcMissionsDefinition(
+            offerBalloonMessages = mutableListOf("@quest_log.png That smells like a quest, {player}.", "@quest_log.png I need a hero for this one."),
+            pool = mutableListOf(
+                NpcMissionDefinition(id = "finn_hunt_mobs", category = "task", event = "minecraft:monster_killed", eventDesc = "Defeat {goal} Monsters", questText = "Help me thin out the monsters near town.", passId = "combat", xp = 100, chowcoins = 50, goal = 10),
+                NpcMissionDefinition(id = "finn_fetch_beef", category = "fetch", eventDesc = "Bring {goal} Cooked Beef", questText = "Bring me cooked beef for the next patrol.", passId = "cozy", xp = 80, chowcoins = 25, fetchItem = "minecraft:cooked_beef", fetchCount = 4),
+            ),
+        ),
         friendshipMessages = NpcFriendshipMessagesDefinition(
             interact = FinnFriendshipMessages.interact,
             gift = FinnFriendshipMessages.gift,

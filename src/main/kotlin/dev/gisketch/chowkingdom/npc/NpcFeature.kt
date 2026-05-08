@@ -167,6 +167,7 @@ object NpcFeature {
             claimOutgoingGift(player, npc, definition, pendingGift)
             return
         }
+        if (NpcQuestService.tryOpenQuest(player, npc, definition)) return
         val wasSleeping = npc.isSleeping
         val currentDay = NpcTime.day(player.level())
         val firstChatToday = NpcStore.markFirstChatIfNeeded(definition.id, player, currentDay)
@@ -217,6 +218,7 @@ object NpcFeature {
         val definition = NpcConfig.get(npcId) ?: return
         val npc = existingNpc(player.server, definition.id) ?: return
         if (npc.level() != player.level() || player.distanceToSqr(npc) > NPC_DIALOG_ACTION_DISTANCE_SQR) return
+        if (NpcQuestService.handleAction(player, npc, definition, action)) return
         when (action.lowercase()) {
             "cancel_llm" -> NpcLlmService.cancel(player, definition.id)
             "join_talk" -> NpcLlmService.joinConversation(player, definition.id)
@@ -453,7 +455,7 @@ object NpcFeature {
         SnackbarNetwork.send(player, SnackbarNotification.item(SnackbarIcons.ERROR, title, content, type, SnackbarSounds.forType(type)))
     }
 
-    private fun dialogPayload(definition: NpcDefinition, npc: ChowNpcEntity, message: String, contractGranted: Boolean, friendshipLevel: Int, closeOnly: Boolean = false, closeLabel: String = "BYE", responseToken: Long = 0L, dialogMode: String = "normal", startTalkMode: Boolean = false, friendshipDelta: Int = 0): NpcDialogPayload = NpcDialogPayload(
+    fun dialogPayload(definition: NpcDefinition, npc: ChowNpcEntity, message: String, contractGranted: Boolean, friendshipLevel: Int, closeOnly: Boolean = false, closeLabel: String = "BYE", responseToken: Long = 0L, dialogMode: String = "normal", startTalkMode: Boolean = false, friendshipDelta: Int = 0): NpcDialogPayload = NpcDialogPayload(
         definition.id,
         definition.name,
         definition.title,
@@ -598,14 +600,27 @@ object NpcFeature {
         val definition = NpcConfig.get(entity.npcId) ?: return
         entity.homePos = validHomePos(entity.level(), definition.id)
         entity.campPos = entity.campPos ?: NpcStore.campPos(definition.id)
-        if (NpcBrainOverrides.tick(entity, definition)) return
-        if (tryFollowRentContractHolder(entity, definition)) return
         tryShowCamperHousingBalloon(entity, definition)
-        if (tryNpcMicroInteraction(entity, definition)) return
-        if (tryOutgoingGift(entity, definition)) return
-        if (!needsCamperHousingBalloon(entity, definition) && tryGreetNearbyPlayer(entity, definition)) return
-        if (entity.isTalking()) return
-        NpcBrain.tick(entity, definition)
+        runNpcPriorityStack(
+            NpcTaskCandidate(NpcTaskPriority.Critical) { NpcBrainOverrides.tick(entity, definition) },
+            NpcTaskCandidate(NpcTaskPriority.ContractFollow) { tryFollowRentContractHolder(entity, definition) },
+            NpcTaskCandidate(NpcTaskPriority.NpcInteraction) { tryNpcMicroInteraction(entity, definition) },
+            NpcTaskCandidate(NpcTaskPriority.OutgoingGift) { tryOutgoingGift(entity, definition) },
+            NpcTaskCandidate(NpcTaskPriority.QuestOffer) { NpcQuestService.tryShowOfferBalloon(entity, definition) },
+            NpcTaskCandidate(NpcTaskPriority.Greeting) { !needsCamperHousingBalloon(entity, definition) && tryGreetNearbyPlayer(entity, definition) },
+            NpcTaskCandidate(NpcTaskPriority.TalkingPause) { entity.isTalking() },
+            NpcTaskCandidate(NpcTaskPriority.Routine) {
+                NpcBrain.tick(entity, definition)
+                true
+            },
+        )
+    }
+
+    private fun runNpcPriorityStack(vararg candidates: NpcTaskCandidate): Boolean {
+        candidates.withIndex()
+            .sortedWith(compareByDescending<IndexedValue<NpcTaskCandidate>> { it.value.priority.weight }.thenBy { it.index })
+            .forEach { candidate -> if (candidate.value.run()) return true }
+        return false
     }
 
     private fun tryFollowRentContractHolder(npc: ChowNpcEntity, definition: NpcDefinition): Boolean {
@@ -1921,6 +1936,19 @@ object NpcFeature {
     private data class NpcLookHit(val npc: ChowNpcEntity, val along: Double, val distanceSqr: Double)
 
     private data class NpcOutgoingGiftApproach(val playerId: UUID, val startedAtTick: Long)
+
+    private data class NpcTaskCandidate(val priority: NpcTaskPriority, val run: () -> Boolean)
+
+    private enum class NpcTaskPriority(val weight: Int) {
+        Critical(100),
+        ContractFollow(90),
+        NpcInteraction(80),
+        OutgoingGift(70),
+        QuestOffer(65),
+        Greeting(60),
+        TalkingPause(20),
+        Routine(0),
+    }
 
     private data class ActiveNpcMicroInteraction(val partnerId: UUID, val message: String, val untilTick: Long, val shownToPlayers: MutableSet<UUID> = linkedSetOf())
 

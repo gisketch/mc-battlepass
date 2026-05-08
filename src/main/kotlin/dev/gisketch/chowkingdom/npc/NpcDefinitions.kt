@@ -15,6 +15,7 @@ class NpcDefinition(
     var personality: NpcPersonalityDefinition = NpcPersonalityDefinition(),
     var housing: NpcHousingDefinition = NpcHousingDefinition(),
     var gifts: NpcGiftsDefinition = NpcGiftsDefinition(),
+    var missions: NpcMissionsDefinition = NpcMissionsDefinition(),
     @SerializedName("voice") var voice: NpcVoiceDefinition = NpcVoiceDefinition(),
     var chat: NpcChatDefinition = NpcChatDefinition(),
     @SerializedName("friendship_messages") var friendshipMessages: NpcFriendshipMessagesDefinition = NpcFriendshipMessagesDefinition(),
@@ -38,6 +39,7 @@ class NpcDefinition(
         personality = personality.normalized()
         housing = housing.normalized()
         gifts = gifts.normalized()
+        missions = missions.normalized()
         voice = voice.normalized()
         chat = chat.normalized(id, name)
         friendshipMessages = friendshipMessages.normalized(friendshipDefaults)
@@ -701,6 +703,61 @@ class NpcOutgoingGiftEntryDefinition(
         qty = qty.coerceIn(1, 64)
         weight = weight.coerceIn(0, 1000)
     }
+}
+
+class NpcMissionsDefinition(
+    var enabled: Boolean = true,
+    @SerializedName("offer_radius") var offerRadius: Double = 7.0,
+    @SerializedName("offer_balloon_messages") var offerBalloonMessages: MutableList<String> = mutableListOf(),
+    var pool: MutableList<NpcMissionDefinition> = mutableListOf(),
+) {
+    fun normalized(): NpcMissionsDefinition = apply {
+        offerRadius = offerRadius.coerceIn(2.0, 24.0)
+        offerBalloonMessages = offerBalloonMessages.map(String::trim).filter(String::isNotBlank).ifEmpty { defaultOfferBalloonMessages() }.toMutableList()
+        pool = pool.mapNotNull { mission -> mission.normalized().takeIf { it.id.isNotBlank() } }.toMutableList()
+    }
+
+    private fun defaultOfferBalloonMessages(): List<String> = listOf("@quest_log.png {quest_text}", "@quest_log.png I could use help, {player}.")
+}
+
+class NpcMissionDefinition(
+    var id: String = "",
+    var category: String = "task",
+    var event: String = "",
+    @SerializedName("event_desc") var eventDesc: String = "",
+    @SerializedName("quest_text") var questText: String = "",
+    @SerializedName("pass_id") var passId: String = "cozy",
+    var xp: Int = 100,
+    var chowcoins: Long = 0L,
+    var goal: Int = 1,
+    @SerializedName("fetch_item") var fetchItem: String = "",
+    @SerializedName("fetch_count") var fetchCount: Int = 1,
+    @SerializedName("offer_messages") var offerMessages: MutableList<String> = mutableListOf(),
+    @SerializedName("accepted_messages") var acceptedMessages: MutableList<String> = mutableListOf(),
+    @SerializedName("progress_messages") var progressMessages: MutableList<String> = mutableListOf(),
+    @SerializedName("complete_messages") var completeMessages: MutableList<String> = mutableListOf(),
+) {
+    fun normalized(): NpcMissionDefinition = apply {
+        id = id.trim().lowercase().replace(Regex("[^a-z0-9_.:-]+"), "_").trim('_')
+        category = category.trim().lowercase().let { if (it == "fetch" || it == "fetch_task") "fetch" else "task" }
+        event = event.trim()
+        eventDesc = eventDesc.trim()
+        questText = questText.trim().ifBlank { eventDesc.ifBlank { id } }
+        passId = passId.trim().lowercase().ifBlank { "cozy" }
+        xp = xp.coerceAtLeast(0)
+        chowcoins = chowcoins.coerceAtLeast(0L)
+        goal = goal.coerceAtLeast(1)
+        fetchItem = fetchItem.trim()
+        fetchCount = fetchCount.coerceIn(1, 64)
+        offerMessages = cleanMessages(offerMessages, listOf("Hey {player}, I have a favor to ask. {quest_text}"))
+        acceptedMessages = cleanMessages(acceptedMessages, listOf("Thanks, {player}. I will be waiting for good news."))
+        progressMessages = cleanMessages(progressMessages, listOf("Still working on it? {progress}/{goal}"))
+        completeMessages = cleanMessages(completeMessages, listOf("You did it. Thank you, {player}."))
+        if (category == "fetch" && fetchItem.isBlank()) id = ""
+        if (category == "task" && event.isBlank()) id = ""
+    }
+
+    private fun cleanMessages(values: List<String>, fallback: List<String>): MutableList<String> = values.map(String::trim).filter(String::isNotBlank).ifEmpty { fallback }.toMutableList()
 }
 
 class NpcGiftReactionsDefinition(

@@ -31,7 +31,7 @@ class BattlepassScreen(initialPassId: String? = null) : Screen(Component.transla
     private enum class ViewMode { PASS_SELECTION, PASS_DETAIL }
 
     private enum class MissionFilter(val label: String) {
-        ALL("ALL"), DAILY("DAILY"), WEEKLY("WEEKLY"), PERMANENT("CKDM"), COMPLETED("DONE")
+        ALL("ALL"), WEEKLY("WEEKLY"), PERMANENT("CKDM"), COMPLETED("DONE")
     }
 
     private data class Rect(val x: Int, val y: Int, val width: Int, val height: Int) {
@@ -1211,9 +1211,9 @@ class BattlepassScreen(initialPassId: String? = null) : Screen(Component.transla
     )
 
     private fun missionTypeLabel(scope: BattlepassMissionScope): String = when (scope) {
-        BattlepassMissionScope.DAILY -> "Daily Mission"
+        BattlepassMissionScope.DAILY -> "NPC Mission"
         BattlepassMissionScope.WEEKLY -> "Weekly Mission"
-        BattlepassMissionScope.PERMANENT -> "Permanent Mission"
+        BattlepassMissionScope.PERMANENT -> "CKDM Mission"
     }
 
     private fun missionColor(scope: BattlepassMissionScope): Int = when (scope) {
@@ -1284,7 +1284,6 @@ class BattlepassScreen(initialPassId: String? = null) : Screen(Component.transla
 
     private fun filterMissionEntries(pass: BattlepassPassDefinition, entries: List<BattlepassMissionEntry>): List<BattlepassMissionEntry> = when (missionFilter) {
         MissionFilter.ALL -> entries
-        MissionFilter.DAILY -> entries.filter { entry -> entry.scope == BattlepassMissionScope.DAILY }
         MissionFilter.WEEKLY -> entries.filter { entry -> entry.scope == BattlepassMissionScope.WEEKLY }
         MissionFilter.PERMANENT -> entries.filter { entry -> entry.scope == BattlepassMissionScope.PERMANENT }
         MissionFilter.COMPLETED -> entries.filter { entry -> currentPlayerId()?.let { id -> BattlepassClientState.isMissionCompleted(id, pass.id, entry.key) } == true }

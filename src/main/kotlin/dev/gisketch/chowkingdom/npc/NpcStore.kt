@@ -63,6 +63,23 @@ object NpcStore {
         save()
     }
 
+    fun questState(player: ServerPlayer, period: Long): NpcPlayerQuestState {
+        if (!loaded) load()
+        val state = data.playerQuests.getOrPut(player.stringUUID) { NpcPlayerQuestState() }
+        if (state.period != period) {
+            state.period = period
+            state.active.clear()
+            state.completedNpcIds.clear()
+            state.declinedUntilTick.clear()
+        }
+        return state
+    }
+
+    fun saveQuestState() {
+        if (!loaded) load()
+        save()
+    }
+
     fun campBlockPos(): BlockPos? {
         if (!loaded) load()
         return data.campBlock?.toBlockPos()
@@ -440,6 +457,7 @@ class NpcWorldData(
     var npcs: MutableMap<String, NpcResidentState> = linkedMapOf(),
     var globalEvents: MutableList<NpcGlobalEvent> = mutableListOf(),
     var globalMemories: MutableList<NpcMemoryRecord> = mutableListOf(),
+    var playerQuests: MutableMap<String, NpcPlayerQuestState> = linkedMapOf(),
     var playerMemories: MutableMap<String, MutableList<NpcMemoryRecord>> = linkedMapOf(),
     var campBlock: NpcBlockPosData? = null,
     var townCenter: NpcBlockPosData? = null,
@@ -466,6 +484,30 @@ class NpcResidentState(
     var dead: Boolean = false,
     var respawnDay: Long = -1L,
     var camperReturnReason: String = "",
+)
+
+class NpcPlayerQuestState(
+    var period: Long = Long.MIN_VALUE,
+    var active: MutableMap<String, NpcAcceptedQuestState> = linkedMapOf(),
+    var completedNpcIds: MutableSet<String> = linkedSetOf(),
+    var declinedUntilTick: MutableMap<String, Long> = linkedMapOf(),
+)
+
+class NpcAcceptedQuestState(
+    var npcId: String = "",
+    var npcName: String = "",
+    var questId: String = "",
+    var category: String = "task",
+    var event: String = "",
+    var description: String = "",
+    var passId: String = "cozy",
+    var xp: Int = 0,
+    var chowcoins: Long = 0L,
+    var goal: Int = 1,
+    var progress: Int = 0,
+    var fetchItem: String = "",
+    var fetchCount: Int = 0,
+    var acceptedAtTick: Long = 0L,
 )
 
 class NpcFriendshipState(

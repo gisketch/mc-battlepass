@@ -5,6 +5,7 @@ import dev.gisketch.chowkingdom.ChatGlyphs
 import dev.gisketch.chowkingdom.ChowKingdomMod
 import dev.gisketch.chowkingdom.config.TomlConfigIO
 import dev.gisketch.chowkingdom.discord.DiscordRelay
+import dev.gisketch.chowkingdom.npc.NpcQuestService
 import dev.gisketch.chowkingdom.npc.NpcStore
 import dev.gisketch.chowkingdom.relicroulette.RelicRouletteFeature
 import dev.gisketch.chowkingdom.snackbar.SnackbarIcons
@@ -226,6 +227,7 @@ object BattlepassMissionProgressStore {
             }
         }
 
+        if (NpcQuestService.recordSignal(player, signal)) changed = true
         if (changed) save()
         return changed
     }
@@ -285,7 +287,7 @@ object BattlepassMissionProgressStore {
     }
 
     private fun activeEntries(pass: BattlepassPassDefinition): List<BattlepassMissionEntry> =
-        BattlepassMissionService.permanentEntries(pass) + activeRotatingEntries(pass, BattlepassMissionScope.DAILY, pass.dailyEvents) + activeRotatingEntries(pass, BattlepassMissionScope.WEEKLY, pass.weeklyEvents)
+        BattlepassMissionService.permanentEntries(pass) + activeRotatingEntries(pass, BattlepassMissionScope.WEEKLY, pass.weeklyEvents)
 
     private fun addXpAndNotifyRewardUnlock(player: ServerPlayer, pass: BattlepassPassDefinition, xp: Int) {
         if (xp <= 0) return
@@ -338,13 +340,13 @@ object BattlepassMissionProgressStore {
     }
 
     private fun missionTypeLabel(scope: BattlepassMissionScope): String = when (scope) {
-        BattlepassMissionScope.DAILY -> "Daily Mission"
+        BattlepassMissionScope.DAILY -> "NPC Mission"
         BattlepassMissionScope.WEEKLY -> "Weekly Mission"
         BattlepassMissionScope.PERMANENT -> "Chowkingdom Mission"
     }
 
     private fun missionSnackbarTitle(scope: BattlepassMissionScope): String = when (scope) {
-        BattlepassMissionScope.DAILY -> "DAILY MISSION COMPLETE"
+        BattlepassMissionScope.DAILY -> "NPC MISSION COMPLETE"
         BattlepassMissionScope.WEEKLY -> "WEEKLY MISSION COMPLETE"
         BattlepassMissionScope.PERMANENT -> "CHOWKINGDOM MISSION COMPLETE"
     }

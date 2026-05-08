@@ -25,3 +25,15 @@ Useful future model:
 - `NpcTask(ownerPlayerId?, kind, priority, createdAt, expiresAt, interruptPolicy)`
 - `NpcFocusState(npcUuid -> focusKind, playerUuid?, untilTick)`
 - Debug line: `focus=gift player=Glenn until=123456 queued=2`
+
+Implemented tick order:
+
+1. `Critical`: brain overrides such as hurt response and hazard avoidance.
+2. `ContractFollow`: unhoused NPC follows a player holding their rent contract.
+3. `NpcInteraction`: NPC-to-NPC short interactions and plaza social behavior.
+4. `OutgoingGift`: NPC approaches player for a pending or newly scheduled gift.
+5. `Greeting`: ambient nearby-player greeting.
+6. `TalkingPause`: NPC keeps current talking state instead of starting routine movement.
+7. `Routine`: schedule movement for work, meetup, home, and sleep.
+
+Auto tasks add a short cooldown after they start, so gift, greet, and NPC interaction do not chain immediately into each other.

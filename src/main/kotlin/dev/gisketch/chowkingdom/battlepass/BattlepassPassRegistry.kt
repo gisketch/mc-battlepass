@@ -37,22 +37,7 @@ object BattlepassPassRegistry {
 
     fun knownIds(): String = passes.keys.joinToString(", ").ifBlank { "none" }
 
-    fun replaceFirstDailyEvent(eventId: String, goals: List<Int>): BattlepassPassDefinition? {
-      val pass = passes.values.firstOrNull { pass -> pass.dailyEvents.events.isNotEmpty() } ?: passes.values.firstOrNull() ?: return null
-      val normalizedEventId = eventId.trim()
-      val safeId = normalizedEventId.lowercase(Locale.ROOT).replace(Regex("[^a-z0-9_]+"), "_").trim('_')
-      val event = BattlepassXpEventDefinition().apply {
-        id = "daily_test_$safeId"
-        event = normalizedEventId
-        type = "progressive"
-        eventDesc = BattlepassAvailableMissionEvents.description(normalizedEventId)
-        progress = 0
-        progressGoals = goals.toMutableList()
-        progressXp = goals.map { 100 }.toMutableList()
-      }
-      if (pass.dailyEvents.events.isEmpty()) pass.dailyEvents.events.add(event) else pass.dailyEvents.events[0] = event
-      return pass
-    }
+    fun replaceFirstDailyEvent(eventId: String, goals: List<Int>): BattlepassPassDefinition? = null
 
     private fun loadPass(path: Path) {
         try {
@@ -65,6 +50,10 @@ object BattlepassPassRegistry {
             if (id.isBlank()) return
 
             pass.id = id
+            val hadDailyMissions = pass.dailyEvents.count != 0 || pass.dailyEvents.events.isNotEmpty()
+            pass.dailyEvents.count = 0
+            pass.dailyEvents.events.clear()
+            if (hadDailyMissions) TomlConfigIO.write(path, pass)
             if (pass.displayName.isBlank()) {
                 pass.displayName = id
             }
@@ -343,209 +332,8 @@ object BattlepassPassRegistry {
             }
           ],
           "daily_events": {
-            "count": 3,
-            "time_zone": "GMT+8",
-            "reset_hour": 5,
-            "reset_minute": 0,
-            "events": [
-              {
-                "id": "daily_hunt_mobs",
-                "event": "minecraft:monster_killed",
-                "type": "repeating",
-                "event_desc": "Hunt Monsters",
-                "xp": 8,
-                "xp_cap": 50
-              },
-              {
-                "id": "daily_catch_fire_type",
-                "event": "cobblemon:catch_fire_type",
-                "type": "repeating",
-                "event_desc": "Catch Fire Pokemon",
-                "xp": 5,
-                "xp_cap": 50
-              },
-              {
-                "id": "daily_harvest_crops",
-                "event": "minecraft:crop_harvested",
-                "type": "repeating",
-                "event_desc": "Harvest {goal} Crops",
-                "xp": 3,
-                "xp_cap": 50
-              },
-              {
-                "id": "daily_harvest_iron_quality_crops",
-                "event": "quality_food:iron_quality_crop_harvested",
-                "type": "progressive",
-                "event_desc": "Harvest {goal} Iron Quality Crops",
-                "progress": 0,
-                "progress_goals": [10],
-                "progress_xp": [80]
-              },
-              {
-                "id": "daily_harvest_gold_quality_crops",
-                "event": "quality_food:gold_quality_crop_harvested",
-                "type": "progressive",
-                "event_desc": "Harvest {goal} Gold Quality Crops",
-                "progress": 0,
-                "progress_goals": [8],
-                "progress_xp": [100]
-              },
-              {
-                "id": "daily_harvest_diamond_quality_crops",
-                "event": "quality_food:diamond_quality_crop_harvested",
-                "type": "progressive",
-                "event_desc": "Harvest {goal} Diamond Quality Crops",
-                "progress": 0,
-                "progress_goals": [4],
-                "progress_xp": [120]
-              },
-              {
-                "id": "daily_cook_iron_quality_food",
-                "event": "quality_food:iron_quality_food_cooked",
-                "type": "progressive",
-                "event_desc": "Cook {goal} Iron Quality Foods",
-                "progress": 0,
-                "progress_goals": [10],
-                "progress_xp": [80]
-              },
-              {
-                "id": "daily_cook_gold_quality_food",
-                "event": "quality_food:gold_quality_food_cooked",
-                "type": "progressive",
-                "event_desc": "Cook {goal} Gold Quality Foods",
-                "progress": 0,
-                "progress_goals": [8],
-                "progress_xp": [100]
-              },
-              {
-                "id": "daily_cook_diamond_quality_food",
-                "event": "quality_food:diamond_quality_food_cooked",
-                "type": "progressive",
-                "event_desc": "Cook {goal} Diamond Quality Foods",
-                "progress": 0,
-                "progress_goals": [4],
-                "progress_xp": [120]
-              },
-              {
-                "id": "daily_eat_iron_quality_food",
-                "event": "quality_food:iron_quality_food_eaten",
-                "type": "progressive",
-                "event_desc": "Eat {goal} Iron Quality Foods",
-                "progress": 0,
-                "progress_goals": [8],
-                "progress_xp": [80]
-              },
-              {
-                "id": "daily_eat_gold_quality_food",
-                "event": "quality_food:gold_quality_food_eaten",
-                "type": "progressive",
-                "event_desc": "Eat {goal} Gold Quality Foods",
-                "progress": 0,
-                "progress_goals": [6],
-                "progress_xp": [100]
-              },
-              {
-                "id": "daily_eat_diamond_quality_food",
-                "event": "quality_food:diamond_quality_food_eaten",
-                "type": "progressive",
-                "event_desc": "Eat {goal} Diamond Quality Foods",
-                "progress": 0,
-                "progress_goals": [3],
-                "progress_xp": [120]
-              },
-              {
-                "id": "daily_ship_iron_quality_food",
-                "event": "gisketchs_chowkingdom_mod:shipping_bin_iron_quality_food_sold",
-                "type": "progressive",
-                "event_desc": "Ship {goal} Iron Quality Foods",
-                "progress": 0,
-                "progress_goals": [8],
-                "progress_xp": [80]
-              },
-              {
-                "id": "daily_ship_gold_quality_food",
-                "event": "gisketchs_chowkingdom_mod:shipping_bin_gold_quality_food_sold",
-                "type": "progressive",
-                "event_desc": "Ship {goal} Gold Quality Foods",
-                "progress": 0,
-                "progress_goals": [8],
-                "progress_xp": [100]
-              },
-              {
-                "id": "daily_ship_diamond_quality_food",
-                "event": "gisketchs_chowkingdom_mod:shipping_bin_diamond_quality_food_sold",
-                "type": "progressive",
-                "event_desc": "Ship {goal} Diamond Quality Foods",
-                "progress": 0,
-                "progress_goals": [4],
-                "progress_xp": [120]
-              },
-              {
-                "id": "daily_ship_value",
-                "event": "gisketchs_chowkingdom_mod:shipping_bin_value_sold",
-                "type": "progressive",
-                "event_desc": "Ship {goal} Chowcoins Worth",
-                "progress": 0,
-                "progress_goals": [5000],
-                "progress_xp": [120]
-              },
-              {
-                "id": "daily_walk_blocks",
-                "event": "minecraft:blocks_traveled",
-                "type": "repeating",
-                "event_desc": "Travel {goal} Blocks",
-                "xp": 1,
-                "xp_cap": 50
-              },
-              {
-                "id": "daily_breed_animals",
-                "event": "minecraft:animal_bred",
-                "type": "repeating",
-                "event_desc": "Breed {goal} Animals",
-                "xp": 12,
-                "xp_cap": 50
-              },
-              {
-                "id": "daily_trade_villagers",
-                "event": "minecraft:villager_traded",
-                "type": "repeating",
-                "event_desc": "Trade with Villagers",
-                "xp": 10,
-                "xp_cap": 50
-              },
-              {
-                "id": "daily_go_fishing",
-                "event": "minecraft:fish_caught",
-                "type": "repeating",
-                "event_desc": "Catch Fish",
-                "xp": 10,
-                "xp_cap": 50
-              },
-              {
-                "id": "daily_send_out_starter",
-                "event": "cobblemon:send_out_starter_pokemon",
-                "type": "repeating",
-                "event_desc": "Send Out Starters",
-                "xp": 12,
-                "xp_cap": 50
-              },
-              {
-                "id": "daily_catch_legendary",
-                "event": "cobblemon:catch_legendary_pokemon",
-                "type": "repeating",
-                "event_desc": "Catch Legendary Pokemon",
-                "xp": 50,
-                "xp_cap": 50
-              },
-              {
-                "id": "daily_max_friendship_fairy",
-                "event": "cobblemon:max_friendship_fairy_type",
-                "type": "repeating",
-                "event_desc": "Max Fairy Friendship",
-                "xp": 30,
-                "xp_cap": 50
-              }
-            ]
+            "count": 0,
+            "events": []
           },
           "weekly_events": {
             "count": 5,

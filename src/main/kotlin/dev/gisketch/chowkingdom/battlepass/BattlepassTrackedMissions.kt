@@ -50,17 +50,6 @@ object BattlepassTrackedMissions {
         val validKeys = validEntries.map { (pass, entry) -> storageKey(pass.id, entry.key) }.toSet()
         var changed = tracked.removeIf { key -> key !in validKeys }
 
-        validEntries
-            .filter { (_, entry) -> entry.scope == BattlepassMissionScope.DAILY }
-            .forEach { (pass, entry) ->
-                if (tracked.size >= MAX_TRACKED) return@forEach
-                val key = storageKey(pass.id, entry.key)
-                if (key !in tracked) {
-                    tracked += key
-                    changed = true
-                }
-            }
-
         if (changed) save()
     }
 

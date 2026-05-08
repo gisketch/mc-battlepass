@@ -455,6 +455,7 @@ object NpcClient {
 
     private fun balloonIcon(message: String): NpcBalloonIcon? = when {
         message.startsWith(GIFT_BALLOON_MARKER) -> NpcBalloonIcon(GIFT_BALLOON_MARKER, GIFT_BALLOON_ICON)
+        message.startsWith(QUEST_BALLOON_MARKER) -> NpcBalloonIcon(QUEST_BALLOON_MARKER, QUEST_BALLOON_ICON)
         message.startsWith(HEART_BALLOON_MARKER) -> NpcBalloonIcon(HEART_BALLOON_MARKER, HEART_BALLOON_ICON)
         message.startsWith(ANGRY_BALLOON_MARKER) -> NpcBalloonIcon(ANGRY_BALLOON_MARKER, ANGRY_BALLOON_ICON)
         else -> null
@@ -464,9 +465,11 @@ object NpcClient {
 private data class NpcBalloonIcon(val marker: String, val texture: ResourceLocation)
     private val BALLOON_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/chat_bubble.png")
     private val GIFT_BALLOON_ICON = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/gift.png")
+    private val QUEST_BALLOON_ICON = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/quest_log.png")
     private val HEART_BALLOON_ICON = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/heart.png")
     private val ANGRY_BALLOON_ICON = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/angry.png")
     private const val GIFT_BALLOON_MARKER = "@gift.png"
+    private const val QUEST_BALLOON_MARKER = "@quest_log.png"
     private const val HEART_BALLOON_MARKER = "@heart.png"
     private const val ANGRY_BALLOON_MARKER = "@angry.png"
     private const val BALLOON_ICON_SIZE = 8
@@ -681,8 +684,14 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
                 skipPendingTalkResponse()
                 NpcNetwork.sendAction(payload.npcId, "gift")
             }
-            DialogAction.Bye -> onClose()
-            DialogAction.Talk -> if (!waitingForTalk && payload.talkEnabled) {
+            DialogAction.Bye -> if (questMode()) {
+                skipPendingTalkResponse()
+                NpcNetwork.sendAction(payload.npcId, "quest_decline")
+            } else onClose()
+            DialogAction.Talk -> if (questMode()) {
+                skipPendingTalkResponse()
+                NpcNetwork.sendAction(payload.npcId, "quest_accept")
+            } else if (!waitingForTalk && payload.talkEnabled) {
                 if (talkMode) sendTalkMessage() else {
                     NpcNetwork.sendAction(payload.npcId, "join_talk")
                     enterTalkMode()
@@ -783,6 +792,8 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
 
     private fun actionLabel(action: DialogAction): String = when {
         talkMode && action == DialogAction.Talk -> "SEND"
+        questMode() && action == DialogAction.Talk -> "ACCEPT"
+        questMode() && action == DialogAction.Bye -> "DECLINE"
         joinMode() && action == DialogAction.Talk -> "JOIN CONVERSATION"
         action == DialogAction.Bye && payload.closeOnly -> payload.closeLabel
         else -> action.label
@@ -820,15 +831,19 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
     }
 
     private fun actions(): List<DialogAction> = when {
+        questMode() -> listOf(DialogAction.Talk, DialogAction.Bye)
         joinMode() -> listOf(DialogAction.Talk, DialogAction.Bye)
         payload.closeOnly -> listOf(DialogAction.Bye)
         else -> DialogAction.entries
     }
 
+    private fun questMode(): Boolean = payload.dialogMode == "quest"
+
     private fun joinMode(): Boolean = payload.dialogMode == "join"
 
     private fun isActionEnabled(action: DialogAction, giftStack: ItemStack = giftStack()): Boolean = when {
         waitingForTalk -> action != DialogAction.Talk
+        questMode() -> true
         action == DialogAction.Gift -> payload.talkEnabled || !giftStack.isEmpty
         action == DialogAction.Talk -> payload.talkEnabled
         else -> true

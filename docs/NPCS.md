@@ -53,6 +53,7 @@ Each NPC is one TOML file:
 - `voice`: Animalese dialog voice settings: `animalese_pitch` (`high`, `med`, `low`, `lowest`), `pitch`, `volume`, and `radius`.
 - `chat`: World chat settings. `call_names` are names/nicknames that can address the NPC from Minecraft or Discord chat; `minecraft_chat` and `discord_chat` toggle those channels.
 - `gifts`: Gift ids/tags grouped by `loved`, `liked`, `disliked`, plus `daily_limit`, `reset_hour`, `llm_sentiment_prompt`, and reaction message pools for `loved`, `liked`, `disliked`, and `neutral`. Configured gift ids/tags decide friendship deterministically. If a player gives an unlisted item and gift LLM is enabled, the NPC asks the LLM for JSON `{ "message": "...", "gift_sentiment": "loved|liked|neutral|disliked" }`; invalid or failed sentiment falls back to `neutral`. `gifts.outgoing` configures NPC-to-player daily gifts with `enabled`, `radius`, `min_friendship_level`, `rare_friendship_level`, `follow_seconds`, `offer_messages`, `fallback_messages`, `llm_enabled`, `llm_prompt`, weighted `pool`, weighted `rare_pool`, and additive `extra_pool` / `extra_rare_pool` lists. Each pool entry has `item`, `qty`, and `weight`.
+- `missions`: NPC quest settings. `enabled`, `offer_radius`, `offer_balloon_messages`, and weighted-like `pool` entries. Each mission has `id`, `category` (`task` or `fetch`), `event`, `event_desc`, `quest_text`, `pass_id`, `xp`, optional `chowcoins`, `goal`, `fetch_item`, `fetch_count`, and optional message pools.
 - `friendship_messages`: Optional per-NPC category message additions for `interact`, `gift`, `hurt`, `wake`, `greeting`, and `first_daily_chat`. Categories are `hatred`, `enemy`, `dislike`, `neutral`, `okay`, `good_friends`, and `best_friends`. Message pools resolve in order: built-in defaults, shared `friendship_messages.toml`, then NPC-specific `friendship_messages`. Each configured layer joins the inherited pool and is inserted twice, so local additions have roughly 2:1 weight against inherited generic lines.
 - `shop_messages`: Optional post-purchase message overrides with `single`, `normal`, and `bulk` buckets. Each bucket has the same friendship categories as `friendship_messages`. Supports `{player}`, `{npc}`, `{item}`, `{quantity}`, `{total}`, `{friendship_level}`, and `{friendship_points}`.
 - `camper_messages`: Optional uncategorized camp message pools: `needs_house_balloon`, `needs_house_dialog`, `lost_house_balloon`, and `lost_house_dialog`. Supports `{player}` and `{npc}`.
@@ -96,6 +97,29 @@ lost_house_llm_prompt = "Your assigned bed or home was removed. Tell the player 
 [llm_message_usage]
 camper_needs_house = false
 camper_lost_house = false
+```
+
+NPC quest behavior:
+
+- NPC quests live in each NPC TOML under `[missions]` / `missions.pool`.
+- Quests are offered only during town-center meetup (`15:00-20:00`) and reset at in-game `15:00`.
+- A player can accept at most 4 active NPC quests per reset period.
+- Declining an NPC quest suppresses that NPC's offer for 1 in-game hour; the same daily offer remains until the next 15:00 reset.
+- Task quests progress from existing battlepass mission signals such as `minecraft:monster_killed` or `cobblemon:pokemon_caught`.
+- Fetch quests complete when the player returns to the NPC with the configured item; the required item count is consumed on reward claim.
+- Rewards grant configured battlepass XP to `pass_id` and optional `chowcoins` immediately. Unclaimed completed NPC quests expire at the next 15:00 reset.
+
+Example NPC quest config:
+
+```toml
+[missions]
+enabled = true
+offer_radius = 7.0
+offer_balloon_messages = ["@quest_log.png {quest_text}"]
+pool = [
+  { id = "hunt_mobs", category = "task", event = "minecraft:monster_killed", event_desc = "Defeat {goal} Monsters", quest_text = "Thin out monsters near town.", pass_id = "combat", xp = 100, chowcoins = 50, goal = 10 },
+  { id = "fetch_beef", category = "fetch", event_desc = "Bring {goal} Cooked Beef", quest_text = "Bring food for patrol.", pass_id = "cozy", xp = 80, chowcoins = 25, fetch_item = "minecraft:cooked_beef", fetch_count = 4 },
+]
 ```
 
 NPC-to-NPC micro interaction settings live in NPC `settings.toml`:
@@ -146,6 +170,8 @@ Runtime state is stored in world data:
 Resident state tracks each NPC's entity UUID, camp position, assigned home bed, whether a contract has been given, recent hurt records, per-player conversation history, per-player gift counters, last hurt player/streak, death state, scheduled respawn day, and camper return reason. World state also tracks the latest camping block position, the active unhoused camper id, and the next camper cooldown tick. Hurt history stores only every third same-player hit event and keeps the latest 10 records. This is world data, separate from static JSON definitions and runtime brain state.
 
 Greeting state is tracked per NPC/player. It stores the last greeting day, the real-time greeting cooldown expiry, and the first-chat day used to stop repeat greetings and prevent duplicate daily friendship rewards.
+
+NPC quest state is tracked per player. It stores the active 15:00 reset period, accepted NPC quests, completed NPC ids for that period, and per-NPC decline cooldown ticks. When the period changes, active unclaimed NPC quests expire.
 
 Outgoing NPC gift state is tracked per NPC/player. It stores the current scheduled gift day/hour and the last offered day, so a ready gift attempt either delivers or times out, then cools down until the next in-game day.
 
