@@ -1,10 +1,19 @@
 package dev.gisketch.chowkingdom.shipping
 
 import com.google.gson.GsonBuilder
+import dev.gisketch.chowkingdom.battlepass.BattlepassMissionScope
+import dev.gisketch.chowkingdom.battlepass.BattlepassMissionService
+import dev.gisketch.chowkingdom.battlepass.BattlepassPassRegistry
+import dev.gisketch.chowkingdom.battlepass.BattlepassXpStore
 import dev.gisketch.chowkingdom.ChowKingdomMod
 import dev.gisketch.chowkingdom.config.TomlConfigIO
 import dev.gisketch.chowkingdom.integrations.QualityFoodSupport
 import dev.gisketch.chowkingdom.relicroulette.RelicRouletteFeature
+import dev.gisketch.chowkingdom.snackbar.SnackbarIcons
+import dev.gisketch.chowkingdom.snackbar.SnackbarNetwork
+import dev.gisketch.chowkingdom.snackbar.SnackbarNotification
+import dev.gisketch.chowkingdom.snackbar.SnackbarSounds
+import dev.gisketch.chowkingdom.snackbar.SnackbarType
 import dev.gisketch.chowkingdom.wallets.ChowcoinNetwork
 import dev.gisketch.chowkingdom.wallets.ChowcoinStore
 import net.minecraft.core.registries.BuiltInRegistries
@@ -29,7 +38,9 @@ object ShippingBinStore {
     private val gson = GsonBuilder().setPrettyPrinting().create()
     private val bins: MutableMap<String, MutableList<StoredStack>> = linkedMapOf()
     private val pendingRewards: MutableMap<String, StoredPendingReward> = linkedMapOf()
+    private val weeklyItemCounts: MutableMap<String, MutableMap<String, Int>> = linkedMapOf()
     private var lastPayoutDay = Long.MIN_VALUE
+    private var quotaPeriodKey = ""
     private var loaded = false
 
     private val file: Path
@@ -43,11 +54,14 @@ object ShippingBinStore {
     fun load() {
         file.parent.createDirectories()
         bins.clear()
+        weeklyItemCounts.clear()
         lastPayoutDay = Long.MIN_VALUE
+        quotaPeriodKey = currentQuotaPeriodKey()
         if (file.exists()) {
             try {
                 val data = TomlConfigIO.read(file, StoredShippingBins::class.java, ::StoredShippingBins)
                 data.players.forEach { (playerId, stacks) -> bins[playerId] = stacks.toMutableList() }
+                data.weeklyItemCounts.forEach { (playerId, items) -> weeklyItemCounts[playerId] = items.toMutableMap() }
                 data.pendingRewards.forEach { (playerId, reward) ->
                     pendingRewards[playerId] = StoredPendingReward(
                         reward.itemCount.coerceAtLeast(0),
@@ -60,10 +74,12 @@ object ShippingBinStore {
                     )
                 }
                 lastPayoutDay = data.lastPayoutDay
+                quotaPeriodKey = data.quotaPeriodKey.ifBlank { currentQuotaPeriodKey() }
             } catch (exception: Exception) {
                 ChowKingdomMod.LOGGER.warn("Failed to load shipping bin store {}", file, exception)
             }
         }
+        refreshQuotaPeriod()
         loaded = true
     }
 
@@ -85,10 +101,34 @@ object ShippingBinStore {
                 if (hydrating || sanitizing) return
                 sanitizing = true
                 RelicRouletteFeature.removeTransferBlockedFromContainer(playerId, this)
+                sanitizeContainer(playerId, this)
                 sanitizing = false
                 saveContainer(playerId, this)
             }
         }
+    }
+
+    fun access(playerId: UUID): ShippingBinAccess = ShippingBinRules.accessForXp(
+        BattlepassXpStore.getXp(playerId, COZY_PASS_ID),
+        BattlepassXpStore.getXp(playerId, COMBAT_PASS_ID),
+    )
+
+    fun quotaSnapshot(playerId: UUID): Map<String, Int> {
+        if (!loaded) load()
+        refreshQuotaPeriod()
+        return weeklyItemCounts[playerId.toString()].orEmpty().toMap()
+    }
+
+    fun weeklyQuotaUsed(playerId: UUID, itemKey: String): Int {
+        if (!loaded) load()
+        refreshQuotaPeriod()
+        return weeklyItemCounts[playerId.toString()]?.get(itemKey) ?: 0
+    }
+
+    fun currentWeeklyQuotaPeriod(): String {
+        if (!loaded) load()
+        refreshQuotaPeriod()
+        return quotaPeriodKey
     }
 
     fun tryMarkPayoutDay(day: Long): Boolean {
@@ -144,6 +184,7 @@ object ShippingBinStore {
 
     fun payout(playerId: UUID): ShippingBinPayout {
         if (!loaded) load()
+        refreshQuotaPeriod()
         val key = playerId.toString()
         val stacks = bins[key].orEmpty()
         var total = 0L
@@ -154,6 +195,7 @@ object ShippingBinStore {
         var goldQualityFoodItemCount = 0
         var diamondQualityFoodItemCount = 0
         val remaining = mutableListOf<StoredStack>()
+        val quotaDeltas: MutableMap<String, Int> = linkedMapOf()
         stacks.forEach { stored ->
             val stack = stored.toItemStack()
             if (RelicRouletteFeature.isTransferBlocked(stack)) {
@@ -162,7 +204,9 @@ object ShippingBinStore {
             }
             val price = ShippingBinConfig.priceFor(stack)
             if (price > 0L) {
-                val stackTotal = price * stack.count.toLong()
+                val itemKey = ShippingBinRules.itemKey(stack)
+                val stackTotal = quotaAdjustedValue(playerId, itemKey, price, stack.count, quotaDeltas.getOrDefault(itemKey, 0))
+                quotaDeltas[itemKey] = quotaDeltas.getOrDefault(itemKey, 0) + stack.count
                 itemCount += stack.count
                 total += stackTotal
                 when (QualityFoodSupport.qualityLevel(stack)) {
@@ -188,6 +232,7 @@ object ShippingBinStore {
             }
         }
         if (total <= 0L) return ShippingBinPayout()
+        quotaDeltas.forEach { (itemKey, count) -> recordQuota(playerId, itemKey, count) }
         bins[key] = remaining.toMutableList()
         ChowcoinStore.add(playerId, total)
         save()
@@ -202,17 +247,100 @@ object ShippingBinStore {
         save()
     }
 
-    private fun save() {
-        TomlConfigIO.write(file, StoredShippingBins(lastPayoutDay, bins, pendingRewards))
+    private fun sanitizeContainer(playerId: UUID, container: SimpleContainer) {
+        val player = ServerLifecycleHooks.getCurrentServer()?.playerList?.getPlayer(playerId)
+        val access = access(playerId)
+        val seenItems = linkedSetOf<String>()
+        var blockedReason: String? = null
+        for (slot in 0 until SLOT_COUNT) {
+            val stack = container.getItem(slot)
+            if (stack.isEmpty) continue
+            val itemKey = ShippingBinRules.itemKey(stack)
+            when {
+                slot >= access.unlockedSlots -> {
+                    val removed = stack.copy()
+                    container.setItem(slot, ItemStack.EMPTY)
+                    returnToPlayer(player, removed)
+                    val unlockLevel = ShippingBinRules.unlockLevelForSlot(slot)
+                    blockedReason = if (unlockLevel == null) "Shipping bin maxes at 27 sell slots." else "Slot unlocks at level $unlockLevel."
+                }
+                itemKey in seenItems -> {
+                    val removed = stack.copy()
+                    container.setItem(slot, ItemStack.EMPTY)
+                    returnToPlayer(player, removed)
+                    blockedReason = "One slot per item. Quality tiers count as the same item."
+                }
+                else -> {
+                    seenItems += itemKey
+                    if (stack.count > access.maxStackSize) {
+                        val extra = stack.copy()
+                        extra.count = stack.count - access.maxStackSize
+                        stack.count = access.maxStackSize
+                        returnToPlayer(player, extra)
+                        blockedReason = "Max ${access.maxStackSize} per slot at shipping level ${access.level}."
+                    }
+                }
+            }
+        }
+        if (player != null && blockedReason != null) notifyBlocked(player, blockedReason)
     }
 
-    private const val SLOT_COUNT = 54
+    private fun returnToPlayer(player: ServerPlayer?, stack: ItemStack) {
+        if (stack.isEmpty) return
+        if (player == null) return
+        val returned = stack.copy()
+        val server = player.server
+        val playerId = player.uuid
+        server.execute {
+            val currentPlayer = server.playerList.getPlayer(playerId) ?: player
+            if (!currentPlayer.inventory.add(returned)) currentPlayer.drop(returned, false)
+        }
+    }
+
+    private fun notifyBlocked(player: ServerPlayer, reason: String) {
+        SnackbarNetwork.send(player, SnackbarNotification.item(SnackbarIcons.ERROR, "SHIPPING BIN BLOCKED", reason, SnackbarType.ERROR, SnackbarSounds.ERROR))
+    }
+
+    private fun quotaAdjustedValue(playerId: UUID, itemKey: String, price: Long, count: Int, pendingCount: Int): Long {
+        val used = weeklyQuotaUsed(playerId, itemKey) + pendingCount.coerceAtLeast(0)
+        val normalCount = (ShippingBinRules.WEEKLY_ITEM_QUOTA - used).coerceIn(0, count)
+        val reducedCount = (count - normalCount).coerceAtLeast(0)
+        return price * normalCount.toLong() + (price * reducedCount.toLong()) / 10L
+    }
+
+    private fun recordQuota(playerId: UUID, itemKey: String, count: Int) {
+        val playerCounts = weeklyItemCounts.getOrPut(playerId.toString()) { linkedMapOf() }
+        playerCounts[itemKey] = playerCounts.getOrDefault(itemKey, 0) + count
+    }
+
+    private fun refreshQuotaPeriod() {
+        val current = currentQuotaPeriodKey()
+        if (quotaPeriodKey == current) return
+        quotaPeriodKey = current
+        weeklyItemCounts.clear()
+        save()
+    }
+
+    private fun currentQuotaPeriodKey(): String {
+        val weeklyEvents = BattlepassPassRegistry.get(COZY_PASS_ID)?.weeklyEvents ?: BattlepassPassRegistry.get(COMBAT_PASS_ID)?.weeklyEvents
+        return weeklyEvents?.let { definition -> BattlepassMissionService.periodKey(BattlepassMissionScope.WEEKLY, definition) } ?: "weekly:unknown"
+    }
+
+    private fun save() {
+        TomlConfigIO.write(file, StoredShippingBins(lastPayoutDay, quotaPeriodKey, bins, pendingRewards, weeklyItemCounts))
+    }
+
+    private const val SLOT_COUNT = ShippingBinRules.SLOT_COUNT
+    private const val COZY_PASS_ID = "cozy"
+    private const val COMBAT_PASS_ID = "combat"
 }
 
 class StoredShippingBins(
     var lastPayoutDay: Long = Long.MIN_VALUE,
+    var quotaPeriodKey: String = "",
     var players: MutableMap<String, MutableList<StoredStack>> = linkedMapOf(),
     var pendingRewards: MutableMap<String, StoredPendingReward> = linkedMapOf(),
+    var weeklyItemCounts: MutableMap<String, MutableMap<String, Int>> = linkedMapOf(),
 )
 
 data class ShippingBinPayout(

@@ -55,6 +55,27 @@ object DiscordRelay {
         DiscordWebhookClient.send(DiscordText.applyTemplate(config.formatting.statusMessage, values))
     }
 
+    fun shippingTopSeller(server: MinecraftServer, playerName: String, itemCount: Int, amount: Long) {
+        val config = DiscordConfig.current()
+        if (!config.enabled) return
+        val values = serverValues(server) + mapOf(
+            "player" to DiscordText.cleanContent(playerName),
+            "items" to itemCount.toString(),
+            "amount" to amount.toString(),
+        )
+        DiscordWebhookClient.send(
+            DiscordWebhookMessage(
+                embeds = listOf(
+                    DiscordEmbed(
+                        title = DiscordText.applyTemplate("Top Shipping Seller", values),
+                        description = DiscordText.applyTemplate("{player} sold {items} items for {amount} chowcoins.", values),
+                        color = DiscordText.parseColor("#F4C542"),
+                    ),
+                ),
+            ),
+        )
+    }
+
     fun battlepassMissionCompleted(player: ServerPlayer, battlepass: String, scope: String, mission: String, xp: Int) {
         val config = DiscordConfig.current()
         if (!config.enabled || !config.relayBattlepassCompletions) return

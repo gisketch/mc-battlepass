@@ -7,6 +7,13 @@ import dev.gisketch.chowkingdom.battlepass.BattlepassNetwork
 import dev.gisketch.chowkingdom.ChowClock
 import dev.gisketch.chowkingdom.ChowClockConfig
 import dev.gisketch.chowkingdom.ChowKingdomMod
+import dev.gisketch.chowkingdom.discord.DiscordRelay
+import dev.gisketch.chowkingdom.profiles.NicknameStore
+import dev.gisketch.chowkingdom.snackbar.SnackbarIcons
+import dev.gisketch.chowkingdom.snackbar.SnackbarNetwork
+import dev.gisketch.chowkingdom.snackbar.SnackbarNotification
+import dev.gisketch.chowkingdom.snackbar.SnackbarSounds
+import dev.gisketch.chowkingdom.snackbar.SnackbarType
 import dev.gisketch.chowkingdom.wallets.ChowcoinNetwork
 import net.minecraft.commands.CommandSourceStack
 import net.minecraft.commands.Commands
@@ -66,24 +73,29 @@ object ShippingBinFeature {
         if (clock.hour < payoutHour) return
         if (!ShippingBinStore.tryMarkPayoutDay(day)) return
 
+        val sales = mutableListOf<ShippingBinSaleResult>()
         ShippingBinStore.playerIds().forEach { playerId ->
             val payout = ShippingBinStore.payout(playerId)
             if (payout.hasReward()) {
                 val player = event.server.playerList.getPlayer(playerId)
+                val playerName = player?.let(NicknameStore::displayName) ?: playerId.toString().take(8)
+                sales += ShippingBinSaleResult(playerName, payout)
                 if (player != null) {
                     ChowcoinNetwork.syncTo(player)
                     notifyReward(player, payout)
                     recordShippingMissions(player, payout)
-                    event.server.playerList.broadcastSystemMessage(Component.literal("${player.gameProfile.name} shipped ${payout.itemCount} items for ${payout.amount} chowcoins."), false)
+                    event.server.playerList.broadcastSystemMessage(Component.literal("$playerName shipped ${payout.itemCount} items for ${payout.amount} chowcoins."), false)
                 } else {
                     ShippingBinStore.addPendingReward(playerId, payout)
                 }
             }
         }
+        announceTopSeller(event.server, sales)
     }
 
     private fun onPlayerLoggedIn(event: PlayerEvent.PlayerLoggedInEvent) {
         val player = event.entity as? ServerPlayer ?: return
+        ShippingBinNetwork.syncTo(player)
         val payout = ShippingBinStore.consumePendingReward(player)
         if (payout.hasReward()) {
             ChowcoinNetwork.syncTo(player)
@@ -108,6 +120,7 @@ object ShippingBinFeature {
         if (payout.hasReward()) {
             notifyReward(player, payout)
             recordShippingMissions(player, payout)
+            announceTopSeller(player.server, listOf(ShippingBinSaleResult(NicknameStore.displayName(player), payout)))
         }
         return payout.amount.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
     }
@@ -139,6 +152,13 @@ object ShippingBinFeature {
         if (changed) BattlepassNetwork.syncAllPlayers()
     }
 
+    private fun announceTopSeller(server: net.minecraft.server.MinecraftServer, sales: List<ShippingBinSaleResult>) {
+        val top = sales.maxWithOrNull(compareBy<ShippingBinSaleResult> { it.payout.amount }.thenBy { it.payout.itemCount }) ?: return
+        val content = "${top.playerName} sold ${top.payout.itemCount} items for ${top.payout.amount} chowcoins"
+        SnackbarNetwork.sendToAllKnown(server, SnackbarNotification.item(SnackbarIcons.SHIPPING_BIN, "TOP SHIPPING SELLER", content, SnackbarType.SUCCESS, SnackbarSounds.SALE))
+        DiscordRelay.shippingTopSeller(server, top.playerName, top.payout.itemCount, top.payout.amount)
+    }
+
     private const val PAYOUT_CHECK_INTERVAL_TICKS = 200
     private const val QUALITY_FOOD_SOLD_EVENT = "gisketchs_chowkingdom_mod:shipping_bin_quality_food_sold"
     private const val IRON_QUALITY_FOOD_SOLD_EVENT = "gisketchs_chowkingdom_mod:shipping_bin_iron_quality_food_sold"
@@ -147,3 +167,5 @@ object ShippingBinFeature {
     private const val QUALITY_FOOD_VALUE_SOLD_EVENT = "gisketchs_chowkingdom_mod:shipping_bin_quality_food_value_sold"
     private const val VALUE_SOLD_EVENT = "gisketchs_chowkingdom_mod:shipping_bin_value_sold"
 }
+
+private data class ShippingBinSaleResult(val playerName: String, val payout: ShippingBinPayout)

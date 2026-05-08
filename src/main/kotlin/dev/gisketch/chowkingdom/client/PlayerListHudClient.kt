@@ -3,6 +3,8 @@ package dev.gisketch.chowkingdom.client
 import com.mojang.blaze3d.systems.RenderSystem
 import com.mojang.blaze3d.platform.NativeImage
 import com.mojang.brigadier.context.CommandContext
+import dev.gisketch.chowkingdom.ChowClock
+import dev.gisketch.chowkingdom.ChowClockConfig
 import dev.gisketch.chowkingdom.ChowKingdomMod
 import dev.gisketch.chowkingdom.battlepass.BattlepassClientState
 import dev.gisketch.chowkingdom.battlepass.BattlepassNetwork
@@ -88,7 +90,7 @@ object PlayerListHudClient {
         val width = tableWidth(visibleRows, minecraft.font, minecraft.window.guiScaledWidth - TABLE_SCREEN_PAD * 2)
         val x = (minecraft.window.guiScaledWidth - width) / 2
         val y = TABLE_TOP
-        val height = TABLE_PAD * 2 + HEADER_HEIGHT + rowCount * ROW_HEIGHT
+        val height = TABLE_PAD * 2 + HEADER_HEIGHT + rowCount * ROW_HEIGHT + FOOTER_HEIGHT
         val panel = Rect(x, y, width, height)
         val pose = guiGraphics.pose()
         pose.pushPose()
@@ -97,6 +99,7 @@ object PlayerListHudClient {
         val columns = columns(panel, visibleRows, minecraft.font)
         renderHeader(guiGraphics, minecraft.font, panel, columns)
         visibleRows.forEachIndexed { index, row -> renderRow(guiGraphics, minecraft.font, panel, columns, index, row) }
+        renderFooter(guiGraphics, minecraft.font, panel)
         pose.popPose()
     }
 
@@ -128,6 +131,15 @@ object PlayerListHudClient {
         drawCell(guiGraphics, font, row.uniquePokemonCaught.toString(), columns[7], textY, textColor)
         drawCell(guiGraphics, font, formatPlaytime(row.playtimeTicks), columns[8], textY, textColor)
         drawCell(guiGraphics, font, pingText(row.pingMs), columns[9], textY, pingColor(row.pingMs))
+    }
+
+    private fun renderFooter(guiGraphics: GuiGraphics, font: Font, panel: Rect) {
+        val time = Minecraft.getInstance().level?.let { level -> ChowClock.displayTime(level, ChowClockConfig.current()) } ?: return
+        val component = ckdmText(time)
+        val x = panel.x + panel.width / 2 - font.width(component) / 2
+        val y = panel.bottom - TABLE_PAD - FOOTER_HEIGHT + 5
+        guiGraphics.drawString(font, component, x + HEADER_SHADOW_OFFSET, y + HEADER_SHADOW_OFFSET, colorAlpha(HEADER_SHADOW), false)
+        guiGraphics.drawString(font, component, x, y, colorAlpha(HEADER_TEXT), false)
     }
 
     private fun playerRows(minecraft: Minecraft): List<PlayerRow> {
@@ -413,6 +425,7 @@ object PlayerListHudClient {
     private const val TABLE_PAD = 12
     private const val TABLE_SCREEN_PAD = 8
     private const val HEADER_HEIGHT = 19
+    private const val FOOTER_HEIGHT = 18
     private const val ROW_HEIGHT = 16
     private const val COLUMN_GAP = 12
     private const val NAME_MIN_WIDTH = 80

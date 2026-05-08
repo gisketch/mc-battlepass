@@ -15,8 +15,9 @@ import net.minecraft.world.phys.BlockHitResult
 class ShippingBinBlock(properties: Properties) : Block(properties) {
     override fun useWithoutItem(state: BlockState, level: Level, pos: BlockPos, player: Player, hitResult: BlockHitResult): InteractionResult {
         if (!level.isClientSide && player is ServerPlayer) {
+            ShippingBinNetwork.syncTo(player)
             player.openMenu(SimpleMenuProvider({ containerId, playerInventory, _ ->
-                ChestMenu.sixRows(containerId, playerInventory, ShippingBinStore.container(player.uuid))
+                ChestMenu.threeRows(containerId, playerInventory, ShippingBinStore.container(player.uuid))
             }, Component.empty()))
         }
         return InteractionResult.sidedSuccess(level.isClientSide)

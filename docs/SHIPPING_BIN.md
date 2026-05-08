@@ -8,12 +8,19 @@ Shipping bin is a Stardew-style sale container for Chow Kingdom.
 - Right-click opens vanilla double chest UI.
 - The chest title area renders a coin icon, current chowcoin balance, and a live green `+<preview>` value for sellable contents.
 - The preview updates every render and animates changed values by fading/sliding the old value out and the new value in.
-- Each player has a private 54-slot bin inventory. Any placed shipping bin opens that player's own bin.
+- Each player has a private 27-slot bin inventory. Any placed shipping bin opens that player's own bin.
+- Shipping access is based on `(cozy BP XP + combat BP XP) / 100`, minimum level 1.
+- Slots unlock by shipping level: level 1 has 1 slot, level 5 has 3, level 10 has 9, level 20 has 18, and level 30 has the max 27 sell slots.
+- Per-slot stack caps unlock by shipping level: 16 before level 50, 32 at level 50, 48 at level 75, and 64 at level 100.
+- The bin only allows one slot per item id. Item data does not create a separate slot, so gold quality wheat and diamond quality wheat still count as the same wheat item.
+- Each item id has a weekly quota of 128 sold items. Items sold after quota still sell, but pay 10% value until the weekly battlepass period resets.
 - At configured in-game time, server sells priced items from every saved player's bin.
+- Payout is checked after the payout hour for each in-game day, so time skips past 5 AM still pay once for that day.
 - Sold items grant chowcoins. Unpriced items remain in bin.
 - Player gets an animated top-center `Sold <items> items for <amount> chowcoins` HUD notification with sale sounds.
 - Offline players get their chowcoins immediately in world data and receive the reward notification on next login.
 - Server broadcasts `<name> shipped items for <amount> chowcoins.`
+- After each shipping payout batch, the top seller is announced to players by snackbar and to Discord when Discord webhooks are enabled.
 - Server ops can run `/shippingbin sell` to sell their own bin immediately for testing.
 - Items priced by this config append a `coins.png <amount>` price row under the item name in hover tooltips.
 
