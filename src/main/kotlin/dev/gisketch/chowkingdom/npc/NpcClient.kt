@@ -583,6 +583,7 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
     private var displayMessage: String = payload.message
     private var lastAnimaleseIndex: Int = 0
     private var streamingResponseActive: Boolean = false
+    private var highestVisibleCharacters: Int = 0
     private var talkMode: Boolean = payload.startTalkMode
     private var waitingForTalk: Boolean = payload.message == "..."
     private var activeResponseToken: Long = payload.responseToken
@@ -673,7 +674,8 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         renderFriendshipDelta(guiGraphics, nameX + FRIENDSHIP_ICON_COUNT * FRIENDSHIP_ICON_STEP + 5, y + FRIENDSHIP_Y + 1, payload.friendshipDelta)
 
         talkInput?.visible = talkMode
-        val visibleCharacters = visibleDialogCharacters()
+        val visibleCharacters = visibleDialogCharacters().coerceAtLeast(highestVisibleCharacters).coerceAtMost(currentRenderMessage().length)
+        highestVisibleCharacters = visibleCharacters
         playAnimalese(visibleCharacters)
         val visibleMessage = currentRenderMessage().take(visibleCharacters)
         val shadowLines = font.split(ckdmDialogText(stripDialogMarkup(visibleMessage)), dialogWidth)
@@ -1088,16 +1090,19 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         messageStartedAtMs = System.currentTimeMillis()
         lastAnimaleseIndex = 0
         streamingResponseActive = false
+        highestVisibleCharacters = 0
     }
 
     private fun updateStreamingDisplayMessage(message: String) {
         if (message == displayMessage) return
-        val previousAnimaleseIndex = lastAnimaleseIndex.coerceAtMost(message.length)
+        val visibleBefore = if (streamingResponseActive) maxOf(visibleDialogCharacters(), highestVisibleCharacters).coerceAtMost(message.length) else 0
+        val previousAnimaleseIndex = lastAnimaleseIndex.coerceAtMost(visibleBefore).coerceAtMost(message.length)
         displayMessage = message
-        val visibleElapsedMs = ((message.length / TYPEWRITER_CHARS_PER_SECOND) * 1000.0).toLong()
+        val visibleElapsedMs = ((visibleBefore / STREAMING_TYPEWRITER_CHARS_PER_SECOND) * 1000.0).toLong()
         messageStartedAtMs = System.currentTimeMillis() - TYPEWRITER_DELAY_MS - visibleElapsedMs
         lastAnimaleseIndex = previousAnimaleseIndex
         streamingResponseActive = true
+        highestVisibleCharacters = visibleBefore
     }
 
     private fun currentRenderMessage(): String = if (waitingForTalk) ".".repeat(((System.currentTimeMillis() / 300L) % 3L + 1L).toInt()) else displayMessage
@@ -1109,8 +1114,10 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
 
     private fun visibleDialogCharacters(): Int {
         val elapsed = (System.currentTimeMillis() - messageStartedAtMs - TYPEWRITER_DELAY_MS).coerceAtLeast(0L)
-        return ((elapsed / 1000.0) * TYPEWRITER_CHARS_PER_SECOND).toInt().coerceIn(0, currentRenderMessage().length)
+        return ((elapsed / 1000.0) * typewriterCharsPerSecond()).toInt().coerceIn(0, currentRenderMessage().length)
     }
+
+    private fun typewriterCharsPerSecond(): Double = if (streamingResponseActive) STREAMING_TYPEWRITER_CHARS_PER_SECOND else TYPEWRITER_CHARS_PER_SECOND
 
     private fun playAnimalese(visibleCharacters: Int) {
         if (visibleCharacters <= lastAnimaleseIndex) return
@@ -1213,6 +1220,7 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         private const val CAMERA_EASE = 0.12f
         private const val TYPEWRITER_DELAY_MS = 110L
         private const val TYPEWRITER_CHARS_PER_SECOND = 68.0
+        private const val STREAMING_TYPEWRITER_CHARS_PER_SECOND = 118.0
         private const val NAME_COLOR = 0xFFFFFFFF.toInt()
         private const val NAME_SHADOW = 0xCC050505.toInt()
         private const val DIALOG_COLOR = 0xFFFFFFFF.toInt()
