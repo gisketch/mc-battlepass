@@ -1,0 +1,22 @@
+# Sample NPC LLM preset config.
+# Put this shape under [llm] in config/gisketchs_chowkingdom_mod/npcs/settings.toml.
+
+[llm]
+enabled = true
+active_preset = "current"
+provider = "openai_compatible"
+base_url = "https://api.deepseek.com"
+model = "deepseek-v4-flash"
+api_key = ""
+presets = [
+  { name = "current", provider = "openai_compatible", base_url = "https://api.deepseek.com", model = "deepseek-v4-flash", api_key = "" },
+  { name = "gemini-3-flash", provider = "gemini", base_url = "https://generativelanguage.googleapis.com", model = "gemini-3-flash", api_key = "" },
+  { name = "gemini-3.1-flash-lite", provider = "gemini", base_url = "https://generativelanguage.googleapis.com", model = "gemini-3.1-flash-lite", api_key = "" },
+]
+cooldown_seconds = 4
+max_reply_chars = 280
+max_recent_turns = 30
+request_timeout_seconds = 20
+rate_limited_message = "Give me a second to gather my thoughts."
+error_message = "Sorry, my thoughts wandered for a second. What were we talking about?"
+fallback_message = "Sorry, my thoughts wandered for a second. What were we talking about?"

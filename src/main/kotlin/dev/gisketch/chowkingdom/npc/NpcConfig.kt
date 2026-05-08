@@ -49,6 +49,22 @@ object NpcConfig {
 
     fun settings(): NpcSettingsDefinition = settings
 
+    fun llmPresetNames(): List<String> = settings.llm.presets.map { preset -> preset.name }
+
+    fun switchLlmPreset(name: String): NpcLlmPresetSwitchResult {
+        val normalizedName = name.trim().lowercase()
+        val preset = settings.llm.presets.firstOrNull { preset -> preset.name.equals(normalizedName, ignoreCase = true) }
+            ?: return NpcLlmPresetSwitchResult(false, "Unknown LLM preset '$name'. Available: ${llmPresetNames().joinToString(", ")}", settings.llm)
+        settings.llm.activePreset = preset.name
+        settings.llm.provider = preset.provider
+        settings.llm.baseUrl = preset.baseUrl
+        settings.llm.model = preset.model
+        settings.llm.apiKey = preset.apiKey
+        settings = settings.normalized()
+        writeSettings(settings)
+        return NpcLlmPresetSwitchResult(true, "Switched NPC LLM preset to ${settings.llm.activePreset} (${settings.llm.provider}/${settings.llm.model}).", settings.llm)
+    }
+
     fun firstIntroducible(): NpcDefinition? = definitions["finn"] ?: definitions.values.firstOrNull()
 
     private fun writeDefaultIfMissing() {
@@ -83,6 +99,10 @@ object NpcConfig {
             ChowKingdomMod.LOGGER.warn("Failed to load NPC settings {}", file, exception)
             NpcSettingsDefinition()
         }.normalized()
+    }
+
+    private fun writeSettings(value: NpcSettingsDefinition) {
+        TomlConfigIO.write(dir.resolve(NPC_SETTINGS_FILE), value.normalized())
     }
 
     private fun loadFriendshipDefaults(): NpcFriendshipMessagesDefinition {
@@ -155,6 +175,8 @@ object NpcConfig {
         workTargetBlocks = mutableListOf("minecraft:campfire", "minecraft:crafting_table", "minecraft:barrel"),
     )
 }
+
+class NpcLlmPresetSwitchResult(val success: Boolean, val message: String, val settings: NpcLlmSettingsDefinition)
 
 private const val FRIENDSHIP_MESSAGES_FILE = "friendship_messages.toml"
 private const val NPC_SETTINGS_FILE = "settings.toml"

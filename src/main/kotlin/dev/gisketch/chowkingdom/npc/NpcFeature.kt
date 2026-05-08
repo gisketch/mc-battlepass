@@ -83,6 +83,7 @@ object NpcFeature {
     private val camperBalloonRefreshAt: MutableMap<UUID, Long> = linkedMapOf()
     private val npcMicroInteractions: MutableMap<UUID, ActiveNpcMicroInteraction> = linkedMapOf()
     private val npcMicroInteractionCooldownUntil: MutableMap<String, Long> = linkedMapOf()
+    private val npcAutoTaskCooldownUntil: MutableMap<UUID, Long> = linkedMapOf()
     private val pendingShopNpcs: MutableMap<UUID, String> = linkedMapOf()
     private var debugTimeMultiplier: Int = 1
 
@@ -600,9 +601,9 @@ object NpcFeature {
         if (NpcBrainOverrides.tick(entity, definition)) return
         if (tryFollowRentContractHolder(entity, definition)) return
         tryShowCamperHousingBalloon(entity, definition)
+        if (tryNpcMicroInteraction(entity, definition)) return
         if (tryOutgoingGift(entity, definition)) return
         if (!needsCamperHousingBalloon(entity, definition) && tryGreetNearbyPlayer(entity, definition)) return
-        if (tryNpcMicroInteraction(entity, definition)) return
         if (entity.isTalking()) return
         NpcBrain.tick(entity, definition)
     }
@@ -676,6 +677,7 @@ object NpcFeature {
         }
 
         if (npc.isTalking()) return false
+        if (isAutoTaskCoolingDown(npc)) return false
 
         val radiusSqr = config.radius * config.radius
         val day = NpcTime.day(level)
@@ -709,6 +711,7 @@ object NpcFeature {
         val offer = outgoingGiftOfferMessage(config, player, definition)
         sendNpcBalloon(level, npc, offer, config.followSeconds * 20)
         npc.startTalkingTo(player, config.followSeconds * 20)
+        markAutoTaskCooldown(npc, config.followSeconds * 20L)
     }
 
     private fun randomOutgoingGiftHour(definition: NpcDefinition, random: net.minecraft.util.RandomSource): Int {
@@ -807,6 +810,7 @@ object NpcFeature {
             .filter { player -> player.isAlive && !player.isSpectator && player.distanceToSqr(npc.x, npc.y, npc.z) <= radiusSqr }
         updateGreetingRadiusState(npc, definition, playersInRadius)
         if (npc.isTalking() || npc.isSleeping) return false
+        if (isAutoTaskCoolingDown(npc)) return false
         val player = playersInRadius
             .asSequence()
             .minByOrNull { player -> player.distanceToSqr(npc.x, npc.y, npc.z) }
@@ -819,6 +823,7 @@ object NpcFeature {
         val durationTicks = greeting.balloonDurationSeconds * 20
         NpcStore.markGreetingShown(definition.id, player, day, nowMs + greeting.cooldownSeconds * 1000L)
         if (NpcConfig.settings().llm.enabled && NpcConfig.settings().llmMessageUsage.greeting) {
+            markAutoTaskCooldown(npc, durationTicks.toLong())
             NpcLlmService.event(
                 player,
                 npc,
@@ -833,6 +838,7 @@ object NpcFeature {
         }
         sendNpcBalloon(level, npc, message, durationTicks)
         npc.startTalkingTo(player, durationTicks)
+        markAutoTaskCooldown(npc, durationTicks.toLong())
         NpcStore.recordConversation(definition.id, player, definition.name, message, "npc_greeting_balloon")
         return true
     }
@@ -858,6 +864,7 @@ object NpcFeature {
         val settings = NpcConfig.settings().npcInteractions
         val plazaMeetup = activityFor(npc, definition) == "meetup"
         if (!settings.enabled || npc.isSleeping || npc.isTalking() || NpcTime.activityAt(definition.schedule, level) == "sleep") return false
+        if (isAutoTaskCoolingDown(npc)) return false
         if (!plazaMeetup && (npcMicroInteractionCooldownUntil[definition.id] ?: 0L) > level.dayTime) return false
         val radius = if (plazaMeetup) plazaMeetupRadius().toDouble() else settings.radius
         val radiusSqr = radius * radius
@@ -884,6 +891,8 @@ object NpcFeature {
         val now = level.gameTime
         npcMicroInteractions[first.uuid] = ActiveNpcMicroInteraction(second.uuid, firstMessage, now + durationTicks)
         npcMicroInteractions[second.uuid] = ActiveNpcMicroInteraction(first.uuid, secondMessage, now + durationTicks)
+        markAutoTaskCooldown(first, durationTicks)
+        markAutoTaskCooldown(second, durationTicks)
         val cooldownUntil = if (plazaMeetup) level.dayTime + NPC_PLAZA_MICRO_COOLDOWN_TICKS else {
             val cooldownHours = if (settings.cooldownMinHours == settings.cooldownMaxHours) settings.cooldownMinHours else settings.cooldownMinHours + level.random.nextInt(settings.cooldownMaxHours - settings.cooldownMinHours + 1)
             NpcTime.addHours(level.dayTime, cooldownHours)
@@ -908,6 +917,20 @@ object NpcFeature {
             ?.replace("{npc}", definition.name)
             ?.replace("{other}", otherDefinition.name)
             ?: "Talking with ${otherDefinition.name}..."
+    }
+
+    private fun isAutoTaskCoolingDown(npc: ChowNpcEntity): Boolean {
+        val level = npc.level()
+        val untilTick = npcAutoTaskCooldownUntil[npc.uuid] ?: return false
+        if (level.gameTime < untilTick) return true
+        npcAutoTaskCooldownUntil.remove(npc.uuid)
+        return false
+    }
+
+    private fun markAutoTaskCooldown(npc: ChowNpcEntity, taskTicks: Long = 0L) {
+        val level = npc.level()
+        val extraTicks = NPC_AUTO_TASK_COOLDOWN_MIN_TICKS + level.random.nextInt((NPC_AUTO_TASK_COOLDOWN_MAX_TICKS - NPC_AUTO_TASK_COOLDOWN_MIN_TICKS + 1).toInt())
+        npcAutoTaskCooldownUntil[npc.uuid] = level.gameTime + taskTicks + extraTicks
     }
 
     private fun updateGreetingRadiusState(npc: ChowNpcEntity, definition: NpcDefinition, playersInRadius: List<ServerPlayer>) {
@@ -1101,6 +1124,7 @@ object NpcFeature {
         event.dispatcher.register(npcRoot("npc"))
         event.dispatcher.register(Commands.literal("ck").then(npcRoot("npc")))
         event.dispatcher.register(Commands.literal("chowkingdom").then(npcRoot("npc")))
+        event.dispatcher.register(llmRoot())
     }
 
     private fun onRightClickBlock(event: PlayerInteractEvent.RightClickBlock) {
@@ -1279,6 +1303,33 @@ object NpcFeature {
     private fun suggestNpcIds(context: CommandContext<CommandSourceStack>, builder: com.mojang.brigadier.suggestion.SuggestionsBuilder) =
         SharedSuggestionProvider.suggest(NpcConfig.all().map { definition -> definition.id }, builder)
 
+    private fun suggestLlmPresets(context: CommandContext<CommandSourceStack>, builder: com.mojang.brigadier.suggestion.SuggestionsBuilder) =
+        SharedSuggestionProvider.suggest(NpcConfig.llmPresetNames(), builder)
+
+    private fun llmRoot(): LiteralArgumentBuilder<CommandSourceStack> = Commands.literal("llm")
+        .requires { source -> source.hasPermission(2) }
+        .executes(::llmStatusCommand)
+        .then(
+            Commands.literal("switch")
+                .then(
+                    Commands.argument("name", StringArgumentType.word())
+                        .suggests(::suggestLlmPresets)
+                        .executes(::llmSwitchCommand),
+                ),
+        )
+
+    private fun llmStatusCommand(context: CommandContext<CommandSourceStack>): Int {
+        val settings = NpcConfig.settings().llm
+        context.source.sendSuccess({ Component.literal("NPC LLM preset=${settings.activePreset} enabled=${settings.enabled} provider=${settings.provider} model=${settings.model} available=${NpcConfig.llmPresetNames().joinToString(", ")}").withStyle(ChatFormatting.GOLD) }, false)
+        return 1
+    }
+
+    private fun llmSwitchCommand(context: CommandContext<CommandSourceStack>): Int {
+        val result = NpcConfig.switchLlmPreset(StringArgumentType.getString(context, "name"))
+        if (result.success) context.source.sendSuccess({ Component.literal(result.message).withStyle(ChatFormatting.GREEN) }, true) else context.source.sendFailure(Component.literal(result.message))
+        return if (result.success) 1 else 0
+    }
+
     private fun reloadCommand(context: CommandContext<CommandSourceStack>): Int {
         ChowClockConfig.load()
         NpcConfig.load()
@@ -1365,7 +1416,7 @@ object NpcFeature {
 
     private fun debugLlmCommand(context: CommandContext<CommandSourceStack>): Int {
         val settings = NpcConfig.settings().llm
-        context.source.sendSuccess({ Component.literal("NPC LLM DEBUG enabled=${settings.enabled} provider=${settings.provider} model=${settings.model}").withStyle(ChatFormatting.GOLD) }, false)
+        context.source.sendSuccess({ Component.literal("NPC LLM DEBUG preset=${settings.activePreset} enabled=${settings.enabled} provider=${settings.provider} model=${settings.model}").withStyle(ChatFormatting.GOLD) }, false)
         val lines = NpcLlmService.debugErrorLines()
         if (lines.isEmpty()) {
             context.source.sendSuccess({ Component.literal("No recent LLM errors recorded.").withStyle(ChatFormatting.GRAY) }, false)
@@ -1890,6 +1941,8 @@ object NpcFeature {
     private const val NPC_MICRO_INTERACTION_DISTANCE_SQR = 2.5 * 2.5
     private const val NPC_MICRO_INTERACTION_SPEED = 0.75
     private const val NPC_MICRO_INTERACTION_BALLOON_TICKS = 100
+    private const val NPC_AUTO_TASK_COOLDOWN_MIN_TICKS = 200L
+    private const val NPC_AUTO_TASK_COOLDOWN_MAX_TICKS = 300L
     private const val NPC_PLAZA_MEETUP_START_HOUR = 15
     private const val NPC_PLAZA_MEETUP_END_HOUR = 20
     private const val NPC_PLAZA_CAMP_FALLBACK_RADIUS = 10

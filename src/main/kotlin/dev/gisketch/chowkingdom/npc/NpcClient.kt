@@ -63,6 +63,7 @@ object NpcClient {
     private val WORLD_CHAT_HEADS_LAYER_ID = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "npc_world_chat_heads")
     private val activeBalloons = mutableMapOf<Int, NpcBalloonLine>()
     private val activeFriendshipDeltas = mutableMapOf<Int, NpcFriendshipDeltaLine>()
+    private val balloonVisibility = mutableMapOf<Int, NpcBalloonVisibility>()
     private val worldChatEntries = mutableListOf<NpcWorldChatEntry>()
     private val quickSkinChatTextures = mutableMapOf<UUID, ResourceLocation?>()
     private val skippedTalkResponses = mutableSetOf<Long>()
@@ -117,22 +118,30 @@ object NpcClient {
         val delta = activeFriendshipDeltas[entity.id]
         if (delta != null && delta.expiresAtMs <= now) activeFriendshipDeltas.remove(entity.id)
         val activeDelta = activeFriendshipDeltas[entity.id]
-        if (activeBalloon == null && activeDelta == null) return
+        if (activeBalloon == null && activeDelta == null) {
+            balloonVisibility.remove(entity.id)
+            return
+        }
 
         val minecraft = Minecraft.getInstance()
-        if ((minecraft.player?.distanceToSqr(entity) ?: Double.MAX_VALUE) > BALLOON_RENDER_DISTANCE_SQR) return
+        val targetVisibility = if ((minecraft.player?.distanceToSqr(entity) ?: Double.MAX_VALUE) <= BALLOON_RENDER_DISTANCE_SQR) 1.0f else 0.0f
+        val visibilityAlpha = balloonVisibilityAlpha(entity.id, targetVisibility, now)
+        if (visibilityAlpha <= 0.0f) return
         val guiGraphics = GuiGraphicsAccessor.`chowkingdom$create`(minecraft, poseStack, minecraft.renderBuffers().bufferSource())
         val rotation = Axis.YP.rotationDegrees(toEulerXyzDegrees(minecraft.entityRenderDispatcher.cameraOrientation()).y + 180.0f)
         if (activeBalloon == null) {
-            renderFriendshipDeltaPopup(entity, poseStack, guiGraphics, rotation, font, activeDelta, now)
+            renderFriendshipDeltaPopup(entity, poseStack, guiGraphics, rotation, font, activeDelta, now, visibilityAlpha)
             return
         }
         val balloonIcon = balloonIcon(activeBalloon.message)
         val hasBalloonIcon = balloonIcon != null
         val balloonMessage = balloonIcon?.let { activeBalloon.message.removePrefix(it.marker).trimStart() } ?: activeBalloon.message
         val lines = font.split(FormattedText.of(balloonMessage), BALLOON_MAX_TEXT_WIDTH)
-        if (lines.isEmpty()) return
-        val alpha = animationAlpha(activeBalloon.startedAtMs, activeBalloon.expiresAtMs, now, BALLOON_FADE_MS)
+        if (lines.isEmpty()) {
+            renderFriendshipDeltaPopup(entity, poseStack, guiGraphics, rotation, font, activeDelta, now, visibilityAlpha)
+            return
+        }
+        val alpha = animationAlpha(activeBalloon.startedAtMs, activeBalloon.expiresAtMs, now, BALLOON_FADE_MS) * visibilityAlpha
         val iconSpace = if (hasBalloonIcon) BALLOON_ICON_SIZE + 2 else 0
         val greatestTextWidth = lines.mapIndexed { index, line -> font.width(line) + if (index == 0) iconSpace else 0 }.maxOrNull() ?: 0
         val balloonWidth = (greatestTextWidth + BALLOON_PADDING * 2).coerceAtLeast(BALLOON_MIN_WIDTH)
@@ -174,7 +183,7 @@ object NpcClient {
         }
         guiGraphics.flush()
         poseStack.popPose()
-        renderFriendshipDeltaPopup(entity, poseStack, guiGraphics, rotation, font, activeDelta, now)
+        renderFriendshipDeltaPopup(entity, poseStack, guiGraphics, rotation, font, activeDelta, now, visibilityAlpha)
     }
 
     fun register(modBus: IEventBus) {
@@ -344,11 +353,23 @@ object NpcClient {
         return minOf(fadeIn, fadeOut)
     }
 
-    private fun renderFriendshipDeltaPopup(entity: LivingEntity, poseStack: PoseStack, guiGraphics: GuiGraphics, rotation: Quaternionf, font: Font, delta: NpcFriendshipDeltaLine?, now: Long) {
+    private fun balloonVisibilityAlpha(entityId: Int, targetAlpha: Float, now: Long): Float {
+        val visibility = balloonVisibility.getOrPut(entityId) { NpcBalloonVisibility(0.0f, now) }
+        val step = ((now - visibility.updatedAtMs).coerceAtLeast(0L).toFloat() / BALLOON_CULL_FADE_MS).coerceIn(0.0f, 1.0f)
+        visibility.alpha = if (visibility.alpha < targetAlpha) {
+            (visibility.alpha + step).coerceAtMost(targetAlpha)
+        } else {
+            (visibility.alpha - step).coerceAtLeast(targetAlpha)
+        }
+        visibility.updatedAtMs = now
+        return visibility.alpha
+    }
+
+    private fun renderFriendshipDeltaPopup(entity: LivingEntity, poseStack: PoseStack, guiGraphics: GuiGraphics, rotation: Quaternionf, font: Font, delta: NpcFriendshipDeltaLine?, now: Long, visibilityAlpha: Float) {
         if (delta == null) return
         val duration = (delta.expiresAtMs - delta.startedAtMs).coerceAtLeast(1L)
         val progress = ((now - delta.startedAtMs).toFloat() / duration).coerceIn(0.0f, 1.0f)
-        val alpha = animationAlpha(delta.startedAtMs, delta.expiresAtMs, now, FRIENDSHIP_DELTA_WORLD_FADE_MS)
+        val alpha = animationAlpha(delta.startedAtMs, delta.expiresAtMs, now, FRIENDSHIP_DELTA_WORLD_FADE_MS) * visibilityAlpha
         if (alpha <= 0.0f) return
         val text = delta.text.ifBlank { return }
         val popupX = FRIENDSHIP_DELTA_WORLD_X
@@ -374,6 +395,8 @@ object NpcClient {
     private data class NpcBalloonLine(val message: String, val startedAtMs: Long, val expiresAtMs: Long)
 
     private data class NpcFriendshipDeltaLine(val text: String, val icon: ResourceLocation, val color: Int, val startedAtMs: Long, val expiresAtMs: Long)
+
+    private data class NpcBalloonVisibility(var alpha: Float, var updatedAtMs: Long)
 
     private data class NpcWorldChatEntry(
         val npcId: String,
@@ -451,6 +474,7 @@ private data class NpcBalloonIcon(val marker: String, val texture: ResourceLocat
     private const val BALLOON_SCALE = 0.020f
     private const val BALLOON_BG_ALPHA = 0.90f
     private const val BALLOON_FADE_MS = 180L
+    private const val BALLOON_CULL_FADE_MS = 180L
     private const val BALLOON_RENDER_DISTANCE_SQR = 8.0 * 8.0
     private const val BALLOON_ENTITY_Y_OFFSET = 0.9
     private const val BALLOON_MAX_TEXT_WIDTH = 118

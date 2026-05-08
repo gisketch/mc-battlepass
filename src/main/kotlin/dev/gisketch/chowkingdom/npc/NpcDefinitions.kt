@@ -127,10 +127,12 @@ class NpcChatDefinition(
 
 class NpcLlmSettingsDefinition(
     var enabled: Boolean = false,
+    @SerializedName("active_preset") var activePreset: String = "current",
     var provider: String = "openai_compatible",
     @SerializedName("base_url") var baseUrl: String = "https://api.deepseek.com",
     var model: String = "deepseek-chat",
     @SerializedName("api_key") var apiKey: String = "",
+    var presets: MutableList<NpcLlmPresetDefinition> = mutableListOf(),
     @SerializedName("cooldown_seconds") var cooldownSeconds: Int = 4,
     @SerializedName("max_reply_chars") var maxReplyChars: Int = 280,
     @SerializedName("max_recent_turns") var maxRecentTurns: Int = 8,
@@ -140,10 +142,26 @@ class NpcLlmSettingsDefinition(
     @SerializedName("fallback_message") var fallbackMessage: String = "Sorry, my thoughts wandered for a second. What were we talking about?",
 ) {
     fun normalized(): NpcLlmSettingsDefinition = apply {
+        activePreset = activePreset.trim().ifBlank { "current" }
         provider = provider.trim().lowercase().ifBlank { "openai_compatible" }
         baseUrl = baseUrl.trim().ifBlank { "https://api.deepseek.com" }
         model = model.trim().ifBlank { "deepseek-chat" }
         apiKey = apiKey.trim()
+        presets = presets.map { preset -> preset.normalized() }
+            .filter { preset -> preset.name.isNotBlank() }
+            .distinctBy { preset -> preset.name.lowercase() }
+            .toMutableList()
+        if (presets.isEmpty()) presets = mutableListOf(NpcLlmPresetDefinition("current", provider, baseUrl, model, apiKey).normalized())
+        val selected = presets.firstOrNull { preset -> preset.name.equals(activePreset, ignoreCase = true) }
+        if (selected == null) {
+            activePreset = presets.first().name
+        } else {
+            activePreset = selected.name
+            provider = selected.provider
+            baseUrl = selected.baseUrl
+            model = selected.model
+            apiKey = selected.apiKey
+        }
         cooldownSeconds = cooldownSeconds.coerceIn(1, 60)
         maxReplyChars = maxReplyChars.coerceIn(40, 1000)
         maxRecentTurns = maxRecentTurns.coerceIn(0, 30)
@@ -154,6 +172,22 @@ class NpcLlmSettingsDefinition(
     }
 
     private fun cleanMessage(value: String, fallback: String): String = value.trim().ifBlank { fallback }.take(maxReplyChars)
+}
+
+class NpcLlmPresetDefinition(
+    var name: String = "current",
+    var provider: String = "openai_compatible",
+    @SerializedName("base_url") var baseUrl: String = "https://api.deepseek.com",
+    var model: String = "deepseek-chat",
+    @SerializedName("api_key") var apiKey: String = "",
+) {
+    fun normalized(): NpcLlmPresetDefinition = apply {
+        name = name.trim().lowercase().replace(Regex("[^a-z0-9_.-]"), "-").trim('-').ifBlank { "current" }
+        provider = provider.trim().lowercase().ifBlank { "openai_compatible" }
+        baseUrl = baseUrl.trim().ifBlank { if (provider == "gemini") "https://generativelanguage.googleapis.com" else "https://api.deepseek.com" }
+        model = model.trim().ifBlank { if (provider == "gemini") "gemini-3-flash" else "deepseek-chat" }
+        apiKey = apiKey.trim()
+    }
 }
 
 class NpcLlmMessageUsageDefinition(
