@@ -48,6 +48,7 @@ import org.slf4j.Logger
 class ChowKingdomMod(modBus: IEventBus, container: ModContainer) {
     init {
         LOGGER.info("Loading {}", container.modInfo.displayName)
+        ChowClockConfig.load()
         BattlepassPassRegistry.reload()
         BattlepassXpStore.load()
         BattlepassMissionProgressStore.load()

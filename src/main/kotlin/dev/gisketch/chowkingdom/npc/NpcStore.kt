@@ -10,6 +10,8 @@ import net.neoforged.neoforge.server.ServerLifecycleHooks
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 import java.util.UUID
 import kotlin.io.path.bufferedReader
 import kotlin.io.path.bufferedWriter
@@ -52,6 +54,57 @@ object NpcStore {
         state.camp = NpcBlockPosData.from(campPos)
         save()
     }
+
+    fun setCampBlock(pos: BlockPos) {
+        if (!loaded) load()
+        data.campBlock = NpcBlockPosData.from(pos)
+        save()
+    }
+
+    fun campBlockPos(): BlockPos? {
+        if (!loaded) load()
+        return data.campBlock?.toBlockPos()
+    }
+
+    fun activeCamperId(): String {
+        if (!loaded) load()
+        return data.activeCamperId
+    }
+
+    fun setActiveCamper(npcId: String, campPos: BlockPos) {
+        if (!loaded) load()
+        data.activeCamperId = npcId
+        data.campBlock = NpcBlockPosData.from(campPos)
+        data.camperCooldownUntilTick = -1L
+        state(npcId).camperReturnReason = ""
+        save()
+    }
+
+    fun clearActiveCamper(npcId: String) {
+        if (!loaded) load()
+        if (data.activeCamperId != npcId) return
+        data.activeCamperId = ""
+        save()
+    }
+
+    fun camperCooldownUntilTick(): Long {
+        if (!loaded) load()
+        return data.camperCooldownUntilTick
+    }
+
+    fun setCamperCooldown(untilTick: Long) {
+        if (!loaded) load()
+        data.camperCooldownUntilTick = untilTick
+        save()
+    }
+
+    fun markCamperReturnReason(npcId: String, reason: String) {
+        val state = state(npcId)
+        state.camperReturnReason = reason
+        save()
+    }
+
+    fun camperReturnReason(npcId: String): String = state(npcId).camperReturnReason
 
     fun setHome(npcId: String, homePos: BlockPos) {
         val state = state(npcId)
@@ -237,6 +290,35 @@ object NpcStore {
 
     fun contractGiven(npcId: String): Boolean = state(npcId).contractGiven
 
+    fun backupAndClearAll(): Path {
+        if (!loaded) load()
+        val backup = backupStateFile("all")
+        data = NpcWorldData()
+        save()
+        return backup
+    }
+
+    fun backupAndClearNpc(npcId: String): Path {
+        if (!loaded) load()
+        val backup = backupStateFile(npcId)
+        data.npcs.remove(npcId)
+        if (data.activeCamperId == npcId) data.activeCamperId = ""
+        save()
+        return backup
+    }
+
+    private fun backupStateFile(label: String): Path {
+        file.parent.createDirectories()
+        val timestamp = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss").format(LocalDateTime.now())
+        val backup = file.parent.resolve("state.backup-$label-$timestamp.json")
+        if (file.exists()) {
+            Files.copy(file, backup, StandardCopyOption.REPLACE_EXISTING)
+        } else {
+            backup.bufferedWriter().use { writer -> gson.toJson(data, writer) }
+        }
+        return backup
+    }
+
     private fun save() {
         file.parent.createDirectories()
         Files.createTempFile(file.parent, "npc_state", ".json.tmp").also { temp ->
@@ -249,6 +331,9 @@ object NpcStore {
 class NpcWorldData(
     var npcs: MutableMap<String, NpcResidentState> = linkedMapOf(),
     var globalEvents: MutableList<NpcGlobalEvent> = mutableListOf(),
+    var campBlock: NpcBlockPosData? = null,
+    var activeCamperId: String = "",
+    var camperCooldownUntilTick: Long = -1L,
 )
 
 class NpcResidentState(
@@ -267,6 +352,7 @@ class NpcResidentState(
     var friendships: MutableMap<String, NpcFriendshipState> = linkedMapOf(),
     var dead: Boolean = false,
     var respawnDay: Long = -1L,
+    var camperReturnReason: String = "",
 )
 
 class NpcFriendshipState(

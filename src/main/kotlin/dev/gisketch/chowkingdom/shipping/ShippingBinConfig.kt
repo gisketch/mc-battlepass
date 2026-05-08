@@ -37,11 +37,9 @@ object ShippingBinConfig {
         }
     }
 
-    fun payoutTick(): Long {
-        val hour = config.payoutHour.coerceIn(0, 23)
-        val minute = config.payoutMinute.coerceIn(0, 59)
-        return (((hour - 6 + 24) % 24) * 1_000L) + (minute * 1_000L / 60L)
-    }
+    fun payoutHour(): Int = config.payoutHour.coerceIn(0, 23)
+
+    fun payoutMinute(): Int = config.payoutMinute.coerceIn(0, 59)
 
     fun priceFor(stack: ItemStack): Long {
         val basePrice = basePriceFor(stack)

@@ -117,12 +117,13 @@ object StoreShopFeature {
             context.source.sendFailure(Component.literal("Unknown store '$storeId'."))
             return 0
         }
+        val commandStockKey = stockKey(storeId, definition.id)
         if (pool == ShopViewPool.ALL) {
-            reroll(definition, ShopViewPool.ALL)
-            reroll(definition, ShopViewPool.DAILY)
-            reroll(definition, ShopViewPool.WEEKLY)
+            reroll(definition, commandStockKey, ShopViewPool.ALL)
+            reroll(definition, commandStockKey, ShopViewPool.DAILY)
+            reroll(definition, commandStockKey, ShopViewPool.WEEKLY)
         } else {
-            reroll(definition, pool)
+            reroll(definition, commandStockKey, pool)
         }
         saveState()
         context.source.sendSuccess({ Component.literal("Reloaded ${pool.label.lowercase(Locale.ROOT)} stock for ${definition.displayName}.") }, true)
@@ -142,38 +143,48 @@ object StoreShopFeature {
 
     private fun handleCartBuy(payload: StoreShopCartBuyPayload, context: IPayloadContext) {
         val player = context.player() as? ServerPlayer ?: return
-        buy(player, payload.storeId.lowercase(Locale.ROOT), payload.lines)
+        buy(player, payload.storeId.lowercase(Locale.ROOT), stockKey(payload.stockKey, payload.storeId), payload.lines)
     }
 
     fun openStore(player: ServerPlayer, storeId: String): Boolean {
+        return openStore(player, storeId, storeId)
+    }
+
+    fun openStore(player: ServerPlayer, storeId: String, stockKey: String, subtitle: String = "Server shared stock"): Boolean {
         reloadDefinitions()
-        val definition = definitions[storeId] ?: return false
-        ensureActive(definition)
-        PacketDistributor.sendToPlayer(player, StoreShopOpenPayload(view(definition)))
+        val definition = definitions[storeId.lowercase(Locale.ROOT)] ?: return false
+        val normalizedStockKey = stockKey(stockKey, definition.id)
+        ensureActive(definition, normalizedStockKey)
+        PacketDistributor.sendToPlayer(player, StoreShopOpenPayload(view(definition, normalizedStockKey, subtitle)))
         return true
     }
 
     fun llmSummary(storeId: String, maxEntries: Int = 8): String {
+        return llmSummary(storeId, storeId, maxEntries)
+    }
+
+    fun llmSummary(storeId: String, stockKey: String, maxEntries: Int = 8): String {
         reloadDefinitions()
         val definition = definitions[storeId.lowercase(Locale.ROOT)] ?: return "No configured store."
-        val offers = activeOffers(definition)
-            .filter { active -> stock(definition, active.pool, active.offer.id) > 0 }
+        val normalizedStockKey = stockKey(stockKey, definition.id)
+        val offers = activeOffers(definition, normalizedStockKey)
+            .filter { active -> stock(normalizedStockKey, active.pool, active.offer.id) > 0 }
             .take(maxEntries.coerceIn(1, 16))
         val items = offers.joinToString("; ") { active ->
-            "${active.pool.label} ${active.category.id}: ${active.offer.item} price=${active.offer.priceAmount} stock=${stock(definition, active.pool, active.offer.id)}"
+            "${active.pool.label} ${active.category.id}: ${active.offer.item} price=${active.offer.priceAmount} stock=${stock(normalizedStockKey, active.pool, active.offer.id)}"
         }.ifBlank { "No visible stock right now." }
         return "${definition.displayName} (${definition.id}); resets at ${definition.resetHour.toString().padStart(2, '0')}:${definition.resetMinute.toString().padStart(2, '0')} ${definition.timeZone}; items: $items"
     }
 
-    private fun buy(player: ServerPlayer, storeId: String, lines: List<ShopViewCartLine>) {
+    private fun buy(player: ServerPlayer, storeId: String, stockKey: String, lines: List<ShopViewCartLine>) {
         val definition = definitions[storeId] ?: return
-        ensureActive(definition)
-        val activeOffers = activeOffers(definition).associateBy { it.offer.id }
+        ensureActive(definition, stockKey)
+        val activeOffers = activeOffers(definition, stockKey).associateBy { it.offer.id }
         val requested = lines.filter { it.quantity > 0 }.take(100)
         if (requested.isEmpty()) return
         val purchases = requested.mapNotNull { line ->
             val active = activeOffers[line.entryId] ?: return@mapNotNull null
-            val quantity = line.quantity.coerceIn(1, stock(definition, active.pool, active.offer.id))
+            val quantity = line.quantity.coerceIn(1, stock(stockKey, active.pool, active.offer.id))
             if (quantity <= 0) return@mapNotNull null
             val stack = stackFor(active.offer, quantity)
             if (stack.isEmpty) return@mapNotNull null
@@ -182,7 +193,7 @@ object StoreShopFeature {
         }
         if (purchases.isEmpty()) {
             player.displayClientMessage(Component.literal("No stock available."), true)
-            openStore(player, storeId)
+            openStore(player, storeId, stockKey)
             return
         }
         val totalCost = purchases.fold(0L) { sum, buy -> sum.saturatingAdd(buy.total) }
@@ -194,7 +205,7 @@ object StoreShopFeature {
         }
         val stacks = mutableListOf<ItemStack>()
         purchases.forEach { buy ->
-            decrement(definition, buy.active.pool, buy.active.offer.id, buy.quantity)
+            decrement(stockKey, buy.active.pool, buy.active.offer.id, buy.quantity)
             stacks += buy.stack.copy()
         }
         ChowcoinStore.set(player, balance - totalCost)
@@ -205,30 +216,30 @@ object StoreShopFeature {
         recordBuyMission(player, totalCost)
         SnackbarNetwork.send(player, SnackbarNotification.texture(SnackbarIcons.CHOWCOIN_TEXTURE, "BUY SUCCESSFUL", "Bought $boughtCount items for $totalCost chowcoins", SnackbarType.GENERIC, SnackbarSounds.GENERIC))
         val itemName = if (purchases.size == 1) purchases.single().stack.hoverName.string else "items"
-        NpcFeature.onStorePurchase(player, storeId, boughtCount, itemName, totalCost)
+        NpcFeature.onStorePurchase(player, storeId, stockKey, boughtCount, itemName, totalCost)
     }
 
-    private fun view(definition: StoreDefinition): ShopViewModel {
+    private fun view(definition: StoreDefinition, stockKey: String, subtitle: String): ShopViewModel {
         val categories = definition.categories.map { ShopViewCategory(it.id, labelFromId(it.id)) }
-        val entries = activeOffers(definition).map { active ->
+        val entries = activeOffers(definition, stockKey).map { active ->
             ShopViewEntry(
                 active.offer.id,
                 active.category.id,
                 active.pool,
                 stackFor(active.offer, 1),
-                stock(definition, active.pool, active.offer.id),
+                stock(stockKey, active.pool, active.offer.id),
                 active.offer.priceAmount,
                 definition.displayName,
             )
         }
         val pools = ShopViewPool.entries.map { pool -> ShopViewPoolInfo(pool, pool.label, resetText(definition, pool)) }
-        return ShopViewModel(definition.id, definition.displayName, "Server shared stock", categories, pools, entries)
+        return ShopViewModel(definition.id, stockKey, definition.displayName, subtitle, categories, pools, entries)
     }
 
-    private fun activeOffers(definition: StoreDefinition): List<ActiveStoreOffer> {
-        ensureActive(definition)
+    private fun activeOffers(definition: StoreDefinition, stockKey: String): List<ActiveStoreOffer> {
+        ensureActive(definition, stockKey)
         return ShopViewPool.entries.flatMap { pool ->
-            val poolState = stateFor(definition).pools.getOrPut(pool.id) { StorePoolState() }
+            val poolState = stateFor(stockKey).pools.getOrPut(pool.id) { StorePoolState() }
             definition.categories.flatMap { category ->
                 val allowed = when (pool) {
                     ShopViewPool.ALL -> category.allItems.map(StoreOffer::id).toSet()
@@ -239,20 +250,20 @@ object StoreShopFeature {
         }
     }
 
-    private fun ensureActive(definition: StoreDefinition) {
-        ensurePool(definition, ShopViewPool.ALL)
-        ensurePool(definition, ShopViewPool.DAILY)
-        ensurePool(definition, ShopViewPool.WEEKLY)
+    private fun ensureActive(definition: StoreDefinition, stockKey: String) {
+        ensurePool(definition, stockKey, ShopViewPool.ALL)
+        ensurePool(definition, stockKey, ShopViewPool.DAILY)
+        ensurePool(definition, stockKey, ShopViewPool.WEEKLY)
     }
 
-    private fun ensurePool(definition: StoreDefinition, pool: ShopViewPool) {
+    private fun ensurePool(definition: StoreDefinition, stockKey: String, pool: ShopViewPool) {
         val period = periodKey(definition, pool)
-        val poolState = stateFor(definition).pools.getOrPut(pool.id) { StorePoolState() }
-        if (poolState.period != period) reroll(definition, pool)
+        val poolState = stateFor(stockKey).pools.getOrPut(pool.id) { StorePoolState() }
+        if (poolState.period != period) reroll(definition, stockKey, pool)
     }
 
-    private fun reroll(definition: StoreDefinition, pool: ShopViewPool) {
-        val poolState = stateFor(definition).pools.getOrPut(pool.id) { StorePoolState() }
+    private fun reroll(definition: StoreDefinition, stockKey: String, pool: ShopViewPool) {
+        val poolState = stateFor(stockKey).pools.getOrPut(pool.id) { StorePoolState() }
         poolState.period = periodKey(definition, pool)
         poolState.selected.clear()
         poolState.stock.clear()
@@ -270,16 +281,19 @@ object StoreShopFeature {
         ShopViewPool.WEEKLY -> category.weeklyItems
     }.filter { it.id.isNotBlank() && it.item.isNotBlank() }
 
-    private fun stock(definition: StoreDefinition, pool: ShopViewPool, offerId: String): Int =
-        stateFor(definition).pools[pool.id]?.stock?.get(offerId) ?: 0
+    private fun stock(stockKey: String, pool: ShopViewPool, offerId: String): Int =
+        stateFor(stockKey).pools[pool.id]?.stock?.get(offerId) ?: 0
 
-    private fun decrement(definition: StoreDefinition, pool: ShopViewPool, offerId: String, quantity: Int) {
-        val poolState = stateFor(definition).pools.getOrPut(pool.id) { StorePoolState() }
+    private fun decrement(stockKey: String, pool: ShopViewPool, offerId: String, quantity: Int) {
+        val poolState = stateFor(stockKey).pools.getOrPut(pool.id) { StorePoolState() }
         poolState.stock[offerId] = (poolState.stock[offerId] ?: 0).minus(quantity).coerceAtLeast(0)
     }
 
-    private fun stateFor(definition: StoreDefinition): StoreRuntimeState =
-        state.stores.getOrPut(definition.id) { StoreRuntimeState() }
+    private fun stateFor(stockKey: String): StoreRuntimeState =
+        state.stores.getOrPut(stockKey) { StoreRuntimeState() }
+
+    private fun stockKey(value: String, fallback: String): String =
+        value.trim().lowercase(Locale.ROOT).ifBlank { fallback.lowercase(Locale.ROOT) }.take(96)
 
     private fun weightedSample(offers: List<StoreOffer>, count: Int): List<StoreOffer> {
         val remaining = offers.toMutableList()

@@ -209,7 +209,7 @@ private class StoreShopScreen(private val view: ShopViewModel) : Screen(Componen
         }
         if (buyNowRect().contains(x, y) && canBuyNow(cartTotal())) {
             click()
-            PacketDistributor.sendToServer(StoreShopCartBuyPayload(view.storeId, cartEntries().map { ShopViewCartLine(it.id, cartQty(it)) }))
+            PacketDistributor.sendToServer(StoreShopCartBuyPayload(view.storeId, view.stockKey, cartEntries().map { ShopViewCartLine(it.id, cartQty(it)) }))
             cart.clear()
             minecraft?.setScreen(null)
             return true
@@ -235,7 +235,7 @@ private class StoreShopScreen(private val view: ShopViewModel) : Screen(Componen
             return true
         }
         if ((keyCode == 257 || keyCode == 335) && canBuyNow(cartTotal())) {
-            PacketDistributor.sendToServer(StoreShopCartBuyPayload(view.storeId, cartEntries().map { ShopViewCartLine(it.id, cartQty(it)) }))
+            PacketDistributor.sendToServer(StoreShopCartBuyPayload(view.storeId, view.stockKey, cartEntries().map { ShopViewCartLine(it.id, cartQty(it)) }))
             minecraft?.setScreen(null)
             return true
         }

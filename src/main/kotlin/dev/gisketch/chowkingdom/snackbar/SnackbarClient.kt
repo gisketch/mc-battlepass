@@ -150,6 +150,7 @@ object SnackbarClient {
             }
             SnackbarIconKind.PLAYER -> renderPlayerIcon(guiGraphics, snackbar, alpha)
             SnackbarIconKind.TEXTURE -> renderTextureIcon(guiGraphics, snackbar.icon, alpha)
+            SnackbarIconKind.NPC -> renderNpcIcon(guiGraphics, snackbar.icon, alpha)
         }
         pose.popPose()
         RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f)
@@ -174,6 +175,15 @@ object SnackbarClient {
         val texture = runCatching { ResourceLocation.parse(icon) }.getOrNull() ?: return
         guiGraphics.setColor(1.0f, 1.0f, 1.0f, alpha)
         guiGraphics.blit(texture, 0, 0, ICON_SIZE, ICON_SIZE, 0.0f, 0.0f, TEXTURE_ICON_SOURCE_SIZE, TEXTURE_ICON_SOURCE_SIZE, TEXTURE_ICON_SOURCE_SIZE, TEXTURE_ICON_SOURCE_SIZE)
+        guiGraphics.setColor(1.0f, 1.0f, 1.0f, 1.0f)
+    }
+
+    private fun renderNpcIcon(guiGraphics: GuiGraphics, npcId: String, alpha: Float) {
+        val cleanId = npcId.trim().lowercase(Locale.ROOT).replace(Regex("[^a-z0-9_./-]"), "")
+        val texture = if (cleanId.isBlank()) STEVE_TEXTURE else ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/entity/npc/$cleanId.png")
+        guiGraphics.setColor(1.0f, 1.0f, 1.0f, alpha)
+        guiGraphics.blit(texture, 0, 0, ICON_SIZE, ICON_SIZE, 8.0f, 8.0f, 8, 8, PLAYER_SKIN_SOURCE_SIZE, PLAYER_SKIN_SOURCE_SIZE)
+        guiGraphics.blit(texture, 0, 0, ICON_SIZE, ICON_SIZE, 40.0f, 8.0f, 8, 8, PLAYER_SKIN_SOURCE_SIZE, PLAYER_SKIN_SOURCE_SIZE)
         guiGraphics.setColor(1.0f, 1.0f, 1.0f, 1.0f)
     }
 
@@ -314,6 +324,7 @@ object SnackbarClient {
     private const val ICON_SIZE = 24
     private const val ICON_SCALE = ICON_SIZE / 16.0f
     private const val TEXTURE_ICON_SOURCE_SIZE = 16
+    private const val PLAYER_SKIN_SOURCE_SIZE = 64
     private const val ICON_SLOT_WIDTH = 34
     private const val TITLE_HEIGHT = 10
     private const val CONTENT_GAP = 3
@@ -332,4 +343,5 @@ object SnackbarClient {
     private const val TITLE_SHADOW = 0xCC050505.toInt()
     private const val CONTENT_COLOR = 0xFFEDE6DA.toInt()
     private const val PLAYER_FALLBACK_FILL = 0xCC2F3545.toInt()
+    private val STEVE_TEXTURE = ResourceLocation.withDefaultNamespace("textures/entity/player/wide/steve.png")
 }

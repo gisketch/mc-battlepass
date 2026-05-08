@@ -4,6 +4,7 @@ import com.mojang.brigadier.arguments.IntegerArgumentType
 import com.mojang.brigadier.arguments.StringArgumentType
 import com.mojang.brigadier.builder.LiteralArgumentBuilder
 import com.mojang.brigadier.context.CommandContext
+import dev.gisketch.chowkingdom.ChowClockConfig
 import dev.gisketch.chowkingdom.ChowKingdomMod
 import dev.gisketch.chowkingdom.discord.DiscordRelay
 import dev.gisketch.chowkingdom.relicroulette.RelicRouletteFeature
@@ -38,6 +39,7 @@ import net.minecraft.world.entity.ai.attributes.Attributes
 import net.minecraft.world.item.BlockItem
 import net.minecraft.world.item.Item
 import net.minecraft.world.item.ItemStack
+import net.minecraft.world.level.GameRules
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.BedBlock
@@ -72,7 +74,9 @@ object NpcFeature {
     private val ENTITIES: DeferredRegister<EntityType<*>> = DeferredRegister.create(Registries.ENTITY_TYPE, ChowKingdomMod.MOD_ID)
     private val BLOCK_ENTITIES: DeferredRegister<BlockEntityType<*>> = DeferredRegister.create(Registries.BLOCK_ENTITY_TYPE, ChowKingdomMod.MOD_ID)
     private val realtimeDebugTargets: MutableMap<UUID, UUID> = linkedMapOf()
+    private val clockDebugPlayers: MutableSet<UUID> = linkedSetOf()
     private val greetingRadiusPlayers: MutableMap<UUID, MutableSet<String>> = linkedMapOf()
+    private val pendingShopNpcs: MutableMap<UUID, String> = linkedMapOf()
     private var debugTimeMultiplier: Int = 1
 
     val CAMPING_BLOCK: DeferredHolder<Block, CampingBlock> = BLOCKS.register("camping_block", Supplier { CampingBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.OAK_PLANKS).strength(1.5f).noOcclusion()) })
@@ -114,9 +118,17 @@ object NpcFeature {
         if (level.isClientSide || level !is ServerLevel) return false
         NpcConfig.load()
         NpcStore.load()
-        val definition = NpcConfig.firstIntroducible() ?: return false
-        if (existingNpc(level.server, definition.id) != null) return false
-        return spawnNpc(level, definition, pos)
+        NpcStore.setCampBlock(pos)
+        val active = activeUnhousedCamper(level.server) ?: migrateLiveUnhousedCamper(level.server)
+        if (active != null) {
+            val npc = existingNpc(level.server, active.id)
+            if (npc == null && NpcStore.isDead(active.id)) return spawnNpc(level, active, pos, markActiveCamper = true)
+            return false
+        }
+        val cooldownUntil = NpcStore.camperCooldownUntilTick()
+        if (cooldownUntil > level.dayTime) return false
+        val definition = randomEligibleCamper(level) ?: return false
+        return spawnNpc(level, definition, pos, markActiveCamper = true, announceCamperArrival = true)
     }
 
     fun interact(player: ServerPlayer, npc: ChowNpcEntity) {
@@ -125,7 +137,7 @@ object NpcFeature {
         npc.homePos = validHome
         val hasHome = validHome != null
         val wasSleeping = npc.isSleeping
-        val currentDay = player.level().dayTime / MINECRAFT_DAY_TICKS
+        val currentDay = NpcTime.day(player.level())
         val firstChatToday = NpcStore.markFirstChatIfNeeded(definition.id, player, currentDay)
         val friendship = if (firstChatToday) NpcStore.adjustFriendship(definition.id, player, FIRST_DAILY_CHAT_FRIENDSHIP_DELTA, "first_daily_chat") else NpcStore.friendshipSnapshot(definition.id, player)
         if (wasSleeping) npc.stopSleeping()
@@ -133,15 +145,19 @@ object NpcFeature {
         if (contractGranted) {
             giveStack(player, createRentContract(definition.id))
             NpcStore.markContractGiven(definition.id)
+            SnackbarNetwork.send(player, SnackbarNotification.npc(definition.id, "RENT CONTRACT RECEIVED", "Use it on a bed to give ${definition.name} a home.", SnackbarType.SUCCESS, SnackbarSounds.REWARD))
         }
+        val camperReason = if (!hasHome) NpcStore.camperReturnReason(definition.id) else ""
         val message = if (wasSleeping) {
             friendshipMessage(definition.friendshipMessages.wake, friendship, player, definition)
         } else if (hasHome && firstChatToday) {
             friendshipMessage(definition.friendshipMessages.firstDailyChat, friendship, player, definition)
         } else if (hasHome) {
             friendshipMessage(definition.friendshipMessages.interact, friendship, player, definition)
+        } else if (camperReason == "lost_house") {
+            camperMessage(definition.camperMessages.lostHouseDialog, player, definition)
         } else {
-            "Hi, I'm ${definition.name}. I'm an ${definition.job} looking for a place to stay. If it's okay, use this rent contract on a bed and I'll call it home."
+            camperMessage(definition.camperMessages.needsHouseDialog, player, definition)
         }
         npc.startTalkingTo(player, NPC_DIALOG_DURATION_TICKS)
         NpcStore.recordConversation(definition.id, player, player.gameProfile.name, "interacts with ${definition.name}", "player_interact")
@@ -150,15 +166,17 @@ object NpcFeature {
             wasSleeping && settings.llmMessageUsage.wake -> "${player.gameProfile.name} woke you up. Reply naturally as ${definition.name}, with the context that you were just sleeping."
             hasHome && firstChatToday && settings.llmMessageUsage.firstDailyChat -> "${player.gameProfile.name} is talking to you for the first time today. Reply like a natural first daily greeting."
             hasHome && settings.llmMessageUsage.interact && !contractGranted -> "${player.gameProfile.name} interacted with you. Reply like a natural short NPC greeting or acknowledgement for this moment."
+            !hasHome && camperReason == "lost_house" && settings.llmMessageUsage.camperLostHouse -> settings.campers.lostHouseLlmPrompt
+            !hasHome && settings.llmMessageUsage.camperNeedsHouse -> settings.campers.needsHouseLlmPrompt
             else -> null
         }
         if (settings.llm.enabled && llmInput != null) {
-            NpcNetwork.openDialog(player, dialogPayload(definition, npc, "...", contractGranted, friendship.level))
+            NpcNetwork.openDialog(player, dialogPayload(definition, npc, "...", contractGranted, friendship.level, closeOnly = contractGranted, closeLabel = if (contractGranted) "OKAY" else "BYE"))
             NpcLlmService.event(player, npc, definition, message, llmInput, npcRecordType = "npc_llm_interact")
             return
         }
         NpcStore.recordConversation(definition.id, player, definition.name, message, "npc_message")
-        NpcNetwork.openDialog(player, dialogPayload(definition, npc, message, contractGranted, friendship.level))
+        NpcNetwork.openDialog(player, dialogPayload(definition, npc, message, contractGranted, friendship.level, closeOnly = contractGranted, closeLabel = if (contractGranted) "OKAY" else "BYE"))
         relayNpcDialog(player, npc, definition, message)
     }
 
@@ -173,8 +191,8 @@ object NpcFeature {
     }
 
     private fun openNpcShop(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition) {
-        val currentHour = NpcScheduleDefinition.hourAt(player.level().dayTime)
-        if (definition.schedule.activityAt(player.level().dayTime) != "work") {
+        val currentHour = NpcTime.hour(player.level())
+        if (NpcTime.activityAt(definition.schedule, player.level()) != "work") {
             val friendship = NpcStore.friendshipSnapshot(definition.id, player)
             val nextOpen = nextWorkOpening(definition, currentHour)
             val fallback = if (nextOpen == null) "My shop is closed right now." else "My shop is closed right now. Come back around ${nextOpen.toString().padStart(2, '0')}:00."
@@ -194,10 +212,13 @@ object NpcFeature {
             }
             return
         }
-        val storeId = definition.store.trim().lowercase()
-        if (storeId.isBlank() || !StoreShopFeature.openStore(player, storeId)) {
+        val storeId = definition.storeId().lowercase()
+        if (storeId.isBlank() || !StoreShopFeature.openStore(player, storeId, definition.storeStockKey(), "${definition.name}'s stock")) {
             npcSnackbar(player, definition.name, "No shop ready.", SnackbarType.ERROR)
+            pendingShopNpcs.remove(player.uuid)
+            return
         }
+        pendingShopNpcs[player.uuid] = definition.id
     }
 
     private fun nextWorkOpening(definition: NpcDefinition, currentHour: Int): Int? {
@@ -206,8 +227,14 @@ object NpcFeature {
         return workStarts.filter { hour -> hour > currentHour }.minOrNull() ?: workStarts.minOrNull()
     }
 
-    fun onStorePurchase(player: ServerPlayer, storeId: String, quantity: Int, itemName: String, totalCost: Long) {
-        val definition = NpcConfig.all().firstOrNull { npc -> npc.store.equals(storeId, ignoreCase = true) } ?: return
+    fun onStorePurchase(player: ServerPlayer, storeId: String, stockKey: String, quantity: Int, itemName: String, totalCost: Long) {
+        val normalizedStoreId = storeId.lowercase()
+        val normalizedStockKey = stockKey.lowercase()
+        val definition = pendingShopNpcs.remove(player.uuid)
+            ?.let(NpcConfig::get)
+            ?.takeIf { npc -> npc.storeId().equals(normalizedStoreId, ignoreCase = true) }
+            ?: NpcConfig.all().firstOrNull { npc -> npc.storeId().equals(normalizedStoreId, ignoreCase = true) && npc.storeStockKey().equals(normalizedStockKey, ignoreCase = true) }
+            ?: return
         val npc = existingNpc(player.server, definition.id) ?: return
         if (npc.level() != player.level()) return
         if (player.distanceToSqr(npc) > NPC_DIALOG_ACTION_DISTANCE_SQR) return
@@ -253,7 +280,7 @@ object NpcFeature {
         }
         if (RelicRouletteFeature.rejectTransfer(player, stack, "gifts")) return
         val limit = definition.gifts.dailyLimit
-        val period = giftPeriod(player.level().dayTime, definition.gifts.resetHour)
+        val period = NpcTime.periodForReset(player.level().dayTime, definition.gifts.resetHour)
         if (!NpcStore.recordGiftIfAllowed(definition.id, player, period, limit)) {
             if (NpcConfig.settings().llm.enabled && NpcConfig.settings().llmMessageUsage.gift) {
                 val friendship = NpcStore.friendshipSnapshot(definition.id, player)
@@ -354,7 +381,13 @@ object NpcFeature {
             .replace("{friendship_points}", friendship.points.toString())
     }
 
-    private fun giftPeriod(dayTime: Long, resetHour: Int): Long = Math.floorDiv(dayTime - (resetHour - 6) * TICKS_PER_HOUR, MINECRAFT_DAY_TICKS)
+    private fun camperMessage(pool: List<String>, player: ServerPlayer, definition: NpcDefinition): String {
+        val messages = pool.ifEmpty { listOf("I need a bed before I can settle in.") }
+        val selected = messages[player.random.nextInt(messages.size)]
+        return selected
+            .replace("{player}", player.gameProfile.name)
+            .replace("{npc}", definition.name)
+    }
 
     private fun relayNpcDialog(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, message: String) {
         val level = npc.level() as? ServerLevel ?: return
@@ -410,14 +443,38 @@ object NpcFeature {
             return false
         }
         val homePos = canonicalBedPos(player.level(), bedPos)
+        val npc = existingNpc(player.server, npcId)
+        if (npc == null || npc.level() != player.level() || npc.distanceToSqr(homePos.x + 0.5, homePos.y.toDouble(), homePos.z + 0.5) > CONTRACT_BED_ASSIGN_RADIUS_SQR) {
+            npcSnackbar(player, definition.name, "${definition.name} needs to be near the bed.", SnackbarType.ERROR)
+            return false
+        }
         NpcStore.setHome(npcId, homePos)
-        existingNpc(player.server, npcId)?.let { npc ->
+        NpcStore.clearActiveCamper(npcId)
+        scheduleNextCamper(player.level())
+        npc.let { npc ->
             npc.homePos = homePos.immutable()
             npc.campPos = npc.campPos ?: NpcStore.campPos(npcId)
+            npc.startTalkingTo(player, NPC_DIALOG_DURATION_TICKS)
+            val friendship = NpcStore.friendshipSnapshot(definition.id, player)
+            val fallback = "Thank you, {player}. This bed feels like home already.".replace("{player}", player.gameProfile.name)
+            NpcNetwork.openDialog(player, dialogPayload(definition, npc, "...", false, friendship.level, closeOnly = true, closeLabel = "OKAY"))
+            if (NpcConfig.settings().llm.enabled && NpcConfig.settings().llmMessageUsage.assignedHouse) {
+                NpcLlmService.event(
+                    player,
+                    npc,
+                    definition,
+                    fallback,
+                    NpcConfig.settings().campers.assignedHouseLlmPrompt,
+                    npcRecordType = "npc_assigned_house",
+                )
+            } else {
+                NpcNetwork.sendTalkResponse(player, definition.id, fallback)
+                NpcStore.recordConversation(definition.id, player, definition.name, fallback, "npc_assigned_house")
+                relayNpcDialog(player, npc, definition, fallback)
+            }
         }
         if (!player.abilities.instabuild) stack.shrink(1)
         SnackbarNetwork.send(player, SnackbarNotification.item(BuiltInRegistries.ITEM.getKey(RENT_CONTRACT.get()).toString(), "HOME ASSIGNED", "${definition.name} now lives here", SnackbarType.SUCCESS, SnackbarSounds.REWARD))
-        player.sendSystemMessage(Component.literal("${definition.name}'s home is now set to this bed.").withStyle(ChatFormatting.GREEN))
         return true
     }
 
@@ -426,9 +483,34 @@ object NpcFeature {
         entity.homePos = validHomePos(entity.level(), definition.id)
         entity.campPos = entity.campPos ?: NpcStore.campPos(definition.id)
         if (NpcBrainOverrides.tick(entity, definition)) return
+        if (tryFollowRentContractHolder(entity, definition)) return
         if (tryGreetNearbyPlayer(entity, definition)) return
         if (entity.isTalking()) return
         NpcBrain.tick(entity, definition)
+    }
+
+    private fun tryFollowRentContractHolder(npc: ChowNpcEntity, definition: NpcDefinition): Boolean {
+        if (npc.homePos != null) return false
+        val level = npc.level() as? ServerLevel ?: return false
+        val holder = level.players()
+            .filter { player -> player.isAlive && !player.isSpectator && player.distanceToSqr(npc) <= CONTRACT_FOLLOW_SCAN_RADIUS_SQR }
+            .firstOrNull { player -> playerHoldsRentContract(player, definition.id) }
+            ?: return false
+        if (npc.isSleeping) npc.stopSleeping()
+        npc.debugActivity = "camp"
+        npc.debugGoal = "follow_contract"
+        npc.debugTargetPos = holder.blockPosition().immutable()
+        npc.lookControl.setLookAt(holder, 30.0f, 30.0f)
+        if (npc.distanceToSqr(holder) > CONTRACT_FOLLOW_STOP_DISTANCE_SQR) {
+            npc.navigation.moveTo(holder.x, holder.y, holder.z, 0.95)
+        } else {
+            npc.navigation.stop()
+        }
+        return true
+    }
+
+    private fun playerHoldsRentContract(player: ServerPlayer, npcId: String): Boolean {
+        return NpcRentContractData.readNpcId(player.mainHandItem) == npcId || NpcRentContractData.readNpcId(player.offhandItem) == npcId
     }
 
     private fun tryGreetNearbyPlayer(npc: ChowNpcEntity, definition: NpcDefinition): Boolean {
@@ -443,7 +525,7 @@ object NpcFeature {
             .asSequence()
             .minByOrNull { player -> player.distanceToSqr(npc.x, npc.y, npc.z) }
             ?: return false
-        val day = level.dayTime / MINECRAFT_DAY_TICKS
+        val day = NpcTime.day(level)
         val nowMs = System.currentTimeMillis()
         if (!NpcStore.canShowGreeting(definition.id, player, day, nowMs)) return false
         val friendship = NpcStore.friendshipSnapshot(definition.id, player)
@@ -522,6 +604,8 @@ object NpcFeature {
     private fun onServerTick(event: ServerTickEvent.Post) {
         tickDebugTime(event.server)
         tickNpcRespawns(event.server)
+        tickCamperSpawner(event.server)
+        tickClockDebug(event.server)
         tickRealtimeDebug(event.server)
     }
 
@@ -550,6 +634,13 @@ object NpcFeature {
                 NpcStore.adjustFriendship(definition.id, player, FRIENDSHIP_KILL_DELTA, "kill")
                 NpcStore.recordConversation(definition.id, player, definition.name, deathText, "npc_death")
             }
+            if (validHomePos(npc.level(), definition.id) == null) {
+                val camp = npc.campPos ?: NpcStore.campBlockPos()
+                if (camp != null) {
+                    NpcStore.setActiveCamper(definition.id, camp)
+                    NpcStore.markCamperReturnReason(definition.id, "")
+                }
+            }
             NpcStore.markDead(definition.id, nextRespawnDay(npc.level().dayTime))
             return
         }
@@ -562,7 +653,22 @@ object NpcFeature {
         if (!event.state.`is`(BlockTags.BEDS)) return
         val npcId = homeOwnerAtBed(level, event.pos) ?: return
         NpcStore.clearHome(npcId)
-        existingNpc(level.server, npcId)?.homePos = null
+        val camp = NpcStore.campBlockPos()
+        if (camp != null) {
+            NpcStore.setActiveCamper(npcId, camp)
+            NpcStore.markCamperReturnReason(npcId, "lost_house")
+        }
+        existingNpc(level.server, npcId)?.let { npc ->
+            npc.homePos = null
+            if (camp != null) {
+                val definition = NpcConfig.get(npcId) ?: return@let
+                val listener = level.players().firstOrNull()
+                npc.campPos = camp.immutable()
+                npc.navigation.stop()
+                npc.moveTo(camp.x + 0.5, camp.y + 1.0, camp.z + 0.5, level.random.nextFloat() * 360.0f, 0.0f)
+                if (listener != null) sendNpcBalloon(level, npc, camperMessage(definition.camperMessages.lostHouseBalloon, listener, definition), 120)
+            }
+        }
         NpcStore.recordGlobalEvent("npc_home_lost", "$npcId lost assigned bed")
     }
 
@@ -643,6 +749,10 @@ object NpcFeature {
                 .requires { source -> source.hasPermission(2) }
                 .executes(::debugCommand)
                 .then(
+                    Commands.literal("clock")
+                        .executes(::debugClockCommand),
+                )
+                .then(
                     Commands.literal("time")
                         .then(Commands.argument("multiplier", IntegerArgumentType.integer(1, 240)).executes(::debugTimeCommand)),
                 )
@@ -679,6 +789,19 @@ object NpcFeature {
                     Commands.argument("id", StringArgumentType.word())
                         .suggests(::suggestNpcIds)
                         .executes(::respawnCommand),
+                ),
+        )
+        .then(
+            Commands.literal("clear")
+                .requires { source -> source.hasPermission(4) }
+                .then(
+                    Commands.literal("all")
+                        .then(Commands.literal("confirm").executes(::clearAllNpcsCommand)),
+                )
+                .then(
+                    Commands.argument("id", StringArgumentType.word())
+                        .suggests(::suggestNpcIds)
+                        .then(Commands.literal("confirm").executes(::clearNpcCommand)),
                 ),
         )
         .then(
@@ -720,8 +843,9 @@ object NpcFeature {
         SharedSuggestionProvider.suggest(NpcConfig.all().map { definition -> definition.id }, builder)
 
     private fun reloadCommand(context: CommandContext<CommandSourceStack>): Int {
+        ChowClockConfig.load()
         NpcConfig.load()
-        context.source.sendSuccess({ Component.literal("Reloaded ${NpcConfig.all().size} NPC definition(s).") }, true)
+        context.source.sendSuccess({ Component.literal("Reloaded ${NpcConfig.all().size} NPC definition(s). Clock source: ${ChowClockConfig.sourceName()}.") }, true)
         return NpcConfig.all().size
     }
 
@@ -749,9 +873,22 @@ object NpcFeature {
             Component.literal("NPC REALTIME DEBUG: ${definition?.displayName() ?: npc.npcId}").withStyle(ChatFormatting.GOLD),
             Component.literal("id=${npc.npcId} job=${definition?.job ?: "unknown"} body=${npc.bodyType} nav=$navigation"),
             Component.literal("activity=${npc.debugActivity} task=${npc.debugGoal} target=$target routine=$routine"),
-            Component.literal("camp=$camp home=$home store=${definition?.store.orEmpty().ifBlank { "none" }}"),
+            Component.literal("camp=$camp home=$home store=${definition?.storeId().orEmpty().ifBlank { "none" }}"),
             Component.literal("Actionbar will update live. Run /npc debug on the same NPC again to stop.").withStyle(ChatFormatting.DARK_GRAY),
         ).forEach(player::sendSystemMessage)
+        return 1
+    }
+
+    private fun debugClockCommand(context: CommandContext<CommandSourceStack>): Int {
+        ChowClockConfig.load()
+        val player = context.source.playerOrException
+        if (!clockDebugPlayers.add(player.uuid)) {
+            clockDebugPlayers.remove(player.uuid)
+            player.sendSystemMessage(Component.literal("CK clock debug disabled.").withStyle(ChatFormatting.GRAY))
+            return 1
+        }
+        player.sendSystemMessage(Component.literal("CK CLOCK DEBUG: ${clockDebugLine(player.level())}").withStyle(ChatFormatting.GOLD))
+        player.sendSystemMessage(Component.literal("Actionbar will update live. Run /npc debug clock again to stop.").withStyle(ChatFormatting.DARK_GRAY))
         return 1
     }
 
@@ -792,8 +929,9 @@ object NpcFeature {
         }
         val server = context.source.server
         val dayTime = server.overworld().dayTime
-        val currentDay = dayTime / MINECRAFT_DAY_TICKS
-        val currentHour = NpcScheduleDefinition.hourAt(dayTime)
+        val now = NpcTime.at(dayTime)
+        val currentDay = now.day
+        val currentHour = now.hour
         val respawnDay = NpcStore.respawnDay(id)
         val liveNpc = existingNpc(server, id)
         val home = NpcStore.homePos(id)
@@ -831,6 +969,65 @@ object NpcFeature {
             context.source.sendFailure(Component.literal("Could not respawn ${definition.displayName()}."))
             0
         }
+    }
+
+    private fun clearAllNpcsCommand(context: CommandContext<CommandSourceStack>): Int {
+        val server = context.source.server
+        val removedEntities = removeLiveNpcs(server, null)
+        val removedContracts = removeRentContracts(server, null)
+        val backup = NpcStore.backupAndClearAll()
+        realtimeDebugTargets.clear()
+        greetingRadiusPlayers.clear()
+        context.source.sendSuccess({
+            Component.literal("DANGER: cleared all NPC state, $removedEntities live NPC(s), and $removedContracts rent contract(s). Backup: $backup").withStyle(ChatFormatting.RED)
+        }, true)
+        return removedEntities
+    }
+
+    private fun clearNpcCommand(context: CommandContext<CommandSourceStack>): Int {
+        val id = StringArgumentType.getString(context, "id")
+        val definition = NpcConfig.get(id)
+        if (definition == null) {
+            context.source.sendFailure(Component.literal("Unknown NPC '$id'."))
+            return 0
+        }
+        val server = context.source.server
+        val removedEntities = removeLiveNpcs(server, id)
+        val removedContracts = removeRentContracts(server, id)
+        val backup = NpcStore.backupAndClearNpc(id)
+        realtimeDebugTargets.clear()
+        greetingRadiusPlayers.clear()
+        context.source.sendSuccess({
+            Component.literal("DANGER: cleared ${definition.displayName()} state, $removedEntities live NPC(s), and $removedContracts rent contract(s). Backup: $backup").withStyle(ChatFormatting.RED)
+        }, true)
+        return removedEntities
+    }
+
+    private fun removeLiveNpcs(server: MinecraftServer, npcId: String?): Int {
+        var removed = 0
+        server.allLevels.forEach { level ->
+            level.getEntities(NPC_ENTITY.get()) { npc -> npcId == null || npc.npcId == npcId }.forEach { entity ->
+                NpcBrainOverrides.clear(entity)
+                entity.discard()
+                removed++
+            }
+        }
+        return removed
+    }
+
+    private fun removeRentContracts(server: MinecraftServer, npcId: String?): Int {
+        var removed = 0
+        server.playerList.players.forEach { player ->
+            for (slot in 0 until player.inventory.containerSize) {
+                val stack = player.inventory.getItem(slot)
+                val contractNpcId = NpcRentContractData.readNpcId(stack)
+                if (contractNpcId.isNotBlank() && (npcId == null || contractNpcId == npcId)) {
+                    removed += stack.count
+                    player.inventory.setItem(slot, ItemStack.EMPTY)
+                }
+            }
+        }
+        return removed
     }
 
     private fun friendshipGetCommand(context: CommandContext<CommandSourceStack>): Int {
@@ -874,7 +1071,6 @@ object NpcFeature {
     private fun tickNpcRespawns(server: MinecraftServer) {
         if (server.tickCount % RESPAWN_SCAN_INTERVAL_TICKS != 0) return
         val dayTime = server.overworld().dayTime
-        val currentDay = dayTime / MINECRAFT_DAY_TICKS
         NpcStore.deadNpcIds().forEach { npcId ->
             if (!respawnReady(dayTime, NpcStore.respawnDay(npcId))) return@forEach
             val definition = NpcConfig.get(npcId) ?: return@forEach
@@ -882,19 +1078,75 @@ object NpcFeature {
                 NpcStore.clearDead(npcId)
                 return@forEach
             }
+            if (NpcStore.homePos(npcId) == null) {
+                val camp = NpcStore.campBlockPos() ?: NpcStore.campPos(npcId) ?: return@forEach
+                spawnNpc(server.overworld(), definition, camp, markActiveCamper = true)
+                return@forEach
+            }
             val home = validHomePos(server.overworld(), npcId) ?: return@forEach
             respawnNpc(server.overworld(), definition, home)
         }
     }
 
+    private fun tickCamperSpawner(server: MinecraftServer) {
+        if (server.tickCount % RESPAWN_SCAN_INTERVAL_TICKS != 0) return
+        val camp = NpcStore.campBlockPos() ?: return
+        val level = server.overworld()
+        if (!level.getBlockState(camp).`is`(CAMPING_BLOCK.get())) return
+        if (activeUnhousedCamper(server) ?: migrateLiveUnhousedCamper(server) != null) return
+        val cooldownUntil = NpcStore.camperCooldownUntilTick()
+        if (cooldownUntil > level.dayTime) return
+        val definition = randomEligibleCamper(level) ?: return
+        spawnNpc(level, definition, camp, markActiveCamper = true, announceCamperArrival = true)
+    }
+
+    private fun activeUnhousedCamper(server: MinecraftServer): NpcDefinition? {
+        val activeId = NpcStore.activeCamperId().ifBlank { return null }
+        val definition = NpcConfig.get(activeId) ?: return null
+        if (validHomePos(server.overworld(), activeId) != null) {
+            NpcStore.clearActiveCamper(activeId)
+            return null
+        }
+        return definition
+    }
+
+    private fun migrateLiveUnhousedCamper(server: MinecraftServer): NpcDefinition? {
+        NpcConfig.all().forEach { definition ->
+            val npc = existingNpc(server, definition.id) ?: return@forEach
+            if (validHomePos(npc.level(), definition.id) != null) return@forEach
+            val camp = npc.campPos ?: NpcStore.campBlockPos() ?: npc.blockPosition()
+            NpcStore.setActiveCamper(definition.id, camp)
+            npc.campPos = camp.immutable()
+            return definition
+        }
+        return null
+    }
+
+    private fun randomEligibleCamper(level: ServerLevel): NpcDefinition? {
+        val candidates = NpcConfig.all()
+            .filter { definition -> definition.housing.canMoveIn }
+            .filter { definition -> NpcStore.homePos(definition.id) == null }
+            .filter { definition -> existingNpc(level.server, definition.id) == null || NpcStore.isDead(definition.id) }
+        if (candidates.isEmpty()) return null
+        return candidates[level.random.nextInt(candidates.size)]
+    }
+
+    private fun scheduleNextCamper(level: Level) {
+        val settings = NpcConfig.settings().campers
+        val hours = if (settings.cooldownMinHours == settings.cooldownMaxHours) {
+            settings.cooldownMinHours
+        } else {
+            settings.cooldownMinHours + level.random.nextInt(settings.cooldownMaxHours - settings.cooldownMinHours + 1)
+        }
+        NpcStore.setCamperCooldown(NpcTime.addHours(level.dayTime, hours))
+    }
+
     private fun respawnReady(dayTime: Long, respawnDay: Long): Boolean {
-        val currentDay = dayTime / MINECRAFT_DAY_TICKS
-        return currentDay > respawnDay || currentDay == respawnDay && NpcScheduleDefinition.hourAt(dayTime) >= NPC_RESPAWN_HOUR
+        return NpcTime.readyAtOrAfterHour(dayTime, respawnDay, NPC_RESPAWN_HOUR)
     }
 
     private fun nextRespawnDay(dayTime: Long): Long {
-        val currentDay = dayTime / MINECRAFT_DAY_TICKS
-        return if (NpcScheduleDefinition.hourAt(dayTime) < NPC_RESPAWN_HOUR) currentDay else currentDay + 1
+        return NpcTime.nextDayAtHour(dayTime, NPC_RESPAWN_HOUR)
     }
 
     private fun tickRealtimeDebug(server: MinecraftServer) {
@@ -919,12 +1171,32 @@ object NpcFeature {
         }
     }
 
+    private fun tickClockDebug(server: MinecraftServer) {
+        if (server.tickCount % REALTIME_DEBUG_INTERVAL_TICKS != 0) return
+        val iterator = clockDebugPlayers.iterator()
+        while (iterator.hasNext()) {
+            val playerId = iterator.next()
+            val player = server.playerList.getPlayer(playerId) ?: run {
+                iterator.remove()
+                continue
+            }
+            player.displayClientMessage(Component.literal(clockDebugLine(player.level())).withStyle(ChatFormatting.YELLOW), true)
+        }
+    }
+
+    private fun clockDebugLine(level: Level): String {
+        val clock = NpcTime.at(level.dayTime)
+        val daylight = level.gameRules.getBoolean(GameRules.RULE_DAYLIGHT)
+        val speed = if (debugTimeMultiplier > 1) " debug=${debugTimeMultiplier}x" else ""
+        return "time=${clock.displayTime()} hour=${clock.hour.toString().padStart(2, '0')} day=${clock.day} raw=${clock.rawDayTime} tick=${clock.tickOfCycle} source=${ChowClockConfig.sourceName()} daylight=$daylight$speed"
+    }
+
     private fun realtimeDebugLine(npc: ChowNpcEntity): String {
         val nav = if (npc.navigation.isDone) "idle" else "moving"
         val target = npc.debugTargetPos?.toShortString() ?: "none"
-        val hour = NpcScheduleDefinition.hourAt(npc.level().dayTime).toString().padStart(2, '0')
+        val clock = NpcTime.at(npc.level().dayTime)
         val time = if (debugTimeMultiplier > 1) " time=${debugTimeMultiplier}x" else ""
-        return "${npc.npcId} | hour=$hour activity=${npc.debugActivity} task=${npc.debugGoal} nav=$nav target=$target$time"
+        return "${npc.npcId} | ${clock.displayTime()} tick=${clock.tickOfCycle} activity=${npc.debugActivity} task=${npc.debugGoal} nav=$nav target=$target$time"
     }
 
     private fun spawnCommand(context: CommandContext<CommandSourceStack>): Int {
@@ -957,7 +1229,7 @@ object NpcFeature {
         )
     }
 
-    private fun spawnNpc(level: ServerLevel, definition: NpcDefinition, campPos: BlockPos): Boolean {
+    private fun spawnNpc(level: ServerLevel, definition: NpcDefinition, campPos: BlockPos, markActiveCamper: Boolean = false, announceCamperArrival: Boolean = false): Boolean {
         if (existingNpc(level.server, definition.id) != null) return false
         val npc = NPC_ENTITY.get().create(level) ?: return false
         val spawnPos = npcSpawnAroundCamp(level, campPos) ?: return false
@@ -966,7 +1238,27 @@ object NpcFeature {
         level.addFreshEntity(npc)
         NpcStore.setEntity(definition.id, npc.uuid, campPos)
         NpcStore.clearDead(definition.id)
+        if (markActiveCamper) {
+            NpcStore.setActiveCamper(definition.id, campPos)
+            level.players().firstOrNull()?.let { player ->
+                val message = camperMessage(definition.camperMessages.needsHouseBalloon, player, definition)
+                sendNpcBalloon(level, npc, message, 120)
+            }
+            if (announceCamperArrival) announceCamperArrival(level, definition)
+        }
         return true
+    }
+
+    private fun announceCamperArrival(level: ServerLevel, definition: NpcDefinition) {
+        val notification = SnackbarNotification.npc(
+            definition.id,
+            "NEW CAMPER AT THE CAMPING BLOCK",
+            "${definition.name} is looking for a place to stay. Talk to them to welcome them and offer a rent contract.",
+            SnackbarType.SUCCESS,
+            SnackbarSounds.REWARD,
+        )
+        SnackbarNetwork.sendToAllKnown(level.server, notification)
+        DiscordRelay.npcCamperArrived(level.server, definition.id, definition.name)
     }
 
     private fun npcSpawnAroundCamp(level: ServerLevel, campPos: BlockPos): BlockPos? {
@@ -1102,11 +1394,12 @@ object NpcFeature {
     private const val NPC_DIALOG_ACTION_DISTANCE_SQR = 64.0
     private const val HURT_MESSAGE_INTERVAL = 3
     private const val NPC_CAMP_SPAWN_RADIUS = 2
+    private const val CONTRACT_FOLLOW_SCAN_RADIUS_SQR = 32.0 * 32.0
+    private const val CONTRACT_FOLLOW_STOP_DISTANCE_SQR = 2.5 * 2.5
+    private const val CONTRACT_BED_ASSIGN_RADIUS_SQR = 7.0 * 7.0
     private const val FRIENDSHIP_HIT_DELTA = -10
     private const val FRIENDSHIP_KILL_DELTA = -300
     private const val FIRST_DAILY_CHAT_FRIENDSHIP_DELTA = 25
     private const val RESPAWN_SCAN_INTERVAL_TICKS = 20
     private const val NPC_RESPAWN_HOUR = 5
-    private const val TICKS_PER_HOUR = 1000L
-    private const val MINECRAFT_DAY_TICKS = 24000L
 }

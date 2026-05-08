@@ -9,6 +9,7 @@ import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.Font
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.components.EditBox
+import net.minecraft.client.gui.screens.inventory.tooltip.ClientTooltipComponent
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.model.HumanoidModel
 import net.minecraft.client.model.PlayerModel
@@ -26,12 +27,16 @@ import net.minecraft.sounds.SoundEvent
 import net.minecraft.sounds.SoundSource
 import net.minecraft.util.RandomSource
 import net.minecraft.world.entity.LivingEntity
+import net.minecraft.world.inventory.tooltip.TooltipComponent
 import net.minecraft.world.item.ItemStack
 import net.neoforged.bus.api.IEventBus
 import net.neoforged.neoforge.client.event.EntityRenderersEvent
+import net.neoforged.neoforge.client.event.RegisterClientTooltipComponentFactoriesEvent
 import net.neoforged.neoforge.client.event.RenderGuiLayerEvent
+import net.neoforged.neoforge.client.event.RenderTooltipEvent
 import net.neoforged.neoforge.client.gui.VanillaGuiLayers
 import net.neoforged.neoforge.common.NeoForge
+import com.mojang.datafixers.util.Either
 import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.asin
@@ -105,7 +110,9 @@ object NpcClient {
 
     fun register(modBus: IEventBus) {
         modBus.addListener(::registerRenderers)
+        modBus.addListener(::registerTooltipFactories)
         NeoForge.EVENT_BUS.addListener(::hideHotbarDuringDialog)
+        NeoForge.EVENT_BUS.addListener(::gatherRentContractTooltip)
     }
 
     @JvmStatic
@@ -114,6 +121,18 @@ object NpcClient {
     private fun registerRenderers(event: EntityRenderersEvent.RegisterRenderers) {
         event.registerEntityRenderer(NpcFeature.NPC_ENTITY.get(), ::ChowNpcRenderer)
         event.registerBlockEntityRenderer(NpcFeature.CAMPING_BLOCK_ENTITY.get()) { CampingBlockRenderer() }
+    }
+
+    private fun registerTooltipFactories(event: RegisterClientTooltipComponentFactoriesEvent) {
+        event.register(NpcRentContractTooltip::class.java, ::NpcRentContractClientTooltip)
+    }
+
+    private fun gatherRentContractTooltip(event: RenderTooltipEvent.GatherComponents) {
+        val npcId = NpcRentContractData.readNpcId(event.itemStack)
+        if (npcId.isBlank()) return
+        val definition = NpcConfig.get(npcId)
+        val name = definition?.name ?: npcId
+        event.tooltipElements.add(1.coerceAtMost(event.tooltipElements.size), Either.right(NpcRentContractTooltip(npcId, name)))
     }
 
     private fun hideHotbarDuringDialog(event: RenderGuiLayerEvent.Pre) {
@@ -180,6 +199,13 @@ object NpcClient {
     private const val BALLOON_TEXT_COLOR = 0xFF24201C.toInt()
 }
 
+private fun npcTexture(npcId: String): ResourceLocation {
+    val cleanId = npcId.trim().lowercase(Locale.ROOT).replace(Regex("[^a-z0-9_./-]"), "")
+    return if (cleanId.isBlank()) STEVE_TEXTURE else ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/entity/npc/$cleanId.png")
+}
+
+private val STEVE_TEXTURE = ResourceLocation.withDefaultNamespace("textures/entity/player/wide/steve.png")
+
 private class ChowNpcRenderer(context: EntityRendererProvider.Context) : MobRenderer<ChowNpcEntity, PlayerModel<ChowNpcEntity>>(context, ChowNpcModel(context.bakeLayer(ModelLayers.PLAYER), false), 0.5f) {
     private val normalModel = ChowNpcModel(context.bakeLayer(ModelLayers.PLAYER), false)
     private val slimModel = ChowNpcModel(context.bakeLayer(ModelLayers.PLAYER_SLIM), true)
@@ -194,11 +220,21 @@ private class ChowNpcRenderer(context: EntityRendererProvider.Context) : MobRend
         super.render(entity, entityYaw, partialTicks, poseStack, buffer, packedLight)
     }
 
-    override fun getTextureLocation(entity: ChowNpcEntity): ResourceLocation = if (entity.npcId == "finn") FINN_TEXTURE else STEVE_TEXTURE
+    override fun getTextureLocation(entity: ChowNpcEntity): ResourceLocation = npcTexture(entity.npcId)
+}
 
-    companion object {
-        private val FINN_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/entity/npc/finn.png")
-        private val STEVE_TEXTURE = ResourceLocation.withDefaultNamespace("textures/entity/player/wide/steve.png")
+class NpcRentContractTooltip(val npcId: String, val npcName: String) : TooltipComponent
+
+class NpcRentContractClientTooltip(private val tooltip: NpcRentContractTooltip) : ClientTooltipComponent {
+    override fun getHeight(): Int = 26
+
+    override fun getWidth(font: Font): Int = 28 + font.width(tooltip.npcName)
+
+    override fun renderImage(font: Font, x: Int, y: Int, guiGraphics: GuiGraphics) {
+        val texture = npcTexture(tooltip.npcId)
+        guiGraphics.blit(texture, x, y, 24, 24, 8.0f, 8.0f, 8, 8, 64, 64)
+        guiGraphics.blit(texture, x, y, 24, 24, 40.0f, 8.0f, 8, 8, 64, 64)
+        guiGraphics.drawString(font, tooltip.npcName, x + 28, y + 8, 0xFFFFFFFF.toInt(), false)
     }
 }
 
@@ -303,7 +339,6 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
             guiGraphics.drawString(font, line, dialogX, lineY, DIALOG_COLOR, false)
             lineY += LINE_HEIGHT
         }
-        if (!talkMode && payload.contractGranted && visibleMessage.length >= displayMessage.length) guiGraphics.drawString(font, "Rent Contract received", dialogX, y + panelHeight - 16, CONTRACT_COLOR, false)
         if (talkMode) talkInput?.render(guiGraphics, localMouse.first, localMouse.second, partialTick)
         val hoveredAction = actionAt(localMouse.first, localMouse.second)
         renderActionButtons(guiGraphics, localMouse.first, localMouse.second, buttonX, y + buttonTop)
@@ -489,7 +524,7 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
     }
 
     private fun renderAvatar(guiGraphics: GuiGraphics, npcId: String, x: Int, y: Int) {
-        val texture = if (npcId == "finn") FINN_TEXTURE else STEVE_TEXTURE
+        val texture = npcTexture(npcId)
         guiGraphics.blit(texture, x, y, AVATAR_SIZE, AVATAR_SIZE, 8.0f, 8.0f, 8, 8, SKIN_TEXTURE_SIZE, SKIN_TEXTURE_SIZE)
         guiGraphics.blit(texture, x, y, AVATAR_SIZE, AVATAR_SIZE, 40.0f, 8.0f, 8, 8, SKIN_TEXTURE_SIZE, SKIN_TEXTURE_SIZE)
     }
@@ -624,8 +659,6 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         private val PANEL_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_container_grey.png")
         private val CKDM_BOLD_FONT = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "ckdm_bold")
         private val CKDM_SMALL_FONT = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "ckdm_bold_small")
-        private val FINN_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/entity/npc/finn.png")
-        private val STEVE_TEXTURE = ResourceLocation.withDefaultNamespace("textures/entity/player/wide/steve.png")
         private val BUTTON_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_btn_gray.png")
         private val BUTTON_HOVER_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_btn_green_hover.png")
         private val RED_BUTTON_HOVER_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_btn_red_hover.png")

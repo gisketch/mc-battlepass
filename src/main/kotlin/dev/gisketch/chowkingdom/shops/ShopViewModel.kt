@@ -33,6 +33,7 @@ data class ShopViewEntry(
 
 data class ShopViewModel(
     val storeId: String,
+    val stockKey: String,
     val title: String,
     val subtitle: String,
     val categories: List<ShopViewCategory>,
@@ -50,6 +51,7 @@ data class StoreShopOpenPayload(val view: ShopViewModel) : CustomPacketPayload {
         val STREAM_CODEC: StreamCodec<RegistryFriendlyByteBuf, StoreShopOpenPayload> = object : StreamCodec<RegistryFriendlyByteBuf, StoreShopOpenPayload> {
             override fun decode(buffer: RegistryFriendlyByteBuf): StoreShopOpenPayload {
                 val storeId = buffer.readUtf(64)
+                val stockKey = buffer.readUtf(96)
                 val title = buffer.readUtf(96)
                 val subtitle = buffer.readUtf(160)
                 val categories = List(buffer.readVarInt().coerceIn(0, MAX_CATEGORIES)) {
@@ -69,11 +71,12 @@ data class StoreShopOpenPayload(val view: ShopViewModel) : CustomPacketPayload {
                         buffer.readUtf(96),
                     )
                 }
-                return StoreShopOpenPayload(ShopViewModel(storeId, title, subtitle, categories, pools, entries))
+                return StoreShopOpenPayload(ShopViewModel(storeId, stockKey, title, subtitle, categories, pools, entries))
             }
 
             override fun encode(buffer: RegistryFriendlyByteBuf, value: StoreShopOpenPayload) {
                 buffer.writeUtf(value.view.storeId, 64)
+                buffer.writeUtf(value.view.stockKey, 96)
                 buffer.writeUtf(value.view.title, 96)
                 buffer.writeUtf(value.view.subtitle, 160)
                 buffer.writeVarInt(value.view.categories.size.coerceAtMost(MAX_CATEGORIES))
@@ -106,7 +109,7 @@ data class StoreShopOpenPayload(val view: ShopViewModel) : CustomPacketPayload {
     }
 }
 
-data class StoreShopCartBuyPayload(val storeId: String, val lines: List<ShopViewCartLine>) : CustomPacketPayload {
+data class StoreShopCartBuyPayload(val storeId: String, val stockKey: String, val lines: List<ShopViewCartLine>) : CustomPacketPayload {
     override fun type(): CustomPacketPayload.Type<StoreShopCartBuyPayload> = TYPE
 
     companion object {
@@ -115,11 +118,13 @@ data class StoreShopCartBuyPayload(val storeId: String, val lines: List<ShopView
             override fun decode(buffer: RegistryFriendlyByteBuf): StoreShopCartBuyPayload =
                 StoreShopCartBuyPayload(
                     buffer.readUtf(64),
+                    buffer.readUtf(96),
                     List(buffer.readVarInt().coerceIn(0, MAX_LINES)) { ShopViewCartLine(buffer.readUtf(96), buffer.readVarInt()) },
                 )
 
             override fun encode(buffer: RegistryFriendlyByteBuf, value: StoreShopCartBuyPayload) {
                 buffer.writeUtf(value.storeId, 64)
+                buffer.writeUtf(value.stockKey, 96)
                 buffer.writeVarInt(value.lines.size.coerceAtMost(MAX_LINES))
                 value.lines.take(MAX_LINES).forEach { line ->
                     buffer.writeUtf(line.entryId, 96)

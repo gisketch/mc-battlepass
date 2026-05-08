@@ -115,3 +115,5 @@ World data:
 Stored stacks persist full item data when a server registry is available, including data components such as Quality Food quality.
 
 Pending offline payout notifications are stored in the same file under `pendingRewards`.
+
+Payout timing uses the shared Chow Kingdom clock. When Better Days is installed, Chow Kingdom reads `betterdays-common.toml` and interprets `payout_hour` through that in-game clock. Store resets are separate and remain real-life time.

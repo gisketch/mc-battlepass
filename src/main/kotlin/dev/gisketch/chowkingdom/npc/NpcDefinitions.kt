@@ -18,6 +18,7 @@ class NpcDefinition(
     @SerializedName("voice") var voice: NpcVoiceDefinition = NpcVoiceDefinition(),
     @SerializedName("friendship_messages") var friendshipMessages: NpcFriendshipMessagesDefinition = NpcFriendshipMessagesDefinition(),
     @SerializedName("shop_messages") var shopMessages: NpcShopMessagesDefinition = NpcShopMessagesDefinition(),
+    @SerializedName("camper_messages") var camperMessages: NpcCamperMessagesDefinition = NpcCamperMessagesDefinition(),
     @SerializedName("hurt_messages") var hurtMessages: MutableList<String> = mutableListOf(),
     @SerializedName("wake_messages") var wakeMessages: MutableList<String> = mutableListOf(),
     @SerializedName("work_target_blocks") var workTargetBlocks: MutableList<String> = mutableListOf(),
@@ -28,8 +29,8 @@ class NpcDefinition(
         title = title.trim()
         skin = skin.trim()
         bodyType = NpcBodyTypes.normalize(bodyType)
-        job = job.trim().lowercase().ifBlank { "adventurer" }
-        jobDefinition = jobDefinition.normalized(job)
+        job = NpcJobs.normalizeId(job)
+        jobDefinition = jobDefinition.normalized(job, store)
         schedule = schedule.normalized()
         store = store.trim()
         personality = personality.normalized()
@@ -38,12 +39,17 @@ class NpcDefinition(
         voice = voice.normalized()
         friendshipMessages = friendshipMessages.normalized(friendshipDefaults)
         shopMessages = shopMessages.normalized()
+        camperMessages = camperMessages.normalized()
         hurtMessages = hurtMessages.map(String::trim).filter(String::isNotBlank).ifEmpty { defaultHurtMessages() }.toMutableList()
         wakeMessages = wakeMessages.map(String::trim).filter(String::isNotBlank).ifEmpty { defaultWakeMessages() }.toMutableList()
         workTargetBlocks = workTargetBlocks.map(String::trim).filter(String::isNotBlank).distinct().toMutableList()
     }
 
     fun displayName(): String = if (title.isBlank()) name else "$name, $title"
+
+    fun storeId(): String = jobDefinition.store.trim().ifBlank { store.trim() }
+
+    fun storeStockKey(): String = "npc_${id}_${job}".lowercase()
 
     private fun defaultHurtMessages(): List<String> = listOf(
         "Hey, watch it, {player}!",
@@ -62,11 +68,13 @@ class NpcSettingsDefinition(
     var greetings: NpcGreetingsDefinition = NpcGreetingsDefinition(),
     var llm: NpcLlmSettingsDefinition = NpcLlmSettingsDefinition(),
     @SerializedName("llm_message_usage") var llmMessageUsage: NpcLlmMessageUsageDefinition = NpcLlmMessageUsageDefinition(),
+    @SerializedName("campers") var campers: NpcCampersSettingsDefinition = NpcCampersSettingsDefinition(),
 ) {
     fun normalized(): NpcSettingsDefinition = apply {
         greetings = greetings.normalized()
         llm = llm.normalized()
         llmMessageUsage = llmMessageUsage.normalized()
+        campers = campers.normalized()
     }
 }
 
@@ -112,9 +120,46 @@ class NpcLlmMessageUsageDefinition(
     @SerializedName("shop_single") var shopSingle: Boolean = false,
     @SerializedName("shop_normal") var shopNormal: Boolean = false,
     @SerializedName("shop_bulk") var shopBulk: Boolean = false,
+    @SerializedName("camper_needs_house") var camperNeedsHouse: Boolean = false,
+    @SerializedName("camper_lost_house") var camperLostHouse: Boolean = false,
+    @SerializedName("assigned_house") var assignedHouse: Boolean = false,
 ) {
     fun normalized(): NpcLlmMessageUsageDefinition = apply {
         if (shopSingle || shopNormal || shopBulk) shop = true
+    }
+}
+
+class NpcCampersSettingsDefinition(
+    @SerializedName("cooldown_min_hours") var cooldownMinHours: Int = 24,
+    @SerializedName("cooldown_max_hours") var cooldownMaxHours: Int = 48,
+    @SerializedName("needs_house_llm_prompt") var needsHouseLlmPrompt: String = "The player found you waiting at camp without a home. Ask for a bed or small house and mention the rent contract.",
+    @SerializedName("lost_house_llm_prompt") var lostHouseLlmPrompt: String = "Your assigned bed or home was removed. Tell the player you lost your bed and need a new one.",
+    @SerializedName("assigned_house_llm_prompt") var assignedHouseLlmPrompt: String = "The player assigned you a bed as your new home. Thank them warmly and say you will settle in.",
+) {
+    fun normalized(): NpcCampersSettingsDefinition = apply {
+        cooldownMinHours = cooldownMinHours.coerceIn(1, 24 * 14)
+        cooldownMaxHours = cooldownMaxHours.coerceIn(cooldownMinHours, 24 * 14)
+        needsHouseLlmPrompt = needsHouseLlmPrompt.trim().ifBlank { "The player found you waiting at camp without a home. Ask for a bed or small house and mention the rent contract." }
+        lostHouseLlmPrompt = lostHouseLlmPrompt.trim().ifBlank { "Your assigned bed or home was removed. Tell the player you lost your bed and need a new one." }
+        assignedHouseLlmPrompt = assignedHouseLlmPrompt.trim().ifBlank { "The player assigned you a bed as your new home. Thank them warmly and say you will settle in." }
+    }
+}
+
+class NpcCamperMessagesDefinition(
+    @SerializedName("needs_house_balloon") var needsHouseBalloon: MutableList<String> = mutableListOf(),
+    @SerializedName("needs_house_dialog") var needsHouseDialog: MutableList<String> = mutableListOf(),
+    @SerializedName("lost_house_balloon") var lostHouseBalloon: MutableList<String> = mutableListOf(),
+    @SerializedName("lost_house_dialog") var lostHouseDialog: MutableList<String> = mutableListOf(),
+) {
+    fun normalized(): NpcCamperMessagesDefinition = apply {
+        needsHouseBalloon = clean(needsHouseBalloon, listOf("I need a house...", "Could someone spare a bed?", "This camp is nice, but I need a real home."))
+        needsHouseDialog = clean(needsHouseDialog, listOf("Hi, I'm {npc}. I need a bed before I can settle in. Use this rent contract on a bed and I will call it home."))
+        lostHouseBalloon = clean(lostHouseBalloon, listOf("I lost my bed...", "My home is gone.", "I need a new place to sleep."))
+        lostHouseDialog = clean(lostHouseDialog, listOf("My bed is gone, {player}. Can you place a new one and use this contract again?"))
+    }
+
+    private fun clean(values: List<String>, fallback: List<String>): MutableList<String> {
+        return values.map(String::trim).filter(String::isNotBlank).distinct().ifEmpty { fallback }.toMutableList()
     }
 }
 
@@ -395,12 +440,14 @@ object FinnFriendshipMessages {
 
 class NpcJobDefinition(
     var id: String = "",
+    var store: String = "",
     @SerializedName("scan_interval_ticks") var scanIntervalTicks: Int = 60,
     @SerializedName("roam_radius") var roamRadius: Int = 7,
     @SerializedName("work_scan_radius") var workScanRadius: Int = 9,
 ) {
-    fun normalized(fallbackId: String): NpcJobDefinition = apply {
-        id = id.trim().lowercase().ifBlank { fallbackId }
+    fun normalized(fallbackId: String, fallbackStore: String = ""): NpcJobDefinition = apply {
+        id = NpcJobs.normalizeId(id.ifBlank { fallbackId })
+        store = store.trim().ifBlank { fallbackStore.trim() }
         scanIntervalTicks = scanIntervalTicks.coerceIn(10, 20 * 60)
         roamRadius = roamRadius.coerceIn(1, 64)
         workScanRadius = workScanRadius.coerceIn(1, 64)
@@ -417,19 +464,12 @@ class NpcScheduleDefinition(
             .toMutableList()
     }
 
-    fun activityAt(dayTime: Long): String {
-        val hour = hourAt(dayTime)
+    fun activityAtHour(hour: Int): String {
         return activities.firstOrNull { entry -> entry.includes(hour) }?.activity ?: DEFAULT_ACTIVITY
     }
 
     companion object {
-        private const val MINECRAFT_DAY_TICKS = 24000L
-        private const val TICKS_PER_HOUR = 1000L
-        private const val HOURS_PER_DAY = 24L
-        private const val DAY_START_HOUR = 6L
         private const val DEFAULT_ACTIVITY = "work"
-
-        fun hourAt(dayTime: Long): Int = (((dayTime % MINECRAFT_DAY_TICKS) / TICKS_PER_HOUR + DAY_START_HOUR) % HOURS_PER_DAY).toInt()
 
         fun defaultActivities(): MutableList<NpcScheduleEntryDefinition> = mutableListOf(
             NpcScheduleEntryDefinition(fromHour = 6, toHour = 20, activity = "work"),

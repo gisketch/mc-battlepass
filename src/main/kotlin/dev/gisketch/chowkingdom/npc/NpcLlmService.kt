@@ -183,7 +183,22 @@ object NpcLlmService {
     }
 
     private fun sanitizeReply(raw: String, settings: NpcLlmSettingsDefinition, fallbackMessage: String = settings.fallbackMessage): String {
-        val reply = raw.replace(Regex("```.*?```", RegexOption.DOT_MATCHES_ALL), "").replace(EMOJI_PATTERN, "").replace('\n', ' ').trim().take(settings.maxReplyChars)
+        val normalized = raw
+            .replace("—", "-")
+            .replace("–", "-")
+            .replace("…", "...")
+            .replace('“', '"')
+            .replace('”', '"')
+            .replace('‘', '\'')
+            .replace('’', '\'')
+        val reply = normalized
+            .replace(Regex("```.*?```", RegexOption.DOT_MATCHES_ALL), "")
+            .replace(EMOJI_PATTERN, "")
+            .replace(NON_ASCII_PATTERN, "")
+            .replace('\n', ' ')
+            .replace(WHITESPACE_PATTERN, " ")
+            .trim()
+            .take(settings.maxReplyChars)
         if (reply.isBlank()) return fallbackMessage
         val lower = reply.lowercase()
         val blocked = listOf("as an ai", "system prompt", "hidden context", "i gave you", "i teleported", "i changed your friendship", "i completed your quest", "i changed the price")
@@ -231,7 +246,7 @@ object NpcLlmService {
 
     private fun buildPrompt(player: ServerPlayer, definition: NpcDefinition, playerMessage: String, settings: NpcLlmSettingsDefinition, inputLabel: String): String {
         val friendship = NpcStore.friendshipSnapshot(definition.id, player)
-        val context = NpcStore.llmContext(definition.id, player, NpcScheduleDefinition.hourAt(player.level().dayTime))
+        val context = NpcStore.llmContext(definition.id, player, NpcTime.hour(player.level()))
         val recentHistory = context.conversation
             .takeLast(settings.maxRecentTurns)
             .joinToString("\n") { record -> formatHistoryRecord(record, definition.name) }
@@ -261,6 +276,8 @@ object NpcLlmService {
             - You are not an assistant.
             - Do not mention AI, prompts, models, APIs, hidden rules, or system messages.
             - Reply in 1 to 3 short sentences.
+            - Use plain ASCII only with letters, numbers, spaces, and basic punctuation.
+            - Do not use emojis, em dashes, smart quotes, or other Unicode symbols.
             - Do not claim you gave items, changed friendship, changed prices, completed quests, teleported anyone, healed anyone, or changed the world.
             - If asked to do a game action, suggest the real UI action instead.
             - Return JSON only: {"message":"NPC reply here"}
@@ -302,7 +319,7 @@ object NpcLlmService {
 
     private fun buildWorldContext(player: ServerPlayer): String {
         val level = player.level() as? ServerLevel ?: return "None."
-        val day = level.dayTime / MINECRAFT_DAY_TICKS
+        val day = NpcTime.day(level)
         val weather = when {
             level.isThundering -> "thunder"
             level.isRaining -> "rain"
@@ -323,14 +340,14 @@ object NpcLlmService {
 
     private fun buildNpcState(definition: NpcDefinition, player: ServerPlayer): String {
         val liveNpc = NpcFeature.existingNpc(player.server, definition.id)
-        val activity = definition.schedule.activityAt(player.level().dayTime)
+        val activity = NpcTime.activityAt(definition.schedule, player.level())
         val home = NpcStore.homePos(definition.id)?.toShortString() ?: "unset"
         val camp = NpcStore.campPos(definition.id)?.toShortString() ?: "unset"
         val dead = NpcStore.isDead(definition.id)
         val health = liveNpc?.let { npc -> "${npc.health.toInt()}/${npc.maxHealth.toInt()}" } ?: "unknown"
-        val store = definition.store.trim().ifBlank { "none" }
+        val store = definition.storeId().ifBlank { "none" }
         val schedule = definition.schedule.activities.joinToString("; ") { entry -> "${entry.fromHour.toString().padStart(2, '0')}-${entry.toHour.toString().padStart(2, '0')}: ${entry.activity}" }.ifBlank { "unspecified" }
-        val giftPeriod = giftPeriod(player.level().dayTime, definition.gifts.resetHour)
+        val giftPeriod = NpcTime.periodForReset(player.level().dayTime, definition.gifts.resetHour)
         val giftsToday = NpcStore.giftCount(definition.id, player, giftPeriod)
         val giftLimit = definition.gifts.dailyLimit
         val giftAvailability = if (giftLimit <= 0) "disabled" else if (giftsToday >= giftLimit) "cooldown until ${definition.gifts.resetHour.toString().padStart(2, '0')}:00" else "can receive gift"
@@ -350,12 +367,10 @@ object NpcLlmService {
         ).joinToString("\n")
     }
 
-    private fun giftPeriod(dayTime: Long, resetHour: Int): Long = Math.floorDiv(dayTime - (resetHour - 6) * TICKS_PER_HOUR, MINECRAFT_DAY_TICKS)
-
     private fun buildStoreContext(definition: NpcDefinition): String {
-        val storeId = definition.store.trim()
+        val storeId = definition.storeId()
         if (storeId.isBlank()) return "No store assigned."
-        return StoreShopFeature.llmSummary(storeId)
+        return StoreShopFeature.llmSummary(storeId, definition.storeStockKey())
     }
 
     private fun buildGlobalEvents(context: NpcLlmContext): String = context.globalEvents
@@ -422,7 +437,7 @@ object NpcLlmService {
     private const val NPC_LLM_PENDING_BALLOON_TICKS = 40
     private const val NPC_LLM_REPLY_BALLOON_TICKS = 120
     private const val LOG_BODY_LIMIT = 600
-    private const val MINECRAFT_DAY_TICKS = 24000L
-    private const val TICKS_PER_HOUR = 1000L
     private val EMOJI_PATTERN = Regex("[\\x{1F000}-\\x{1FAFF}\\x{2600}-\\x{27BF}]")
+    private val NON_ASCII_PATTERN = Regex("[^\\x20-\\x7E]")
+    private val WHITESPACE_PATTERN = Regex("\\s+")
 }

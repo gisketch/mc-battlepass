@@ -4,6 +4,8 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder
 import com.mojang.brigadier.context.CommandContext
 import dev.gisketch.chowkingdom.battlepass.BattlepassMissionEventBank
 import dev.gisketch.chowkingdom.battlepass.BattlepassNetwork
+import dev.gisketch.chowkingdom.ChowClock
+import dev.gisketch.chowkingdom.ChowClockConfig
 import dev.gisketch.chowkingdom.ChowKingdomMod
 import dev.gisketch.chowkingdom.wallets.ChowcoinNetwork
 import net.minecraft.commands.CommandSourceStack
@@ -58,10 +60,10 @@ object ShippingBinFeature {
         if (tickCounter != 0) return
 
         val level = event.server.overworld()
-        val dayTime = level.dayTime
-        val day = dayTime / DAY_TICKS
-        val timeOfDay = Math.floorMod(dayTime, DAY_TICKS)
-        if (timeOfDay < ShippingBinConfig.payoutTick()) return
+        val clock = ChowClock.now(level, ChowClockConfig.current())
+        val payoutHour = ShippingBinConfig.payoutHour()
+        val day = if (clock.hour >= payoutHour) clock.day else clock.day - 1
+        if (clock.hour < payoutHour) return
         if (!ShippingBinStore.tryMarkPayoutDay(day)) return
 
         ShippingBinStore.playerIds().forEach { playerId ->
@@ -137,7 +139,6 @@ object ShippingBinFeature {
         if (changed) BattlepassNetwork.syncAllPlayers()
     }
 
-    private const val DAY_TICKS = 24_000L
     private const val PAYOUT_CHECK_INTERVAL_TICKS = 200
     private const val QUALITY_FOOD_SOLD_EVENT = "gisketchs_chowkingdom_mod:shipping_bin_quality_food_sold"
     private const val IRON_QUALITY_FOOD_SOLD_EVENT = "gisketchs_chowkingdom_mod:shipping_bin_iron_quality_food_sold"

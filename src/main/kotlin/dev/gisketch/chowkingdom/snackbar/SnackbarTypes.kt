@@ -17,6 +17,7 @@ enum class SnackbarIconKind(val id: String) {
     ITEM("item"),
     PLAYER("player"),
     TEXTURE("texture"),
+    NPC("npc"),
     ;
 
     companion object {
@@ -41,6 +42,9 @@ data class SnackbarNotification(
 
         fun texture(texture: String, title: String, content: String = "", type: SnackbarType = SnackbarType.GENERIC, sound: String = SnackbarSounds.forType(type)): SnackbarNotification =
             SnackbarNotification(SnackbarIconKind.TEXTURE, texture, title, content, type, sound)
+
+        fun npc(npcId: String, title: String, content: String = "", type: SnackbarType = SnackbarType.GENERIC, sound: String = SnackbarSounds.forType(type)): SnackbarNotification =
+            SnackbarNotification(SnackbarIconKind.NPC, npcId, title, content, type, sound)
     }
 }
 

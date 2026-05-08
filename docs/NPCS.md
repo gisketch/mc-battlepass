@@ -4,7 +4,7 @@ NPCs are config-driven characters backed by a small server foundation: definitio
 
 ## Current Slice
 
-- One default NPC: `finn`.
+- One default NPC: `finn`; additional NPC JSON files join the camping-block camper pool.
 - Runtime config folder: `<game config>/gisketchs_chowkingdom_mod/npcs`; in local `runClient`, this is `runs/client/config/gisketchs_chowkingdom_mod/npcs`.
 - Default file: `finn.json`, written if missing.
 - Global NPC settings: `settings.json`, written if missing.
@@ -13,13 +13,13 @@ NPCs are config-driven characters backed by a small server foundation: definitio
 - Contract item: `gisketchs_chowkingdom_mod:rent_contract`.
 - Entity id: `gisketchs_chowkingdom_mod:npc`.
 
-Place a camping block to spawn the first available NPC if none exists. Right-click the block later to retry if no NPC is currently present. Right-click Finn to open dialog and receive a rent contract. Use the rent contract on a bed to assign Finn's home.
+Place a camping block to spawn a random eligible camper from the configured NPC pool. Right-click the block later to retry if no NPC is currently present and camp cooldown is ready. Right-click an unhoused camper to open dialog and receive a rent contract. Use the rent contract on a bed to assign that NPC's home.
 
 ## Dialog
 
 NPC dialog opens as a local screen panel near the bottom of the screen. The panel uses `textures/gui/9slice_container_grey.png`, shows the NPC head avatar, renders the NPC name in the CKDM bold font, renders dialog body copy with the normal Minecraft font, and shows right-side action buttons for Talk, Buy, Gift, and Bye. The panel enters with a bottom-anchored scale/slide animation, the dialog body types in, and the vanilla hotbar is hidden while the dialog screen is open.
 
-Buy opens the store configured on the NPC definition. After a successful NPC store purchase, the owning NPC opens a close-only follow-up dialog chosen from `shop_messages` by friendship category and quantity bucket. Gift is disabled unless the player is holding an item, shows a hover hint, consumes one held item on success, and plays a reaction dialog with a single OKAY close button. Locked relic/player-locked items are rejected by the existing relic transfer guard. Bye closes the normal screen.
+Buy opens the store template configured on the NPC job definition. NPC stores share the same store JSON pool by store id, but each NPC uses its own stock key, so two NPCs can roll different daily/weekly items and deplete stock independently. After a successful NPC store purchase, the owning NPC opens a close-only follow-up dialog chosen from `shop_messages` by friendship category and quantity bucket. Gift is disabled unless the player is holding an item, shows a hover hint, consumes one held item on success, and plays a reaction dialog with a single OKAY close button. Locked relic/player-locked items are rejected by the existing relic transfer guard. Bye closes the normal screen.
 
 Talk opens a text input inside the existing dialog. Submitting sends the message to the server, validates NPC distance/state, shows a pending `...` in the dialog and nearby balloon while waiting, then replaces it with the validated LLM reply or a configured fallback. LLM provider settings are global in NPC `settings.json`; `llm_message_usage` controls which message surfaces may use LLM text. V1 supports `openai_compatible` and `gemini` provider modes and expects JSON output with a single `message` field.
 
@@ -40,16 +40,17 @@ Each NPC is one JSON file:
 - `title`: Display subtitle.
 - `skin`: Future skin resource id. Current renderer uses `textures/entity/npc/finn.png` for `finn` and a vanilla fallback for other NPC ids.
 - `body_type`: Player-model shape. Supported values: `normal`, `slim`.
-- `job`: Job behavior id. Current supported ids: `adventurer`, `warrior`.
-- `job_definition`: Static job behavior knobs loaded from JSON: `scan_interval_ticks`, `roam_radius`, and `work_scan_radius`.
+- `job`: Job behavior id. Supported ids: `adventurer`, `warrior`, `fashionista`. Unknown ids normalize to `adventurer`.
+- `job_definition`: Static job behavior knobs loaded from JSON: `store`, `scan_interval_ticks`, `roam_radius`, and `work_scan_radius`. `store` is a store template id, not a shared stock instance.
 - `schedule`: Static day schedule loaded from JSON. Each activity entry has `from_hour`, `to_hour`, and `activity`. Hours use a 24-hour clock where `00` is midnight.
-- `store`: Fixed custom store id opened by the dialog Buy button.
+- `store`: Legacy NPC-level store template id. New configs should use `job_definition.store` so multiple NPCs can share store pools without sharing rolled stock.
 - `personality`: Future dialog/LLM seed fields: `llm_prompt`, `traits`, `speech_style`, `catchphrases`.
 - `housing`: Move-in rules: `can_move_in`, `requires_bed`.
 - `voice`: Animalese dialog voice settings: `animalese_pitch` (`high`, `med`, `low`, `lowest`), `pitch`, `volume`, and `radius`.
 - `gifts`: Gift ids/tags grouped by `loved`, `liked`, `disliked`, plus `daily_limit`, `reset_hour`, and reaction message pools for `loved`, `liked`, `disliked`, and `neutral`.
 - `friendship_messages`: Optional per-NPC category message additions for `interact`, `gift`, `hurt`, `wake`, `greeting`, and `first_daily_chat`. Categories are `hatred`, `enemy`, `dislike`, `neutral`, `okay`, `good_friends`, and `best_friends`. Message pools resolve in order: built-in defaults, shared `friendship_messages.json`, then NPC-specific `friendship_messages`. Each configured layer joins the inherited pool and is inserted twice, so local additions have roughly 2:1 weight against inherited generic lines.
 - `shop_messages`: Optional post-purchase message overrides with `single`, `normal`, and `bulk` buckets. Each bucket has the same friendship categories as `friendship_messages`. Supports `{player}`, `{npc}`, `{item}`, `{quantity}`, `{total}`, `{friendship_level}`, and `{friendship_points}`.
+- `camper_messages`: Optional uncategorized camp message pools: `needs_house_balloon`, `needs_house_dialog`, `lost_house_balloon`, and `lost_house_dialog`. Supports `{player}` and `{npc}`.
 - `hurt_messages`: NPC speech pool used every third hit from the same player. Supports `{player}`.
 - `wake_messages`: NPC speech pool used when a sleeping NPC is right-clicked. Supports `{player}`.
 - `work_target_blocks`: Block ids/tags the job can path toward while roaming.
@@ -64,6 +65,35 @@ Global greeting behavior lives in `settings.json`:
 		"radius": 5.0,
 		"cooldown_seconds": 60,
 		"balloon_duration_seconds": 5
+	}
+}
+```
+
+Clock compatibility is automatic when Better Days is installed and `betterdays-common.toml` exists. Chow Kingdom reads Better Days `dayStart` and `nightStart`, then maps that raw sky-time range to a 24-hour clock:
+
+```toml
+speedMethod = "MINUTES"
+daySpeedMinutes = 0.5
+nightSpeedMinutes = 0.5
+dayStart = 23500.0
+nightStart = 12500.0
+```
+
+If Better Days is not present, Chow Kingdom falls back to vanilla `0..24000` timing. NPC schedules, first daily chats, gift reset periods, respawn hour checks, camper cooldown hours, shipping bin payout, and LLM time context all use this clock. Store stock resets intentionally still use real-life time from store config.
+
+Camper rotation settings also live in NPC `settings.json`:
+
+```json
+{
+	"campers": {
+		"cooldown_min_hours": 24,
+		"cooldown_max_hours": 48,
+		"needs_house_llm_prompt": "The player found you waiting at camp without a home. Ask for a bed or small house and mention the rent contract.",
+		"lost_house_llm_prompt": "Your assigned bed or home was removed. Tell the player you lost your bed and need a new one."
+	},
+	"llm_message_usage": {
+		"camper_needs_house": false,
+		"camper_lost_house": false
 	}
 }
 ```
@@ -103,7 +133,7 @@ Runtime state is stored in world data:
 
 `<world>/data/gisketchs_chowkingdom_mod/npcs/state.json`
 
-Resident state tracks each NPC's entity UUID, camp position, assigned home bed, whether a contract has been given, recent hurt records, per-player conversation history, per-player gift counters, last hurt player/streak, death state, and scheduled respawn day. Hurt history stores only every third same-player hit event and keeps the latest 10 records. This is world data, separate from static JSON definitions and runtime brain state.
+Resident state tracks each NPC's entity UUID, camp position, assigned home bed, whether a contract has been given, recent hurt records, per-player conversation history, per-player gift counters, last hurt player/streak, death state, scheduled respawn day, and camper return reason. World state also tracks the latest camping block position, the active unhoused camper id, and the next camper cooldown tick. Hurt history stores only every third same-player hit event and keeps the latest 10 records. This is world data, separate from static JSON definitions and runtime brain state.
 
 Greeting state is tracked per NPC/player. It stores the last greeting day, the real-time greeting cooldown expiry, and the first-chat day used to stop repeat greetings and prevent duplicate daily friendship rewards.
 
@@ -149,9 +179,18 @@ When Jade is installed, hovering an NPC shows the NPC display name and the hover
 
 Gift limits are per NPC/player and reset by in-game schedule period. Finn defaults to one gift per in-game day, resetting at 05:00. Gifts adjust friendship only: neutral `+5`, liked `+25`, loved `+50`, disliked `-50`. Hitting an NPC changes friendship by `-10`; killing one changes friendship by `-300`; first daily chat changes friendship by `+25`.
 
-If an NPC dies, resident state marks it dead. Once the scheduled respawn day is due and the in-game hour is 05:00 or later, the server respawns it at its assigned bed if it has one. This is intentionally tolerant of debug time jumps that skip across the exact 05:00 scan window.
+If a housed NPC dies, resident state marks it dead. Once the scheduled respawn day is due and the in-game hour is 05:00 or later, the server respawns it at its assigned bed if it has one. If an unhoused camper dies, the active camper remains reserved and respawns at the camping block instead. This is intentionally tolerant of debug time jumps that skip across the exact 05:00 scan window.
 
-Home beds are validated against live bed blocks. If the assigned bed is broken or missing, the stored home is cleared, the NPC stops treating itself as housed, and interaction can grant a new rent contract. Dead NPCs without a valid assigned bed do not bed-respawn; placing a camping block can introduce them again and clears stale death state.
+Home beds are validated against live bed blocks. If the assigned bed is broken or missing, the stored home is cleared, the NPC returns to the camping block when one is known, becomes the active camper again, and interaction can grant a new rent contract with lost-house dialog. Dead NPCs without a valid assigned bed camp-respawn instead of bed-respawning.
+
+## Camper Rotation
+
+- Only one active unhoused camper can exist at a camping block.
+- Eligible campers are configured NPCs with `housing.can_move_in=true`, no valid home bed, and no live entity already present.
+- The pool is unique by NPC id; once every configured NPC has a home, camp stops spawning new campers.
+- Assigning a bed clears active camper state and schedules the next camper after a random `campers.cooldown_min_hours..cooldown_max_hours` Minecraft-hour delay.
+- Breaking an assigned bed cancels that NPC's housed status and makes that NPC the active camper again, ahead of any new camper.
+- If the camping block is removed, automatic cooldown spawning pauses until a camping block position is stored again by placing or right-clicking one.
 
 ## Commands
 
@@ -159,10 +198,13 @@ Home beds are validated against live bed blocks. If the assigned bed is broken o
 - `/npc spawn <id>`: spawn an NPC at the command source player's position.
 - `/npc respawn status <id>`: show live/dead state, current day/hour, stored respawn day, home bed validity, and whether the NPC is ready to respawn.
 - `/npc respawn <id>`: force-respawn a dead or missing NPC at its valid home bed.
+- `/npc clear all confirm`: dangerous admin reset. Backs up NPC `state.json`, deletes all live NPC entities, clears all NPC world state, bed assignments, memories, camper state, and online rent contracts.
+- `/npc clear <id> confirm`: dangerous admin reset for one NPC id. Backs up NPC `state.json`, deletes that live NPC entity, clears that NPC's state, bed assignment, memories, and online rent contracts for that NPC.
 - `/npc friendship get <id> <player>`: show that player's points, level, and category for an NPC.
 - `/npc friendship set <id> <player> <points>`: set points from `-1000` to `1000`.
 - `/npc friendship add <id> <player> <delta>`: add or subtract points, clamped to `-1000..1000`.
-- `/npc debug`: toggle realtime actionbar debug for the Chow Kingdom NPC under the player's crosshair. Run it on the same NPC again to stop. The actionbar includes current schedule hour, activity, task, navigation state, target, and debug time multiplier.
+- `/npc debug clock`: toggle live CK clock actionbar with `HH:MM AM/PM`, raw world time, tick-of-cycle, clock source, and daylight gamerule state.
+- `/npc debug`: toggle realtime actionbar debug for the Chow Kingdom NPC under the player's crosshair. Run it on the same NPC again to stop. The actionbar includes current schedule time, tick-of-cycle, activity, task, navigation state, target, and debug time multiplier.
 - `/npc debug time <multiplier>`: speed up day time for debugging schedules. Use `1` to reset. Allowed range is `1` to `240`.
 - `/npc debug balloon <id> <message>`: show a timed test balloon above the spawned NPC for nearby players.
 - `/ck npc ...` and `/chowkingdom npc ...`: aliases.

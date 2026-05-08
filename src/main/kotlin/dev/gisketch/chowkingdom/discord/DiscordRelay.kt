@@ -124,6 +124,28 @@ object DiscordRelay {
         )
     }
 
+    fun npcCamperArrived(server: MinecraftServer, npcId: String, npcName: String) {
+        val config = DiscordConfig.current()
+        if (!config.enabled) return
+        val values = serverValues(server) + mapOf(
+            "npc" to DiscordText.cleanContent(npcName),
+            "npc_id" to npcId,
+        )
+        DiscordWebhookClient.send(
+            DiscordWebhookMessage(
+                username = npcName,
+                avatarUrl = DiscordQuickSkinSupport.npcAvatarUrl(npcId, config),
+                embeds = listOf(
+                    DiscordEmbed(
+                        title = DiscordText.applyTemplate("New Camper at the Camping Block", values),
+                        description = DiscordText.applyTemplate("{npc} has arrived at camp and is looking for a bed. Talk to them to welcome them and hand over a rent contract.", values),
+                        color = DiscordText.parseColor("#57F287"),
+                    ),
+                ),
+            ),
+        )
+    }
+
     private fun friendshipEmojis(level: Int): String {
         val clampedLevel = level.coerceIn(-10, 10)
         val filled = if (clampedLevel >= 0) "❤️".repeat(clampedLevel) else "😠".repeat(-clampedLevel)

@@ -12,6 +12,7 @@ import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.phys.Vec3
 import net.minecraft.sounds.SoundEvents
 import net.minecraft.sounds.SoundSource
+import java.util.Locale
 import java.util.UUID
 
 interface NpcJob {
@@ -25,10 +26,16 @@ object NpcJobs {
     init {
         register(AdventurerNpcJob)
         register("warrior", AdventurerNpcJob)
+        register("fashionista", AdventurerNpcJob)
     }
 
     fun tick(entity: ChowNpcEntity, definition: NpcDefinition) {
         jobs[definition.job]?.tick(entity, definition) ?: AdventurerNpcJob.tick(entity, definition)
+    }
+
+    fun normalizeId(value: String): String {
+        val id = value.trim().lowercase(Locale.ROOT).ifBlank { AdventurerNpcJob.id }
+        return if (id in jobs) id else AdventurerNpcJob.id
     }
 
     private fun register(job: NpcJob) {
@@ -42,7 +49,7 @@ object NpcJobs {
 
 object NpcBrain {
     fun tick(entity: ChowNpcEntity, definition: NpcDefinition) {
-        val activity = definition.schedule.activityAt(entity.level().dayTime)
+        val activity = NpcTime.activityAt(definition.schedule, entity.level())
         entity.debugActivity = activity
         if (activity != "sleep" && entity.isSleeping) entity.stopSleeping()
         if (entity.tickCount % definition.jobDefinition.scanIntervalTicks != 0 || !entity.navigation.isDone) return

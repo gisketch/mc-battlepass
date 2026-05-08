@@ -105,7 +105,7 @@ object NpcConfig {
         skin = "gisketchs_chowkingdom_mod:npc/finn",
         bodyType = NpcBodyTypes.NORMAL,
         job = "adventurer",
-        jobDefinition = NpcJobDefinition(id = "adventurer", scanIntervalTicks = 60, roamRadius = 7, workScanRadius = 9),
+        jobDefinition = NpcJobDefinition(id = "adventurer", store = "cosmetics", scanIntervalTicks = 60, roamRadius = 7, workScanRadius = 9),
         schedule = NpcScheduleDefinition(
             activities = mutableListOf(
                 NpcScheduleEntryDefinition(fromHour = 6, toHour = 20, activity = "work"),
@@ -113,7 +113,6 @@ object NpcConfig {
                 NpcScheduleEntryDefinition(fromHour = 22, toHour = 6, activity = "sleep"),
             ),
         ),
-        store = "cosmetics",
         personality = NpcPersonalityDefinition(
             llmPrompt = "Finn is brave, friendly, direct, and hungry for adventure. He wants a home near players and talks like an energetic hero.",
             traits = mutableListOf("brave", "friendly", "reckless"),
@@ -144,6 +143,7 @@ object NpcConfig {
             firstDailyChat = FinnFriendshipMessages.firstDailyChat,
         ).normalized(),
         shopMessages = NpcShopMessagesDefinition.default().normalized(),
+        camperMessages = NpcCamperMessagesDefinition().normalized(),
         hurtMessages = mutableListOf(
             "Hey, watch it, {player}!",
             "Ouch. That's not very heroic.",
