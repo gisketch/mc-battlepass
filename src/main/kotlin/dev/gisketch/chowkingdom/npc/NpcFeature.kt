@@ -81,6 +81,7 @@ object NpcFeature {
     private val greetingRadiusPlayers: MutableMap<UUID, MutableSet<String>> = linkedMapOf()
     private val outgoingGiftApproaches: MutableMap<UUID, NpcOutgoingGiftApproach> = linkedMapOf()
     private val camperBalloonRefreshAt: MutableMap<UUID, Long> = linkedMapOf()
+    private val questClaimBalloonRefreshAt: MutableMap<UUID, Long> = linkedMapOf()
     private val npcMicroInteractions: MutableMap<UUID, ActiveNpcMicroInteraction> = linkedMapOf()
     private val npcMicroInteractionCooldownUntil: MutableMap<String, Long> = linkedMapOf()
     private val npcAutoTaskCooldownUntil: MutableMap<UUID, Long> = linkedMapOf()
@@ -558,6 +559,12 @@ object NpcFeature {
             return false
         }
         val homePos = canonicalBedPos(player.level(), bedPos)
+        val currentOwner = homeOwnerAtBed(player.level(), homePos)
+        if (currentOwner != null && currentOwner != npcId) {
+            val ownerName = NpcConfig.get(currentOwner)?.name ?: currentOwner
+            npcSnackbar(player, definition.name, "That bed already belongs to $ownerName.", SnackbarType.ERROR)
+            return false
+        }
         val npc = existingNpc(player.server, npcId)
         if (npc == null || npc.level() != player.level() || npc.distanceToSqr(homePos.x + 0.5, homePos.y.toDouble(), homePos.z + 0.5) > CONTRACT_BED_ASSIGN_RADIUS_SQR) {
             npcSnackbar(player, definition.name, "${definition.name} needs to be near the bed.", SnackbarType.ERROR)
@@ -603,6 +610,7 @@ object NpcFeature {
         tryShowCamperHousingBalloon(entity, definition)
         runNpcPriorityStack(
             NpcTaskCandidate(NpcTaskPriority.Critical) { NpcBrainOverrides.tick(entity, definition) },
+            NpcTaskCandidate(NpcTaskPriority.QuestClaim) { tryQuestClaimApproach(entity, definition) },
             NpcTaskCandidate(NpcTaskPriority.ContractFollow) { tryFollowRentContractHolder(entity, definition) },
             NpcTaskCandidate(NpcTaskPriority.NpcInteraction) { tryNpcMicroInteraction(entity, definition) },
             NpcTaskCandidate(NpcTaskPriority.OutgoingGift) { tryOutgoingGift(entity, definition) },
@@ -645,6 +653,26 @@ object NpcFeature {
 
     private fun playerHoldsRentContract(player: ServerPlayer, npcId: String): Boolean {
         return NpcRentContractData.readNpcId(player.mainHandItem) == npcId || NpcRentContractData.readNpcId(player.offhandItem) == npcId
+    }
+
+    private fun tryQuestClaimApproach(npc: ChowNpcEntity, definition: NpcDefinition): Boolean {
+        if (npc.isSleeping) return false
+        val player = NpcQuestService.readyClaimPlayer(npc, definition, NPC_QUEST_CLAIM_SCAN_RADIUS) ?: return false
+        npc.debugActivity = "quest"
+        npc.debugGoal = "claim_reward"
+        npc.debugTargetPos = player.blockPosition().immutable()
+        npc.lookControl.setLookAt(player, 30.0f, 30.0f)
+        if (npc.distanceToSqr(player) > NPC_QUEST_CLAIM_DISTANCE_SQR) {
+            npc.navigation.moveTo(player.x, player.y, player.z, NPC_QUEST_CLAIM_FOLLOW_SPEED)
+        } else {
+            npc.navigation.stop()
+            val now = npc.level().gameTime
+            if ((questClaimBalloonRefreshAt[npc.uuid] ?: Long.MIN_VALUE) <= now) {
+                NpcQuestService.showReadyClaimBalloon(player, npc, definition)
+                questClaimBalloonRefreshAt[npc.uuid] = now + NPC_QUEST_CLAIM_BALLOON_COOLDOWN_TICKS
+            }
+        }
+        return true
     }
 
     private fun tryShowCamperHousingBalloon(npc: ChowNpcEntity, definition: NpcDefinition) {
@@ -1966,6 +1994,7 @@ object NpcFeature {
 
     private enum class NpcTaskPriority(val weight: Int) {
         Critical(100),
+        QuestClaim(95),
         ContractFollow(90),
         NpcInteraction(80),
         OutgoingGift(70),
@@ -1989,6 +2018,10 @@ object NpcFeature {
     private const val NPC_CAMP_SPAWN_RADIUS = 2
     private const val CONTRACT_FOLLOW_SCAN_RADIUS_SQR = 32.0 * 32.0
     private const val CONTRACT_FOLLOW_STOP_DISTANCE_SQR = 2.5 * 2.5
+    private const val NPC_QUEST_CLAIM_SCAN_RADIUS = 32.0
+    private const val NPC_QUEST_CLAIM_DISTANCE_SQR = 2.5 * 2.5
+    private const val NPC_QUEST_CLAIM_FOLLOW_SPEED = 0.95
+    private const val NPC_QUEST_CLAIM_BALLOON_COOLDOWN_TICKS = 100L
     private const val NPC_GIFT_DELIVERY_DISTANCE_SQR = 2.5 * 2.5
     private const val NPC_GIFT_FOLLOW_SPEED = 0.95
     private const val NPC_MICRO_INTERACTION_DISTANCE_SQR = 2.5 * 2.5

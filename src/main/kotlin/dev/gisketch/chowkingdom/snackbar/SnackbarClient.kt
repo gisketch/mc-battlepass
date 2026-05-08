@@ -130,7 +130,7 @@ object SnackbarClient {
             }
             snackbar.progress?.let { progress ->
                 val barY = y + PAD + TITLE_HEIGHT + if (layout.contentLines.isEmpty()) PROGRESS_TOP_GAP else CONTENT_GAP + layout.contentLines.size * CONTENT_LINE_HEIGHT + PROGRESS_AFTER_CONTENT_GAP
-                renderProgressBar(guiGraphics, snackbar, progress, x + PAD + ICON_SLOT_WIDTH, barY, layout.textWidth, age, alpha)
+                renderProgressBar(guiGraphics, progress, x + PAD + ICON_SLOT_WIDTH, barY, layout.textWidth, age, alpha)
             }
         }
         pose.popPose()
@@ -194,15 +194,35 @@ object SnackbarClient {
         guiGraphics.setColor(1.0f, 1.0f, 1.0f, 1.0f)
     }
 
-    private fun renderProgressBar(guiGraphics: GuiGraphics, snackbar: ClientSnackbar, progress: SnackbarProgress, x: Int, y: Int, width: Int, age: Long, alpha: Float) {
+    private fun renderProgressBar(guiGraphics: GuiGraphics, progress: SnackbarProgress, x: Int, y: Int, width: Int, age: Long, alpha: Float) {
         val tierSize = progress.tierSize.coerceAtLeast(1)
         val animation = easeOutCubic((age.toFloat() / PROGRESS_ANIM_MS).coerceIn(0.0f, 1.0f))
         val currentXp = progress.fromXp + ((progress.toXp - progress.fromXp) * animation).roundToInt()
         val localXp = Math.floorMod(currentXp, tierSize)
         val innerWidth = (width - 2).coerceAtLeast(1)
         val fillWidth = (innerWidth * (localXp.toFloat() / tierSize.toFloat())).roundToInt().coerceIn(0, innerWidth)
-        guiGraphics.fill(x, y, x + width, y + PROGRESS_BAR_HEIGHT, colorAlpha(PROGRESS_TRACK, alpha))
-        if (fillWidth > 0) guiGraphics.fill(x + 1, y + 1, x + 1 + fillWidth, y + PROGRESS_BAR_HEIGHT - 1, colorAlpha(progressFillColor(snackbar), alpha))
+        renderProgressSlice(guiGraphics, PROGRESS_EMPTY_TEXTURE, x, y, width, PROGRESS_BAR_HEIGHT, alpha)
+        if (fillWidth > 0) renderProgressSlice(guiGraphics, PROGRESS_FILL_TEXTURE, x, y, (fillWidth + 2).coerceAtMost(width), PROGRESS_BAR_HEIGHT, alpha)
+    }
+
+    private fun renderProgressSlice(guiGraphics: GuiGraphics, texture: ResourceLocation, x: Int, y: Int, width: Int, height: Int, alpha: Float) {
+        if (width <= 0 || height <= 0) return
+        RenderSystem.enableBlend()
+        RenderSystem.defaultBlendFunc()
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, alpha)
+        val corner = PROGRESS_SOURCE_CORNER.coerceAtMost(width / 2).coerceAtMost(height / 2).coerceAtLeast(1)
+        val innerWidth = (width - corner * 2).coerceAtLeast(0)
+        val innerHeight = (height - corner * 2).coerceAtLeast(0)
+        blitTexture(guiGraphics, texture, x, y, corner, corner, 0, 0, PROGRESS_SOURCE_CORNER, PROGRESS_SOURCE_CORNER)
+        blitTexture(guiGraphics, texture, x + corner, y, innerWidth, corner, PROGRESS_SOURCE_CORNER, 0, PROGRESS_TEXTURE_SIZE - PROGRESS_SOURCE_CORNER * 2, PROGRESS_SOURCE_CORNER)
+        blitTexture(guiGraphics, texture, x + width - corner, y, corner, corner, PROGRESS_TEXTURE_SIZE - PROGRESS_SOURCE_CORNER, 0, PROGRESS_SOURCE_CORNER, PROGRESS_SOURCE_CORNER)
+        blitTexture(guiGraphics, texture, x, y + corner, corner, innerHeight, 0, PROGRESS_SOURCE_CORNER, PROGRESS_SOURCE_CORNER, PROGRESS_TEXTURE_SIZE - PROGRESS_SOURCE_CORNER * 2)
+        blitTexture(guiGraphics, texture, x + corner, y + corner, innerWidth, innerHeight, PROGRESS_SOURCE_CORNER, PROGRESS_SOURCE_CORNER, PROGRESS_TEXTURE_SIZE - PROGRESS_SOURCE_CORNER * 2, PROGRESS_TEXTURE_SIZE - PROGRESS_SOURCE_CORNER * 2)
+        blitTexture(guiGraphics, texture, x + width - corner, y + corner, corner, innerHeight, PROGRESS_TEXTURE_SIZE - PROGRESS_SOURCE_CORNER, PROGRESS_SOURCE_CORNER, PROGRESS_SOURCE_CORNER, PROGRESS_TEXTURE_SIZE - PROGRESS_SOURCE_CORNER * 2)
+        blitTexture(guiGraphics, texture, x, y + height - corner, corner, corner, 0, PROGRESS_TEXTURE_SIZE - PROGRESS_SOURCE_CORNER, PROGRESS_SOURCE_CORNER, PROGRESS_SOURCE_CORNER)
+        blitTexture(guiGraphics, texture, x + corner, y + height - corner, innerWidth, corner, PROGRESS_SOURCE_CORNER, PROGRESS_TEXTURE_SIZE - PROGRESS_SOURCE_CORNER, PROGRESS_TEXTURE_SIZE - PROGRESS_SOURCE_CORNER * 2, PROGRESS_SOURCE_CORNER)
+        blitTexture(guiGraphics, texture, x + width - corner, y + height - corner, corner, corner, PROGRESS_TEXTURE_SIZE - PROGRESS_SOURCE_CORNER, PROGRESS_TEXTURE_SIZE - PROGRESS_SOURCE_CORNER, PROGRESS_SOURCE_CORNER, PROGRESS_SOURCE_CORNER)
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f)
     }
 
     private fun renderNineSlice(guiGraphics: GuiGraphics, rect: Rect, alpha: Float) {
@@ -230,6 +250,11 @@ object SnackbarClient {
     private fun blit(guiGraphics: GuiGraphics, rect: Rect, sourceX: Int, sourceY: Int, sourceWidth: Int, sourceHeight: Int) {
         if (rect.width <= 0 || rect.height <= 0) return
         guiGraphics.blit(FRAME_TEXTURE, rect.x, rect.y, rect.width, rect.height, sourceX.toFloat(), sourceY.toFloat(), sourceWidth, sourceHeight, FRAME_WIDTH, FRAME_HEIGHT)
+    }
+
+    private fun blitTexture(guiGraphics: GuiGraphics, texture: ResourceLocation, x: Int, y: Int, width: Int, height: Int, sourceX: Int, sourceY: Int, sourceWidth: Int, sourceHeight: Int) {
+        if (width <= 0 || height <= 0 || sourceWidth <= 0 || sourceHeight <= 0) return
+        guiGraphics.blit(texture, x, y, width, height, sourceX.toFloat(), sourceY.toFloat(), sourceWidth, sourceHeight, PROGRESS_TEXTURE_SIZE, PROGRESS_TEXTURE_SIZE)
     }
 
     private fun layout(font: Font, snackbar: ClientSnackbar, screenWidth: Int): SnackbarLayout {
@@ -318,8 +343,6 @@ object SnackbarClient {
         SnackbarType.GENERIC -> GENERIC_TITLE
     }
 
-    private fun progressFillColor(snackbar: ClientSnackbar): Int = if (snackbar.title.contains("COMBAT", ignoreCase = true)) PROGRESS_COMBAT_FILL else PROGRESS_COZY_FILL
-
     private fun easeOutCubic(progress: Float): Float {
         val inverse = 1.0f - progress.coerceIn(0.0f, 1.0f)
         return 1.0f - inverse * inverse * inverse
@@ -336,6 +359,8 @@ object SnackbarClient {
     }
 
     private val FRAME_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_container_yellow.png")
+    private val PROGRESS_EMPTY_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_progress_empty.png")
+    private val PROGRESS_FILL_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_progress_fill.png")
     private val CKDM_BOLD_FONT = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "ckdm_bold")
     private const val FRAME_WIDTH = 1646
     private const val FRAME_HEIGHT = 256
@@ -355,8 +380,10 @@ object SnackbarClient {
     private const val MAX_CONTENT_LINES = 3
     private const val PROGRESS_TOP_GAP = 6
     private const val PROGRESS_AFTER_CONTENT_GAP = 4
-    private const val PROGRESS_BAR_HEIGHT = 6
+    private const val PROGRESS_BAR_HEIGHT = 8
     private const val PROGRESS_ANIM_MS = 1400L
+    private const val PROGRESS_TEXTURE_SIZE = 16
+    private const val PROGRESS_SOURCE_CORNER = 4
     private const val HOTBAR_OFFSET_Y = 54
     private const val DIALOG_TOP_OFFSET_Y = 14
     private const val STACK_GAP = 6
@@ -369,9 +396,6 @@ object SnackbarClient {
     private const val SUCCESS_TITLE = 0xFFFFD56E.toInt()
     private const val TITLE_SHADOW = 0xCC050505.toInt()
     private const val CONTENT_COLOR = 0xFFEDE6DA.toInt()
-    private const val PROGRESS_TRACK = 0xAA1D1D22.toInt()
-    private const val PROGRESS_COZY_FILL = 0xFFFFD35C.toInt()
-    private const val PROGRESS_COMBAT_FILL = 0xFFFF6A5C.toInt()
     private const val PLAYER_FALLBACK_FILL = 0xCC2F3545.toInt()
     private val STEVE_TEXTURE = ResourceLocation.withDefaultNamespace("textures/entity/player/wide/steve.png")
 }

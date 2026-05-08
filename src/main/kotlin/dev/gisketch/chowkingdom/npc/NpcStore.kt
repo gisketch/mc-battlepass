@@ -63,14 +63,17 @@ object NpcStore {
         save()
     }
 
-    fun questState(player: ServerPlayer, period: Long): NpcPlayerQuestState {
+    fun questState(player: ServerPlayer, period: Long, onExpired: ((List<NpcAcceptedQuestState>) -> Unit)? = null): NpcPlayerQuestState {
         if (!loaded) load()
         val state = data.playerQuests.getOrPut(player.stringUUID) { NpcPlayerQuestState() }
         if (state.period != period) {
+            val expired = state.active.values.toList()
             state.period = period
             state.active.clear()
             state.completedNpcIds.clear()
             state.declinedUntilTick.clear()
+            if (expired.isNotEmpty()) onExpired?.invoke(expired)
+            save()
         }
         return state
     }

@@ -38,7 +38,8 @@ object ChowClock {
 
     fun periodForReset(dayTime: Long, resetHour: Int, settings: ChowClockSettings = ChowClockSettings()): Long {
         val now = at(dayTime, settings)
-        return if (now.hour >= resetHour.coerceIn(0, 23)) now.day else now.day - 1
+        val resetTick = absoluteTick(now.day, resetHour, settings)
+        return if (dayTime >= resetTick) now.day else now.day - 1
     }
 
     fun nextDayAtHour(dayTime: Long, hour: Int, settings: ChowClockSettings = ChowClockSettings()): Long {

@@ -29,8 +29,8 @@ object NpcQuestService {
 
     fun tryOpenQuest(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition): Boolean {
         if (!isMeetup(npc, definition)) return false
-        val period = NpcTime.periodForReset(player.level().dayTime, RESET_HOUR)
-        val playerState = NpcStore.questState(player, period)
+        val period = currentPeriod(player)
+        val playerState = questState(player, period)
         playerState.active[definition.id]?.let { active ->
             if (tryClaim(player, npc, definition, active, playerState)) return true
             return false
@@ -50,7 +50,7 @@ object NpcQuestService {
             .filter { player -> player.isAlive && !player.isSpectator && player.distanceToSqr(npc) <= radiusSqr }
             .filter { player ->
                 val period = NpcTime.periodForReset(level.dayTime, RESET_HOUR)
-                val state = NpcStore.questState(player, period)
+                val state = questState(player, period)
                 selectedOffer(player, definition, period) != null && canOffer(player, npc, definition, state)
             }
             .minByOrNull { player -> player.distanceToSqr(npc) }
@@ -65,8 +65,8 @@ object NpcQuestService {
     }
 
     fun handleAction(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, action: String): Boolean {
-        val period = NpcTime.periodForReset(player.level().dayTime, RESET_HOUR)
-        val state = NpcStore.questState(player, period)
+        val period = currentPeriod(player)
+        val state = questState(player, period)
         return when (action.lowercase()) {
             "quest_accept" -> {
                 val offer = selectedOffer(player, definition, period) ?: return true
@@ -84,8 +84,7 @@ object NpcQuestService {
     }
 
     fun recordSignal(player: ServerPlayer, signal: BattlepassMissionSignal): Boolean {
-        val period = NpcTime.periodForReset(player.level().dayTime, RESET_HOUR)
-        val state = NpcStore.questState(player, period)
+        val state = questState(player)
         var changed = false
         state.active.values.forEach { quest ->
             if (quest.category != "task" || quest.progress >= quest.goal) return@forEach
@@ -105,8 +104,7 @@ object NpcQuestService {
     }
 
     fun syncTo(player: ServerPlayer) {
-        val period = NpcTime.periodForReset(player.level().dayTime, RESET_HOUR)
-        val state = NpcStore.questState(player, period)
+        val state = questState(player)
         val quests = state.active.values.sortedBy { quest -> quest.acceptedAtTick }.map { quest ->
             NpcQuestHudEntryPayload(
                 npcId = quest.npcId,
@@ -125,11 +123,33 @@ object NpcQuestService {
 
     fun debugFinish(player: ServerPlayer, npcId: String): Boolean {
         val definition = NpcConfig.get(npcId) ?: return false
-        val state = NpcStore.questState(player, NpcTime.periodForReset(player.level().dayTime, RESET_HOUR))
+        val state = questState(player)
         val active = state.active[definition.id] ?: return false
         active.progress = active.goal
         finishQuest(player, definition, active, state, null)
         return true
+    }
+
+    fun readyClaimPlayer(npc: ChowNpcEntity, definition: NpcDefinition, radius: Double): ServerPlayer? {
+        val level = npc.level() as? ServerLevel ?: return null
+        val radiusSqr = radius * radius
+        return level.players().asSequence()
+            .filter { player -> player.isAlive && !player.isSpectator && player.distanceToSqr(npc) <= radiusSqr }
+            .filter { player -> questState(player).active[definition.id]?.let { readyForClaim(player, it) } == true }
+            .minByOrNull { player -> player.distanceToSqr(npc) }
+    }
+
+    fun claimReady(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition): Boolean {
+        val state = questState(player)
+        val active = state.active[definition.id] ?: return false
+        if (!readyForClaim(player, active)) return false
+        return tryClaim(player, npc, definition, active, state)
+    }
+
+    fun showReadyClaimBalloon(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition) {
+        val active = questState(player).active[definition.id] ?: return
+        if (!readyForClaim(player, active)) return
+        showCompletionBalloon(player, npc, definition, active)
     }
 
     private fun accept(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, offer: NpcMissionDefinition, state: NpcPlayerQuestState) {
@@ -189,7 +209,21 @@ object NpcQuestService {
         }
         SnackbarNetwork.send(player, SnackbarNotification.npc(definition.id, "NPC QUEST COMPLETE", reward, SnackbarType.SUCCESS, SnackbarSounds.REWARD))
         NpcStore.recordPlayerMemory(player, "npc_quest_complete", "${player.gameProfile.name} completed ${active.description} for ${definition.name}.")
-        if (npc != null) openCloseDialog(player, npc, definition, "You did it, {player}. That helps more than you know.".replace("{player}", player.gameProfile.name))
+        if (npc != null) {
+            showCompletionBalloon(player, npc, definition, active)
+            openCloseDialog(player, npc, definition, "You did it, {player}. That helps more than you know.".replace("{player}", player.gameProfile.name))
+        }
+    }
+
+    private fun showCompletionBalloon(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, active: NpcAcceptedQuestState) {
+        val level = npc.level() as? ServerLevel ?: return
+        val mission = definition.missions.pool.firstOrNull { mission -> mission.id == active.questId }
+        val message = if (mission != null) {
+            template(mission.completeMessages.randomOrNull() ?: "@quest_log.png Mission complete, {player}.", player, definition, mission, active.goal)
+        } else {
+            "@quest_log.png Mission complete, ${player.gameProfile.name}."
+        }
+        NpcFeature.showBalloonToNearby(level, npc, message, 100)
     }
 
     private fun openOfferDialog(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, offer: NpcMissionDefinition) {
@@ -223,6 +257,20 @@ object NpcQuestService {
         if ((state.declinedUntilTick[definition.id] ?: Long.MIN_VALUE) > player.level().dayTime) return false
         return player.distanceToSqr(npc) <= definition.missions.offerRadius * definition.missions.offerRadius
     }
+
+    private fun currentPeriod(player: ServerPlayer): Long = NpcTime.periodForReset(player.level().dayTime, RESET_HOUR)
+
+    private fun questState(player: ServerPlayer, period: Long = currentPeriod(player)): NpcPlayerQuestState =
+        NpcStore.questState(player, period) { expired -> notifyExpired(player, expired) }
+
+    private fun notifyExpired(player: ServerPlayer, expired: List<NpcAcceptedQuestState>) {
+        expired.forEach { quest ->
+            SnackbarNetwork.send(player, SnackbarNotification.npc(quest.npcId, "NPC QUEST FAILED", "You did not finish ${quest.npcName}'s quest: ${quest.description}", SnackbarType.ERROR, SnackbarSounds.ERROR))
+        }
+    }
+
+    private fun readyForClaim(player: ServerPlayer, active: NpcAcceptedQuestState): Boolean =
+        if (active.category == "fetch") countItem(player, active.fetchItem) >= active.fetchCount else active.progress >= active.goal
 
     private fun selectedOffer(player: ServerPlayer, definition: NpcDefinition, period: Long): NpcMissionDefinition? {
         val pool = definition.missions.pool.filter { mission -> mission.id.isNotBlank() }
