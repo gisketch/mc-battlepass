@@ -20,15 +20,34 @@ import net.tslat.smartbrainlib.api.SmartBrainOwner
 import net.tslat.smartbrainlib.api.core.BrainActivityGroup
 import net.tslat.smartbrainlib.api.core.SmartBrainProvider
 import net.tslat.smartbrainlib.api.core.sensor.ExtendedSensor
+import software.bernie.geckolib.animatable.GeoEntity
+import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache
+import software.bernie.geckolib.animation.AnimatableManager
+import software.bernie.geckolib.animation.AnimationController
+import software.bernie.geckolib.animation.PlayState
+import software.bernie.geckolib.animation.RawAnimation
+import software.bernie.geckolib.util.GeckoLibUtil
 import java.util.UUID
 
-class ChowNpcEntity(entityType: EntityType<out PathfinderMob>, level: Level) : PathfinderMob(entityType, level), SmartBrainOwner<ChowNpcEntity> {
+class ChowNpcEntity(entityType: EntityType<out PathfinderMob>, level: Level) : PathfinderMob(entityType, level), SmartBrainOwner<ChowNpcEntity>, GeoEntity {
+    private val animatableCache: AnimatableInstanceCache = GeckoLibUtil.createInstanceCache(this)
+    private var cachedCustomAnimationKey: String = ""
+    private var cachedCustomAnimationLoop: Boolean = true
+    private var cachedCustomAnimation: RawAnimation = IDLE_ANIMATION
+    private var customAnimationEndsAtTick: Int = 0
+
     var npcId: String
         get() = entityData.get(NPC_ID_DATA)
         set(value) = entityData.set(NPC_ID_DATA, value.trim().ifBlank { "finn" })
     var bodyType: String
         get() = entityData.get(BODY_TYPE_DATA)
         set(value) = entityData.set(BODY_TYPE_DATA, NpcBodyTypes.normalize(value))
+    var customAnimation: Boolean
+        get() = entityData.get(CUSTOM_ANIMATION_DATA)
+        private set(value) = entityData.set(CUSTOM_ANIMATION_DATA, value)
+    var customAnimationKey: String
+        get() = entityData.get(CUSTOM_ANIMATION_KEY_DATA)
+        private set(value) = entityData.set(CUSTOM_ANIMATION_KEY_DATA, value.trim().lowercase())
     var scriptedAttackTicks: Int
         get() = entityData.get(SCRIPTED_ATTACK_TICKS_DATA)
         private set(value) = entityData.set(SCRIPTED_ATTACK_TICKS_DATA, value.coerceAtLeast(0))
@@ -54,17 +73,78 @@ class ChowNpcEntity(entityType: EntityType<out PathfinderMob>, level: Level) : P
         super.defineSynchedData(builder)
         builder.define(NPC_ID_DATA, "finn")
         builder.define(BODY_TYPE_DATA, NpcBodyTypes.NORMAL)
+        builder.define(CUSTOM_ANIMATION_DATA, false)
+        builder.define(CUSTOM_ANIMATION_KEY_DATA, "")
         builder.define(SCRIPTED_ATTACK_TICKS_DATA, 0)
     }
+
+    override fun registerControllers(controllers: AnimatableManager.ControllerRegistrar) {
+        controllers.add(AnimationController(this, "custom", 0) { state ->
+            if (!customAnimation) return@AnimationController PlayState.STOP
+            if (customAnimationKey.isBlank()) PlayState.STOP else state.setAndContinue(customRawAnimation())
+        })
+    }
+
+    override fun getAnimatableInstanceCache(): AnimatableInstanceCache = animatableCache
 
     fun configure(definition: NpcDefinition, camp: BlockPos) {
         npcId = definition.id
         bodyType = definition.bodyType
         campPos = camp.immutable()
         homePos = NpcStore.homePos(definition.id)
+        customAnimation = definition.customAnimation
         customName = Component.literal(definition.displayName())
         isCustomNameVisible = true
         setPersistenceRequired()
+    }
+
+    fun configureAnimationDebug(camp: BlockPos) {
+        npcId = ANIMATION_DEBUG_NPC_ID
+        bodyType = NpcBodyTypes.NORMAL
+        campPos = camp.immutable()
+        homePos = null
+        customName = Component.literal("Animation Debug Steve")
+        isCustomNameVisible = true
+        setCustomAnimationMode(false)
+    }
+
+    fun setCustomAnimationMode(enabled: Boolean) {
+        customAnimation = enabled
+        if (!enabled) {
+            customAnimationKey = ""
+            customAnimationEndsAtTick = 0
+        }
+    }
+
+    fun playCustomIdleAnimation() {
+        playCustomAnimation(CUSTOM_ANIMATION_IDLE)
+    }
+
+    fun playCustomWalkAnimation() {
+        playCustomAnimation(CUSTOM_ANIMATION_WALK)
+    }
+
+    fun playCustomAttackAnimation() {
+        playCustomAnimation(CUSTOM_ANIMATION_ATTACK)
+    }
+
+    fun playCustomAnimation(animationId: String): Boolean {
+        val animation = NpcAnimationRegistry.resolve(animationId) ?: return false
+        customAnimation = true
+        customAnimationKey = animation.id
+        customAnimationEndsAtTick = if (animation.loop) 0 else tickCount + animation.durationTicks()
+        return true
+    }
+
+    private fun customRawAnimation(): RawAnimation {
+        val animationKey = customAnimationKey
+        val loop = NpcAnimationRegistry.isLooping(animationKey)
+        if (animationKey != cachedCustomAnimationKey || loop != cachedCustomAnimationLoop) {
+            cachedCustomAnimationKey = animationKey
+            cachedCustomAnimationLoop = loop
+            cachedCustomAnimation = if (loop) RawAnimation.begin().thenLoop(animationKey) else RawAnimation.begin().thenPlay(animationKey)
+        }
+        return cachedCustomAnimation
     }
 
     override fun mobInteract(player: Player, hand: InteractionHand): InteractionResult {
@@ -111,6 +191,13 @@ class ChowNpcEntity(entityType: EntityType<out PathfinderMob>, level: Level) : P
         super.aiStep()
         if (scriptedAttackTicks > 0) scriptedAttackTicks = scriptedAttackTicks - 1
         if (!level().isClientSide) tickTalking()
+        if (!level().isClientSide) tickCustomAnimationReturn()
+    }
+
+    private fun tickCustomAnimationReturn() {
+        if (!customAnimation || customAnimationEndsAtTick == 0 || tickCount < customAnimationEndsAtTick) return
+        customAnimationEndsAtTick = 0
+        customAnimationKey = (NpcAnimationRegistry.resolve(CUSTOM_ANIMATION_IDLE) ?: NpcAnimationRegistry.firstLooping())?.id.orEmpty()
     }
 
     override fun customServerAiStep() {
@@ -139,6 +226,8 @@ class ChowNpcEntity(entityType: EntityType<out PathfinderMob>, level: Level) : P
         super.addAdditionalSaveData(tag)
         tag.putString(NPC_ID_TAG, npcId)
         tag.putString(BODY_TYPE_TAG, bodyType)
+        tag.putBoolean(CUSTOM_ANIMATION_TAG, customAnimation)
+        tag.putString(CUSTOM_ANIMATION_KEY_TAG, customAnimationKey)
         campPos?.let { pos -> tag.putLong(CAMP_POS_TAG, pos.asLong()) }
         homePos?.let { pos -> tag.putLong(HOME_POS_TAG, pos.asLong()) }
     }
@@ -147,6 +236,8 @@ class ChowNpcEntity(entityType: EntityType<out PathfinderMob>, level: Level) : P
         super.readAdditionalSaveData(tag)
         npcId = tag.getString(NPC_ID_TAG).ifBlank { "finn" }
         bodyType = tag.getString(BODY_TYPE_TAG).ifBlank { NpcBodyTypes.NORMAL }
+        customAnimation = tag.getBoolean(CUSTOM_ANIMATION_TAG)
+        customAnimationKey = tag.getString(CUSTOM_ANIMATION_KEY_TAG)
         if (tag.contains(CAMP_POS_TAG)) campPos = BlockPos.of(tag.getLong(CAMP_POS_TAG))
         if (tag.contains(HOME_POS_TAG)) homePos = BlockPos.of(tag.getLong(HOME_POS_TAG))
         setPersistenceRequired()
@@ -157,11 +248,20 @@ class ChowNpcEntity(entityType: EntityType<out PathfinderMob>, level: Level) : P
     companion object {
         private val NPC_ID_DATA: EntityDataAccessor<String> = SynchedEntityData.defineId(ChowNpcEntity::class.java, EntityDataSerializers.STRING)
         private val BODY_TYPE_DATA: EntityDataAccessor<String> = SynchedEntityData.defineId(ChowNpcEntity::class.java, EntityDataSerializers.STRING)
+        private val CUSTOM_ANIMATION_DATA: EntityDataAccessor<Boolean> = SynchedEntityData.defineId(ChowNpcEntity::class.java, EntityDataSerializers.BOOLEAN)
+        private val CUSTOM_ANIMATION_KEY_DATA: EntityDataAccessor<String> = SynchedEntityData.defineId(ChowNpcEntity::class.java, EntityDataSerializers.STRING)
         private val SCRIPTED_ATTACK_TICKS_DATA: EntityDataAccessor<Int> = SynchedEntityData.defineId(ChowNpcEntity::class.java, EntityDataSerializers.INT)
+        const val ANIMATION_DEBUG_NPC_ID = "animation_debug_steve"
+        const val CUSTOM_ANIMATION_IDLE = "idle"
+        const val CUSTOM_ANIMATION_WALK = "walk"
+        const val CUSTOM_ANIMATION_ATTACK = "attack"
         private const val NPC_ID_TAG = "NpcId"
         private const val BODY_TYPE_TAG = "BodyType"
+        private const val CUSTOM_ANIMATION_TAG = "CustomAnimation"
+        private const val CUSTOM_ANIMATION_KEY_TAG = "CustomAnimationKey"
         private const val CAMP_POS_TAG = "CampPos"
         private const val HOME_POS_TAG = "HomePos"
         private const val SCRIPTED_ATTACK_ANIMATION_TICKS = 9
+        private val IDLE_ANIMATION: RawAnimation = RawAnimation.begin().thenLoop("idle")
     }
 }

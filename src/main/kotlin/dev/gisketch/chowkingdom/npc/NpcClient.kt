@@ -23,6 +23,7 @@ import net.minecraft.client.model.PlayerModel
 import net.minecraft.client.model.geom.ModelLayers
 import net.minecraft.client.model.geom.ModelPart
 import net.minecraft.client.renderer.MultiBufferSource
+import net.minecraft.client.renderer.entity.EntityRenderer
 import net.minecraft.client.renderer.entity.EntityRendererProvider
 import net.minecraft.client.renderer.entity.HumanoidMobRenderer
 import net.minecraft.client.renderer.entity.MobRenderer
@@ -41,6 +42,7 @@ import net.minecraft.util.RandomSource
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.player.ChatVisiblity
 import net.minecraft.world.inventory.tooltip.TooltipComponent
+import net.minecraft.world.item.ItemDisplayContext
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 import net.neoforged.bus.api.IEventBus
@@ -65,6 +67,10 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 import org.joml.Quaternionf
 import org.joml.Vector3f
+import software.bernie.geckolib.cache.`object`.GeoBone
+import software.bernie.geckolib.model.GeoModel
+import software.bernie.geckolib.renderer.GeoEntityRenderer
+import software.bernie.geckolib.renderer.layer.BlockAndItemGeoLayer
 
 object NpcClient {
     private val WORLD_CHAT_HEADS_LAYER_ID = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "npc_world_chat_heads")
@@ -105,6 +111,11 @@ object NpcClient {
         val targetHeadX = if (payload.targetKind == "thinking") 0 else minecraft.font.width(worldChatTargetPrefix(payload.npcName))
         worldChatEntries.add(0, NpcWorldChatEntry(payload.npcId, payload.targetName, payload.targetId, payload.targetKind, minecraft.gui.guiTicks, lineCount, targetHeadX))
         while (worldChatEntries.size > MAX_WORLD_CHAT_HEAD_ENTRIES) worldChatEntries.removeLast()
+    }
+
+    @JvmStatic
+    fun reloadAnimationResources() {
+        Minecraft.getInstance().reloadResourcePacks()
     }
 
     fun skipTalkResponse(responseToken: Long) {
@@ -205,13 +216,7 @@ object NpcClient {
     fun isDialogOpen(): Boolean = Minecraft.getInstance().screen is NpcDialogScreen
 
     private fun registerRenderers(event: EntityRenderersEvent.RegisterRenderers) {
-        event.registerEntityRenderer(NpcFeature.NPC_ENTITY.get()) { context ->
-            if (NpcConfig.settings().rendering.playerlikeRenderer) {
-                ChowNpcPlayerlikeRenderer(context)
-            } else {
-                ChowNpcRenderer(context)
-            }
-        }
+        event.registerEntityRenderer(NpcFeature.NPC_ENTITY.get()) { context -> ChowNpcDelegatingRenderer(context) }
         event.registerBlockEntityRenderer(NpcFeature.CAMPING_BLOCK_ENTITY.get()) { CampingBlockRenderer() }
     }
 
@@ -545,10 +550,28 @@ private data class NpcBalloonIcon(val marker: String, val texture: ResourceLocat
 
 private fun npcTexture(npcId: String): ResourceLocation {
     val cleanId = npcId.trim().lowercase(Locale.ROOT).replace(Regex("[^a-z0-9_./-]"), "")
-    return if (cleanId.isBlank()) STEVE_TEXTURE else ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/entity/npc/$cleanId.png")
+    return if (cleanId.isBlank() || cleanId == ChowNpcEntity.ANIMATION_DEBUG_NPC_ID) STEVE_TEXTURE else ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/entity/npc/$cleanId.png")
 }
 
 private val STEVE_TEXTURE = ResourceLocation.withDefaultNamespace("textures/entity/player/wide/steve.png")
+
+private class ChowNpcDelegatingRenderer(context: EntityRendererProvider.Context) : EntityRenderer<ChowNpcEntity>(context) {
+    private val playerlikeRenderer = ChowNpcPlayerlikeRenderer(context)
+    private val vanillaRenderer = ChowNpcRenderer(context)
+    private val geckoRenderer = ChowNpcGeoRenderer(context)
+
+    override fun render(entity: ChowNpcEntity, entityYaw: Float, partialTicks: Float, poseStack: PoseStack, buffer: MultiBufferSource, packedLight: Int) {
+        rendererFor(entity).render(entity, entityYaw, partialTicks, poseStack, buffer, packedLight)
+    }
+
+    override fun getTextureLocation(entity: ChowNpcEntity): ResourceLocation = rendererFor(entity).getTextureLocation(entity)
+
+    private fun rendererFor(entity: ChowNpcEntity): EntityRenderer<ChowNpcEntity> = when {
+        entity.customAnimation -> geckoRenderer
+        NpcConfig.settings().rendering.playerlikeRenderer -> playerlikeRenderer
+        else -> vanillaRenderer
+    }
+}
 
 private class ChowNpcPlayerlikeRenderer(context: EntityRendererProvider.Context) : HumanoidMobRenderer<ChowNpcEntity, PlayerModel<ChowNpcEntity>>(context, PlayerModel(context.bakeLayer(ModelLayers.PLAYER), false), 0.5f) {
     private val normalModel = PlayerModel<ChowNpcEntity>(context.bakeLayer(ModelLayers.PLAYER), false)
@@ -580,6 +603,14 @@ private class ChowNpcRenderer(context: EntityRendererProvider.Context) : MobRend
     private val slimModel = ChowNpcModel(context.bakeLayer(ModelLayers.PLAYER_SLIM), true)
 
     init {
+        addLayer(
+            HumanoidArmorLayer(
+                this,
+                HumanoidModel(context.bakeLayer(ModelLayers.PLAYER_INNER_ARMOR)),
+                HumanoidModel(context.bakeLayer(ModelLayers.PLAYER_OUTER_ARMOR)),
+                context.modelManager,
+            )
+        )
         addLayer(ItemInHandLayer(this, context.itemInHandRenderer))
     }
 
@@ -590,6 +621,47 @@ private class ChowNpcRenderer(context: EntityRendererProvider.Context) : MobRend
     }
 
     override fun getTextureLocation(entity: ChowNpcEntity): ResourceLocation = npcTexture(entity.npcId)
+}
+
+private class ChowNpcGeoRenderer(context: EntityRendererProvider.Context) : GeoEntityRenderer<ChowNpcEntity>(context, ChowNpcGeoModel()) {
+    init {
+        shadowRadius = 0.5f
+        addRenderLayer(NpcGeoHeldItemLayer(this))
+    }
+
+    override fun getTextureLocation(entity: ChowNpcEntity): ResourceLocation = npcTexture(entity.npcId)
+}
+
+private class NpcGeoHeldItemLayer(renderer: GeoEntityRenderer<ChowNpcEntity>) : BlockAndItemGeoLayer<ChowNpcEntity>(renderer) {
+    override fun getStackForBone(bone: GeoBone, animatable: ChowNpcEntity): ItemStack = when (bone.name) {
+        "right_hand_item" -> animatable.mainHandItem
+        "left_hand_item" -> animatable.offhandItem
+        else -> ItemStack.EMPTY
+    }
+
+    override fun getTransformTypeForStack(bone: GeoBone, stack: ItemStack, animatable: ChowNpcEntity): ItemDisplayContext = ItemDisplayContext.NONE
+
+    override fun renderStackForBone(poseStack: PoseStack, bone: GeoBone, stack: ItemStack, animatable: ChowNpcEntity, bufferSource: MultiBufferSource, partialTick: Float, packedLight: Int, packedOverlay: Int) {
+        if (bone.name != "right_hand_item" && bone.name != "left_hand_item") {
+            super.renderStackForBone(poseStack, bone, stack, animatable, bufferSource, partialTick, packedLight, packedOverlay)
+            return
+        }
+        poseStack.pushPose()
+        poseStack.translate(0.0, 0.35, 0.0)
+        poseStack.scale(0.75f, 0.75f, 0.75f)
+        if (bone.name == "left_hand_item") poseStack.mulPose(Axis.YP.rotationDegrees(180.0f))
+        super.renderStackForBone(poseStack, bone, stack, animatable, bufferSource, partialTick, packedLight, packedOverlay)
+        poseStack.popPose()
+    }
+}
+
+@Suppress("OVERRIDE_DEPRECATION")
+private class ChowNpcGeoModel : GeoModel<ChowNpcEntity>() {
+    override fun getModelResource(animatable: ChowNpcEntity): ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "geo/entity/npc/playerlike.geo.json")
+
+    override fun getTextureResource(animatable: ChowNpcEntity): ResourceLocation = npcTexture(animatable.npcId)
+
+    override fun getAnimationResource(animatable: ChowNpcEntity): ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "animations/npc/playerlike.animation.json")
 }
 
 class NpcRentContractTooltip(val npcId: String, val npcName: String) : TooltipComponent

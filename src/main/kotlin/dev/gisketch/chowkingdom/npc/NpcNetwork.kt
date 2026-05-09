@@ -69,6 +69,10 @@ object NpcNetwork {
         PacketDistributor.sendToPlayer(player, payload)
     }
 
+    fun reloadAnimations(player: ServerPlayer) {
+        PacketDistributor.sendToPlayer(player, NpcAnimationReloadPayload)
+    }
+
     fun broadcastWorldChat(server: MinecraftServer, payload: NpcWorldChatPayload) {
         server.playerList.players.forEach { player -> PacketDistributor.sendToPlayer(player, payload) }
     }
@@ -81,6 +85,7 @@ object NpcNetwork {
         registrar.playToClient(NpcWorldChatPayload.TYPE, NpcWorldChatPayload.STREAM_CODEC, ::handleWorldChat)
         registrar.playToClient(NpcQuestSyncPayload.TYPE, NpcQuestSyncPayload.STREAM_CODEC, ::handleQuestSync)
         registrar.playToClient(NpcFriendsSyncPayload.TYPE, NpcFriendsSyncPayload.STREAM_CODEC, ::handleFriendsSync)
+        registrar.playToClient(NpcAnimationReloadPayload.TYPE, NpcAnimationReloadPayload.STREAM_CODEC, ::handleAnimationReload)
         registrar.playToServer(NpcDialogActionPayload.TYPE, NpcDialogActionPayload.STREAM_CODEC, ::handleAction)
         registrar.playToServer(NpcTalkRequestPayload.TYPE, NpcTalkRequestPayload.STREAM_CODEC, ::handleTalkRequest)
         registrar.playToServer(NpcFriendsRequestPayload.TYPE, NpcFriendsRequestPayload.STREAM_CODEC, ::handleFriendsRequest)
@@ -141,6 +146,15 @@ object NpcNetwork {
             context.enqueueWork {
                 val client = Class.forName("dev.gisketch.chowkingdom.npc.NpcFriendsClient")
                 client.getMethod("apply", NpcFriendsSyncPayload::class.java).invoke(client.getField("INSTANCE").get(null), payload)
+            }
+        }
+    }
+
+    private fun handleAnimationReload(payload: NpcAnimationReloadPayload, context: IPayloadContext) {
+        if (FMLEnvironment.dist.isClient) {
+            context.enqueueWork {
+                val client = Class.forName("dev.gisketch.chowkingdom.npc.NpcClient")
+                client.getMethod("reloadAnimationResources").invoke(null)
             }
         }
     }
@@ -428,6 +442,16 @@ object NpcFriendsRequestPayload : CustomPacketPayload {
     val STREAM_CODEC: StreamCodec<RegistryFriendlyByteBuf, NpcFriendsRequestPayload> = object : StreamCodec<RegistryFriendlyByteBuf, NpcFriendsRequestPayload> {
         override fun decode(buffer: RegistryFriendlyByteBuf): NpcFriendsRequestPayload = NpcFriendsRequestPayload
         override fun encode(buffer: RegistryFriendlyByteBuf, value: NpcFriendsRequestPayload) = Unit
+    }
+}
+
+object NpcAnimationReloadPayload : CustomPacketPayload {
+    override fun type(): CustomPacketPayload.Type<NpcAnimationReloadPayload> = TYPE
+
+    val TYPE: CustomPacketPayload.Type<NpcAnimationReloadPayload> = CustomPacketPayload.Type(ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "npc/animation_reload"))
+    val STREAM_CODEC: StreamCodec<RegistryFriendlyByteBuf, NpcAnimationReloadPayload> = object : StreamCodec<RegistryFriendlyByteBuf, NpcAnimationReloadPayload> {
+        override fun decode(buffer: RegistryFriendlyByteBuf): NpcAnimationReloadPayload = NpcAnimationReloadPayload
+        override fun encode(buffer: RegistryFriendlyByteBuf, value: NpcAnimationReloadPayload) = Unit
     }
 }
 

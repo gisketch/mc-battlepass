@@ -8,6 +8,7 @@ class NpcDefinition(
     var title: String = "",
     var skin: String = "",
     @SerializedName("body_type") var bodyType: String = NpcBodyTypes.NORMAL,
+    @SerializedName("custom_animation") var customAnimation: Boolean = false,
     var job: String = "adventurer",
     @SerializedName("job_definition") var jobDefinition: NpcJobDefinition = NpcJobDefinition(),
     var schedule: NpcScheduleDefinition = NpcScheduleDefinition(),

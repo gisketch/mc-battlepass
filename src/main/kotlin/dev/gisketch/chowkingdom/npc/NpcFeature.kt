@@ -1,5 +1,6 @@
 package dev.gisketch.chowkingdom.npc
 
+import com.mojang.brigadier.arguments.BoolArgumentType
 import com.mojang.brigadier.arguments.IntegerArgumentType
 import com.mojang.brigadier.arguments.StringArgumentType
 import com.mojang.brigadier.builder.LiteralArgumentBuilder
@@ -35,6 +36,7 @@ import net.minecraft.world.InteractionHand
 import net.minecraft.world.InteractionResult
 import net.minecraft.world.entity.EntityType
 import net.minecraft.world.entity.Entity
+import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.entity.Mob
 import net.minecraft.world.entity.MobCategory
 import net.minecraft.world.entity.ai.attributes.Attributes
@@ -89,6 +91,8 @@ object NpcFeature {
     private val npcMicroInteractionCooldownUntil: MutableMap<String, Long> = linkedMapOf()
     private val npcAutoTaskCooldownUntil: MutableMap<UUID, Long> = linkedMapOf()
     private val pendingShopNpcs: MutableMap<UUID, String> = linkedMapOf()
+    private val animationDebugTargets: MutableMap<UUID, UUID> = linkedMapOf()
+    private val animationWearAliases = listOf("clear", "none", "hat", "helmet", "chestplate", "leggings", "boots", "sword")
     private var debugTimeMultiplier: Int = 1
 
     val CAMPING_BLOCK: DeferredHolder<Block, CampingBlock> = BLOCKS.register("camping_block", Supplier { CampingBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.OAK_PLANKS).strength(1.5f).noOcclusion()) })
@@ -1419,6 +1423,7 @@ object NpcFeature {
         val player = event.entity as? ServerPlayer ?: return
         NpcStore.recordGlobalEvent("player_leave", "${player.gameProfile.name} left the server")
         NpcConfig.all().forEach { definition -> NpcLlmService.cancel(player, definition.id) }
+        removeAnimationDebugEntity(player)
     }
 
     private fun onServerChat(event: ServerChatEvent) {
@@ -1609,6 +1614,8 @@ object NpcFeature {
                         ),
                 ),
         )
+        .then(animationRoot("animation"))
+        .then(animationRoot("animations"))
         .then(
             Commands.literal("spawn")
                 .requires { source -> source.hasPermission(2) }
@@ -1708,6 +1715,31 @@ object NpcFeature {
                         .executes(::llmSwitchCommand),
                 ),
         )
+
+    private fun animationRoot(name: String): LiteralArgumentBuilder<CommandSourceStack> = Commands.literal(name)
+        .requires { source -> source.hasPermission(2) }
+        .then(Commands.literal("debug").executes(::animationDebugCommand))
+        .then(
+            Commands.literal("custom_animation")
+                .then(Commands.argument("enabled", BoolArgumentType.bool()).executes(::animationCustomAnimationCommand)),
+        )
+        .then(Commands.literal("reload").executes(::animationReloadCommand))
+        .then(
+            Commands.literal("wear")
+                .then(Commands.argument("item", StringArgumentType.greedyString()).suggests(::suggestAnimationWearables).executes(::animationWearCommand)),
+        )
+        .then(Commands.literal("idle").executes(::animationIdleCommand))
+        .then(Commands.literal("walk").executes(::animationWalkCommand))
+        .then(Commands.literal("attack").executes(::animationAttackCommand))
+        .then(Commands.argument("animation", StringArgumentType.word()).suggests(::suggestCustomAnimationIds).executes(::animationPlayCommand))
+
+    private fun suggestCustomAnimationIds(context: CommandContext<CommandSourceStack>, builder: com.mojang.brigadier.suggestion.SuggestionsBuilder) =
+        SharedSuggestionProvider.suggest(NpcAnimationRegistry.ids(), builder)
+
+    private fun suggestAnimationWearables(context: CommandContext<CommandSourceStack>, builder: com.mojang.brigadier.suggestion.SuggestionsBuilder): java.util.concurrent.CompletableFuture<com.mojang.brigadier.suggestion.Suggestions> {
+        animationWearAliases.forEach(builder::suggest)
+        return SharedSuggestionProvider.suggestResource(BuiltInRegistries.ITEM.keySet(), builder)
+    }
 
     private fun llmStatusCommand(context: CommandContext<CommandSourceStack>): Int {
         val settings = NpcConfig.settings().llm
@@ -1915,6 +1947,7 @@ object NpcFeature {
         val backup = NpcStore.backupAndClearAll()
         realtimeDebugTargets.clear()
         greetingRadiusPlayers.clear()
+        animationDebugTargets.clear()
         context.source.sendSuccess({
             Component.literal("DANGER: cleared all NPC state, $removedEntities live NPC(s), and $removedContracts rent contract(s). Backup: $backup").withStyle(ChatFormatting.RED)
         }, true)
@@ -1999,6 +2032,159 @@ object NpcFeature {
         if (definition == null) context.source.sendFailure(Component.literal("Unknown NPC '$id'."))
         return definition
     }
+
+    private fun animationDebugCommand(context: CommandContext<CommandSourceStack>): Int {
+        val player = context.source.playerOrException
+        val removed = removeAnimationDebugEntity(player)
+        if (removed) {
+            context.source.sendSuccess({ Component.literal("Removed animation debug Steve.").withStyle(ChatFormatting.GRAY) }, true)
+            return 1
+        }
+        val level = player.level() as? ServerLevel ?: return 0
+        val spawnPos = animationDebugSpawnPos(level, player)
+        val npc = NPC_ENTITY.get().create(level) ?: return 0
+        npc.configureAnimationDebug(player.blockPosition())
+        npc.setNoAi(true)
+        npc.moveTo(spawnPos.x + 0.5, spawnPos.y.toDouble(), spawnPos.z + 0.5, player.yRot + 180.0f, 0.0f)
+        level.addFreshEntity(npc)
+        animationDebugTargets[player.uuid] = npc.uuid
+        context.source.sendSuccess({ Component.literal("Spawned animation debug Steve. Use /npc animation custom_animation true, then idle, walk, or attack.").withStyle(ChatFormatting.GREEN) }, true)
+        return 1
+    }
+
+    private fun animationCustomAnimationCommand(context: CommandContext<CommandSourceStack>): Int {
+        val player = context.source.playerOrException
+        val enabled = BoolArgumentType.getBool(context, "enabled")
+        val npc = animationCommandTarget(player) ?: run {
+            context.source.sendFailure(Component.literal("No animation debug Steve or Chow Kingdom NPC under crosshair."))
+            return 0
+        }
+        npc.setCustomAnimationMode(enabled)
+        context.source.sendSuccess({ Component.literal("${animationTargetName(npc)} custom_animation=$enabled.") }, true)
+        return 1
+    }
+
+    private fun animationReloadCommand(context: CommandContext<CommandSourceStack>): Int {
+        val player = context.source.playerOrException
+        val animations = NpcAnimationRegistry.reload()
+        NpcNetwork.reloadAnimations(player)
+        context.source.sendSuccess({ Component.literal("Reloaded ${animations.size} NPC animation id(s): ${animations.joinToString(", ") { animation -> animation.id }}. Client resource reload requested.").withStyle(ChatFormatting.GREEN) }, true)
+        return animations.size
+    }
+
+    private fun animationPlayCommand(context: CommandContext<CommandSourceStack>): Int {
+        val requested = StringArgumentType.getString(context, "animation")
+        val animation = NpcAnimationRegistry.resolve(requested)
+        if (animation == null) {
+            context.source.sendFailure(Component.literal("Unknown NPC animation '$requested'. Available: ${NpcAnimationRegistry.ids().joinToString(", ")}"))
+            return 0
+        }
+        return playAnimation(context, animation.id)
+    }
+
+    private fun animationWearCommand(context: CommandContext<CommandSourceStack>): Int {
+        val player = context.source.playerOrException
+        val npc = animationCommandTarget(player) ?: run {
+            context.source.sendFailure(Component.literal("No animation debug Steve or Chow Kingdom NPC under crosshair."))
+            return 0
+        }
+        val requested = StringArgumentType.getString(context, "item")
+        if (requested.equals("clear", ignoreCase = true) || requested.equals("none", ignoreCase = true)) {
+            animationWearSlots.forEach { slot -> npc.setItemSlot(slot, ItemStack.EMPTY) }
+            context.source.sendSuccess({ Component.literal("Cleared wearables on ${animationTargetName(npc)}.").withStyle(ChatFormatting.GRAY) }, true)
+            return 1
+        }
+        val wearable = animationWearable(requested) ?: run {
+            context.source.sendFailure(Component.literal("Unknown wearable '$requested'. Try hat, chestplate, boots, or a valid item id."))
+            return 0
+        }
+        npc.setItemSlot(wearable.slot, wearable.stack.copy())
+        val suffix = if (npc.customAnimation && wearable.slot != EquipmentSlot.MAINHAND) " Gecko custom renderer does not draw vanilla armor layers yet." else ""
+        context.source.sendSuccess({ Component.literal("Equipped ${wearable.id} on ${animationTargetName(npc)} ${wearable.slot.name.lowercase()}.${suffix}").withStyle(ChatFormatting.GREEN) }, true)
+        return 1
+    }
+
+    private fun animationIdleCommand(context: CommandContext<CommandSourceStack>): Int {
+        return playAnimation(context, ChowNpcEntity.CUSTOM_ANIMATION_IDLE)
+    }
+
+    private fun animationWalkCommand(context: CommandContext<CommandSourceStack>): Int {
+        return playAnimation(context, ChowNpcEntity.CUSTOM_ANIMATION_WALK)
+    }
+
+    private fun animationAttackCommand(context: CommandContext<CommandSourceStack>): Int {
+        return playAnimation(context, ChowNpcEntity.CUSTOM_ANIMATION_ATTACK)
+    }
+
+    private fun animationWearable(requested: String): AnimationWearable? {
+        val normalized = requested.trim().lowercase()
+        val alias = when (normalized) {
+            "hat", "helmet" -> AnimationWearable(EquipmentSlot.HEAD, ItemStack(Items.IRON_HELMET), "minecraft:iron_helmet")
+            "chestplate" -> AnimationWearable(EquipmentSlot.CHEST, ItemStack(Items.IRON_CHESTPLATE), "minecraft:iron_chestplate")
+            "leggings" -> AnimationWearable(EquipmentSlot.LEGS, ItemStack(Items.IRON_LEGGINGS), "minecraft:iron_leggings")
+            "boots" -> AnimationWearable(EquipmentSlot.FEET, ItemStack(Items.IRON_BOOTS), "minecraft:iron_boots")
+            "sword" -> AnimationWearable(EquipmentSlot.MAINHAND, ItemStack(Items.IRON_SWORD), "minecraft:iron_sword")
+            else -> null
+        }
+        if (alias != null) return alias
+        val id = runCatching { ResourceLocation.parse(if (normalized.contains(':')) normalized else "minecraft:$normalized") }.getOrNull() ?: return null
+        val item = BuiltInRegistries.ITEM.getOptional(id).orElse(Items.AIR)
+        if (item === Items.AIR) return null
+        return AnimationWearable(animationWearSlot(id.path), ItemStack(item), id.toString())
+    }
+
+    private fun animationWearSlot(itemPath: String): EquipmentSlot = when {
+        itemPath.endsWith("_chestplate") || itemPath == "elytra" -> EquipmentSlot.CHEST
+        itemPath.endsWith("_leggings") -> EquipmentSlot.LEGS
+        itemPath.endsWith("_boots") -> EquipmentSlot.FEET
+        itemPath.contains("sword") || itemPath.endsWith("_axe") || itemPath.endsWith("_trident") -> EquipmentSlot.MAINHAND
+        else -> EquipmentSlot.HEAD
+    }
+
+    private fun playAnimation(context: CommandContext<CommandSourceStack>, animationId: String): Int {
+        val player = context.source.playerOrException
+        val npc = animationCommandTarget(player) ?: run {
+            context.source.sendFailure(Component.literal("No animation debug Steve or Chow Kingdom NPC under crosshair."))
+            return 0
+        }
+        val animation = NpcAnimationRegistry.resolve(animationId) ?: run {
+            context.source.sendFailure(Component.literal("Invalid NPC animation '$animationId'."))
+            return 0
+        }
+        if (!npc.playCustomAnimation(animation.id)) {
+            context.source.sendFailure(Component.literal("Invalid NPC animation '${animation.id}'."))
+            return 0
+        }
+        context.source.sendSuccess({ Component.literal("Playing ${animation.id} animation on ${animationTargetName(npc)}.") }, true)
+        return 1
+    }
+
+    private fun animationCommandTarget(player: ServerPlayer): ChowNpcEntity? {
+        val debugNpc = animationDebugTargets[player.uuid]
+            ?.let { entityId -> findNpc(player.server, entityId) }
+            ?.takeIf { npc -> npc.isAlive && npc.npcId == ChowNpcEntity.ANIMATION_DEBUG_NPC_ID }
+        if (debugNpc != null) return debugNpc
+        animationDebugTargets.remove(player.uuid)
+        return lookedAtNpc(player)
+    }
+
+    private fun removeAnimationDebugEntity(player: ServerPlayer): Boolean {
+        val entityId = animationDebugTargets.remove(player.uuid) ?: return false
+        val npc = findNpc(player.server, entityId)?.takeIf { entity -> entity.npcId == ChowNpcEntity.ANIMATION_DEBUG_NPC_ID } ?: return false
+        npc.discard()
+        return true
+    }
+
+    private fun animationDebugSpawnPos(level: ServerLevel, player: ServerPlayer): BlockPos {
+        val base = player.blockPosition().relative(player.direction, 2)
+        return listOf(base, base.above(), base.below(), player.blockPosition()).firstOrNull { pos -> canSpawnNpcAt(level, pos) } ?: player.blockPosition()
+    }
+
+    private fun animationTargetName(npc: ChowNpcEntity): String = if (npc.npcId == ChowNpcEntity.ANIMATION_DEBUG_NPC_ID) "animation debug Steve" else npc.npcId
+
+    private val animationWearSlots = listOf(EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET, EquipmentSlot.MAINHAND)
+
+    private data class AnimationWearable(val slot: EquipmentSlot, val stack: ItemStack, val id: String)
 
     private fun tickDebugTime(server: MinecraftServer) {
         if (debugTimeMultiplier <= 1) return

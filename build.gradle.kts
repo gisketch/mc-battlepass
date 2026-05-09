@@ -16,6 +16,8 @@ val kotlinForForgeVersion = providers.gradleProperty("kotlin_for_forge_version")
 val kotlinForForgeVersionRange = providers.gradleProperty("kotlin_for_forge_version_range").get()
 val owoLibVersion = providers.gradleProperty("owo_lib_version").get()
 val owoVersionRange = providers.gradleProperty("owo_version_range").get()
+val geckoLibVersion = providers.gradleProperty("geckolib_version").get()
+val geckoLibVersionRange = providers.gradleProperty("geckolib_version_range").get()
 val smartBrainLibVersion = providers.gradleProperty("smartbrainlib_version").get()
 val smartBrainLibVersionRange = providers.gradleProperty("smartbrainlib_version_range").get()
 val modId = providers.gradleProperty("mod_id").get()
@@ -108,7 +110,7 @@ sourceSets {
 dependencies {
     implementation("thedarkcolour:kotlinforforge-neoforge:$kotlinForForgeVersion")
     implementation("maven.modrinth:owo-lib:$owoLibVersion")
-    implementation("software.bernie.geckolib:geckolib-neoforge-1.21.1:4.8.4")
+    implementation("software.bernie.geckolib:geckolib-neoforge-$minecraftVersion:$geckoLibVersion")
     implementation("net.tslat.smartbrainlib:SmartBrainLib-neoforge-$minecraftVersion:$smartBrainLibVersion")
     compileOnly("maven.modrinth:jade:15.9.3+neoforge")
 
@@ -125,6 +127,7 @@ tasks.processResources {
         "kotlin_for_forge_version" to kotlinForForgeVersion,
         "kotlin_for_forge_version_range" to kotlinForForgeVersionRange,
         "owo_version_range" to owoVersionRange,
+        "geckolib_version_range" to geckoLibVersionRange,
         "smartbrainlib_version_range" to smartBrainLibVersionRange,
         "mod_id" to modId,
         "mod_name" to modName,

@@ -13,6 +13,8 @@ Conversation-specific runtime rules live in [NPC Conversations](NPC_CONVERSATION
 - Default file: `finn.toml`, written if missing.
 - Global NPC settings: `settings.toml`, written if missing.
 - Rendering experiment: `settings.toml` `[rendering].playerlike_renderer` switches NPCs to an RCT-style vanilla `PlayerModel`/`HumanoidMobRenderer` path for EMF/ETF animation pack testing. Restart the client after changing it. FA/Fresh may apply automatically if it hooks custom player-shaped mobs; otherwise a compat resource pack or deeper renderer adapter is needed.
+- Custom animation experiment: per-NPC `custom_animation = true` routes that entity to the GeckoLib playerlike model and bypasses the EMF-oriented playerlike renderer so CKDM owns the pose.
+- Custom animation IDs are read from `assets/gisketchs_chowkingdom_mod/animations/npc/playerlike.animation.json`; `/npc animations reload` refreshes command suggestions and asks the caller's client to reload resources.
 - Shared friendship message fallback: `friendship_messages.toml`, written if missing and used by all NPCs unless a definition overrides `friendship_messages`.
 - Intro block: `gisketchs_chowkingdom_mod:camping_block`.
 - Contract item: `gisketchs_chowkingdom_mod:rent_contract`.
@@ -52,6 +54,7 @@ Each NPC is one TOML file:
 - `title`: Display subtitle.
 - `skin`: Future skin resource id. Current renderer uses `textures/entity/npc/finn.png` for `finn` and a vanilla fallback for other NPC ids.
 - `body_type`: Player-model shape. Supported values: `normal`, `slim`.
+- `custom_animation`: Uses the GeckoLib playerlike NPC renderer instead of the EMF-compatible renderer path. Default `false`.
 - `job`: Job behavior id. Supported ids: `adventurer`, `warrior`, `fashionista`. Unknown ids normalize to `adventurer`.
 - `job_definition`: Static job behavior knobs loaded from TOML: `store`, `scan_interval_ticks`, `roam_radius`, and `work_scan_radius`. `store` is a store template id, not a shared stock instance.
 - `schedule`: Static day schedule loaded from TOML. Each activity entry has `from_hour`, `to_hour`, and `activity`. Hours use a 24-hour clock where `00` is midnight.
@@ -275,6 +278,14 @@ Home beds are validated against live bed blocks. If the assigned bed is broken o
 - `/npc debug llm`: show current NPC LLM enabled/provider/model settings plus the latest in-memory LLM failures, including HTTP status such as `429` or `403` when the provider returns one.
 - `/npc debug time <multiplier>`: speed up day time for debugging schedules. Use `1` to reset. Allowed range is `1` to `240`.
 - `/npc debug balloon <id> <message>`: show a timed test balloon above the spawned NPC for nearby players.
+- `/npc animation debug`: toggle a Steve-textured Chow Kingdom NPC debug entity for the command player.
+- `/npc animation custom_animation true|false`: toggle GeckoLib custom animation mode on the active debug Steve, or the NPC under the crosshair when no debug Steve is active.
+- `/npc animation idle`: enable custom animation mode and run the idle alias on the active debug Steve, or the NPC under the crosshair when no debug Steve is active. If `idle` is missing, the command resolves to the first matching idle-style JSON key such as `idle_bouncy`.
+- `/npc animation walk`: enable custom animation mode and run the walk alias on the active debug Steve, or the NPC under the crosshair when no debug Steve is active. If `walk` is missing, the command resolves to matching JSON keys such as `walking`.
+- `/npc animation attack`: enable custom animation mode and run the attack alias on the active debug Steve, or the NPC under the crosshair when no debug Steve is active. If `attack` is missing, the command resolves to matching JSON keys such as `attack_sword_fast`, then returns to idle after the non-loop clip finishes.
+- `/npc animation reload` or `/npc animations reload`: reload animation IDs from `playerlike.animation.json` and request a client resource reload.
+- `/npc animation wear <item>` or `/npc animations wear <item>`: equip the active debug Steve or looked-at NPC with `hat`, `chestplate`, `leggings`, `boots`, `sword`, any item id such as `minecraft:iron_sword`, or `clear`. Held items render on Gecko hand-item bones, so `wear sword` follows the attack animation. Vanilla armor layers render on the normal/playerlike NPC renderers; the current Gecko custom renderer does not draw vanilla armor layers yet.
+- `/npc animation <animation>` or `/npc animations <animation>`: play any animation key from `playerlike.animation.json`; suggestions are refreshed from the JSON file.
 - `/ck npc ...` and `/chowkingdom npc ...`: aliases.
 
 ## Jade
