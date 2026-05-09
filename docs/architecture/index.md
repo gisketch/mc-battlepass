@@ -45,3 +45,5 @@
 ## Boundary Rule
 
 Keep feature ownership obvious by package. Register module entrypoints from `ChowKingdomMod`; use module-owned store/network/client-state objects. If a dependency direction matters, document it here, then enforce it with checks when possible.
+
+Keep files focused enough for agents to reason about. Prefer 100-300 line files when practical, and split larger work along real feature boundaries such as config, store, network, client UI, commands, and event hooks. Role perk files are the reference pattern for decoupled feature slices.

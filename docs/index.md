@@ -28,6 +28,7 @@
 - [Role Creation Guide](ROLE_CREATION_GUIDE.md)
 - [Compatibility](COMPATIBILITY.md)
 - [Harness Workflow](HARNESS.md)
+- [SmartBrainLib Reference](references/smartbrainlib.md)
 
 ## Harness Context
 

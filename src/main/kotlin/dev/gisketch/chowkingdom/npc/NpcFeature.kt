@@ -879,33 +879,34 @@ object NpcFeature {
         return true
     }
 
-    fun tickNpc(entity: ChowNpcEntity) {
-        val definition = NpcConfig.get(entity.npcId) ?: return
+    fun prepareSmartBrainTick(entity: ChowNpcEntity): Boolean {
+        val definition = NpcConfig.get(entity.npcId) ?: return false
         entity.homePos = validHomePos(entity.level(), definition.id)
         entity.campPos = entity.campPos ?: NpcStore.campPos(definition.id)
         tryShowCamperHousingBalloon(entity, definition)
-        runNpcPriorityStack(
-            NpcTaskCandidate(NpcTaskPriority.Critical) { NpcBrainOverrides.tick(entity, definition) },
-            NpcTaskCandidate(NpcTaskPriority.QuestClaim) { tryQuestClaimApproach(entity, definition) },
-            NpcTaskCandidate(NpcTaskPriority.ContractFollow) { tryFollowRentContractHolder(entity, definition) },
-            NpcTaskCandidate(NpcTaskPriority.JobApplicationFollow) { tryFollowJobApplicationHolder(entity, definition) },
-            NpcTaskCandidate(NpcTaskPriority.NpcInteraction) { tryNpcMicroInteraction(entity, definition) },
-            NpcTaskCandidate(NpcTaskPriority.OutgoingGift) { tryOutgoingGift(entity, definition) },
-            NpcTaskCandidate(NpcTaskPriority.QuestOffer) { NpcQuestService.tryShowOfferBalloon(entity, definition) },
-            NpcTaskCandidate(NpcTaskPriority.Greeting) { !needsCamperHousingBalloon(entity, definition) && tryGreetNearbyPlayer(entity, definition) },
-            NpcTaskCandidate(NpcTaskPriority.TalkingPause) { entity.isTalking() },
-            NpcTaskCandidate(NpcTaskPriority.Routine) {
-                NpcBrain.tick(entity, definition)
-                true
-            },
-        )
+        return true
     }
 
-    private fun runNpcPriorityStack(vararg candidates: NpcTaskCandidate): Boolean {
-        candidates.withIndex()
-            .sortedWith(compareByDescending<IndexedValue<NpcTaskCandidate>> { it.value.priority.weight }.thenBy { it.index })
-            .forEach { candidate -> if (candidate.value.run()) return true }
-        return false
+    fun smartBrainDefinition(entity: ChowNpcEntity): NpcDefinition? = NpcConfig.get(entity.npcId)
+
+    fun tickSmartBrainQuestClaim(npc: ChowNpcEntity): Boolean = smartBrainDefinition(npc)?.let { definition -> tryQuestClaimApproach(npc, definition) } ?: false
+
+    fun tickSmartBrainRentContractFollow(npc: ChowNpcEntity): Boolean = smartBrainDefinition(npc)?.let { definition -> tryFollowRentContractHolder(npc, definition) } ?: false
+
+    fun tickSmartBrainJobApplicationFollow(npc: ChowNpcEntity): Boolean = smartBrainDefinition(npc)?.let { definition -> tryFollowJobApplicationHolder(npc, definition) } ?: false
+
+    fun tickSmartBrainNpcMicroInteraction(npc: ChowNpcEntity): Boolean = smartBrainDefinition(npc)?.let { definition -> tryNpcMicroInteraction(npc, definition) } ?: false
+
+    fun tickSmartBrainOutgoingGift(npc: ChowNpcEntity): Boolean = smartBrainDefinition(npc)?.let { definition -> tryOutgoingGift(npc, definition) } ?: false
+
+    fun tickSmartBrainQuestOffer(npc: ChowNpcEntity): Boolean = smartBrainDefinition(npc)?.let { definition -> NpcQuestService.tryShowOfferBalloon(npc, definition) } ?: false
+
+    fun tickSmartBrainGreeting(npc: ChowNpcEntity): Boolean = smartBrainDefinition(npc)?.let { definition -> !needsCamperHousingBalloon(npc, definition) && tryGreetNearbyPlayer(npc, definition) } ?: false
+
+    fun tickSmartBrainTalkingPause(npc: ChowNpcEntity): Boolean {
+        if (!npc.isTalking()) return false
+        npc.navigation.stop()
+        return true
     }
 
     private fun tryFollowRentContractHolder(npc: ChowNpcEntity, definition: NpcDefinition): Boolean {
@@ -1404,7 +1405,7 @@ object NpcFeature {
         NpcStore.recordConversation(definition.id, player, player.gameProfile.name, "hurts ${definition.name}", "player_hurt")
         if (hitCount % HURT_MESSAGE_INTERVAL == 0) {
             relayNpcHurtMessage(player, npc, definition)
-            NpcBrainOverrides.startHurtResponse(npc, player)
+            NpcSmartBrainOverrides.startHurtResponse(npc, player)
         }
     }
 
@@ -1427,7 +1428,7 @@ object NpcFeature {
     private fun onLivingDeath(event: LivingDeathEvent) {
         val npc = event.entity as? ChowNpcEntity
         if (npc != null) {
-            NpcBrainOverrides.clear(npc)
+            NpcSmartBrainOverrides.clear(npc)
             val definition = NpcConfig.get(npc.npcId) ?: return
             val killer = event.source.entity as? ServerPlayer
             val deathText = killer?.let { "${definition.name} died, killed by ${it.gameProfile.name}" } ?: "${definition.name} died"
@@ -1943,7 +1944,7 @@ object NpcFeature {
         var removed = 0
         server.allLevels.forEach { level ->
             level.getEntities(NPC_ENTITY.get()) { npc -> npcId == null || npc.npcId == npcId }.forEach { entity ->
-                NpcBrainOverrides.clear(entity)
+                NpcSmartBrainOverrides.clear(entity)
                 entity.discard()
                 removed++
             }
@@ -2320,27 +2321,12 @@ object NpcFeature {
 
     private data class NpcOutgoingGiftApproach(val playerId: UUID, val startedAtTick: Long)
 
-    private data class NpcTaskCandidate(val priority: NpcTaskPriority, val run: () -> Boolean)
-
     private data class NpcWorkBlockStatus(val counts: List<NpcWorkBlockCount>) {
         val ready: Boolean = counts.all { count -> count.present >= count.requirement.count }
     }
 
     private data class NpcWorkBlockCount(val requirement: NpcWorkBlockRequirementDefinition, val present: Int) {
         val missing: Int = (requirement.count - present).coerceAtLeast(0)
-    }
-
-    private enum class NpcTaskPriority(val weight: Int) {
-        Critical(100),
-        QuestClaim(95),
-        ContractFollow(90),
-        JobApplicationFollow(88),
-        NpcInteraction(80),
-        OutgoingGift(70),
-        QuestOffer(65),
-        Greeting(60),
-        TalkingPause(20),
-        Routine(0),
     }
 
     private data class ActiveNpcMicroInteraction(val partnerId: UUID, val message: String, val untilTick: Long, val shownToPlayers: MutableSet<UUID> = linkedSetOf())

@@ -13,12 +13,16 @@ import net.minecraft.world.InteractionHand
 import net.minecraft.world.InteractionResult
 import net.minecraft.world.entity.EntityType
 import net.minecraft.world.entity.PathfinderMob
-import net.minecraft.world.entity.ai.goal.FloatGoal
+import net.minecraft.world.entity.ai.Brain
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.level.Level
+import net.tslat.smartbrainlib.api.SmartBrainOwner
+import net.tslat.smartbrainlib.api.core.BrainActivityGroup
+import net.tslat.smartbrainlib.api.core.SmartBrainProvider
+import net.tslat.smartbrainlib.api.core.sensor.ExtendedSensor
 import java.util.UUID
 
-class ChowNpcEntity(entityType: EntityType<out PathfinderMob>, level: Level) : PathfinderMob(entityType, level) {
+class ChowNpcEntity(entityType: EntityType<out PathfinderMob>, level: Level) : PathfinderMob(entityType, level), SmartBrainOwner<ChowNpcEntity> {
     var npcId: String
         get() = entityData.get(NPC_ID_DATA)
         set(value) = entityData.set(NPC_ID_DATA, value.trim().ifBlank { "finn" })
@@ -36,9 +40,15 @@ class ChowNpcEntity(entityType: EntityType<out PathfinderMob>, level: Level) : P
     private var talkingTarget: UUID? = null
     private var talkingUntilTick: Int = 0
 
-    override fun registerGoals() {
-        goalSelector.addGoal(0, FloatGoal(this))
-    }
+    override fun registerGoals() = Unit
+
+    override fun brainProvider(): Brain.Provider<*> = SmartBrainProvider(this)
+
+    override fun getSensors(): List<ExtendedSensor<out ChowNpcEntity>> = NpcSmartBrain.sensors()
+
+    override fun getCoreTasks(): BrainActivityGroup<out ChowNpcEntity> = NpcSmartBrain.coreTasks()
+
+    override fun getIdleTasks(): BrainActivityGroup<out ChowNpcEntity> = NpcSmartBrain.idleTasks()
 
     override fun defineSynchedData(builder: SynchedEntityData.Builder) {
         super.defineSynchedData(builder)
@@ -85,7 +95,13 @@ class ChowNpcEntity(entityType: EntityType<out PathfinderMob>, level: Level) : P
         talkingUntilTick = 0
     }
 
-    fun isTalking(): Boolean = talkingTarget != null && tickCount <= talkingUntilTick
+    fun isTalking(): Boolean {
+        if (talkingTarget == null) return false
+        if (tickCount <= talkingUntilTick) return true
+        talkingTarget = null
+        talkingUntilTick = 0
+        return false
+    }
 
     fun startScriptedAttackAnimation() {
         scriptedAttackTicks = SCRIPTED_ATTACK_ANIMATION_TICKS
@@ -95,7 +111,10 @@ class ChowNpcEntity(entityType: EntityType<out PathfinderMob>, level: Level) : P
         super.aiStep()
         if (scriptedAttackTicks > 0) scriptedAttackTicks = scriptedAttackTicks - 1
         if (!level().isClientSide) tickTalking()
-        if (!level().isClientSide) NpcFeature.tickNpc(this)
+    }
+
+    override fun customServerAiStep() {
+        if (NpcFeature.prepareSmartBrainTick(this)) tickBrain(this)
     }
 
     private fun tickTalking() {

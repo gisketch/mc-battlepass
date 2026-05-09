@@ -1,6 +1,8 @@
 # NPCs
 
-NPCs are config-driven characters backed by a small server foundation: definitions, world state, jobs, dialog, and housing contracts.
+NPCs are config-driven characters backed by a small server foundation: definitions, world state, jobs, dialog, housing contracts, and a SmartBrainLib in-world brain.
+
+In-world NPC AI uses [SmartBrainLib](references/smartbrainlib.md). CKDM still owns dialog, shops, gifts, quests, LLM routing, and UI contracts.
 
 Conversation-specific runtime rules live in [NPC Conversations](NPC_CONVERSATIONS.md).
 
@@ -201,13 +203,13 @@ Each NPC/player conversation keeps at most 30 records. The world also keeps at m
 
 ## Runtime Flow
 
-- `NpcDefinition`: static NPC identity loaded from JSON.
-- `NpcJobDefinition`: static job behavior values loaded from JSON.
-- `NpcScheduleDefinition`: static 24-hour schedule loaded from JSON.
+- `NpcDefinition`: static NPC identity loaded from TOML.
+- `NpcJobDefinition`: static job behavior values loaded from TOML.
+- `NpcScheduleDefinition`: static 24-hour schedule loaded from TOML.
 - `NpcResidentState`: saved world data for home bed, camp, contract, and spawned entity UUID.
-- `NpcBrain`: runtime logic that chooses the current schedule activity and movement target.
-- `NpcBrainOverrides`: temporary interrupt behaviors that can hijack schedule movement for reactive events, such as retaliation or running away from danger.
-- `NpcEntity`: the Minecraft entity that moves, interacts, renders, and exposes debug state.
+- `ChowNpcEntity`: the Minecraft entity that owns the SBL brain, interacts, renders, and exposes debug state.
+- `NpcSmartBrain`: SBL sensors, core tasks, and idle behavior ordering for town NPCs.
+- `NpcSmartBrainOverrides`: SBL-backed temporary interrupt behavior state for reactive events, such as retaliation or running away from danger.
 
 ## Memory Context
 
@@ -234,7 +236,7 @@ Right-clicking a sleeping NPC wakes it, opens wake-specific dialog, pauses sleep
 
 When the same player hits an NPC three times in a row, the NPC speaks a random `hurt_messages` line in a nearby world-space balloon. Those third-hit events are persisted in `NpcResidentState` with timestamp and player identity.
 
-The third same-player hit also starts a short brain override. The NPC equips a temporary random weapon, chases the attacker, then runs two scripted attack pulses with synced custom arm animation, attack sound, direct damage, and knockback when in range. The NPC renderer uses the vanilla player model plus an item-in-hand layer, and the custom animation copies transforms to the sleeve/jacket layer so the outer skin follows the swing. NPCs also run away for 3 seconds when they step on fire, soul fire, campfire, or soul campfire. Overrides pause normal schedule/job navigation and then fall back to the regular brain.
+The third same-player hit also starts a short SBL override. The NPC equips a temporary random weapon, chases the attacker, then runs two scripted attack pulses with synced custom arm animation, attack sound, direct damage, and knockback when in range. The NPC renderer uses the vanilla player model plus an item-in-hand layer, and the custom animation copies transforms to the sleeve/jacket layer so the outer skin follows the swing. NPCs also run away for 3 seconds when they step on fire, soul fire, campfire, or soul campfire. Overrides pause normal schedule/job navigation and then fall back to the regular SBL idle brain.
 
 When Jade is installed, hovering an NPC shows the NPC display name and the hovering player's friendship category for that NPC with a small heart, empty heart, or angry icon.
 
@@ -281,7 +283,7 @@ When Jade is installed, beds assigned through rent contracts show the owner, suc
 
 ## Extension Points
 
-Add future runtime decision logic in `NpcBrain`. Keep static behavior knobs in `NpcJobDefinition` and schedules in `NpcScheduleDefinition`.
+Add future runtime decision logic as SmartBrainLib behaviors in `NpcSmartBrain`. Keep static behavior knobs in `NpcJobDefinition` and schedules in `NpcScheduleDefinition`.
 
 Add future data fields to `NpcDefinition` instead of hard-coding per-NPC behavior in the entity.
 

@@ -12,6 +12,7 @@ Codex reads this file first. Keep it short. It is the map, not the manual.
 - Read [docs/index.md](docs/index.md) before large changes.
 - Default to caveman style for chat: terse, exact, no filler. Use normal prose only for safety, irreversible actions, or user confusion.
 - Stay inside harness engineering: repo-local context, small maps, execution plans, checks, and doc updates.
+- Keep feature code decoupled by package/object. Prefer focused files around 100-300 lines; split larger work by feature boundary, as with role perk files.
 - For new product context, use `/init-sonata` and update [docs/project-brief.md](docs/project-brief.md).
 - For existing project cleanup or migration, use `/retrofit-sonata` before feature work.
 - For multi-step work, create or update an execution plan in [docs/exec-plans/active](docs/exec-plans/active).

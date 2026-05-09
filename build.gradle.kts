@@ -16,6 +16,8 @@ val kotlinForForgeVersion = providers.gradleProperty("kotlin_for_forge_version")
 val kotlinForForgeVersionRange = providers.gradleProperty("kotlin_for_forge_version_range").get()
 val owoLibVersion = providers.gradleProperty("owo_lib_version").get()
 val owoVersionRange = providers.gradleProperty("owo_version_range").get()
+val smartBrainLibVersion = providers.gradleProperty("smartbrainlib_version").get()
+val smartBrainLibVersionRange = providers.gradleProperty("smartbrainlib_version_range").get()
 val modId = providers.gradleProperty("mod_id").get()
 val modName = providers.gradleProperty("mod_name").get()
 val modLicense = providers.gradleProperty("mod_license").get()
@@ -47,6 +49,16 @@ repositories {
     maven("https://thedarkcolour.github.io/KotlinForForge/")
     maven("https://api.modrinth.com/maven")
     maven("https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/")
+    exclusiveContent {
+        forRepository {
+            maven("https://dl.cloudsmith.io/public/tslat/sbl/maven/") {
+                name = "SmartBrainLib"
+            }
+        }
+        filter {
+            includeGroup("net.tslat.smartbrainlib")
+        }
+    }
 }
 
 neoForge {
@@ -97,6 +109,7 @@ dependencies {
     implementation("thedarkcolour:kotlinforforge-neoforge:$kotlinForForgeVersion")
     implementation("maven.modrinth:owo-lib:$owoLibVersion")
     implementation("software.bernie.geckolib:geckolib-neoforge-1.21.1:4.8.4")
+    implementation("net.tslat.smartbrainlib:SmartBrainLib-neoforge-$minecraftVersion:$smartBrainLibVersion")
     compileOnly("maven.modrinth:jade:15.9.3+neoforge")
 
     testImplementation(kotlin("test"))
@@ -112,6 +125,7 @@ tasks.processResources {
         "kotlin_for_forge_version" to kotlinForForgeVersion,
         "kotlin_for_forge_version_range" to kotlinForForgeVersionRange,
         "owo_version_range" to owoVersionRange,
+        "smartbrainlib_version_range" to smartBrainLibVersionRange,
         "mod_id" to modId,
         "mod_name" to modName,
         "mod_license" to modLicense,

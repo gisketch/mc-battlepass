@@ -17,3 +17,11 @@
 - Put validation commands in `docs/quality.md`.
 - Put complex work in `docs/exec-plans/`.
 - Use local skills for repeatable agent workflows.
+
+## Code Shape
+
+- Keep feature behavior separated by package and focused objects instead of growing central files.
+- Prefer files around 100-300 lines when practical. If a file grows past that, look for a real feature boundary before adding more.
+- Split by ownership: config, store, network payloads, client rendering, commands, and event hooks should stay independently understandable.
+- Use the role perk files as the model: each perk group owns its behavior, while shared dispatch remains thin.
+- Do not split mechanically. Keep tightly coupled code together when separation would hide the flow or create fake abstractions.
