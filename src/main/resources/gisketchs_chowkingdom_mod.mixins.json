@@ -11,7 +11,9 @@
     "EntityRendererMixin",
     "GuiGraphicsAccessor",
     "KeyboardHandlerMixin",
-    "LivingEntityRendererMixin"
+    "LivingEntityRendererMixin",
+    "XaeroRadarColorHelperMixin",
+    "XaeroRadarIconManagerMixin"
   ],
   "injectors": {
     "defaultRequire": 1

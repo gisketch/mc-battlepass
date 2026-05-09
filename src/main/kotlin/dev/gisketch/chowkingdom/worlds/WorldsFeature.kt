@@ -45,12 +45,21 @@ object WorldsFeature {
 
     private fun onPlayerTick(event: PlayerTickEvent.Post) {
         val player = event.entity as? ServerPlayer ?: return
-        if (!isSkyLands(player.level()) || player.y > SKY_LANDS_FALLTHROUGH_Y) return
-        val overworld = player.server.overworld()
         val velocity = player.deltaMovement
-        player.teleportTo(overworld, player.x, OVERWORLD_FALLTHROUGH_Y, player.z, player.yRot, player.xRot)
-        player.deltaMovement = velocity
-        player.hurtMarked = true
+        when {
+            isSkyLands(player.level()) && player.y <= SKY_LANDS_FALLTHROUGH_Y -> {
+                val overworld = player.server.overworld()
+                player.teleportTo(overworld, player.x, OVERWORLD_FALLTHROUGH_Y, player.z, player.yRot, player.xRot)
+                player.deltaMovement = velocity
+                player.hurtMarked = true
+            }
+            player.level().dimension() == Level.OVERWORLD && player.y >= OVERWORLD_SKY_RETURN_Y -> {
+                val skyLands = player.server.getLevel(SKY_LANDS) ?: return
+                player.teleportTo(skyLands, player.x, SKY_LANDS_RETURN_Y, player.z, player.yRot, player.xRot)
+                player.deltaMovement = velocity
+                player.hurtMarked = true
+            }
+        }
     }
 
     private fun onSpawnPlacementCheck(event: MobSpawnEvent.SpawnPlacementCheck) {
@@ -142,5 +151,7 @@ object WorldsFeature {
     )
     private const val FIRST_SKY_LANDS_SPAWN_TAG = "ckdm_first_sky_lands_spawn"
     private const val SKY_LANDS_FALLTHROUGH_Y = 48.0
+    private const val SKY_LANDS_RETURN_Y = 64.0
     private const val OVERWORLD_FALLTHROUGH_Y = 320.0
+    private const val OVERWORLD_SKY_RETURN_Y = 360.0
 }

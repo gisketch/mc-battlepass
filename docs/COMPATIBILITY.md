@@ -59,3 +59,17 @@ One Paraglider stamina wheel is 1000 stamina. Tune the JSON first before changin
 - This layer is optional and uses reflection. Chow Kingdom still loads without Paragliders, ParCool, Epic Fight, or Epic x ParCool.
 - ParCool/Epic Fight config patching happens on mod startup. Some client HUD settings may require a restart after first patch.
 - Epic Fight reflection hooks attach per player while the player is ticking server-side.
+
+## Xaero + Cobblemon Radar
+
+Chow Kingdom hides unknown Pokemon identity on Xaero radar.
+
+Behavior:
+
+- If Xaero Minimap/World Map and Cobblemon are installed, unscanned Cobblemon render as white dots.
+- Scanned Cobblemon keep Xaero's normal icon/color behavior.
+- The hook is client-only and optional. Chow Kingdom still loads without Xaero or Cobblemon.
+
+Definition:
+
+- Unscanned means the local Cobblemon client Pokedex has no species record, no loaded Pokedex data yet, or the species record knowledge is `NONE`.
