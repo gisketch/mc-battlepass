@@ -18,6 +18,7 @@
 - [Trading](TRADING.md)
 - [Relic Roulette](RELIC_ROULETTE.md)
 - [RecipeDisabler](RECIPE_DISABLER.md)
+- [Spawning And Worlds](SPAWNING.md)
 - [NPCs](NPCS.md)
 - [NPC Conversations](NPC_CONVERSATIONS.md)
 - [Revive](REVIVE.md)

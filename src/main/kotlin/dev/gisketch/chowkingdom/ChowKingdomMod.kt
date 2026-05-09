@@ -38,6 +38,7 @@ import dev.gisketch.chowkingdom.snackbar.SnackbarFeature
 import dev.gisketch.chowkingdom.trading.TradingClient
 import dev.gisketch.chowkingdom.trading.TradingFeature
 import dev.gisketch.chowkingdom.wallets.WalletsFeature
+import dev.gisketch.chowkingdom.worlds.WorldsFeature
 import net.neoforged.api.distmarker.Dist
 import net.neoforged.bus.api.IEventBus
 import net.neoforged.fml.ModContainer
@@ -75,6 +76,7 @@ class ChowKingdomMod(modBus: IEventBus, container: ModContainer) {
         RelicRouletteFeature.register(modBus)
         RecipeDisablerFeature.register(modBus)
         NpcFeature.register(modBus)
+        WorldsFeature.register()
         if (FMLEnvironment.dist == Dist.CLIENT) {
             container.registerExtensionPoint(IConfigScreenFactory::class.java) {
                 IConfigScreenFactory { _, modListScreen -> ChowKingdomConfigScreen(modListScreen) }
