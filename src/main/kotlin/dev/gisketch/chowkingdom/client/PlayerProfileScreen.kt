@@ -4,10 +4,9 @@ import com.mojang.blaze3d.systems.RenderSystem
 import dev.gisketch.chowkingdom.ChowKingdomMod
 import dev.gisketch.chowkingdom.battlepass.BattlepassClientState
 import dev.gisketch.chowkingdom.battlepass.BattlepassXpStore
-import dev.gisketch.chowkingdom.roles.RolePerkUiPayload
 import dev.gisketch.chowkingdom.roles.RoleProfile
-import dev.gisketch.chowkingdom.roles.RoleUiDefinitionPayload
 import dev.gisketch.chowkingdom.roles.RolesClientState
+import dev.gisketch.chowkingdom.roles.rolePerkDisplays
 import dev.gisketch.chowkingdom.wallets.ChowcoinClientState
 import net.minecraft.ChatFormatting
 import net.minecraft.Util
@@ -39,7 +38,7 @@ private class PlayerProfileScreen : Screen(Component.literal("Profile")) {
 
     private data class TooltipZone(val rect: Rect, val lines: List<Component>)
     private data class ProfileStat(val label: String, val value: String, val icon: ResourceLocation?, val stack: ItemStack, val detail: String)
-    private data class ProfilePerk(val label: String, val detail: String)
+    private data class ProfilePerk(val label: String, val value: String, val detail: String, val rankValues: List<String> = emptyList())
 
     private var openedAtMs = 0L
     private var renderAlpha = 1.0f
@@ -104,12 +103,12 @@ private class PlayerProfileScreen : Screen(Component.literal("Profile")) {
 
         drawCkdm(guiGraphics, "Perks", contentX, cursorY, GOLD, CKDM_SMALL)
         cursorY += 15
-        val perks = profilePerks(roles, jobRank).ifEmpty { listOf(ProfilePerk("No active perks", "Choose a job and class to unlock profile perks.")) }
+        val perks = profilePerks(roles, jobRank).ifEmpty { listOf(ProfilePerk("No active perks", "", "Choose a job and class to unlock profile perks.")) }
         val perkRows = perks.take(maxPerkRows(panel, cursorY))
         perkRows.forEach { perk ->
             val row = Rect(contentX, cursorY, panel.width - PAD * 2, PERK_ROW_HEIGHT)
             renderPerkRow(guiGraphics, row, perk)
-            zones += TooltipZone(row, listOf(Component.literal(perk.label), Component.literal(perk.detail).withStyle(ChatFormatting.GRAY)))
+            zones += TooltipZone(row, perkTooltip(perk))
             cursorY += PERK_ROW_HEIGHT + 3
         }
 
@@ -145,7 +144,13 @@ private class PlayerProfileScreen : Screen(Component.literal("Profile")) {
         val iconY = row.y + (row.height - PERK_ICON_SIZE) / 2
         renderTexture(guiGraphics, PERK_ICON, row.x + ROW_CONTENT_PAD, iconY, PERK_ICON_SIZE, ICON_TEXTURE_SIZE)
         val textX = row.x + ROW_CONTENT_PAD + PERK_ICON_SIZE + ROW_ICON_GAP
-        guiGraphics.drawString(font, fitPlain(perk.label, row.right - ROW_CONTENT_PAD - textX), textX, row.y + (row.height - font.lineHeight) / 2 + 1, colorWithRenderAlpha(WHITE), false)
+        val valueComponent = ckdmText(perk.value, CKDM_SMALL)
+        val valueWidth = if (perk.value.isBlank()) 0 else font.width(valueComponent) + 5
+        val label = fitCkdm(perk.label, row.right - ROW_CONTENT_PAD - textX - valueWidth, CKDM_SMALL)
+        val labelComponent = ckdmText(label, CKDM_SMALL)
+        val textY = row.y + (row.height - font.lineHeight) / 2 + 1
+        guiGraphics.drawString(font, labelComponent, textX, textY, colorWithRenderAlpha(GOLD), false)
+        if (perk.value.isNotBlank()) guiGraphics.drawString(font, valueComponent, textX + font.width(labelComponent) + 5, textY, colorWithRenderAlpha(WHITE), false)
     }
 
     private fun renderStatsGrid(guiGraphics: GuiGraphics, rect: Rect, stats: List<ProfileStat>, zones: MutableList<TooltipZone>) {
@@ -167,40 +172,14 @@ private class PlayerProfileScreen : Screen(Component.literal("Profile")) {
     }
 
     private fun profilePerks(roles: RoleProfile, jobRank: Int): List<ProfilePerk> = (roles.jobs + roles.classes).flatMap { role ->
-        role.perks.map { perk -> perkText(role, perk, jobRank) }
+        rolePerkDisplays(role, jobRank).map { display -> ProfilePerk(display.title, display.value, display.detail, display.rankValues) }
     }
 
-    private fun perkText(role: RoleUiDefinitionPayload, perk: RolePerkUiPayload, jobRank: Int): ProfilePerk = when (perk.type) {
-        "cobblemon_catch_rate" -> {
-            val bonus = RolesClientState.catchRateBonusPercent(perk, jobRank)
-            val rankText = if (jobRank > 0) "Rank $jobRank" else "Rank locked"
-            ProfilePerk("${percentText(bonus)} ${typeLabel(perk.pokemonType)} catch rate", "${role.displayName} improves catch rate for ${typeLabel(perk.pokemonType)} Pokemon. Current job rank: $rankText.")
-        }
-        "mount_speed" -> {
-            val bonus = RolesClientState.mountSpeedBonusPercent(perk, jobRank)
-            val rankText = if (jobRank > 0) "Rank $jobRank" else "Rank locked"
-            ProfilePerk("${percentText(bonus)} ${typeLabel(perk.pokemonType)} mount speed", "${role.displayName} improves mount speed for ${typeLabel(perk.pokemonType)} Pokemon. Current job rank: $rankText.")
-        }
-        "crop_bonus_drop_chance" -> {
-            val bonus = RolesClientState.configuredBonusPercent(perk, jobRank)
-            val rankText = if (jobRank > 0) "Rank $jobRank" else "Rank locked"
-            ProfilePerk("${percentText(bonus)} bonus crop drops", "${role.displayName} can add one extra drop when harvesting fully-grown crops. Current job rank: $rankText.")
-        }
-        "quality_harvest_upgrade_chance" -> {
-            val bonus = RolesClientState.configuredBonusPercent(perk, jobRank)
-            val rankText = if (jobRank > 0) "Rank $jobRank" else "Rank locked"
-            ProfilePerk("${percentText(bonus)} Quality Harvest", "${role.displayName} can upgrade fully-grown crop drops from none to Iron, Iron to Gold, or Gold to Diamond. Current job rank: $rankText.")
-        }
-        "gentle_steps" -> ProfilePerk("Gentle Steps", "${role.displayName} cannot trample farmland while active.")
-        "seasonal_farmer" -> {
-            val bonus = RolesClientState.firstBonusPercent(perk)
-            ProfilePerk("${percentText(bonus)} Seasonal Farmer", "Crops planted by ${role.displayName} grow faster during their Serene Seasons favored season.")
-        }
-        "quality_food_harvest_bonus" -> ProfilePerk("${multiplierText(perk.multiplier)}x Quality Food harvest", "${role.displayName} rerolls Quality Food crop drops based on this multiplier.")
-        "prevent_crop_trample" -> ProfilePerk("Prevents crop trampling", "${role.displayName} cancels farmland trampling while active.")
-        "starting_items" -> ProfilePerk("Starting items: ${perk.startingItems.size}", perk.startingItems.joinToString(", ").ifBlank { "No starting items configured." })
-        "equipment_affinity" -> ProfilePerk("Equipment affinity", "Allowed weapon and armor tags/patterns reduce class penalties for ${role.displayName}.")
-        else -> ProfilePerk(prettyId(perk.type), "${role.displayName} perk: ${perk.type}")
+    private fun perkTooltip(perk: ProfilePerk): List<Component> = buildList {
+        add(Component.literal(perk.label))
+        if (perk.value.isNotBlank()) add(Component.literal(perk.value).withStyle(ChatFormatting.YELLOW))
+        add(Component.literal(perk.detail).withStyle(ChatFormatting.GRAY))
+        perk.rankValues.chunked(3).forEach { ranks -> add(Component.literal(ranks.joinToString("   ")).withStyle(ChatFormatting.WHITE)) }
     }
 
     private fun profileStats(progress: BattlepassClientState.PlayerProgress?): List<ProfileStat> = listOf(
@@ -347,13 +326,12 @@ private class PlayerProfileScreen : Screen(Component.literal("Profile")) {
         return "$value..."
     }
 
-    private fun typeLabel(raw: String): String = raw.replace('_', ' ').replaceFirstChar { char -> if (char.isLowerCase()) char.titlecase(Locale.ROOT) else char.toString() }
-
-    private fun prettyId(raw: String): String = raw.replace('_', ' ').replaceFirstChar { char -> if (char.isLowerCase()) char.titlecase(Locale.ROOT) else char.toString() }
-
-    private fun multiplierText(value: Double): String = if (value % 1.0 == 0.0) value.toInt().toString() else String.format(Locale.US, "%.2f", value).trimEnd('0').trimEnd('.')
-
-    private fun percentText(value: Double): String = String.format(Locale.US, "+%.0f%%", value * 100.0)
+    private fun fitCkdm(text: String, maxWidth: Int, fontId: ResourceLocation): String {
+        if (font.width(ckdmText(text, fontId)) <= maxWidth) return text
+        var value = text
+        while (value.isNotEmpty() && font.width(ckdmText("$value...", fontId)) > maxWidth) value = value.dropLast(1)
+        return "$value..."
+    }
 
     private fun formatNumber(value: Long): String = String.format(Locale.US, "%,d", value)
 

@@ -36,6 +36,7 @@ import net.neoforged.fml.loading.FMLEnvironment
 import net.neoforged.neoforge.common.NeoForge
 import net.neoforged.neoforge.event.RegisterCommandsEvent
 import net.neoforged.neoforge.event.entity.living.LivingDamageEvent
+import net.neoforged.neoforge.event.entity.player.ItemFishedEvent
 import net.neoforged.neoforge.event.entity.player.ItemTooltipEvent
 import net.neoforged.neoforge.event.entity.player.PlayerEvent
 import net.neoforged.neoforge.event.level.BlockDropsEvent
@@ -62,6 +63,7 @@ object RolesFeature {
         SharedSuggestionProvider.suggest(RolesConfig.classes().map { role -> role.id }, builder)
     }
     private val WRONG_WEAPON_ATTACK_SPEED_MODIFIER = ResourceLocation.parse("${ChowKingdomMod.MOD_ID}:wrong_weapon_attack_speed")
+    private val SWIM_MOVEMENT_SPEED_MODIFIER = ResourceLocation.parse("${ChowKingdomMod.MOD_ID}:diver_swim_speed")
 
     fun register(modBus: IEventBus) {
         MOB_EFFECTS.register(modBus)
@@ -81,6 +83,8 @@ object RolesFeature {
         NeoForge.EVENT_BUS.addListener(::onBlockBreak)
         NeoForge.EVENT_BUS.addListener(::onCropGrowPre)
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGH, ::onBlockDrops)
+        NeoForge.EVENT_BUS.addListener(::onBreakSpeed)
+        NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST, ::onItemFished)
         NeoForge.EVENT_BUS.addListener(::onLivingDamagePre)
         NeoForge.EVENT_BUS.addListener(::onPlayerTickPost)
         NeoForge.EVENT_BUS.addListener(::onItemTooltip)
@@ -533,6 +537,28 @@ object RolesFeature {
         }
     }
 
+    private fun onBreakSpeed(event: PlayerEvent.BreakSpeed) {
+        val player = event.entity as? ServerPlayer ?: return
+        if (!player.isUnderWater) return
+        val reduction = RolePerks.configuredJobMaxBonusPercent(player, "underwater_mining_penalty_reduction").coerceIn(0.0, 1.0)
+        if (reduction <= 0.0) return
+        val penalty = event.originalSpeed - event.newSpeed
+        if (penalty <= 0.0f) return
+        event.newSpeed = event.newSpeed + (penalty * reduction).toFloat()
+    }
+
+    private fun onItemFished(event: ItemFishedEvent) {
+        val player = event.entity as? ServerPlayer ?: return
+        if (event.isCanceled) return
+        val bonusChance = RolePerks.configuredJobChance(player, "fishing_bonus_drop_chance")
+        if (bonusChance <= 0.0 || player.random.nextDouble() >= bonusChance) return
+        val candidates = event.drops.filterNot(ItemStack::isEmpty)
+        if (candidates.isEmpty()) return
+        val bonus = candidates[player.random.nextInt(candidates.size)].copy()
+        bonus.count = 1
+        if (!player.inventory.add(bonus)) player.drop(bonus, false)
+    }
+
     private fun isMatureCropDrop(event: BlockDropsEvent): Boolean {
         val crop = event.state.block as? CropBlock ?: return false
         return crop.isMaxAge(event.state)
@@ -564,6 +590,7 @@ object RolesFeature {
         val player = event.entity as? ServerPlayer ?: return
         val perks = equipmentAffinities(player)
         applyWrongWeaponAttackSpeed(player, perks)
+        applySwimMovementSpeed(player)
         applyJobRankEffect(player)
         val armorPerks = perks.filter { perk -> perk.wrongArmorDisablesSprint }
         if (armorPerks.isNotEmpty() && player.armorSlots.any { stack -> !stack.isEmpty && !RecipeDisablerFeature.isCosmeticized(stack) && armorPerks.none { perk -> itemAllowed(stack, tagList(perk.armorTag, perk.armorTags), perk.armorPatterns) } }) {
@@ -602,6 +629,22 @@ object RolesFeature {
             AttributeModifier(
                 WRONG_WEAPON_ATTACK_SPEED_MODIFIER,
                 multiplier - 1.0,
+                AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL,
+            ),
+        )
+    }
+
+    private fun applySwimMovementSpeed(player: ServerPlayer) {
+        val attribute = player.getAttribute(Attributes.MOVEMENT_SPEED) ?: return
+        val bonus = RolePerks.configuredJobBonusPercent(player, "swim_speed").coerceAtLeast(0.0)
+        if (!player.isInWater || bonus <= 0.0) {
+            attribute.removeModifier(SWIM_MOVEMENT_SPEED_MODIFIER)
+            return
+        }
+        attribute.addOrUpdateTransientModifier(
+            AttributeModifier(
+                SWIM_MOVEMENT_SPEED_MODIFIER,
+                bonus,
                 AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL,
             ),
         )

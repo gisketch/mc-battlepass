@@ -6,6 +6,7 @@ import dev.gisketch.chowkingdom.roles.JobPerkDebug
 import dev.gisketch.chowkingdom.roles.RolePerks
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerPlayer
+import net.minecraft.server.level.ServerLevel
 import net.neoforged.neoforge.server.ServerLifecycleHooks
 import java.util.UUID
 import java.util.function.Consumer
@@ -64,10 +65,19 @@ object CobblemonBattlepassIntegration {
         val pokemon = pokemonEntity.javaClass.getMethod("getPokemon").invoke(pokemonEntity)
         val types = pokemonTypes(pokemon)
         val breakdown = RolePerks.pokemonTypeMultiplierBreakdown(player, "cobblemon_catch_rate", types)
+        val rainBreakdown = if (isRaining(player)) RolePerks.pokemonTypeMultiplierBreakdown(player, "rain_catch_rate_bonus", types) else null
+        val combinedBreakdown = rainBreakdown?.let { rain ->
+            breakdown.copy(multiplier = breakdown.multiplier * rain.multiplier, entries = breakdown.entries + rain.entries)
+        } ?: breakdown
         val baseCatchRate = (event.javaClass.getMethod("getCatchRate").invoke(event) as? Number)?.toDouble() ?: return
-        val finalCatchRate = (baseCatchRate * breakdown.multiplier).coerceAtLeast(0.0)
+        val finalCatchRate = (baseCatchRate * combinedBreakdown.multiplier).coerceAtLeast(0.0)
         if (finalCatchRate != baseCatchRate) event.javaClass.getMethod("setCatchRate", java.lang.Float.TYPE).invoke(event, finalCatchRate.toFloat())
-        JobPerkDebug.recordCatchRate(player, pokemonSpecies(pokemon), types, baseCatchRate, breakdown, finalCatchRate)
+        JobPerkDebug.recordCatchRate(player, pokemonSpecies(pokemon), types, baseCatchRate, combinedBreakdown, finalCatchRate)
+    }
+
+    private fun isRaining(player: ServerPlayer): Boolean {
+        val level = player.level() as? ServerLevel ?: return false
+        return level.isRainingAt(player.blockPosition()) || level.isRaining
     }
 
     private fun handleRidePost(event: Any) {

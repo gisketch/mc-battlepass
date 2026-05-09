@@ -92,6 +92,39 @@ Fields:
 
 - `bonus_percent_by_level`: rank chance list. Botanist default is `[0.02, 0.04, 0.06, 0.08, 0.10]`.
 
+### `swim_speed`
+
+Improves movement speed while the player is in water.
+
+Fields:
+
+- `bonus_percent_by_level`: rank speed bonus list. Diver default is `[0.08, 0.14, 0.22, 0.32, 0.45]`.
+
+### `underwater_mining_penalty_reduction`
+
+Restores part of the vanilla underwater mining penalty. `0.80` means 80% of the lost mining speed is restored, not an 80% final mining-speed multiplier.
+
+Fields:
+
+- `bonus_percent_by_level`: rank penalty reduction list. Diver default is `[0.15, 0.25, 0.40, 0.60, 0.80]`.
+
+### `fishing_bonus_drop_chance`
+
+Chance to grant one copied extra item from the fishing result.
+
+Fields:
+
+- `bonus_percent_by_level`: rank chance list. A single value is reused for higher ranks. Diver default is `[0.10]`.
+
+### `rain_catch_rate_bonus`
+
+Extra catch-rate bonus for matching Pokemon types while it is raining.
+
+Fields:
+
+- `pokemon_type`: Cobblemon type id.
+- `bonus_percent_by_level`: rank catch-rate bonus list. A single value is reused for higher ranks. Diver default is `[0.20]`.
+
 ### `quality_harvest_upgrade_chance`
 
 Chance to upgrade Quality Food crop drops on fully-grown crop harvest.

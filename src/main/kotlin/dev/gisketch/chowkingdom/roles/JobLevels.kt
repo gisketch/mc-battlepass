@@ -38,7 +38,7 @@ object JobLevels {
 
     fun configuredBonusPercent(perk: RolePerkDefinition, jobLevel: Int): Double {
         if (jobLevel <= 0) return 0.0
-        return perk.bonusPercentByLevel.getOrNull(jobLevel - 1) ?: 0.0
+        return perk.bonusPercentByLevel.getOrNull(jobLevel - 1) ?: perk.bonusPercentByLevel.lastOrNull() ?: 0.0
     }
 
     fun jobRankUnlockOverallLevels(): List<Int> = RolesConfig.jobScaling().jobRankUnlockOverallLevels

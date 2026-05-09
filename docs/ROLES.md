@@ -116,3 +116,5 @@ Debug command:
 - `/ck roles debug catch-rate <player>` toggles a live center-screen overlay with the last Cobblemon catch-rate event for that player, including Pokemon species, types, overall level, job rank, base rate, final rate, modifier percent, active jobs, and matching perks.
 - `/ck roles debug mount-speed <player>` toggles a live center-screen overlay with the last Cobblemon ride event for that player, including Pokemon species, types, overall level, job rank, speed modifier, per-style base/final speed, active jobs, and matching perks.
 - `/ck roles debug botanist [player]` toggles a live center-screen overlay with Botanist stats, configured perks, and looked-at crop season/planting data for fast perk testing.
+
+Diver defaults add water utility perks on top of Water catch rate and Water mount speed: swim speed `[8%, 14%, 22%, 32%, 45%]`, underwater mining penalty reduction `[15%, 25%, 40%, 60%, 80%]`, `10%` fishing bonus drop chance, and `20%` extra Water catch rate while raining.

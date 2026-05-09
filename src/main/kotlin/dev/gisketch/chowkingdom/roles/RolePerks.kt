@@ -57,6 +57,18 @@ object RolePerks {
         return 1.0 - chances.fold(1.0) { missChance, chance -> missChance * (1.0 - chance) }
     }
 
+    fun configuredJobBonusPercent(player: ServerPlayer, type: String): Double {
+        val jobLevel = JobLevels.jobLevel(player)
+        return jobPerks(player, type).fold(1.0) { value, perk ->
+            value * (1.0 + JobLevels.configuredBonusPercent(perk, jobLevel)).coerceAtLeast(0.0)
+        } - 1.0
+    }
+
+    fun configuredJobMaxBonusPercent(player: ServerPlayer, type: String): Double {
+        val jobLevel = JobLevels.jobLevel(player)
+        return jobPerks(player, type).maxOfOrNull { perk -> JobLevels.configuredBonusPercent(perk, jobLevel) } ?: 0.0
+    }
+
     fun seasonalFarmerGrowthChance(player: ServerPlayer): Double = jobPerks(player, "seasonal_farmer")
         .maxOfOrNull { perk -> perk.bonusPercentByLevel.firstOrNull()?.coerceIn(0.0, 1.0) ?: 0.0 }
         ?: 0.0
@@ -64,8 +76,8 @@ object RolePerks {
     private fun scaledMultiplier(perk: RolePerkDefinition, jobLevel: Int): Double = when (perk.type) {
         "cobblemon_catch_rate" -> JobLevels.catchRateMultiplier(perk, jobLevel)
         "mount_speed" -> JobLevels.mountSpeedMultiplier(perk, jobLevel)
-        "crop_bonus_drop_chance", "quality_harvest_upgrade_chance" -> (1.0 + JobLevels.configuredBonusPercent(perk, jobLevel)).coerceAtLeast(0.0)
-        else -> perk.bonusPercentByLevel.getOrNull(jobLevel - 1)?.let { bonusPercent -> (1.0 + bonusPercent).coerceAtLeast(0.0) } ?: perk.multiplier.coerceAtLeast(0.0)
+        "crop_bonus_drop_chance", "quality_harvest_upgrade_chance", "rain_catch_rate_bonus" -> (1.0 + JobLevels.configuredBonusPercent(perk, jobLevel)).coerceAtLeast(0.0)
+        else -> if (jobLevel <= 0) 1.0 else perk.bonusPercentByLevel.getOrNull(jobLevel - 1)?.let { bonusPercent -> (1.0 + bonusPercent).coerceAtLeast(0.0) } ?: perk.multiplier.coerceAtLeast(0.0)
     }
 }
 

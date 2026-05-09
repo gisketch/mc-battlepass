@@ -258,6 +258,8 @@ object RolesClientState {
 
     fun jobRankFor(playerId: UUID?): Int = playerId?.let { id -> jobRankUnlockOverallLevels.count { unlockLevel -> overallLevelFor(id) >= unlockLevel } } ?: 0
 
+    fun maxJobRank(): Int = jobRankUnlockOverallLevels.size.coerceAtLeast(1)
+
     fun catchRateBonusPercent(perk: RolePerkUiPayload, rank: Int): Double {
         if (rank <= 0) return 0.0
         return perk.bonusPercentByLevel.getOrNull(rank - 1) ?: catchRateBonusPercentByRank.getOrElse(rank - 1) { catchRateBonusPercentByRank.lastOrNull() ?: 0.0 }
@@ -270,7 +272,7 @@ object RolesClientState {
 
     fun configuredBonusPercent(perk: RolePerkUiPayload, rank: Int): Double {
         if (rank <= 0) return 0.0
-        return perk.bonusPercentByLevel.getOrNull(rank - 1) ?: 0.0
+        return perk.bonusPercentByLevel.getOrNull(rank - 1) ?: perk.bonusPercentByLevel.lastOrNull() ?: 0.0
     }
 
     fun firstBonusPercent(perk: RolePerkUiPayload): Double = perk.bonusPercentByLevel.firstOrNull() ?: 0.0
@@ -290,6 +292,10 @@ object RolesClientState {
         }
         "crop_bonus_drop_chance" -> "${formatBonusPercent(configuredBonusPercent(perk, rank))} bonus crop drop chance"
         "quality_harvest_upgrade_chance" -> "${formatBonusPercent(configuredBonusPercent(perk, rank))} Quality Harvest upgrade chance"
+        "swim_speed" -> "${formatBonusPercent(configuredBonusPercent(perk, rank))} swim movement speed"
+        "underwater_mining_penalty_reduction" -> "${formatBonusPercent(configuredBonusPercent(perk, rank))} underwater mining penalty reduction"
+        "fishing_bonus_drop_chance" -> "${formatBonusPercent(configuredBonusPercent(perk, rank))} chance for one extra fishing drop"
+        "rain_catch_rate_bonus" -> "${formatBonusPercent(configuredBonusPercent(perk, rank))} extra rainy ${perk.pokemonType.ifBlank { "matching" }} catch rate"
         "gentle_steps" -> "Cannot trample farmland"
         "seasonal_farmer" -> "${formatBonusPercent(firstBonusPercent(perk))} favored-season crop growth"
         "quality_food_harvest_bonus" -> "${formatMultiplier(perk.multiplier)}x quality food harvest"
@@ -531,7 +537,53 @@ private class RolesOnboardingScreen(private var payload: RolesSyncPayload) : Scr
         val title = preview?.displayName ?: noSelectionLabel()
         val description = preview?.description ?: noSelectionDescription()
         drawCenteredCkdm(guiGraphics, fitText(title, rect.width - PAD * 2, CKDM_BOLD), rect.x + PAD, rect.y + 22, rect.width - PAD * 2, WHITE, CKDM_BOLD)
-        drawWrapped(guiGraphics, description, rect.x + PAD + 2, rect.y + 56, rect.width - PAD * 2 - 4, WHITE_MUTED, maxLines = ((rect.height - 72) / 12).coerceAtLeast(1))
+        if (preview == null) {
+            drawWrapped(guiGraphics, description, rect.x + PAD + 2, rect.y + 56, rect.width - PAD * 2 - 4, WHITE_MUTED, maxLines = ((rect.height - 72) / 12).coerceAtLeast(1))
+            return
+        }
+        renderRolePreviewDetails(guiGraphics, rect, preview)
+    }
+
+    private fun renderRolePreviewDetails(guiGraphics: GuiGraphics, rect: Rect, role: RoleUiDefinitionPayload) {
+        val contentX = rect.x + PAD + 2
+        val contentWidth = rect.width - PAD * 2 - 4
+        var cursorY = rect.y + 54
+        drawWrapped(guiGraphics, role.description, contentX, cursorY, contentWidth, WHITE_MUTED, maxLines = 3)
+        cursorY += 38
+        val rank = RolesClientState.jobRankFor(Minecraft.getInstance().player?.uuid)
+        val displays = rolePerkDisplays(role, rank)
+        cursorY = renderPerkPairs(guiGraphics, displays.filter { display -> display.group == RolePerkDisplayGroup.STAT }, contentX, cursorY, contentWidth, rect.bottom - PAD)
+        cursorY = renderPerkSection(guiGraphics, "Passive", displays.filter { display -> display.group == RolePerkDisplayGroup.PASSIVE }, contentX, cursorY + 4, contentWidth, rect.bottom - PAD)
+        renderPerkSection(guiGraphics, "Unique Perks", displays.filter { display -> display.group == RolePerkDisplayGroup.UNIQUE || display.group == RolePerkDisplayGroup.OTHER }, contentX, cursorY + 4, contentWidth, rect.bottom - PAD)
+    }
+
+    private fun renderPerkPairs(guiGraphics: GuiGraphics, displays: List<RolePerkDisplay>, x: Int, startY: Int, width: Int, bottom: Int): Int {
+        var cursorY = startY
+        displays.forEach { display ->
+            if (cursorY + PERK_PAIR_LINE_HEIGHT > bottom) return cursorY
+            drawCkdmPair(guiGraphics, display.title, display.value, x, cursorY, width)
+            cursorY += PERK_PAIR_LINE_HEIGHT
+        }
+        return cursorY
+    }
+
+    private fun renderPerkSection(guiGraphics: GuiGraphics, header: String, displays: List<RolePerkDisplay>, x: Int, startY: Int, width: Int, bottom: Int): Int {
+        if (displays.isEmpty() || startY + PERK_SECTION_HEADER_HEIGHT > bottom) return startY
+        var cursorY = startY
+        drawCkdm(guiGraphics, header, x, cursorY, GOLD, CKDM_SMALL)
+        cursorY += PERK_SECTION_HEADER_HEIGHT
+        displays.forEachIndexed { index, display ->
+            if (cursorY + PERK_PAIR_LINE_HEIGHT > bottom) return cursorY
+            val title = if (display.group == RolePerkDisplayGroup.UNIQUE) "Perk ${index + 1} - ${display.title}" else display.title
+            drawCkdmPair(guiGraphics, title, display.value, x, cursorY, width)
+            cursorY += PERK_PAIR_LINE_HEIGHT
+            display.rankValues.chunked(3).take(2).forEach { ranks ->
+                if (cursorY + PERK_RANK_LINE_HEIGHT > bottom) return cursorY
+                guiGraphics.drawString(font, ranks.joinToString("   "), x + 6, cursorY, colorWithRenderAlpha(WHITE), false)
+                cursorY += PERK_RANK_LINE_HEIGHT
+            }
+        }
+        return cursorY
     }
 
     private fun renderRightColumn(guiGraphics: GuiGraphics, rect: Rect, grid: Rect, slots: List<RoleSlot>, mouseX: Int, mouseY: Int) {
@@ -771,6 +823,21 @@ private class RolesOnboardingScreen(private var payload: RolesSyncPayload) : Scr
         guiGraphics.drawString(font, component, x + (width - font.width(component)) / 2, y, colorWithRenderAlpha(color), false)
     }
 
+    private fun drawCkdm(guiGraphics: GuiGraphics, text: String, x: Int, y: Int, color: Int, fontId: ResourceLocation) {
+        if (renderAlpha <= MIN_TEXT_RENDER_ALPHA) return
+        guiGraphics.drawString(font, ckdmText(text, fontId), x, y, colorWithRenderAlpha(color), false)
+    }
+
+    private fun drawCkdmPair(guiGraphics: GuiGraphics, label: String, value: String, x: Int, y: Int, width: Int) {
+        if (renderAlpha <= MIN_TEXT_RENDER_ALPHA) return
+        val valueComponent = ckdmText(value, CKDM_SMALL)
+        val valueWidth = font.width(valueComponent)
+        val labelText = fitText(label, (width - valueWidth - 5).coerceAtLeast(24), CKDM_SMALL)
+        val labelComponent = ckdmText(labelText, CKDM_SMALL)
+        guiGraphics.drawString(font, labelComponent, x, y, colorWithRenderAlpha(GOLD), false)
+        guiGraphics.drawString(font, valueComponent, x + font.width(labelComponent) + 5, y, colorWithRenderAlpha(WHITE), false)
+    }
+
     private fun drawWrapped(guiGraphics: GuiGraphics, text: String, x: Int, y: Int, width: Int, color: Int, maxLines: Int) {
         if (renderAlpha <= MIN_TEXT_RENDER_ALPHA) return
         font.split(Component.literal(text), width).take(maxLines).forEachIndexed { index, line ->
@@ -818,6 +885,7 @@ private class RolesOnboardingScreen(private var payload: RolesSyncPayload) : Scr
         private const val BLACK = 0xFF000000.toInt()
         private const val WHITE = 0xFFFFFFFF.toInt()
         private const val WHITE_MUTED = 0xFFD8D0B8.toInt()
+        private const val GOLD = 0xFFFFD66B.toInt()
         private const val DISABLED = 0xFF817865.toInt()
         private const val PAD = 14
         private const val TITLE_Y = 14
@@ -828,6 +896,9 @@ private class RolesOnboardingScreen(private var payload: RolesSyncPayload) : Scr
         private const val ICON_TEXTURE_SIZE = 16
         private const val VANILLA_ITEM_SIZE = 16
         private const val WRAPPED_LINE_HEIGHT = 12
+        private const val PERK_PAIR_LINE_HEIGHT = 11
+        private const val PERK_SECTION_HEADER_HEIGHT = 12
+        private const val PERK_RANK_LINE_HEIGHT = 10
         private const val MIN_TEXT_RENDER_ALPHA = 0.004f
         private const val CONTAINER_TEXTURE_WIDTH = 1646
         private const val CONTAINER_TEXTURE_HEIGHT = 256

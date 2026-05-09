@@ -102,7 +102,7 @@ object RolesConfig {
 
     private fun defaultJobs(): List<RoleDefinition> = listOf(
         botanistJob(),
-        typedJob("diver", "Diver", "water", "Works rivers, reefs, and rain routes to track Water Pokemon."),
+        diverJob(),
         typedJob("magma_scout", "Magma Scout", "fire", "Scouts hot springs, ash fields, and lava paths for Fire Pokemon."),
         typedJob("engineer", "Engineer", "electric", "Tunes circuits, rails, and storms to find Electric Pokemon."),
         typedJob("field_researcher", "Field Researcher", "normal", "Studies everyday habitats and migration trails for Normal Pokemon."),
@@ -157,6 +157,26 @@ object RolesConfig {
         )
     }
 
+    private fun diverJob(): RoleDefinition = typedJob("diver", "Diver", "water", "Works rivers, reefs, and rain routes to track Water Pokemon.").also { role ->
+        role.perks += RolePerkDefinition(
+            type = "swim_speed",
+            bonusPercentByLevel = mutableListOf(0.08, 0.14, 0.22, 0.32, 0.45),
+        )
+        role.perks += RolePerkDefinition(
+            type = "underwater_mining_penalty_reduction",
+            bonusPercentByLevel = mutableListOf(0.15, 0.25, 0.40, 0.60, 0.80),
+        )
+        role.perks += RolePerkDefinition(
+            type = "fishing_bonus_drop_chance",
+            bonusPercentByLevel = mutableListOf(0.10),
+        )
+        role.perks += RolePerkDefinition(
+            type = "rain_catch_rate_bonus",
+            pokemonType = "water",
+            bonusPercentByLevel = mutableListOf(0.20),
+        )
+    }
+
     private fun defaultJobScaling(): JobScalingDefinition = JobScalingDefinition(
         jobRankUnlockOverallLevels = JobLevels.fallbackJobRankUnlockOverallLevels.toMutableList(),
         catchRateBonusPercentByRank = JobLevels.fallbackCatchRateBonusPercentByRank.toMutableList(),
@@ -165,7 +185,17 @@ object RolesConfig {
 
     private val DEFAULT_BOTANIST_HARVEST_CHANCES = listOf(0.02, 0.04, 0.06, 0.08, 0.10)
     private const val DEFAULT_SEASONAL_FARMER_GROWTH_CHANCE = 0.10
-    private val BUNDLED_BACKFILL_PERK_TYPES = setOf("mount_speed", "crop_bonus_drop_chance", "quality_harvest_upgrade_chance", "gentle_steps", "seasonal_farmer")
+    private val BUNDLED_BACKFILL_PERK_TYPES = setOf(
+        "mount_speed",
+        "crop_bonus_drop_chance",
+        "quality_harvest_upgrade_chance",
+        "gentle_steps",
+        "seasonal_farmer",
+        "swim_speed",
+        "underwater_mining_penalty_reduction",
+        "fishing_bonus_drop_chance",
+        "rain_catch_rate_bonus",
+    )
 
     private fun defaultRogue(): RoleDefinition = RoleDefinition(
         id = "rogue",
