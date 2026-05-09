@@ -33,6 +33,7 @@ data class SnackbarNotification(
     val type: SnackbarType = SnackbarType.GENERIC,
     val sound: String = SnackbarSounds.forType(type),
     val progress: SnackbarProgress? = null,
+    val durationMs: Long? = null,
 ) {
     companion object {
         fun item(icon: String, title: String, content: String = "", type: SnackbarType = SnackbarType.GENERIC, sound: String = SnackbarSounds.forType(type)): SnackbarNotification =
@@ -52,7 +53,7 @@ data class SnackbarNotification(
     }
 }
 
-data class SnackbarProgress(val fromXp: Int, val toXp: Int, val tierSize: Int)
+data class SnackbarProgress(val fromXp: Int, val toXp: Int, val tierSize: Int, val animationMs: Long = 1_400L)
 
 object SnackbarSounds {
     const val GENERIC = "minecraft:block.note_block.pling"

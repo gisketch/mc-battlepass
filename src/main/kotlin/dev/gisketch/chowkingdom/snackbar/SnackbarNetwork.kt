@@ -29,10 +29,11 @@ object SnackbarNetwork {
                 notification.content.take(MAX_CONTENT_LENGTH),
                 notification.type.id,
                 notification.sound.take(MAX_SOUND_LENGTH),
-                SnackbarConfig.durationMs(),
+                notification.durationMs ?: SnackbarConfig.durationMs(),
                 notification.progress?.fromXp ?: 0,
                 notification.progress?.toXp ?: 0,
                 notification.progress?.tierSize ?: 0,
+                notification.progress?.animationMs ?: 0L,
             ),
         )
     }
@@ -83,14 +84,14 @@ object SnackbarNetwork {
     }
 }
 
-data class SnackbarPayload(val iconKind: String, val icon: String, val title: String, val content: String, val type: String, val sound: String, val durationMs: Long, val progressFromXp: Int = 0, val progressToXp: Int = 0, val progressTierSize: Int = 0) : CustomPacketPayload {
+data class SnackbarPayload(val iconKind: String, val icon: String, val title: String, val content: String, val type: String, val sound: String, val durationMs: Long, val progressFromXp: Int = 0, val progressToXp: Int = 0, val progressTierSize: Int = 0, val progressAnimationMs: Long = 0L) : CustomPacketPayload {
     override fun type(): CustomPacketPayload.Type<SnackbarPayload> = TYPE
 
     companion object {
         val TYPE: CustomPacketPayload.Type<SnackbarPayload> = CustomPacketPayload.Type(ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "snackbar/show"))
         val STREAM_CODEC: StreamCodec<RegistryFriendlyByteBuf, SnackbarPayload> = object : StreamCodec<RegistryFriendlyByteBuf, SnackbarPayload> {
             override fun decode(buffer: RegistryFriendlyByteBuf): SnackbarPayload =
-                SnackbarPayload(buffer.readUtf(MAX_ICON_KIND_LENGTH), buffer.readUtf(MAX_ICON_LENGTH), buffer.readUtf(MAX_TITLE_LENGTH), buffer.readUtf(MAX_CONTENT_LENGTH), buffer.readUtf(MAX_TYPE_LENGTH), buffer.readUtf(MAX_SOUND_LENGTH), buffer.readVarLong(), buffer.readVarInt(), buffer.readVarInt(), buffer.readVarInt())
+                SnackbarPayload(buffer.readUtf(MAX_ICON_KIND_LENGTH), buffer.readUtf(MAX_ICON_LENGTH), buffer.readUtf(MAX_TITLE_LENGTH), buffer.readUtf(MAX_CONTENT_LENGTH), buffer.readUtf(MAX_TYPE_LENGTH), buffer.readUtf(MAX_SOUND_LENGTH), buffer.readVarLong(), buffer.readVarInt(), buffer.readVarInt(), buffer.readVarInt(), buffer.readVarLong())
 
             override fun encode(buffer: RegistryFriendlyByteBuf, value: SnackbarPayload) {
                 buffer.writeUtf(value.iconKind.take(MAX_ICON_KIND_LENGTH), MAX_ICON_KIND_LENGTH)
@@ -103,6 +104,7 @@ data class SnackbarPayload(val iconKind: String, val icon: String, val title: St
                 buffer.writeVarInt(value.progressFromXp.coerceAtLeast(0))
                 buffer.writeVarInt(value.progressToXp.coerceAtLeast(0))
                 buffer.writeVarInt(value.progressTierSize.coerceAtLeast(0))
+                buffer.writeVarLong(value.progressAnimationMs.coerceIn(0L, 60_000L))
             }
         }
     }

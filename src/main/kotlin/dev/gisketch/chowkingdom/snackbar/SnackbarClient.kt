@@ -40,7 +40,7 @@ object SnackbarClient {
             SnackbarType.fromId(payload.type),
             payload.sound,
             payload.durationMs.coerceIn(1_000L, 60_000L),
-            if (payload.progressTierSize > 0 && payload.progressToXp > payload.progressFromXp) SnackbarProgress(payload.progressFromXp, payload.progressToXp, payload.progressTierSize) else null,
+            if (payload.progressTierSize > 0 && payload.progressToXp > payload.progressFromXp) SnackbarProgress(payload.progressFromXp, payload.progressToXp, payload.progressTierSize, payload.progressAnimationMs.coerceIn(1L, 60_000L)) else null,
         )
         promoteQueued(System.currentTimeMillis())
     }
@@ -196,7 +196,8 @@ object SnackbarClient {
 
     private fun renderProgressBar(guiGraphics: GuiGraphics, progress: SnackbarProgress, x: Int, y: Int, width: Int, age: Long, alpha: Float) {
         val tierSize = progress.tierSize.coerceAtLeast(1)
-        val animation = easeOutCubic((age.toFloat() / PROGRESS_ANIM_MS).coerceIn(0.0f, 1.0f))
+        val linearProgress = (age.toFloat() / progress.animationMs.coerceIn(1L, 60_000L).toFloat()).coerceIn(0.0f, 1.0f)
+        val animation = if (progress.animationMs <= EASED_PROGRESS_MAX_MS) easeOutCubic(linearProgress) else linearProgress
         val currentXp = progress.fromXp + ((progress.toXp - progress.fromXp) * animation).roundToInt()
         val localXp = Math.floorMod(currentXp, tierSize)
         val innerWidth = (width - 2).coerceAtLeast(1)
@@ -381,7 +382,7 @@ object SnackbarClient {
     private const val PROGRESS_TOP_GAP = 6
     private const val PROGRESS_AFTER_CONTENT_GAP = 4
     private const val PROGRESS_BAR_HEIGHT = 8
-    private const val PROGRESS_ANIM_MS = 1400L
+    private const val EASED_PROGRESS_MAX_MS = 1_500L
     private const val PROGRESS_TEXTURE_SIZE = 16
     private const val PROGRESS_SOURCE_CORNER = 4
     private const val HOTBAR_OFFSET_Y = 54
