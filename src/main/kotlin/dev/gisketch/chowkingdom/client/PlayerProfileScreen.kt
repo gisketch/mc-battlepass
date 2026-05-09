@@ -75,6 +75,7 @@ private class PlayerProfileScreen : Screen(Component.literal("Profile")) {
         val progress = playerId?.let(BattlepassClientState::playerProgress)
         val name = player?.displayName?.string ?: progress?.name ?: minecraft.user.name
         val roles = playerId?.let(RolesClientState::profileFor) ?: RoleProfile()
+        val jobRank = RolesClientState.jobRankFor(playerId)
         val cozyXp = xpFor(playerId, progress, COZY_PASS_ID)
         val combatXp = xpFor(playerId, progress, COMBAT_PASS_ID)
         val level = ((cozyXp + combatXp) / XP_PER_LEVEL).coerceAtLeast(0)
@@ -103,7 +104,7 @@ private class PlayerProfileScreen : Screen(Component.literal("Profile")) {
 
         drawCkdm(guiGraphics, "Perks", contentX, cursorY, GOLD, CKDM_SMALL)
         cursorY += 15
-        val perks = profilePerks(roles).ifEmpty { listOf(ProfilePerk("No active perks", "Choose a job and class to unlock profile perks.")) }
+        val perks = profilePerks(roles, jobRank).ifEmpty { listOf(ProfilePerk("No active perks", "Choose a job and class to unlock profile perks.")) }
         val perkRows = perks.take(maxPerkRows(panel, cursorY))
         perkRows.forEach { perk ->
             val row = Rect(contentX, cursorY, panel.width - PAD * 2, PERK_ROW_HEIGHT)
@@ -141,8 +142,10 @@ private class PlayerProfileScreen : Screen(Component.literal("Profile")) {
 
     private fun renderPerkRow(guiGraphics: GuiGraphics, row: Rect, perk: ProfilePerk) {
         renderNineSlice(guiGraphics, PANEL_TEXTURE, row, PANEL_TEXTURE_WIDTH, PANEL_TEXTURE_HEIGHT, PANEL_SOURCE_CORNER, PANEL_DEST_CORNER, 0.55f)
-        renderTexture(guiGraphics, PERK_ICON, row.x + 5, row.y + 3, 12, ICON_TEXTURE_SIZE)
-        guiGraphics.drawString(font, fitPlain(perk.label, row.width - 25), row.x + 22, row.y + 4, colorWithRenderAlpha(WHITE), false)
+        val iconY = row.y + (row.height - PERK_ICON_SIZE) / 2
+        renderTexture(guiGraphics, PERK_ICON, row.x + ROW_CONTENT_PAD, iconY, PERK_ICON_SIZE, ICON_TEXTURE_SIZE)
+        val textX = row.x + ROW_CONTENT_PAD + PERK_ICON_SIZE + ROW_ICON_GAP
+        guiGraphics.drawString(font, fitPlain(perk.label, row.right - ROW_CONTENT_PAD - textX), textX, row.y + (row.height - font.lineHeight) / 2 + 1, colorWithRenderAlpha(WHITE), false)
     }
 
     private fun renderStatsGrid(guiGraphics: GuiGraphics, rect: Rect, stats: List<ProfileStat>, zones: MutableList<TooltipZone>) {
@@ -154,20 +157,25 @@ private class PlayerProfileScreen : Screen(Component.literal("Profile")) {
             val row = index / columns
             val cell = Rect(rect.x + column * (cellWidth + gap), rect.y + row * (STAT_CELL_HEIGHT + gap), cellWidth, STAT_CELL_HEIGHT)
             renderNineSlice(guiGraphics, PANEL_TEXTURE, cell, PANEL_TEXTURE_WIDTH, PANEL_TEXTURE_HEIGHT, PANEL_SOURCE_CORNER, PANEL_DEST_CORNER, 0.55f)
-            val iconX = cell.x + 5
+            val iconX = cell.x + ROW_CONTENT_PAD
             val iconY = cell.y + (cell.height - STAT_ICON_SIZE) / 2
             if (stat.icon != null) renderTexture(guiGraphics, stat.icon, iconX, iconY, STAT_ICON_SIZE, ICON_TEXTURE_SIZE) else renderItem(guiGraphics, stat.stack, iconX, iconY, STAT_ICON_SIZE)
-            guiGraphics.drawString(font, fitPlain(stat.value, cell.width - 27), cell.x + 24, cell.y + 6, colorWithRenderAlpha(WHITE), false)
+            val textX = iconX + STAT_ICON_SIZE + ROW_ICON_GAP
+            guiGraphics.drawString(font, fitPlain(stat.value, cell.right - ROW_CONTENT_PAD - textX), textX, cell.y + (cell.height - font.lineHeight) / 2 + 1, colorWithRenderAlpha(WHITE), false)
             zones += TooltipZone(cell, listOf(Component.literal(stat.label), Component.literal(stat.detail).withStyle(ChatFormatting.GRAY)))
         }
     }
 
-    private fun profilePerks(roles: RoleProfile): List<ProfilePerk> = (roles.jobs + roles.classes).flatMap { role ->
-        role.perks.map { perk -> perkText(role, perk) }
+    private fun profilePerks(roles: RoleProfile, jobRank: Int): List<ProfilePerk> = (roles.jobs + roles.classes).flatMap { role ->
+        role.perks.map { perk -> perkText(role, perk, jobRank) }
     }
 
-    private fun perkText(role: RoleUiDefinitionPayload, perk: RolePerkUiPayload): ProfilePerk = when (perk.type) {
-        "cobblemon_catch_rate" -> ProfilePerk("${multiplierText(perk.multiplier)}x ${typeLabel(perk.pokemonType)} catch rate", "${role.displayName} improves catch rate for ${typeLabel(perk.pokemonType)} Pokemon when the Cobblemon hook is enabled.")
+    private fun perkText(role: RoleUiDefinitionPayload, perk: RolePerkUiPayload, jobRank: Int): ProfilePerk = when (perk.type) {
+        "cobblemon_catch_rate" -> {
+            val bonus = RolesClientState.catchRateBonusPercent(perk, jobRank)
+            val rankText = if (jobRank > 0) "Rank $jobRank" else "Rank locked"
+            ProfilePerk("${percentText(bonus)} ${typeLabel(perk.pokemonType)} catch rate", "${role.displayName} improves catch rate for ${typeLabel(perk.pokemonType)} Pokemon. Current job rank: $rankText.")
+        }
         "mount_speed" -> ProfilePerk("${multiplierText(perk.multiplier)}x ${typeLabel(perk.pokemonType)} mount speed", "${role.displayName} has a data hook for ${typeLabel(perk.pokemonType)} Pokemon mount speed.")
         "quality_food_harvest_bonus" -> ProfilePerk("${multiplierText(perk.multiplier)}x Quality Food harvest", "${role.displayName} rerolls Quality Food crop drops based on this multiplier.")
         "prevent_crop_trample" -> ProfilePerk("Prevents crop trampling", "${role.displayName} cancels farmland trampling while active.")
@@ -277,7 +285,7 @@ private class PlayerProfileScreen : Screen(Component.literal("Profile")) {
     private fun ckdmText(text: String, fontId: ResourceLocation): Component = Component.literal(text.uppercase(Locale.ROOT)).withStyle { style -> style.withFont(fontId) }
 
     private fun panelRect(): Rect {
-        val panelWidth = (width * 0.48f).toInt().coerceIn(300, 450).coerceAtMost(width - 24)
+        val panelWidth = (width * 0.42f).toInt().coerceIn(280, 390).coerceAtMost(width - 24)
         val panelHeight = (height * 0.72f).toInt().coerceIn(250, 350).coerceAtMost(height - 24)
         return Rect((width - panelWidth) / 2, (height - panelHeight) / 2, panelWidth, panelHeight)
     }
@@ -326,6 +334,8 @@ private class PlayerProfileScreen : Screen(Component.literal("Profile")) {
 
     private fun multiplierText(value: Double): String = if (value % 1.0 == 0.0) value.toInt().toString() else String.format(Locale.US, "%.2f", value).trimEnd('0').trimEnd('.')
 
+    private fun percentText(value: Double): String = String.format(Locale.US, "+%.0f%%", value * 100.0)
+
     private fun formatNumber(value: Long): String = String.format(Locale.US, "%,d", value)
 
     private fun formatCompact(value: Long): String {
@@ -367,9 +377,12 @@ private class PlayerProfileScreen : Screen(Component.literal("Profile")) {
         private const val ROLE_ICON_GAP = 5
         private const val SUMMARY_ICON_SIZE = 14
         private const val STAT_ICON_SIZE = 13
-        private const val PERK_ROW_HEIGHT = 18
-        private const val STAT_CELL_HEIGHT = 24
+        private const val PERK_ROW_HEIGHT = 22
+        private const val STAT_CELL_HEIGHT = 28
         private const val STAT_GRID_GAP = 5
+        private const val ROW_CONTENT_PAD = 8
+        private const val ROW_ICON_GAP = 7
+        private const val PERK_ICON_SIZE = 12
         private const val VANILLA_ITEM_SIZE = 16
         private const val ICON_TEXTURE_SIZE = 16
         private const val PANEL_TEXTURE_WIDTH = 1646

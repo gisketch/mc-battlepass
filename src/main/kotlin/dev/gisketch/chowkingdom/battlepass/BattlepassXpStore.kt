@@ -65,6 +65,13 @@ object BattlepassXpStore {
         return playerXp[playerId.toString()]?.get(passId) ?: 0
     }
 
+    fun totalXp(player: ServerPlayer): Int {
+        if (!loaded) load()
+        return playerXp[player.stringUUID]?.values?.sum() ?: 0
+    }
+
+    fun overallLevel(player: ServerPlayer): Int = totalXp(player) / BATTLEPASS_XP_PER_LEVEL
+
     fun isClaimed(playerId: UUID, passId: String, tierXp: Int): Boolean {
         if (!loaded) load()
         return claimedTiers[playerId.toString()]?.get(passId)?.contains(tierXp) == true
@@ -107,4 +114,5 @@ object BattlepassXpStore {
     )
 
     private const val DEFAULT_BATTLEPASS_TIER_SIZE = 100
+    private const val BATTLEPASS_XP_PER_LEVEL = 100
 }

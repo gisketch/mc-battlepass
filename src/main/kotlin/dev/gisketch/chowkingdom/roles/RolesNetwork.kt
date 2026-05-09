@@ -65,6 +65,8 @@ object RolesNetwork {
             players = playerStates(player),
             welcomeContent = RolesConfig.welcomeContent(),
             openOnboarding = openOnboarding,
+            jobRankUnlockOverallLevels = JobLevels.jobRankUnlockOverallLevels(),
+            catchRateBonusPercentByRank = JobLevels.catchRateBonusPercentByRank(),
         )
     }
 
@@ -88,6 +90,7 @@ object RolesNetwork {
         type = perk.type,
         pokemonType = perk.pokemonType.orEmpty(),
         multiplier = perk.multiplier,
+        bonusPercentByLevel = perk.bonusPercentByLevel.toList(),
         weaponTag = perk.weaponTag.orEmpty(),
         armorTag = perk.armorTag.orEmpty(),
         weaponTags = perk.weaponTags.toList(),
@@ -106,6 +109,8 @@ data class RolesSyncPayload(
     val players: List<RolePlayerStatePayload>,
     val welcomeContent: String,
     val openOnboarding: Boolean,
+    val jobRankUnlockOverallLevels: List<Int>,
+    val catchRateBonusPercentByRank: List<Double>,
 ) : CustomPacketPayload {
     override fun type(): CustomPacketPayload.Type<RolesSyncPayload> = TYPE
 
@@ -120,6 +125,8 @@ data class RolesSyncPayload(
                 players = List(buffer.readVarInt().coerceIn(0, MAX_PLAYERS)) { RolePlayerStatePayload.decode(buffer) },
                 welcomeContent = buffer.readUtf(MAX_DESCRIPTION_LENGTH),
                 openOnboarding = buffer.readBoolean(),
+                jobRankUnlockOverallLevels = readIntList(buffer, MAX_JOB_RANKS),
+                catchRateBonusPercentByRank = readDoubleList(buffer, MAX_JOB_RANKS),
             )
 
             override fun encode(buffer: RegistryFriendlyByteBuf, value: RolesSyncPayload) {
@@ -136,6 +143,8 @@ data class RolesSyncPayload(
                 players.forEach { player -> player.encode(buffer) }
                 buffer.writeUtf(value.welcomeContent.take(MAX_DESCRIPTION_LENGTH), MAX_DESCRIPTION_LENGTH)
                 buffer.writeBoolean(value.openOnboarding)
+                writeIntList(buffer, value.jobRankUnlockOverallLevels, MAX_JOB_RANKS)
+                writeDoubleList(buffer, value.catchRateBonusPercentByRank, MAX_JOB_RANKS)
             }
         }
     }
@@ -193,6 +202,7 @@ data class RolePerkUiPayload(
     val type: String,
     val pokemonType: String,
     val multiplier: Double,
+    val bonusPercentByLevel: List<Double>,
     val weaponTag: String,
     val armorTag: String,
     val weaponTags: List<String>,
@@ -205,6 +215,7 @@ data class RolePerkUiPayload(
         buffer.writeUtf(type.take(MAX_ID_LENGTH), MAX_ID_LENGTH)
         buffer.writeUtf(pokemonType.take(MAX_ID_LENGTH), MAX_ID_LENGTH)
         buffer.writeDouble(multiplier)
+        writeDoubleList(buffer, bonusPercentByLevel, MAX_JOB_RANKS)
         buffer.writeUtf(weaponTag.take(MAX_ICON_LENGTH), MAX_ICON_LENGTH)
         buffer.writeUtf(armorTag.take(MAX_ICON_LENGTH), MAX_ICON_LENGTH)
         writeStringList(buffer, weaponTags, MAX_PERK_VALUES, MAX_ICON_LENGTH)
@@ -219,6 +230,7 @@ data class RolePerkUiPayload(
             type = buffer.readUtf(MAX_ID_LENGTH),
             pokemonType = buffer.readUtf(MAX_ID_LENGTH),
             multiplier = buffer.readDouble(),
+            bonusPercentByLevel = readDoubleList(buffer, MAX_JOB_RANKS),
             weaponTag = buffer.readUtf(MAX_ICON_LENGTH),
             armorTag = buffer.readUtf(MAX_ICON_LENGTH),
             weaponTags = readStringList(buffer, MAX_PERK_VALUES, MAX_ICON_LENGTH),
@@ -261,12 +273,31 @@ private fun writeStringList(buffer: RegistryFriendlyByteBuf, values: List<String
     limited.forEach { value -> buffer.writeUtf(value.take(maxLength), maxLength) }
 }
 
+private fun readIntList(buffer: RegistryFriendlyByteBuf, maxCount: Int): List<Int> =
+    List(buffer.readVarInt().coerceIn(0, maxCount)) { buffer.readVarInt() }
+
+private fun writeIntList(buffer: RegistryFriendlyByteBuf, values: List<Int>, maxCount: Int) {
+    val limited = values.take(maxCount)
+    buffer.writeVarInt(limited.size)
+    limited.forEach(buffer::writeVarInt)
+}
+
+private fun readDoubleList(buffer: RegistryFriendlyByteBuf, maxCount: Int): List<Double> =
+    List(buffer.readVarInt().coerceIn(0, maxCount)) { buffer.readDouble() }
+
+private fun writeDoubleList(buffer: RegistryFriendlyByteBuf, values: List<Double>, maxCount: Int) {
+    val limited = values.take(maxCount)
+    buffer.writeVarInt(limited.size)
+    limited.forEach(buffer::writeDouble)
+}
+
 private const val DEFAULT_ROLE_ICON = "minecraft:grass_block"
 private const val MAX_ROLES = 128
 private const val MAX_PLAYERS = 256
 private const val MAX_ACTIVE_ROLES = 32
 private const val MAX_PERKS = 32
 private const val MAX_PERK_VALUES = 32
+private const val MAX_JOB_RANKS = 16
 private const val MAX_ID_LENGTH = 64
 private const val MAX_DISPLAY_LENGTH = 96
 private const val MAX_ICON_LENGTH = 128

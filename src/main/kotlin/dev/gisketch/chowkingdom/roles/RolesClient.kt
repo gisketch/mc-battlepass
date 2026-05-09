@@ -3,7 +3,9 @@ package dev.gisketch.chowkingdom.roles
 import com.mojang.blaze3d.systems.RenderSystem
 import com.mojang.blaze3d.vertex.PoseStack
 import dev.gisketch.chowkingdom.ChowKingdomMod
+import dev.gisketch.chowkingdom.battlepass.BattlepassClientState
 import net.minecraft.Util
+import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.Font
 import net.minecraft.client.gui.GuiGraphics
@@ -24,10 +26,14 @@ import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 import net.minecraft.world.item.ItemDisplayContext
 import net.neoforged.neoforge.client.ClientHooks
+import net.neoforged.neoforge.client.event.GatherEffectScreenTooltipsEvent
 import net.neoforged.neoforge.client.event.RenderNameTagEvent
+import net.neoforged.neoforge.client.event.ScreenEvent
+import net.neoforged.neoforge.client.extensions.common.IClientMobEffectExtensions
 import net.neoforged.neoforge.common.NeoForge
 import net.neoforged.neoforge.common.util.TriState
 import org.joml.Matrix4f
+import java.util.Optional
 import java.util.Locale
 import java.util.UUID
 import kotlin.math.max
@@ -35,6 +41,8 @@ import kotlin.math.max
 object RolesClient {
     fun register() {
         NeoForge.EVENT_BUS.addListener(::onRenderNameTag)
+        NeoForge.EVENT_BUS.addListener(::onGatherEffectTooltips)
+        NeoForge.EVENT_BUS.addListener(::onScreenRenderPost)
     }
 
     @JvmStatic
@@ -54,6 +62,18 @@ object RolesClient {
         if (icons.jobIcons.isEmpty() && icons.classIcons.isEmpty()) return
         event.setCanRender(TriState.FALSE)
         renderRoleNameTag(event, icons)
+    }
+
+    private fun onGatherEffectTooltips(event: GatherEffectScreenTooltipsEvent) {
+        val status = jobStatusFor(event.effectInstance) ?: return
+        event.tooltip.clear()
+        event.tooltip.addAll(status.tooltip)
+    }
+
+    private fun onScreenRenderPost(event: ScreenEvent.Render.Post) {
+        val screen = event.screen as? InventoryScreen ?: return
+        val status = hoveredJobStatus(event.mouseX, event.mouseY, screen.width, screen.height) ?: return
+        event.guiGraphics.renderTooltip(Minecraft.getInstance().font, status.tooltip, Optional.empty(), event.mouseX, event.mouseY)
     }
 
     private fun renderRoleNameTag(event: RenderNameTagEvent, icons: RoleNametagIcons) {
@@ -148,15 +168,48 @@ object RolesClient {
     private fun iconGroupWidth(count: Int): Float = if (count <= 0) 0.0f else count * NAMETAG_ICON_SIZE + (count - 1) * NAMETAG_ICON_GAP
 }
 
+private fun jobStatusFor(instance: net.minecraft.world.effect.MobEffectInstance): JobStatusDisplay? {
+    val slot = RolesFeature.jobStatusEffectIndex(instance) ?: return null
+    return RolesClientState.jobStatusFor(slot, instance.amplifier + 1)
+}
+
+private fun hoveredJobStatus(mouseX: Int, mouseY: Int, width: Int, height: Int): JobStatusDisplay? {
+    val minecraft = Minecraft.getInstance()
+    val effects = minecraft.player?.activeEffects
+        ?.filter { effect -> IClientMobEffectExtensions.of(effect).isVisibleInInventory(effect) }
+        ?.sorted()
+        .orEmpty()
+    if (effects.isEmpty()) return null
+    val left = (width - INVENTORY_WIDTH) / 2
+    val top = (height - INVENTORY_HEIGHT) / 2
+    val x = left + INVENTORY_WIDTH + 2
+    val availableSpace = width - x
+    if (availableSpace < 32) return null
+    val rowWidth = if (availableSpace >= 120) 120 else 32
+    val rowStep = if (effects.size > 5) 132 / (effects.size - 1) else 33
+    var y = top
+    effects.forEach { effect ->
+        if (mouseX in x..(x + rowWidth) && mouseY in y..(y + rowStep)) {
+            return jobStatusFor(effect)
+        }
+        y += rowStep
+    }
+    return null
+}
+
 object RolesClientState {
     private var jobsById: Map<String, RoleUiDefinitionPayload> = emptyMap()
     private var classesById: Map<String, RoleUiDefinitionPayload> = emptyMap()
+    private var jobRankUnlockOverallLevels: List<Int> = JobLevels.fallbackJobRankUnlockOverallLevels
+    private var catchRateBonusPercentByRank: List<Double> = JobLevels.fallbackCatchRateBonusPercentByRank
     private val playerIcons: MutableMap<UUID, RoleNametagIcons> = linkedMapOf()
     private val playerRoleIds: MutableMap<UUID, RoleProfileIds> = linkedMapOf()
 
     fun apply(payload: RolesSyncPayload) {
         jobsById = payload.jobs.associateBy { role -> role.id }
         classesById = payload.classes.associateBy { role -> role.id }
+        jobRankUnlockOverallLevels = payload.jobRankUnlockOverallLevels.ifEmpty { JobLevels.fallbackJobRankUnlockOverallLevels }
+        catchRateBonusPercentByRank = payload.catchRateBonusPercentByRank.ifEmpty { JobLevels.fallbackCatchRateBonusPercentByRank }
         playerIcons.clear()
         playerRoleIds.clear()
         payload.players.forEach { player ->
@@ -176,6 +229,55 @@ object RolesClientState {
             classes = ids.classIds.mapNotNull(classesById::get),
         )
     } ?: RoleProfile()
+
+    fun jobStatusFor(slot: Int, rank: Int): JobStatusDisplay? {
+        val selfId = BattlepassClientState.selfId() ?: Minecraft.getInstance().player?.uuid ?: return null
+        val job = profileFor(selfId).jobs.getOrNull(slot) ?: return null
+        val overallLevel = overallLevelFor(selfId)
+        val title = "Lv. $rank ${job.displayName}"
+        val perkLines = job.perks.mapNotNull { perk -> perkTooltipLine(perk, rank) }
+        val tooltip = mutableListOf<Component>(
+            Component.literal(title).withStyle(ChatFormatting.GOLD),
+            Component.literal("Overall Lv. $overallLevel - Rank $rank").withStyle(ChatFormatting.GRAY),
+        )
+        if (perkLines.isEmpty()) {
+            tooltip += Component.literal("No rank perks active.").withStyle(ChatFormatting.DARK_GRAY)
+        } else {
+            tooltip += Component.literal("Perks:").withStyle(ChatFormatting.YELLOW)
+            tooltip += perkLines.map { line -> Component.literal(line).withStyle(ChatFormatting.GRAY) }
+        }
+        return JobStatusDisplay(
+            title = title,
+            icon = job.icon,
+            summary = perkLines.firstOrNull() ?: "No rank perks active",
+            tooltip = tooltip,
+        )
+    }
+
+    fun jobRankFor(playerId: UUID?): Int = playerId?.let { id -> jobRankUnlockOverallLevels.count { unlockLevel -> overallLevelFor(id) >= unlockLevel } } ?: 0
+
+    fun catchRateBonusPercent(perk: RolePerkUiPayload, rank: Int): Double {
+        if (rank <= 0) return 0.0
+        return perk.bonusPercentByLevel.getOrNull(rank - 1) ?: catchRateBonusPercentByRank.getOrElse(rank - 1) { catchRateBonusPercentByRank.lastOrNull() ?: 0.0 }
+    }
+
+    private fun overallLevelFor(playerId: UUID): Int = BattlepassClientState.playerProgress(playerId)?.xpByPass?.values?.sum()?.div(BATTLEPASS_XP_PER_LEVEL) ?: 0
+
+    private fun perkTooltipLine(perk: RolePerkUiPayload, rank: Int): String? = when (perk.type) {
+        "cobblemon_catch_rate" -> {
+            val bonus = catchRateBonusPercent(perk, rank)
+            val target = perk.pokemonType.ifBlank { "matching" }.replaceFirstChar { char -> char.titlecase(Locale.ROOT) }
+            "${formatBonusPercent(bonus)} catch rate for $target Pokemon"
+        }
+        "mount_speed" -> "${formatMultiplier(perk.multiplier)}x mount speed"
+        "quality_food_harvest_bonus" -> "${formatMultiplier(perk.multiplier)}x quality food harvest"
+        "prevent_crop_trample" -> "Prevents crop trampling"
+        else -> perk.type.replace('_', ' ').replaceFirstChar { char -> char.titlecase(Locale.ROOT) }
+    }
+
+    private fun formatBonusPercent(value: Double): String = String.format(Locale.ROOT, "+%.0f%%", value * 100.0)
+
+    private fun formatMultiplier(value: Double): String = String.format(Locale.ROOT, "%.2f", value)
 }
 
 private data class RoleProfileIds(val jobIds: List<String>, val classIds: List<String>)
@@ -190,7 +292,14 @@ data class RoleNametagIcons(
     val classIcons: List<String> = emptyList(),
 )
 
-private fun roleIconTexture(rawIcon: String): ResourceLocation? {
+data class JobStatusDisplay(
+    val title: String,
+    val icon: String,
+    val summary: String,
+    val tooltip: List<Component>,
+)
+
+internal fun roleIconTexture(rawIcon: String): ResourceLocation? {
     val icon = rawIcon.trim()
     if (icon.isBlank()) return null
     return runCatching {
@@ -204,7 +313,7 @@ private fun roleIconTexture(rawIcon: String): ResourceLocation? {
     }.getOrNull()
 }
 
-private fun roleIconStack(rawIcon: String): ItemStack {
+internal fun roleIconStack(rawIcon: String): ItemStack {
     val id = runCatching { ResourceLocation.parse(rawIcon.trim()) }.getOrNull() ?: return ItemStack.EMPTY
     val item = BuiltInRegistries.ITEM.getOptional(id).orElse(Items.AIR)
     return if (item == Items.AIR) ItemStack.EMPTY else ItemStack(item)
@@ -217,6 +326,9 @@ private const val NAMETAG_ICON_Y_OFFSET = -1.0f
 private const val NAMETAG_TEXT = -1
 private const val NAMETAG_SEE_THROUGH_TEXT = 553648127
 private const val NAMETAG_SEE_THROUGH_ICON_ALPHA = 96
+private const val BATTLEPASS_XP_PER_LEVEL = 100
+private const val INVENTORY_WIDTH = 176
+private const val INVENTORY_HEIGHT = 166
 
 private class RolesOnboardingScreen(private var payload: RolesSyncPayload) : Screen(Component.literal("Roles Onboarding")) {
     private enum class Step { WELCOME, JOB, CLASS }

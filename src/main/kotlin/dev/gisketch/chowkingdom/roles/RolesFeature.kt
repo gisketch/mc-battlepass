@@ -17,6 +17,8 @@ import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerPlayer
 import net.minecraft.tags.TagKey
 import net.minecraft.world.InteractionResult
+import net.minecraft.world.effect.MobEffect
+import net.minecraft.world.effect.MobEffectInstance
 import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.entity.ai.attributes.AttributeModifier
 import net.minecraft.world.entity.ai.attributes.Attributes
@@ -36,9 +38,18 @@ import net.neoforged.neoforge.event.level.BlockDropsEvent
 import net.neoforged.neoforge.event.level.BlockEvent
 import net.neoforged.neoforge.event.server.ServerStartedEvent
 import net.neoforged.neoforge.event.tick.PlayerTickEvent
+import net.neoforged.neoforge.registries.DeferredHolder
+import net.neoforged.neoforge.registries.DeferredRegister
+import java.util.function.Supplier
+import java.util.Locale
 import kotlin.math.roundToInt
 
 object RolesFeature {
+    private val MOB_EFFECTS: DeferredRegister<MobEffect> = DeferredRegister.create(Registries.MOB_EFFECT, ChowKingdomMod.MOD_ID)
+    private val JOB_STATUS_EFFECTS: List<DeferredHolder<MobEffect, JobRankMobEffect>> = (0 until MAX_JOB_STATUS_EFFECTS).map { slot ->
+        MOB_EFFECTS.register("job_status_${slot + 1}", Supplier { JobRankMobEffect(slot) })
+    }
+
     private val JOB_SUGGESTIONS = SuggestionProvider<CommandSourceStack> { _, builder ->
         SharedSuggestionProvider.suggest(RolesConfig.jobs().map { role -> role.id }, builder)
     }
@@ -48,6 +59,7 @@ object RolesFeature {
     private val WRONG_WEAPON_ATTACK_SPEED_MODIFIER = ResourceLocation.parse("${ChowKingdomMod.MOD_ID}:wrong_weapon_attack_speed")
 
     fun register(modBus: IEventBus) {
+        MOB_EFFECTS.register(modBus)
         RolesConfig.load()
         RoleStore.load()
         RolesNetwork.register(modBus)
@@ -61,6 +73,8 @@ object RolesFeature {
         NeoForge.EVENT_BUS.addListener(::onPlayerTickPost)
         NeoForge.EVENT_BUS.addListener(::onItemTooltip)
     }
+
+    fun jobStatusEffectIndex(instance: MobEffectInstance): Int? = JOB_STATUS_EFFECTS.indexOfFirst { effect -> instance.`is`(effect) }.takeIf { index -> index >= 0 }
 
     private fun registerClientHooks() {
         runCatching {
@@ -88,6 +102,7 @@ object RolesFeature {
     private fun syncAndMaybeOpenOnboarding(player: ServerPlayer) {
         RoleStore.ensureRecord(player)
         grantStartingItems(player)
+        applyJobRankEffect(player)
         val onboardingPlayers = if (RoleStore.needsOnboarding(player)) setOf(player.uuid) else emptySet()
         RolesNetwork.syncAllPlayers(openOnboardingFor = onboardingPlayers)
     }
@@ -105,6 +120,7 @@ object RolesFeature {
         }
         RoleStore.setPrimaryRoles(player, job.id, roleClass.id)
         grantStartingItems(player, roleClass.id)
+        applyJobRankEffect(player)
         RolesNetwork.syncAllPlayers()
         return true
     }
@@ -121,6 +137,13 @@ object RolesFeature {
                         .then(
                             Commands.literal("get")
                                 .then(Commands.argument("player", EntityArgument.player()).executes(::getRoles)),
+                        )
+                        .then(
+                            Commands.literal("debug")
+                                .then(
+                                    Commands.literal("catch-rate")
+                                        .then(Commands.argument("player", EntityArgument.player()).executes(::debugCatchRate)),
+                                ),
                         )
                         .then(
                             Commands.literal("set")
@@ -206,6 +229,31 @@ object RolesFeature {
         val jobs = record.activeJobIds.joinToString(", ").ifBlank { record.jobId }
         val classes = record.activeClassIds.joinToString(", ").ifBlank { record.classId }
         context.source.sendSuccess({ Component.literal("${player.gameProfile.name}: jobs=[$jobs], classes=[$classes]") }, false)
+        return 1
+    }
+
+    private fun debugCatchRate(context: CommandContext<CommandSourceStack>): Int {
+        val player = EntityArgument.getPlayer(context, "player")
+        val debug = JobPerkDebug.lastCatchRate(player)
+        if (debug == null) {
+            context.source.sendSuccess({ Component.literal("${player.gameProfile.name}: no Cobblemon catch-rate throw recorded yet.") }, false)
+            return 1
+        }
+        val types = debug.pokemonTypes.sorted().joinToString(", ").ifBlank { "unknown" }
+        val jobs = debug.activeJobIds.joinToString(", ").ifBlank { "none" }
+        val perks = debug.appliedPerks.joinToString(", ") { entry ->
+            val roleName = entry.roleDisplayName.ifBlank { entry.roleId }
+            "$roleName:${entry.pokemonType ?: "any"} Rank ${entry.jobLevel} ${formatBonusPercent(entry.bonusPercent)} (${formatMultiplier(entry.multiplier)}x)"
+        }.ifBlank { "none" }
+        context.source.sendSuccess(
+            {
+                Component.literal(
+                    "${debug.playerName}: ${debug.species} types=[$types] overallLv=${debug.overallLevel} jobRank=${debug.jobLevel} base=${formatCatchRate(debug.baseCatchRate)} final=${formatCatchRate(debug.finalCatchRate)} modifier=${formatBonusPercent(debug.multiplier - 1.0)} (${formatMultiplier(debug.multiplier)}x)",
+                )
+            },
+            false,
+        )
+        context.source.sendSuccess({ Component.literal("jobs=[$jobs] perks=[$perks]") }, false)
         return 1
     }
 
@@ -335,9 +383,25 @@ object RolesFeature {
         val player = event.entity as? ServerPlayer ?: return
         val perks = equipmentAffinities(player)
         applyWrongWeaponAttackSpeed(player, perks)
+        applyJobRankEffect(player)
         val armorPerks = perks.filter { perk -> perk.wrongArmorDisablesSprint }
         if (armorPerks.isNotEmpty() && player.armorSlots.any { stack -> !stack.isEmpty && !RecipeDisablerFeature.isCosmeticized(stack) && armorPerks.none { perk -> itemAllowed(stack, tagList(perk.armorTag, perk.armorTags), perk.armorPatterns) } }) {
             player.isSprinting = false
+        }
+    }
+
+    private fun applyJobRankEffect(player: ServerPlayer) {
+        val jobRank = JobLevels.jobLevel(player)
+        val activeJobCount = RoleStore.activeJobIds(player).size
+        JOB_STATUS_EFFECTS.forEachIndexed { index, effect ->
+            if (jobRank <= 0 || index >= activeJobCount) {
+                player.removeEffect(effect)
+                return@forEachIndexed
+            }
+            val amplifier = (jobRank - 1).coerceAtLeast(0)
+            val current = player.getEffect(effect)
+            if (current?.amplifier == amplifier && current.isInfiniteDuration) return@forEachIndexed
+            player.addEffect(MobEffectInstance(effect, MobEffectInstance.INFINITE_DURATION, amplifier, false, false, true))
         }
     }
 
@@ -437,4 +501,12 @@ object RolesFeature {
         val item = BuiltInRegistries.ITEM.getOptional(ResourceLocation.parse(id)).orElse(Items.AIR)
         return item.takeIf { value -> value != Items.AIR }?.let { value -> ItemStack(value, count) }
     }
+
+    private fun formatCatchRate(value: Double): String = String.format(Locale.ROOT, "%.2f", value)
+
+    private fun formatMultiplier(value: Double): String = String.format(Locale.ROOT, "%.2f", value)
+
+    private fun formatBonusPercent(bonusPercent: Double): String = String.format(Locale.ROOT, "%+.1f%%", bonusPercent * 100.0)
+
+    private const val MAX_JOB_STATUS_EFFECTS = 2
 }

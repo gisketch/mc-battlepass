@@ -14,6 +14,7 @@ object RolesConfig {
     private var jobsById: Map<String, RoleDefinition> = emptyMap()
     private var classesById: Map<String, RoleDefinition> = emptyMap()
     private var onboardingDefinition = RolesOnboardingDefinition()
+    private var jobScalingDefinition = JobScalingDefinition()
 
     private val root: Path
         get() = FMLPaths.CONFIGDIR.get().resolve(ChowKingdomMod.MOD_ID).resolve("roles")
@@ -22,10 +23,12 @@ object RolesConfig {
         root.resolve("jobs").createDirectories()
         root.resolve("classes").createDirectories()
         writeDefaultIfMissing(root.resolve("onboarding.toml"), defaultOnboarding())
+        writeDefaultIfMissing(root.resolve("job_scaling.toml"), defaultJobScaling())
         defaultJobs().forEach { definition -> writeDefaultIfMissing(root.resolve("jobs").resolve("${definition.id}.toml"), definition) }
         writeDefaultIfMissing(root.resolve("classes").resolve("rogue.toml"), defaultRogue())
         writeDefaultIfMissing(root.resolve("classes").resolve("warrior.toml"), defaultWarrior())
         onboardingDefinition = readOnboarding(root.resolve("onboarding.toml"))
+        jobScalingDefinition = readJobScaling(root.resolve("job_scaling.toml"))
         jobsById = loadDefinitions(root.resolve("jobs"))
         classesById = loadDefinitions(root.resolve("classes"))
     }
@@ -47,6 +50,8 @@ object RolesConfig {
         return lines.getOrNull(Random.nextInt(lines.size.coerceAtLeast(1))) ?: DEFAULT_WELCOME_CONTENT
     }
 
+    fun jobScaling(): JobScalingDefinition = jobScalingDefinition
+
     private fun loadDefinitions(directory: Path): Map<String, RoleDefinition> = Files.list(directory).use { stream ->
         stream.filter { path -> path.extension.equals("toml", ignoreCase = true) }
             .map { path -> readDefinition(path) }
@@ -67,6 +72,13 @@ object RolesConfig {
     } catch (exception: Exception) {
         ChowKingdomMod.LOGGER.warn("Failed to load role onboarding config {}", path, exception)
         defaultOnboarding()
+    }
+
+    private fun readJobScaling(path: Path): JobScalingDefinition = try {
+        TomlConfigIO.read(path, JobScalingDefinition::class.java, ::defaultJobScaling)
+    } catch (exception: Exception) {
+        ChowKingdomMod.LOGGER.warn("Failed to load role job scaling config {}", path, exception)
+        defaultJobScaling()
     }
 
     private fun writeDefaultIfMissing(file: Path, definition: Any) {
@@ -105,8 +117,17 @@ object RolesConfig {
         icon = "textures/gui/jobs/$id.png",
         description = description,
         perks = mutableListOf(
-            RolePerkDefinition(type = "cobblemon_catch_rate", pokemonType = pokemonType, multiplier = 1.5),
+            RolePerkDefinition(
+                type = "cobblemon_catch_rate",
+                pokemonType = pokemonType,
+                multiplier = 1.05,
+            ),
         ),
+    )
+
+    private fun defaultJobScaling(): JobScalingDefinition = JobScalingDefinition(
+        jobRankUnlockOverallLevels = JobLevels.fallbackJobRankUnlockOverallLevels.toMutableList(),
+        catchRateBonusPercentByRank = JobLevels.fallbackCatchRateBonusPercentByRank.toMutableList(),
     )
 
     private fun defaultRogue(): RoleDefinition = RoleDefinition(

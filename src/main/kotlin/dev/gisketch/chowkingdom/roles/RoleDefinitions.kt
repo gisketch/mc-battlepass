@@ -16,11 +16,20 @@ data class RolesOnboardingDefinition(
     var welcomeContent: MutableList<String> = mutableListOf(),
 )
 
+data class JobScalingDefinition(
+    @SerializedName(value = "job_rank_unlock_overall_levels", alternate = ["jobRankUnlockOverallLevels"])
+    var jobRankUnlockOverallLevels: MutableList<Int> = mutableListOf(),
+    @SerializedName(value = "catch_rate_bonus_percent_by_rank", alternate = ["catchRateBonusPercentByRank"])
+    var catchRateBonusPercentByRank: MutableList<Double> = mutableListOf(),
+)
+
 data class RolePerkDefinition(
     var type: String = "",
     @SerializedName(value = "pokemon_type", alternate = ["pokemonType"])
     var pokemonType: String? = null,
     var multiplier: Double = 1.0,
+    @SerializedName(value = "bonus_percent_by_level", alternate = ["bonusPercentByLevel"])
+    var bonusPercentByLevel: MutableList<Double> = mutableListOf(),
     @SerializedName(value = "weapon_tag", alternate = ["weaponTag"])
     var weaponTag: String? = null,
     @SerializedName(value = "weapon_tags", alternate = ["weaponTags"])

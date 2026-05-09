@@ -55,7 +55,7 @@ display_name = "Botanist"
 icon = "textures/gui/jobs/botanist.png"
 description = "Reads leaf, vine, and bloom signs to work with Grass Pokemon."
 perks = [
-  { type = "cobblemon_catch_rate", pokemon_type = "grass", multiplier = 1.5 },
+  { type = "cobblemon_catch_rate", pokemon_type = "grass" },
 ]
 ```
 
@@ -63,7 +63,7 @@ Current job perk types:
 
 - `prevent_crop_trample`: cancels farmland trampling for active players.
 - `quality_food_harvest_bonus`: rerolls Quality Food quality on crop drops. Uses `multiplier`.
-- `cobblemon_catch_rate`: data hook for Pokemon type catch scaling. Uses `pokemon_type` and `multiplier`. Defaults use `1.5`, but the Cobblemon capture hook is not implemented yet.
+- `cobblemon_catch_rate`: active Cobblemon catch-rate scaling. Uses `pokemon_type` and optional `bonus_percent_by_level` override. Configs without `bonus_percent_by_level` use `catch_rate_bonus_percent_by_rank` from `roles/job_scaling.toml`. Matching active jobs stack multiplicatively.
 - `mount_speed`: data hook for Pokemon type mount speed scaling. Uses `pokemon_type` and `multiplier`.
 
 ## Class TOML Shape
@@ -182,6 +182,28 @@ Use `required: false` for optional modded tags/items so the datapack still loads
 5. Run `/ck roles list` and confirm the id appears.
 6. Assign it with `/ck roles set job <player> <id>` or `/ck roles add job <player> <id>`.
 7. Test the perk in-world.
+
+## Job Ranks
+
+Job rank is derived from the player's overall battlepass level. Overall level is summed battlepass XP divided by `100`. Configure rank unlocks and default catch-rate scaling in `config/gisketchs_chowkingdom_mod/roles/job_scaling.toml`.
+
+Default `job_rank_unlock_overall_levels`:
+
+- Rank 1: `1`
+- Rank 2: `26`
+- Rank 3: `76`
+- Rank 4: `151`
+- Rank 5: `300`
+
+Default `catch_rate_bonus_percent_by_rank`:
+
+- Rank 1: `0.05`
+- Rank 2: `0.10`
+- Rank 3: `0.15`
+- Rank 4: `0.25`
+- Rank 5: `0.50`
+
+Players with active jobs and rank 1+ get visible inventory status rows. Each active job uses its configured role icon, renders as `Lv. N Job Name`, does not emit potion particles, and keeps rank perk details in the hover tooltip. At overall level 0, active jobs remain assigned but rank-scaled perks are inactive.
 
 ## Adding A New Class
 

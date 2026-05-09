@@ -1,6 +1,8 @@
 package dev.gisketch.chowkingdom.battlepass
 
 import dev.gisketch.chowkingdom.ChowKingdomMod
+import dev.gisketch.chowkingdom.roles.JobPerkDebug
+import dev.gisketch.chowkingdom.roles.RolePerks
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerPlayer
 import net.neoforged.neoforge.server.ServerLifecycleHooks
@@ -20,6 +22,7 @@ object CobblemonBattlepassIntegration {
             subscribeRaw(eventsClass, "DATA_SYNCHRONIZED") { event -> (event as? ServerPlayer)?.let(::syncCobblemonProgress) }
             subscribeRaw(eventsClass, "POKEMON_SCANNED", ::handlePokemonScanned)
             subscribeRaw(eventsClass, "POKEDEX_DATA_CHANGED_POST", ::handlePokedexDataChanged)
+            subscribeRaw(eventsClass, "POKEMON_CATCH_RATE", ::handlePokemonCatchRate)
             subscribeRaw(eventsClass, "POKEMON_CAPTURED", ::handlePokemonCaught)
             subscribeRaw(eventsClass, "POKEMON_SENT_POST", ::handlePokemonSentOut)
             subscribeRaw(eventsClass, "FRIENDSHIP_UPDATED", ::handleFriendshipUpdated)
@@ -51,6 +54,18 @@ object CobblemonBattlepassIntegration {
     private fun handlePokemonScanned(event: Any) {
         val player = event.javaClass.getMethod("getPlayer").invoke(event) as? ServerPlayer ?: return
         syncPokedexProgress(player)
+    }
+
+    private fun handlePokemonCatchRate(event: Any) {
+        val player = event.javaClass.getMethod("getThrower").invoke(event) as? ServerPlayer ?: return
+        val pokemonEntity = event.javaClass.getMethod("getPokemonEntity").invoke(event)
+        val pokemon = pokemonEntity.javaClass.getMethod("getPokemon").invoke(pokemonEntity)
+        val types = pokemonTypes(pokemon)
+        val breakdown = RolePerks.pokemonTypeMultiplierBreakdown(player, "cobblemon_catch_rate", types)
+        val baseCatchRate = (event.javaClass.getMethod("getCatchRate").invoke(event) as? Number)?.toDouble() ?: return
+        val finalCatchRate = (baseCatchRate * breakdown.multiplier).coerceAtLeast(0.0)
+        if (finalCatchRate != baseCatchRate) event.javaClass.getMethod("setCatchRate", java.lang.Float.TYPE).invoke(event, finalCatchRate.toFloat())
+        JobPerkDebug.recordCatchRate(player, pokemonSpecies(pokemon), types, baseCatchRate, breakdown, finalCatchRate)
     }
 
     private fun handlePokemonCaught(event: Any) {

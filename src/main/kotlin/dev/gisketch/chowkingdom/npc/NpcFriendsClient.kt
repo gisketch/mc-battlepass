@@ -85,7 +85,7 @@ private class NpcFriendsScreen : Screen(Component.literal("Friends")) {
         scroll = scroll.coerceIn(0, maxScroll())
         guiGraphics.enableScissor(rowArea.x, rowArea.y, rowArea.right, rowArea.bottom)
         friends.forEachIndexed { index, friend ->
-            val row = Rect(rowArea.x, rowArea.y + index * ROW_STEP - scroll, rowArea.width, ROW_HEIGHT)
+            val row = Rect(rowArea.x, rowArea.y + index * ROW_STEP - scroll, rowArea.width - ROW_SCROLL_PAD, ROW_HEIGHT)
             if (row.bottom < rowArea.y || row.y > rowArea.bottom) return@forEachIndexed
             renderFriendRow(guiGraphics, row, friend)
             zones += TooltipZone(row, tooltip(friend))
@@ -96,17 +96,18 @@ private class NpcFriendsScreen : Screen(Component.literal("Friends")) {
 
     private fun renderFriendRow(guiGraphics: GuiGraphics, row: Rect, friend: NpcFriendEntryPayload) {
         renderNineSlice(guiGraphics, PANEL_TEXTURE, row, PANEL_TEXTURE_WIDTH, PANEL_TEXTURE_HEIGHT, PANEL_SOURCE_CORNER, PANEL_DEST_CORNER)
-        renderNpcHead(guiGraphics, friend.npcId, row.x + 7, row.y + 7, HEAD_SIZE)
-        val textX = row.x + HEAD_SIZE + 16
-        val name = fitPlain(friend.name, row.width - HEAD_SIZE - 94)
-        guiGraphics.drawString(font, name, textX, row.y + 7, colorWithRenderAlpha(WHITE), false)
-        renderFriendship(guiGraphics, textX + font.width(name) + 8, row.y + 7, friend.friendshipLevel)
+        renderNpcHead(guiGraphics, friend.npcId, row.x + ROW_CONTENT_PAD, row.y + ROW_CONTENT_PAD, HEAD_SIZE)
+        val textX = row.x + ROW_CONTENT_PAD + HEAD_SIZE + 12
+        val name = fitPlain(friend.name, row.width - HEAD_SIZE - 118)
+        guiGraphics.drawString(font, name, textX, row.y + 10, colorWithRenderAlpha(WHITE), false)
+        renderFriendship(guiGraphics, textX + font.width(name) + 9, row.y + 10, friend.friendshipLevel)
         val levelLabel = "Lv.${friend.friendshipLevel}"
-        guiGraphics.drawString(font, levelLabel, row.right - font.width(levelLabel) - 8, row.y + 7, colorWithRenderAlpha(GOLD), false)
-        val status = fitPlain(friend.missionStatus, row.width - HEAD_SIZE - 28)
-        renderTexture(guiGraphics, questIcon(friend.missionStatus), textX, row.y + 23, STATUS_ICON_SIZE, ICON_SOURCE_SIZE)
-        renderTexture(guiGraphics, aliveIcon(friend.aliveStatus), row.right - 50, row.y + 23, STATUS_ICON_SIZE, ICON_SOURCE_SIZE)
-        guiGraphics.drawString(font, status, textX + STATUS_ICON_SIZE + 5, row.y + 24, colorWithRenderAlpha(statusColor(friend.missionStatus)), false)
+        guiGraphics.drawString(font, levelLabel, row.right - font.width(levelLabel) - ROW_CONTENT_PAD, row.y + 10, colorWithRenderAlpha(GOLD), false)
+        val status = fitPlain(friend.missionStatus, row.right - ROW_CONTENT_PAD - STATUS_ICON_SIZE - 7 - textX)
+        val statusY = row.y + 32
+        renderTexture(guiGraphics, questIcon(friend.missionStatus), textX, statusY - 1, STATUS_ICON_SIZE, ICON_SOURCE_SIZE)
+        renderTexture(guiGraphics, aliveIcon(friend.aliveStatus), row.right - ROW_CONTENT_PAD - STATUS_ICON_SIZE, statusY - 1, STATUS_ICON_SIZE, ICON_SOURCE_SIZE)
+        guiGraphics.drawString(font, status, textX + STATUS_ICON_SIZE + 7, statusY, colorWithRenderAlpha(statusColor(friend.missionStatus)), false)
     }
 
     private fun tooltip(friend: NpcFriendEntryPayload): List<Component> = listOf(
@@ -270,11 +271,13 @@ private class NpcFriendsScreen : Screen(Component.literal("Friends")) {
     private fun colorWithRenderAlpha(color: Int): Int = ((((color ushr 24) and 0xFF) * renderAlpha).toInt().coerceIn(0, 255) shl 24) or (color and 0x00FFFFFF)
 
     companion object {
-        private const val PAD = 20
-        private const val ROW_HEIGHT = 44
-        private const val ROW_STEP = 48
-        private const val HEAD_SIZE = 30
-        private const val STATUS_ICON_SIZE = 10
+        private const val PAD = 22
+        private const val ROW_HEIGHT = 52
+        private const val ROW_STEP = 58
+        private const val ROW_CONTENT_PAD = 10
+        private const val ROW_SCROLL_PAD = 8
+        private const val HEAD_SIZE = 32
+        private const val STATUS_ICON_SIZE = 12
         private const val ICON_SOURCE_SIZE = 16
         private const val FRIENDSHIP_ICON_COUNT = 10
         private const val FRIENDSHIP_ICON_SIZE = 9

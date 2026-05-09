@@ -36,7 +36,7 @@ Commands require permission level 2.
 ## Current Defaults
 
 - Jobs: `botanist` Grass, `diver` Water, `magma_scout` Fire, `engineer` Electric, `field_researcher` Normal, `bug_scout` Bug, `falconer` Flying, `shade_runner` Dark, `esper` Psychic, `martial_artist` Fighting, `mountaineer` Ice, `shinobi` Poison, `mason` Rock, `excavator` Ground, `blacksmith` Steel, `spirit_medium` Ghost, `drake_tamer` Dragon, `performer` Fairy, and local `seed_merchant` seed shop support.
-- Each default job defines a data-only `cobblemon_catch_rate` hook for its Pokemon type with multiplier `1.5`.
+- Each default job defines a `cobblemon_catch_rate` hook for its Pokemon type. Catch-rate bonus scales by job rank. Default bonuses are +5%, +10%, +15%, +25%, +50%.
 - `rogue`: starts with a book, diamond axe, and leather boots. Only Rogue-tagged equipment avoids class penalties.
 - `warrior`: starts with a book, wooden sword, and iron boots. Only Warrior-tagged equipment avoids class penalties.
 
@@ -93,4 +93,20 @@ Patterns match item ids. `rogues:*_dagger` allows every Rogues dagger without li
 
 ## Cobblemon Hooks
 
-Default jobs define `cobblemon_catch_rate` data for their matching Pokemon type. The helper exists, but no Cobblemon capture-rate event or mixin applies it yet.
+Default jobs define `cobblemon_catch_rate` data for their matching Pokemon type. When Cobblemon is present, the optional integration listens to `POKEMON_CATCH_RATE`, multiplies the mutable catch rate by every matching active job perk, and records the last throw for debugging.
+
+Job rank is derived from overall battlepass level. Overall level is summed battlepass XP divided by `100`. Default rank unlocks and catch-rate bonuses are configured in `config/gisketchs_chowkingdom_mod/roles/job_scaling.toml`:
+
+- Rank 1: overall level 1-25, catch rate +5%.
+- Rank 2: overall level 26-75, catch rate +10%.
+- Rank 3: overall level 76-150, catch rate +15%.
+- Rank 4: overall level 151-299, catch rate +25%.
+- Rank 5: overall level 300+, catch rate +50%.
+
+Players with active jobs and rank 1+ get visible inventory status rows. Each active job uses its configured role icon, renders as `Lv. N Job Name`, does not emit potion particles, and keeps rank perk details in the hover tooltip.
+
+Multiple active jobs stack multiplicatively. Example: two matching Lv.5 perks produce `2.25x`, shown as `+125.0%` in debug output.
+
+Debug command:
+
+- `/ck roles debug catch-rate <player>` shows the last Cobblemon catch-rate event for that player, including Pokemon species, types, overall level, job rank, base rate, final rate, modifier percent, active jobs, and matching perks.
