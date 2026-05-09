@@ -115,8 +115,8 @@ object RolesConfig {
         shadeRunnerJob(),
         esperJob(),
         martialArtistJob(),
-        typedJob("mountaineer", "Mountaineer", "ice", "Crosses frost lines and high passes to find Ice Pokemon."),
-        typedJob("shinobi", "Shinobi", "poison", "Tracks marshes, spores, and hidden dens for Poison Pokemon."),
+        mountaineerJob(),
+        shinobiJob(),
         typedJob("mason", "Mason", "rock", "Reads cliffs, ruins, and quarry marks to find Rock Pokemon."),
         typedJob("excavator", "Excavator", "ground", "Cuts tunnels and studies soil shifts for Ground Pokemon."),
         typedJob("blacksmith", "Blacksmith", "steel", "Works anvils, ore, and machine scrap around Steel Pokemon."),
@@ -354,6 +354,44 @@ object RolesConfig {
         )
     }
 
+    private fun mountaineerJob(): RoleDefinition = typedJob("mountaineer", "Mountaineer", "ice", "Crosses frost lines and high passes to find Ice Pokemon.").also { role ->
+        role.perks.firstOrNull { perk -> perk.type == "cobblemon_catch_rate" }?.bonusPercentByLevel = mutableListOf(0.05, 0.10, 0.18, 0.28, 0.40)
+        role.perks.firstOrNull { perk -> perk.type == "mount_speed" }?.bonusPercentByLevel = mutableListOf(0.03, 0.05, 0.09, 0.14, 0.20)
+        role.perks += RolePerkDefinition(
+            type = "freeze_damage_reduction",
+            bonusPercentByLevel = mutableListOf(0.15, 0.30, 0.45, 0.60, 0.75),
+        )
+        role.perks += RolePerkDefinition(
+            type = "step_assist_lite",
+            bonusPercentByLevel = mutableListOf(0.10, 0.20, 0.30, 0.40, 0.50),
+        )
+        role.perks += RolePerkDefinition(
+            type = "coldproof",
+        )
+        role.perks += RolePerkDefinition(
+            type = "climber",
+        )
+    }
+
+    private fun shinobiJob(): RoleDefinition = typedJob("shinobi", "Shinobi", "poison", "Tracks marshes, spores, and hidden dens for Poison Pokemon.").also { role ->
+        role.perks.firstOrNull { perk -> perk.type == "cobblemon_catch_rate" }?.bonusPercentByLevel = mutableListOf(0.05, 0.10, 0.18, 0.28, 0.40)
+        role.perks.firstOrNull { perk -> perk.type == "mount_speed" }?.bonusPercentByLevel = mutableListOf(0.03, 0.05, 0.09, 0.14, 0.20)
+        role.perks += RolePerkDefinition(
+            type = "poison_aspect_lite",
+            bonusPercentByLevel = mutableListOf(0.02, 0.04, 0.06, 0.08, 0.10),
+        )
+        role.perks += RolePerkDefinition(
+            type = "shinobi_sneak_speed",
+            bonusPercentByLevel = mutableListOf(0.08, 0.16, 0.24, 0.32, 0.40),
+        )
+        role.perks += RolePerkDefinition(
+            type = "toxic_resistance",
+        )
+        role.perks += RolePerkDefinition(
+            type = "smoke_step",
+        )
+    }
+
     private fun defaultJobScaling(): JobScalingDefinition = JobScalingDefinition(
         jobRankUnlockOverallLevels = JobLevels.fallbackJobRankUnlockOverallLevels.toMutableList(),
         catchRateBonusPercentByRank = JobLevels.fallbackCatchRateBonusPercentByRank.toMutableList(),
@@ -404,6 +442,14 @@ object RolesConfig {
         "agility_lite",
         "combo_flow",
         "second_wind",
+        "freeze_damage_reduction",
+        "step_assist_lite",
+        "coldproof",
+        "climber",
+        "poison_aspect_lite",
+        "shinobi_sneak_speed",
+        "toxic_resistance",
+        "smoke_step",
     )
 
     private fun defaultRogue(): RoleDefinition = RoleDefinition(

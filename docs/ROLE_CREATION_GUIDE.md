@@ -369,6 +369,62 @@ Killing a hostile mob restores 1 heart. Cooldown is 20 seconds.
 
 Fields: none.
 
+### `freeze_damage_reduction`
+
+Reduces freeze and powder snow damage taken by the player.
+
+Fields:
+
+- `bonus_percent_by_level`: rank damage reduction list. Mountaineer default is `[0.15, 0.30, 0.45, 0.60, 0.75]`.
+
+### `step_assist_lite`
+
+Adds step height while the player is on snow, ice, stone, or mountain blocks.
+
+Fields:
+
+- `bonus_percent_by_level`: rank step height bonus in blocks. Mountaineer default is `[0.10, 0.20, 0.30, 0.40, 0.50]`.
+
+### `coldproof`
+
+Clears freeze ticks and reduces powder snow movement slowdown while inside powder snow.
+
+Fields: none.
+
+### `climber`
+
+Above Y=100, grants a fixed `+10%` mining speed bonus.
+
+Fields: none.
+
+### `poison_aspect_lite`
+
+Adds a chance to poison mobs on melee hit. Duration is 2 seconds at ranks 1-2, 3 seconds at ranks 3-4, and 4 seconds at rank 5.
+
+Fields:
+
+- `bonus_percent_by_level`: rank poison chance list. Shinobi default is `[0.02, 0.04, 0.06, 0.08, 0.10]`.
+
+### `shinobi_sneak_speed`
+
+Adds movement speed while sneaking.
+
+Fields:
+
+- `bonus_percent_by_level`: rank speed bonus list. Shinobi default is `[0.08, 0.16, 0.24, 0.32, 0.40]`.
+
+### `toxic_resistance`
+
+Poison duration on the player is reduced by 50%.
+
+Fields: none.
+
+### `smoke_step`
+
+Taking damage while sneaking grants Speed II for 4 seconds. Cooldown is 60 seconds.
+
+Fields: none.
+
 ### `quality_harvest_upgrade_chance`
 
 Chance to upgrade Quality Food crop drops on fully-grown crop harvest.

@@ -369,6 +369,7 @@ object RolesFeature {
     private fun onBreakSpeed(event: PlayerEvent.BreakSpeed) {
         EngineerPerks.onBreakSpeed(event)
         DiverPerks.onBreakSpeed(event)
+        MountaineerPerks.onBreakSpeed(event)
     }
 
     private fun onItemFished(event: ItemFishedEvent) {
@@ -379,9 +380,11 @@ object RolesFeature {
         (event.entity as? ServerPlayer)?.let { player -> MagmaScoutPerks.onLivingDamage(player, event) }
         (event.entity as? ServerPlayer)?.let { player -> FalconerPerks.onLivingDamage(player, event) }
         (event.entity as? ServerPlayer)?.let { player -> EsperPerks.onLivingDamage(player, event) }
+        (event.entity as? ServerPlayer)?.let { player -> MountaineerPerks.onLivingDamage(player, event) }
         BugScoutPerks.onLivingDamage(event)
         ShadeRunnerPerks.onLivingDamage(event)
         MartialArtistPerks.onLivingDamage(event)
+        ShinobiPerks.onLivingDamage(event)
         RoleClassEquipmentRules.onLivingDamagePre(event)
     }
 
@@ -400,6 +403,8 @@ object RolesFeature {
         ShadeRunnerPerks.onPlayerTick(player)
         EsperPerks.onPlayerTick(player)
         MartialArtistPerks.onPlayerTick(player)
+        MountaineerPerks.onPlayerTick(player)
+        ShinobiPerks.onPlayerTick(player)
         applyJobRankEffect(player)
     }
 

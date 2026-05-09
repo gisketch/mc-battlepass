@@ -345,6 +345,70 @@ private fun rolePerkDisplay(role: RoleUiDefinitionPayload, perk: RolePerkUiPaylo
             detail = "Killing a hostile mob restores 1 heart.",
             group = RolePerkDisplayGroup.UNIQUE,
         )
+        "freeze_damage_reduction" -> {
+            val ranks = rankValues { rank -> RolesClientState.configuredBonusPercent(perk, rank) }
+            RolePerkDisplay(
+                title = "Frost Walker-lite",
+                value = valueAtRank(ranks, displayRank),
+                detail = "${role.displayName} reduces freeze and powder snow damage. Current job rank: $rankText.",
+                group = RolePerkDisplayGroup.PASSIVE,
+                rankValues = ranks,
+            )
+        }
+        "step_assist_lite" -> {
+            val ranks = rankNumberValues { rank -> "Lv.$rank +${formatDecimal(RolesClientState.configuredBonusPercent(perk, rank))} blocks" }
+            RolePerkDisplay(
+                title = "Step Assist-lite",
+                value = "+${formatDecimal(RolesClientState.configuredBonusPercent(perk, displayRank))} blocks",
+                detail = "${role.displayName} gains step height on snow, ice, stone, and mountain blocks.",
+                group = RolePerkDisplayGroup.PASSIVE,
+                rankValues = ranks,
+            )
+        }
+        "coldproof" -> RolePerkDisplay(
+            title = "Coldproof",
+            value = "Enabled",
+            detail = "Powder snow no longer freezes the player and its movement slowdown is reduced.",
+            group = RolePerkDisplayGroup.UNIQUE,
+        )
+        "climber" -> RolePerkDisplay(
+            title = "Climber",
+            value = "+10%",
+            detail = "Above Y=100, gain a fixed mining speed bonus.",
+            group = RolePerkDisplayGroup.UNIQUE,
+        )
+        "poison_aspect_lite" -> {
+            val ranks = rankValues { rank -> RolesClientState.configuredBonusPercent(perk, rank) }
+            RolePerkDisplay(
+                title = "Poison Aspect-lite",
+                value = valueAtRank(ranks, displayRank),
+                detail = "${role.displayName} can poison mobs on melee hit. Duration increases at ranks 3 and 5.",
+                group = RolePerkDisplayGroup.PASSIVE,
+                rankValues = ranks,
+            )
+        }
+        "shinobi_sneak_speed" -> {
+            val ranks = rankValues { rank -> RolesClientState.configuredBonusPercent(perk, rank) }
+            RolePerkDisplay(
+                title = "Shinobi Sneak Speed",
+                value = valueAtRank(ranks, displayRank),
+                detail = "${role.displayName} gains movement speed while sneaking. Current job rank: $rankText.",
+                group = RolePerkDisplayGroup.PASSIVE,
+                rankValues = ranks,
+            )
+        }
+        "toxic_resistance" -> RolePerkDisplay(
+            title = "Toxic Resistance",
+            value = "-50%",
+            detail = "Poison duration on the player is reduced by half.",
+            group = RolePerkDisplayGroup.UNIQUE,
+        )
+        "smoke_step" -> RolePerkDisplay(
+            title = "Smoke Step",
+            value = "60s CD",
+            detail = "Taking damage while sneaking grants Speed II for 4 seconds.",
+            group = RolePerkDisplayGroup.UNIQUE,
+        )
         "nether_hunter_catch_rate_bonus" -> RolePerkDisplay(
             title = "Nether Hunter",
             value = formatBonusPercent(RolesClientState.configuredBonusPercent(perk, displayRank)),
