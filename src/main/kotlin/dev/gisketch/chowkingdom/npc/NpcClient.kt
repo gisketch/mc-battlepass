@@ -782,7 +782,7 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         val wasWaitingForTalk = waitingForTalk
         val wasInTalkMode = talkMode
         skipPendingTalkResponse()
-        if (wasWaitingForTalk || wasInTalkMode) NpcNetwork.sendAction(payload.npcId, "cancel_llm")
+        if (wasWaitingForTalk || wasInTalkMode) NpcNetwork.sendAction(payload.npcId, "leave_llm_dialog")
         super.onClose()
     }
 

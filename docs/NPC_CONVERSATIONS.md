@@ -19,14 +19,15 @@ Current behavior:
 - If the NPC is already waiting for an LLM reply and another participant sends a message, the old LLM response token is marked stale.
 - The next LLM request is rebuilt with all pending participant messages and asks for one combined NPC reply to the whole conversation.
 - When the reply returns, every still-joined participant gets the same NPC reply. Each participant keeps their own response token, so stale client replies are still ignored correctly.
-- Closing the dialog leaves the talk session. If the last participant leaves while the NPC is thinking, the active LLM response is canceled/staled.
+- Closing the dialog leaves the local UI/session view. If the NPC is thinking, the active LLM response continues and renders as a world balloon for nearby players when it finishes.
+- Switching from dialog to buy, gift, work, move, or fire also leaves the UI without canceling the pending NPC reply.
 - Player logout removes that player from all active NPC talk sessions.
 
 Important implementation files:
 
-- `src/main/kotlin/dev/gisketch/chowkingdom/npc/NpcLlmService.kt`: owns talk sessions, pending turns, stale token cancellation, group prompt input, and group reply fan-out.
+- `src/main/kotlin/dev/gisketch/chowkingdom/npc/NpcLlmService.kt`: owns talk sessions, pending turns, non-canceling dialog leave, stale token cancellation, group prompt input, and group reply fan-out.
 - `src/main/kotlin/dev/gisketch/chowkingdom/npc/NpcFeature.kt`: opens JOIN CONVERSATION/BYE dialog when an NPC already has a talk session.
-- `src/main/kotlin/dev/gisketch/chowkingdom/npc/NpcClient.kt`: renders join mode, sends `join_talk`, keeps input open, and leaves with `cancel_llm` on close.
+- `src/main/kotlin/dev/gisketch/chowkingdom/npc/NpcClient.kt`: renders join mode, sends `join_talk`, keeps input open, and sends `leave_llm_dialog` on close.
 - `src/main/kotlin/dev/gisketch/chowkingdom/npc/NpcNetwork.kt`: carries dialog mode and initial talk-mode flags to the client.
 
 ## Prompt Rule

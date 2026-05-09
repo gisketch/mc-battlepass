@@ -235,26 +235,26 @@ object NpcFeature {
         }
         if (NpcQuestService.handleAction(player, npc, definition, action)) return
         when (action.lowercase()) {
-            "cancel_llm" -> NpcLlmService.cancel(player, definition.id)
+            "cancel_llm", "leave_llm_dialog" -> NpcLlmService.leaveDialog(player, definition.id)
             "join_talk" -> NpcLlmService.joinConversation(player, definition.id)
             "buy" -> {
-                NpcLlmService.cancel(player, definition.id)
+                NpcLlmService.leaveDialog(player, definition.id)
                 openNpcShop(player, npc, definition)
             }
             "gift" -> {
-                NpcLlmService.cancel(player, definition.id)
+                NpcLlmService.leaveDialog(player, definition.id)
                 giftToNpc(player, npc, definition)
             }
             "work" -> {
-                NpcLlmService.cancel(player, definition.id)
+                NpcLlmService.leaveDialog(player, definition.id)
                 openWorkDialog(player, npc, definition)
             }
             "work_move" -> {
-                NpcLlmService.cancel(player, definition.id)
+                NpcLlmService.leaveDialog(player, definition.id)
                 giveWorkApplication(player, npc, definition, moving = true)
             }
             "work_fire" -> {
-                NpcLlmService.cancel(player, definition.id)
+                NpcLlmService.leaveDialog(player, definition.id)
                 fireNpcWorkplace(player, npc, definition)
             }
         }
