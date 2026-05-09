@@ -8,6 +8,7 @@ import dev.gisketch.chowkingdom.ChowClockConfig
 import dev.gisketch.chowkingdom.ChowKingdomMod
 import dev.gisketch.chowkingdom.discord.DiscordRelay
 import dev.gisketch.chowkingdom.relicroulette.RelicRouletteFeature
+import dev.gisketch.chowkingdom.roles.PerformerPerks
 import dev.gisketch.chowkingdom.shops.StoreShopFeature
 import dev.gisketch.chowkingdom.snackbar.SnackbarIcons
 import dev.gisketch.chowkingdom.snackbar.SnackbarNetwork
@@ -519,7 +520,7 @@ object NpcFeature {
             return
         }
         val mood = configuredMood ?: "neutral"
-        val friendshipDelta = giftFriendshipDelta(mood)
+        val friendshipDelta = PerformerPerks.giftFriendshipDelta(player, mood, giftFriendshipDelta(mood))
         val friendship = NpcStore.adjustFriendship(definition.id, player, friendshipDelta, "gift_$mood")
         showFriendshipDelta(npc.level() as? ServerLevel, npc, friendshipDelta)
         val message = friendshipMessage(definition.friendshipMessages.gift, friendship, player, definition, itemName, mood)
@@ -546,7 +547,7 @@ object NpcFeature {
     }
 
     private fun finishGiftToNpc(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, itemName: String, mood: String, message: String, responseToken: Long) {
-        val friendshipDelta = giftFriendshipDelta(mood)
+        val friendshipDelta = PerformerPerks.giftFriendshipDelta(player, mood, giftFriendshipDelta(mood))
         val friendship = NpcStore.adjustFriendship(definition.id, player, friendshipDelta, "gift_$mood")
         showFriendshipDelta(npc.level() as? ServerLevel, npc, friendshipDelta)
         val fallback = friendshipMessage(definition.friendshipMessages.gift, friendship, player, definition, itemName, mood)

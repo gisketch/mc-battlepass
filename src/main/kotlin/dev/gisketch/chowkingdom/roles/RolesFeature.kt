@@ -359,6 +359,7 @@ object RolesFeature {
 
     private fun onRightClickBlock(event: PlayerInteractEvent.RightClickBlock) {
         MasonPerks.onRightClickBlock(event)
+        DrakeTamerPerks.onRightClickBlock(event)
     }
 
     private fun onBlockBreak(event: BlockEvent.BreakEvent) {
@@ -404,6 +405,7 @@ object RolesFeature {
         (event.entity as? ServerPlayer)?.let { player -> EsperPerks.onLivingDamage(player, event) }
         (event.entity as? ServerPlayer)?.let { player -> MountaineerPerks.onLivingDamage(player, event) }
         (event.entity as? ServerPlayer)?.let { player -> MasonPerks.onLivingDamage(player, event) }
+        (event.entity as? ServerPlayer)?.let { player -> DrakeTamerPerks.onLivingDamage(player, event) }
         SpiritMediumPerks.onLivingDamage(event)
         BugScoutPerks.onLivingDamage(event)
         ShadeRunnerPerks.onLivingDamage(event)
@@ -434,6 +436,7 @@ object RolesFeature {
         MasonPerks.onPlayerTick(player)
         ExcavatorPerks.onPlayerTick(player)
         SpiritMediumPerks.onPlayerTick(player)
+        PerformerPerks.onPlayerTick(player)
         applyJobRankEffect(player)
     }
 

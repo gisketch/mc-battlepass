@@ -529,6 +529,66 @@ private fun rolePerkDisplay(role: RoleUiDefinitionPayload, perk: RolePerkUiPaylo
             detail = "Killing undead can grant 10-50 chowcoins, capped weekly.",
             group = RolePerkDisplayGroup.UNIQUE,
         )
+        "protection_lite" -> {
+            val ranks = rankValues { rank -> RolesClientState.configuredBonusPercent(perk, rank) }
+            RolePerkDisplay(
+                title = "Protection-lite",
+                value = valueAtRank(ranks, displayRank),
+                detail = "${role.displayName} reduces all incoming damage. Current job rank: $rankText.",
+                group = RolePerkDisplayGroup.PASSIVE,
+                rankValues = ranks,
+            )
+        }
+        "dragon_mount_velocity" -> {
+            val ranks = rankValues { rank -> RolesClientState.configuredBonusPercent(perk, rank) }
+            RolePerkDisplay(
+                title = "Mount Velocity-lite",
+                value = valueAtRank(ranks, displayRank),
+                detail = "Dragon Pokemon mounts gain extra ride velocity. Current job rank: $rankText.",
+                group = RolePerkDisplayGroup.PASSIVE,
+                rankValues = ranks,
+            )
+        }
+        "draconic_presence" -> RolePerkDisplay(
+            title = "Draconic Presence",
+            value = "Res I 8s",
+            detail = "Mounting a Dragon Pokemon grants Resistance I for 8 seconds. Cooldown is 60 seconds.",
+            group = RolePerkDisplayGroup.UNIQUE,
+        )
+        "treasure_sense" -> RolePerkDisplay(
+            title = "Treasure Sense",
+            value = formatBonusPercent(RolesClientState.configuredBonusPercent(perk, displayRank)),
+            detail = "Opening chest-like containers can grant chowcoins or a relic shard, capped weekly.",
+            group = RolePerkDisplayGroup.UNIQUE,
+        )
+        "charisma_lite" -> {
+            val ranks = rankValues { rank -> RolesClientState.configuredBonusPercent(perk, rank) }
+            RolePerkDisplay(
+                title = "Charisma-lite",
+                value = valueAtRank(ranks, displayRank),
+                detail = "NPC friendship gains are increased. Current job rank: $rankText.",
+                group = RolePerkDisplayGroup.PASSIVE,
+                rankValues = ranks,
+            )
+        }
+        "happy_boost_lite" -> RolePerkDisplay(
+            title = "Happy Boost-lite",
+            value = happyBoostLabel(displayRank),
+            detail = "Gain movement speed while at least one NPC is nearby. Multiple NPCs do not stack.",
+            group = RolePerkDisplayGroup.UNIQUE,
+        )
+        "charming_gift" -> RolePerkDisplay(
+            title = "Charming Gift",
+            value = "+10",
+            detail = "Loved and liked NPC gifts gain +10 extra friendship before Charisma-lite scaling.",
+            group = RolePerkDisplayGroup.UNIQUE,
+        )
+        "encore" -> RolePerkDisplay(
+            title = "Encore",
+            value = formatBonusPercent(RolesClientState.configuredBonusPercent(perk, displayRank)),
+            detail = "Completing an NPC quest can grant +10 bonus battlepass XP. Daily cap is 50 XP.",
+            group = RolePerkDisplayGroup.UNIQUE,
+        )
         "nether_hunter_catch_rate_bonus" -> RolePerkDisplay(
             title = "Nether Hunter",
             value = formatBonusPercent(RolesClientState.configuredBonusPercent(perk, displayRank)),
@@ -639,4 +699,10 @@ private fun etherealStepLabel(rank: Int): String = when {
     rank == 3 -> "Res I 4s"
     rank == 2 -> "Res I 3s"
     else -> "Res I 2s"
+}
+
+private fun happyBoostLabel(rank: Int): String = when {
+    rank >= 5 -> "Speed III"
+    rank >= 3 -> "Speed II"
+    else -> "Speed I"
 }

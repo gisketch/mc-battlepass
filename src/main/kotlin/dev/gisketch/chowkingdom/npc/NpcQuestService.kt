@@ -6,6 +6,7 @@ import dev.gisketch.chowkingdom.battlepass.BattlepassNetwork
 import dev.gisketch.chowkingdom.battlepass.BattlepassPassRegistry
 import dev.gisketch.chowkingdom.battlepass.BattlepassXpEventDefinition
 import dev.gisketch.chowkingdom.battlepass.BattlepassXpStore
+import dev.gisketch.chowkingdom.roles.PerformerPerks
 import dev.gisketch.chowkingdom.snackbar.SnackbarNetwork
 import dev.gisketch.chowkingdom.snackbar.SnackbarNotification
 import dev.gisketch.chowkingdom.snackbar.SnackbarSounds
@@ -230,6 +231,7 @@ object NpcQuestService {
     
     private fun finishQuest(player: ServerPlayer, definition: NpcDefinition, active: NpcAcceptedQuestState, state: NpcPlayerQuestState, npc: ChowNpcEntity?) {
         BattlepassXpStore.addXp(player, active.passId, active.xp)
+        PerformerPerks.onNpcQuestComplete(player, active.passId)
         if (active.chowcoins > 0L) {
             ChowcoinStore.add(player, active.chowcoins)
             ChowcoinNetwork.syncTo(player)

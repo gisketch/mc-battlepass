@@ -3,6 +3,7 @@ package dev.gisketch.chowkingdom.npc
 import com.google.gson.GsonBuilder
 import dev.gisketch.chowkingdom.ChowKingdomMod
 import dev.gisketch.chowkingdom.config.TomlConfigIO
+import dev.gisketch.chowkingdom.roles.PerformerPerks
 import net.minecraft.core.BlockPos
 import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.level.storage.LevelResource
@@ -341,7 +342,7 @@ object NpcStore {
     fun adjustFriendship(npcId: String, player: ServerPlayer, delta: Int, reason: String): NpcFriendshipSnapshot {
         val state = state(npcId)
         val friendship = state.friendships.getOrPut(player.stringUUID) { NpcFriendshipState() }
-        friendship.points = (friendship.points + delta).coerceIn(NpcFriendshipLevels.MIN_POINTS, NpcFriendshipLevels.MAX_POINTS)
+        friendship.points = (friendship.points + PerformerPerks.friendshipDelta(player, delta)).coerceIn(NpcFriendshipLevels.MIN_POINTS, NpcFriendshipLevels.MAX_POINTS)
         friendship.lastChangedAt = System.currentTimeMillis()
         friendship.lastReason = reason
         save()

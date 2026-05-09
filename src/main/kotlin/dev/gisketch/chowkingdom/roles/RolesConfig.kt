@@ -121,8 +121,8 @@ object RolesConfig {
         excavatorJob(),
         blacksmithJob(),
         spiritMediumJob(),
-        typedJob("drake_tamer", "Drake Tamer", "dragon", "Studies old scales, high dens, and legends around Dragon Pokemon."),
-        typedJob("performer", "Performer", "fairy", "Uses rhythm, charm, and bright places to meet Fairy Pokemon."),
+        drakeTamerJob(),
+        performerJob(),
     )
 
     private fun typedJob(id: String, displayName: String, pokemonType: String, description: String): RoleDefinition = RoleDefinition(
@@ -472,6 +472,46 @@ object RolesConfig {
         )
     }
 
+    private fun drakeTamerJob(): RoleDefinition = typedJob("drake_tamer", "Drake Tamer", "dragon", "Studies old scales, high dens, and legends around Dragon Pokemon.").also { role ->
+        role.perks.firstOrNull { perk -> perk.type == "cobblemon_catch_rate" }?.bonusPercentByLevel = mutableListOf(0.05, 0.10, 0.18, 0.28, 0.40)
+        role.perks.firstOrNull { perk -> perk.type == "mount_speed" }?.bonusPercentByLevel = mutableListOf(0.03, 0.05, 0.09, 0.14, 0.20)
+        role.perks += RolePerkDefinition(
+            type = "protection_lite",
+            bonusPercentByLevel = mutableListOf(0.02, 0.04, 0.06, 0.08, 0.10),
+        )
+        role.perks += RolePerkDefinition(
+            type = "dragon_mount_velocity",
+            bonusPercentByLevel = mutableListOf(0.04, 0.08, 0.12, 0.16, 0.20),
+        )
+        role.perks += RolePerkDefinition(
+            type = "draconic_presence",
+        )
+        role.perks += RolePerkDefinition(
+            type = "treasure_sense",
+            bonusPercentByLevel = mutableListOf(0.03),
+        )
+    }
+
+    private fun performerJob(): RoleDefinition = typedJob("performer", "Performer", "fairy", "Uses rhythm, charm, and bright places to meet Fairy Pokemon.").also { role ->
+        role.perks.firstOrNull { perk -> perk.type == "cobblemon_catch_rate" }?.bonusPercentByLevel = mutableListOf(0.05, 0.10, 0.18, 0.28, 0.40)
+        role.perks.firstOrNull { perk -> perk.type == "mount_speed" }?.bonusPercentByLevel = mutableListOf(0.03, 0.05, 0.09, 0.14, 0.20)
+        role.perks += RolePerkDefinition(
+            type = "charisma_lite",
+            bonusPercentByLevel = mutableListOf(0.03, 0.06, 0.09, 0.12, 0.15),
+        )
+        role.perks += RolePerkDefinition(
+            type = "happy_boost_lite",
+        )
+        role.perks += RolePerkDefinition(
+            type = "charming_gift",
+            bonusPercentByLevel = mutableListOf(10.0),
+        )
+        role.perks += RolePerkDefinition(
+            type = "encore",
+            bonusPercentByLevel = mutableListOf(0.10),
+        )
+    }
+
     private fun defaultJobScaling(): JobScalingDefinition = JobScalingDefinition(
         jobRankUnlockOverallLevels = JobLevels.fallbackJobRankUnlockOverallLevels.toMutableList(),
         catchRateBonusPercentByRank = JobLevels.fallbackCatchRateBonusPercentByRank.toMutableList(),
@@ -546,6 +586,14 @@ object RolesConfig {
         "ethereal_step_lite",
         "spirit_sight",
         "grave_whisper",
+        "protection_lite",
+        "dragon_mount_velocity",
+        "draconic_presence",
+        "treasure_sense",
+        "charisma_lite",
+        "happy_boost_lite",
+        "charming_gift",
+        "encore",
     )
 
     private fun defaultRogue(): RoleDefinition = RoleDefinition(

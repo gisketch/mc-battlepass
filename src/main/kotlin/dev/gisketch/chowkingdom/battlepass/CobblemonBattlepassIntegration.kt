@@ -2,6 +2,7 @@ package dev.gisketch.chowkingdom.battlepass
 
 import dev.gisketch.chowkingdom.ChowKingdomMod
 import dev.gisketch.chowkingdom.roles.CobblemonMountSpeedStyleDebug
+import dev.gisketch.chowkingdom.roles.DrakeTamerPerks
 import dev.gisketch.chowkingdom.roles.FieldResearcherProgressStore
 import dev.gisketch.chowkingdom.roles.JobPerkDebug
 import dev.gisketch.chowkingdom.roles.RolePerks
@@ -117,7 +118,8 @@ object CobblemonBattlepassIntegration {
             val pokemon = pokemonEntity.javaClass.getMethod("getPokemon").invoke(pokemonEntity)
             val types = pokemonTypes(pokemon)
             val breakdown = RolePerks.pokemonTypeMultiplierBreakdown(player, "mount_speed", types)
-            val styleSpeeds = applyMountSpeed(pokemonEntity, breakdown.multiplier)
+            val styleSpeeds = applyMountSpeed(pokemonEntity, breakdown.multiplier * DrakeTamerPerks.mountVelocityMultiplier(player, types))
+            DrakeTamerPerks.onDragonMount(player, types)
             JobPerkDebug.recordMountSpeed(player, pokemonSpecies(pokemon), types, breakdown, styleSpeeds)
         }.onFailure { exception ->
             ChowKingdomMod.LOGGER.debug("Cobblemon mount speed perk unavailable", exception)

@@ -544,6 +544,66 @@ Fields:
 
 - `bonus_percent_by_level`: chance list. A single value is reused for higher ranks. Spirit Medium default is `[0.05]`.
 
+### `protection_lite`
+
+Reduces all incoming damage.
+
+Fields:
+
+- `bonus_percent_by_level`: rank damage reduction list. Drake Tamer default is `[0.02, 0.04, 0.06, 0.08, 0.10]`.
+
+### `dragon_mount_velocity`
+
+Adds extra ride velocity to Dragon Pokemon mounts on top of the regular Dragon `mount_speed` perk.
+
+Fields:
+
+- `bonus_percent_by_level`: rank ride velocity list. Drake Tamer default is `[0.04, 0.08, 0.12, 0.16, 0.20]`.
+
+### `draconic_presence`
+
+After mounting a Dragon Pokemon, grants Resistance I for 8 seconds. Cooldown is 60 seconds.
+
+Fields: none.
+
+### `treasure_sense`
+
+Opening chest-like containers has a chance to grant 25-75 chowcoins or an amethyst relic shard. Rewards are capped weekly.
+
+Fields:
+
+- `bonus_percent_by_level`: chance list. A single value is reused for higher ranks. Drake Tamer default is `[0.03]`.
+
+### `charisma_lite`
+
+Increases positive NPC friendship gains.
+
+Fields:
+
+- `bonus_percent_by_level`: rank friendship gain bonus list. Performer default is `[0.03, 0.06, 0.09, 0.12, 0.15]`.
+
+### `happy_boost_lite`
+
+While at least one NPC is nearby, grants movement speed by rank: rank 1 Speed I, rank 2 Speed I, rank 3 Speed II, rank 4 Speed II, rank 5 Speed III. Multiple NPCs do not stack.
+
+Fields: none.
+
+### `charming_gift`
+
+Loved and liked NPC gifts gain +10 extra friendship before `charisma_lite` scaling.
+
+Fields:
+
+- `bonus_percent_by_level`: fixed bonus value. Performer default is `[10.0]`.
+
+### `encore`
+
+Completing an NPC quest has a chance to grant +10 bonus BP XP to the same pass. Daily cap is 50 bonus BP XP.
+
+Fields:
+
+- `bonus_percent_by_level`: chance list. A single value is reused for higher ranks. Performer default is `[0.10]`.
+
 ### `quality_harvest_upgrade_chance`
 
 Chance to upgrade Quality Food crop drops on fully-grown crop harvest.
