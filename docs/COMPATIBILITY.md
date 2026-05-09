@@ -47,6 +47,9 @@ Behavior:
 - ParCool stamina HUD is hidden.
 - Epic Fight internal stamina is refilled so it stops being the limiting pool.
 - Epic Fight stamina bar is moved offscreen because its client config has no discovered hide toggle.
+- Paraglider's native stamina wheel is hidden client-side and replaced with Chow Kingdom's 9-slice stamina GUI in the vanilla right-side survival HUD lane.
+- Air bubbles move upward while the custom stamina GUI is visible, so underwater air and stamina do not overlap.
+- The custom stamina GUI uses the yellow fill texture for both normal and recovery states.
 
 Hot reload:
 
@@ -57,6 +60,7 @@ One Paraglider stamina wheel is 1000 stamina. Tune the JSON first before changin
 ## Notes
 
 - This layer is optional and uses reflection. Chow Kingdom still loads without Paragliders, ParCool, Epic Fight, or Epic x ParCool.
+- The custom Paraglider stamina GUI is client-only; stamina values still come from Paraglider's client stamina state.
 - ParCool/Epic Fight config patching happens on mod startup. Some client HUD settings may require a restart after first patch.
 - Epic Fight reflection hooks attach per player while the player is ticking server-side.
 

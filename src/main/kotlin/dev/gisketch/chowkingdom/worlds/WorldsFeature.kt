@@ -5,6 +5,9 @@ import net.minecraft.ChatFormatting
 import net.minecraft.commands.CommandSourceStack
 import net.minecraft.commands.Commands
 import net.minecraft.commands.arguments.EntityArgument
+import net.minecraft.commands.arguments.AngleArgument
+import net.minecraft.commands.arguments.coordinates.BlockPosArgument
+import net.minecraft.core.BlockPos
 import net.minecraft.core.registries.Registries
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceKey
@@ -19,6 +22,7 @@ import net.neoforged.neoforge.event.entity.player.PlayerEvent
 import net.neoforged.neoforge.event.tick.PlayerTickEvent
 
 object WorldsFeature {
+    val COZY_WORLD: ResourceKey<Level> = ResourceKey.create(Registries.DIMENSION, ResourceLocation.fromNamespaceAndPath("ckdm", "cozy_world"))
     val SKY_LANDS: ResourceKey<Level> = ResourceKey.create(Registries.DIMENSION, ResourceLocation.fromNamespaceAndPath("ckdm", "sky_lands"))
 
     fun register() {
@@ -32,15 +36,19 @@ object WorldsFeature {
 
     private fun onPlayerLoggedIn(event: PlayerEvent.PlayerLoggedInEvent) {
         val player = event.entity as? ServerPlayer ?: return
-        if (player.persistentData.getBoolean(FIRST_SKY_LANDS_SPAWN_TAG)) return
-        player.persistentData.putBoolean(FIRST_SKY_LANDS_SPAWN_TAG, true)
-        player.server.execute { sendToSkyLands(player, setRespawn = true) }
+        if (player.persistentData.getBoolean(FIRST_WORLD_SPAWN_TAG) || player.persistentData.getBoolean(FIRST_SKY_LANDS_SPAWN_TAG)) return
+        player.server.execute {
+            if (sendToDefaultSpawn(player, setRespawn = true)) {
+                player.persistentData.putBoolean(FIRST_WORLD_SPAWN_TAG, true)
+                player.persistentData.putBoolean(FIRST_SKY_LANDS_SPAWN_TAG, true)
+            }
+        }
     }
 
     private fun onPlayerRespawn(event: PlayerEvent.PlayerRespawnEvent) {
         val player = event.entity as? ServerPlayer ?: return
         if (event.isEndConquered || player.respawnPosition != null) return
-        player.server.execute { sendToSkyLands(player, setRespawn = true) }
+        player.server.execute { sendToDefaultSpawn(player, setRespawn = true) }
     }
 
     private fun onPlayerTick(event: PlayerTickEvent.Post) {
@@ -73,13 +81,32 @@ object WorldsFeature {
     }
 
     private fun onRegisterCommands(event: RegisterCommandsEvent) {
+        registerSetWorldSpawn(event)
         event.dispatcher.register(Commands.literal("ck").then(worldsRoot()))
         event.dispatcher.register(Commands.literal("chowkingdom").then(worldsRoot()))
+    }
+
+    private fun registerSetWorldSpawn(event: RegisterCommandsEvent) {
+        event.dispatcher.register(
+            Commands.literal("setworldspawn")
+                .requires { source -> source.hasPermission(2) }
+                .executes { context -> setWorldSpawn(context, BlockPos.containing(context.source.position), 0.0f) }
+                .then(
+                    Commands.argument("pos", BlockPosArgument.blockPos())
+                        .executes { context -> setWorldSpawn(context, BlockPosArgument.getSpawnablePos(context, "pos"), 0.0f) }
+                        .then(
+                            Commands.argument("angle", AngleArgument.angle())
+                                .executes { context -> setWorldSpawn(context, BlockPosArgument.getSpawnablePos(context, "pos"), AngleArgument.getAngle(context, "angle")) },
+                        ),
+                ),
+        )
     }
 
     private fun worldsRoot() = Commands.literal("worlds")
         .requires { source -> source.hasPermission(2) }
         .then(Commands.literal("status").executes(::statusSelf).then(Commands.argument("player", EntityArgument.player()).executes(::status)))
+        .then(Commands.literal("cozy_world").executes(::cozyWorldSelf).then(Commands.argument("player", EntityArgument.player()).executes(::cozyWorld)))
+        .then(Commands.literal("cozy").executes(::cozyWorldSelf).then(Commands.argument("player", EntityArgument.player()).executes(::cozyWorld)))
         .then(Commands.literal("sky_lands").executes(::skyLandsSelf).then(Commands.argument("player", EntityArgument.player()).executes(::skyLands)))
         .then(Commands.literal("hub").executes(::skyLandsSelf).then(Commands.argument("player", EntityArgument.player()).executes(::skyLands)))
         .then(Commands.literal("overworld").executes(::overworldSelf).then(Commands.argument("player", EntityArgument.player()).executes(::overworld)))
@@ -90,16 +117,32 @@ object WorldsFeature {
     private fun status(context: CommandContext<CommandSourceStack>): Int = status(context, EntityArgument.getPlayer(context, "player"))
 
     private fun status(context: CommandContext<CommandSourceStack>, player: ServerPlayer): Int {
+        val cozyLoaded = context.source.server.getLevel(COZY_WORLD) != null
         val skyLoaded = context.source.server.getLevel(SKY_LANDS) != null
         context.source.sendSuccess(
             {
+                val cozySpawn = context.source.server.getLevel(COZY_WORLD)?.sharedSpawnPos
                 val skySpawn = context.source.server.getLevel(SKY_LANDS)?.sharedSpawnPos
-                Component.literal("Worlds: ${player.gameProfile.name} is in ${player.level().dimension().location()} | sky_lands_loaded=$skyLoaded | sky_spawn=$skySpawn")
-                    .withStyle(if (skyLoaded) ChatFormatting.GREEN else ChatFormatting.RED)
+                Component.literal("Worlds: ${player.gameProfile.name} is in ${player.level().dimension().location()} | cozy_world_loaded=$cozyLoaded | cozy_spawn=$cozySpawn | sky_lands_loaded=$skyLoaded | sky_spawn=$skySpawn")
+                    .withStyle(if (cozyLoaded || skyLoaded) ChatFormatting.GREEN else ChatFormatting.RED)
             },
             false,
         )
         return 1
+    }
+
+    private fun cozyWorldSelf(context: CommandContext<CommandSourceStack>): Int = cozyWorld(context, context.source.playerOrException)
+
+    private fun cozyWorld(context: CommandContext<CommandSourceStack>): Int = cozyWorld(context, EntityArgument.getPlayer(context, "player"))
+
+    private fun cozyWorld(context: CommandContext<CommandSourceStack>, player: ServerPlayer): Int {
+        return if (sendToCozyWorld(player, setRespawn = true)) {
+            context.source.sendSuccess({ Component.literal("Sent ${player.gameProfile.name} to Cozy World.").withStyle(ChatFormatting.GREEN) }, true)
+            1
+        } else {
+            context.source.sendFailure(Component.literal("Cozy World is not loaded. Check ckdm:cozy_world datapack/dimension setup."))
+            0
+        }
     }
 
     private fun skyLandsSelf(context: CommandContext<CommandSourceStack>): Int = skyLands(context, context.source.playerOrException)
@@ -130,10 +173,35 @@ object WorldsFeature {
 
     private fun sendToSkyLands(player: ServerPlayer, setRespawn: Boolean): Boolean {
         val level = player.server.getLevel(SKY_LANDS) ?: return false
+        return sendToLevelSpawn(player, level, setRespawn)
+    }
+
+    private fun sendToCozyWorld(player: ServerPlayer, setRespawn: Boolean): Boolean {
+        val level = player.server.getLevel(COZY_WORLD) ?: return false
+        return sendToLevelSpawn(player, level, setRespawn)
+    }
+
+    private fun sendToDefaultSpawn(player: ServerPlayer, setRespawn: Boolean): Boolean {
+        val level = player.server.getLevel(COZY_WORLD) ?: player.server.getLevel(SKY_LANDS) ?: return false
+        return sendToLevelSpawn(player, level, setRespawn)
+    }
+
+    private fun sendToLevelSpawn(player: ServerPlayer, level: net.minecraft.server.level.ServerLevel, setRespawn: Boolean): Boolean {
         val pos = level.sharedSpawnPos
-        if (setRespawn) player.setRespawnPosition(SKY_LANDS, pos, 0.0f, true, false)
+        if (setRespawn) player.setRespawnPosition(level.dimension(), pos, 0.0f, true, false)
         player.teleportTo(level, pos.x + 0.5, (pos.y + 1).toDouble(), pos.z + 0.5, 0.0f, 0.0f)
         return true
+    }
+
+    private fun setWorldSpawn(context: CommandContext<CommandSourceStack>, pos: BlockPos, angle: Float): Int {
+        val level = context.source.level
+        if (level.dimension() !in SET_WORLD_SPAWN_DIMENSIONS) {
+            context.source.sendFailure(Component.literal("World spawn can only be set in minecraft:overworld, ckdm:cozy_world, or ckdm:sky_lands."))
+            return 0
+        }
+        level.setDefaultSpawnPos(pos, angle)
+        context.source.sendSuccess({ Component.translatable("commands.setworldspawn.success", pos.x, pos.y, pos.z, angle) }, true)
+        return 1
     }
 
     private fun blocksNaturalMobSpawn(spawnType: MobSpawnType): Boolean = spawnType in BLOCKED_SPAWN_TYPES
@@ -149,6 +217,8 @@ object WorldsFeature {
         MobSpawnType.REINFORCEMENT,
         MobSpawnType.TRIAL_SPAWNER,
     )
+    private val SET_WORLD_SPAWN_DIMENSIONS = setOf(Level.OVERWORLD, COZY_WORLD, SKY_LANDS)
+    private const val FIRST_WORLD_SPAWN_TAG = "ckdm_first_world_spawn"
     private const val FIRST_SKY_LANDS_SPAWN_TAG = "ckdm_first_sky_lands_spawn"
     private const val SKY_LANDS_FALLTHROUGH_Y = 48.0
     private const val SKY_LANDS_RETURN_Y = 64.0

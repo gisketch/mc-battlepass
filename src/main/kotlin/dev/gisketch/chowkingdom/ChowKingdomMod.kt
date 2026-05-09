@@ -16,6 +16,7 @@ import dev.gisketch.chowkingdom.client.ChowKingdomConfigScreen
 import dev.gisketch.chowkingdom.client.ChowDeathScreenClient
 import dev.gisketch.chowkingdom.client.ChowKingdomHud
 import dev.gisketch.chowkingdom.client.InventoryMenuClient
+import dev.gisketch.chowkingdom.client.ParagliderStaminaHud
 import dev.gisketch.chowkingdom.client.PlayerListHudClient
 import dev.gisketch.chowkingdom.compat.UnifiedStaminaFeature
 import dev.gisketch.chowkingdom.config.TomlConfigIO
@@ -86,6 +87,7 @@ class ChowKingdomMod(modBus: IEventBus, container: ModContainer) {
             BattlepassClient.register(modBus)
             ChowDeathScreenClient.register()
             ChowKingdomHud.register(modBus)
+            ParagliderStaminaHud.register(modBus)
             InventoryMenuClient.register()
             PlayerListHudClient.register(modBus)
             DiscordScreenshotClient.register(modBus)

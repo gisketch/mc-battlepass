@@ -9,9 +9,11 @@
   "client": [
     "ClientPacketListenerMixin",
     "EntityRendererMixin",
+    "GuiStaminaAirOffsetMixin",
     "GuiGraphicsAccessor",
     "KeyboardHandlerMixin",
     "LivingEntityRendererMixin",
+    "ParagliderGuiLayersMixin",
     "XaeroRadarColorHelperMixin",
     "XaeroRadarIconManagerMixin"
   ],

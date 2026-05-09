@@ -2,13 +2,14 @@
 
 ## Worlds
 
-- `ckdm:sky_lands`: Sky Lands. Player/NPC world. Uses Sky Archipelago `sky_archipelago:sky_island` terrain based on the built-in `from_the_lowest_low_to_the_highest_high` survival preset.
+- `ckdm:cozy_world`: preferred player spawn world when loaded. `/setworldspawn` is allowed here.
+- `ckdm:sky_lands`: Sky Lands. Fallback player/NPC world. Uses Sky Archipelago `sky_archipelago:sky_island` terrain based on the built-in `from_the_lowest_low_to_the_highest_high` survival preset.
 - `minecraft:overworld`: normal base overworld. Vanilla-compatible terrain, mobs, and difficulty behavior stay unchanged.
 
 ## Sky Lands Rules
 
-- First login routes the player to the Sky Lands shared spawn and sets their respawn point there.
-- Death respawn routes to Sky Lands when the player has no bed/anchor respawn.
+- First login routes the player to the `ckdm:cozy_world` shared spawn and sets their respawn point there when Cozy World is loaded. If not, Sky Lands is used as fallback.
+- Death respawn routes to Cozy World when the player has no bed/anchor respawn and Cozy World is loaded. If not, Sky Lands is used as fallback.
 - Natural mob spawns are blocked in Sky Lands for cozy hub use.
 - Sky Lands has no ocean layer.
 - Sky Lands uses the survival preset as a base, with middle-ground island size bands for living space: small `40-52`, medium `55-78`, large `90-135`, with dynamic `150-250` cluster spacing.
@@ -23,13 +24,17 @@
 
 ```mcfunction
 /ck worlds status [player]
+/ck worlds cozy_world [player]
+/ck worlds cozy [player]
 /ck worlds sky_lands [player]
 /ck worlds hub [player]
 /ck worlds overworld [player]
 /ck worlds base [player]
 ```
 
-`sky_lands` and `hub` teleport to the Sky Lands shared spawn and set the player's respawn point there. `overworld` and `base` teleport to the normal overworld spawn.
+`cozy_world` and `cozy` teleport to the Cozy World shared spawn and set the player's respawn point there. `sky_lands` and `hub` teleport to the Sky Lands shared spawn and set the player's respawn point there. `overworld` and `base` teleport to the normal overworld spawn.
+
+Vanilla `/setworldspawn` is overridden to allow `minecraft:overworld`, `ckdm:cozy_world`, and `ckdm:sky_lands`.
 
 ## Dependencies
 
