@@ -15,7 +15,6 @@ import net.minecraft.client.renderer.MultiBufferSource
 import net.minecraft.client.renderer.RenderType
 import net.minecraft.client.renderer.texture.OverlayTexture
 import net.minecraft.client.resources.sounds.SimpleSoundInstance
-import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.sounds.SoundEvents
@@ -23,7 +22,6 @@ import net.minecraft.util.Mth
 import net.minecraft.world.entity.EntityAttachment
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.item.ItemStack
-import net.minecraft.world.item.Items
 import net.minecraft.world.item.ItemDisplayContext
 import net.neoforged.neoforge.client.ClientHooks
 import net.neoforged.neoforge.client.event.GatherEffectScreenTooltipsEvent
@@ -342,9 +340,7 @@ internal fun roleIconTexture(rawIcon: String): ResourceLocation? {
 }
 
 internal fun roleIconStack(rawIcon: String): ItemStack {
-    val id = runCatching { ResourceLocation.parse(rawIcon.trim()) }.getOrNull() ?: return ItemStack.EMPTY
-    val item = BuiltInRegistries.ITEM.getOptional(id).orElse(Items.AIR)
-    return if (item == Items.AIR) ItemStack.EMPTY else ItemStack(item)
+    return RoleItemStacks.fromId(rawIcon, "role icon") ?: ItemStack.EMPTY
 }
 
 private const val NAMETAG_ICON_SIZE = 9.0f
@@ -859,9 +855,7 @@ private class RolesOnboardingScreen(private var payload: RolesSyncPayload) : Scr
         ((((color ushr 24) and 0xFF) * renderAlpha).toInt().coerceIn(0, 255) shl 24) or (color and 0x00FFFFFF)
 
     private fun itemStack(raw: String): ItemStack {
-        val id = runCatching { ResourceLocation.parse(raw.trim()) }.getOrNull() ?: return ItemStack.EMPTY
-        val item = BuiltInRegistries.ITEM.getOptional(id).orElse(Items.AIR)
-        return if (item == Items.AIR) ItemStack.EMPTY else ItemStack(item)
+        return RoleItemStacks.fromId(raw, "role icon") ?: ItemStack.EMPTY
     }
 
     private fun iconTexture(raw: String): ResourceLocation? {

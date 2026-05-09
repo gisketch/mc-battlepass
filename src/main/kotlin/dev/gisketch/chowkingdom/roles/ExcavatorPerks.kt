@@ -47,7 +47,7 @@ internal object ExcavatorPerks {
         val chance = RolePerks.configuredJobChance(player, "archaeologist")
         if (chance <= 0.0 || player.random.nextDouble() >= chance || !isArchaeologistBlock(event.state)) return
         val pool = RolePerks.jobPerks(player, "archaeologist").flatMap { perk -> perk.rewardPool }.ifEmpty { DEFAULT_TREASURE_POOL }
-        val candidates = pool.mapNotNull(RoleItemStacks::fromId)
+        val candidates = pool.mapNotNull { item -> RoleItemStacks.fromId(item, "archaeologist reward") }
         if (candidates.isEmpty()) return
         val stack = candidates[player.random.nextInt(candidates.size)].copy()
         event.drops.add(ItemEntity(player.level(), event.pos.x + 0.5, event.pos.y + 0.5, event.pos.z + 0.5, stack))

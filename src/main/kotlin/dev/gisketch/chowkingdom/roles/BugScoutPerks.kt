@@ -30,7 +30,7 @@ internal object BugScoutPerks {
         val chance = RolePerks.configuredJobChance(player, "tiny_forager")
         if (chance <= 0.0 || !isTinyForagerBlock(event.state) || player.random.nextDouble() >= chance) return
         val pool = RolePerks.jobPerks(player, "tiny_forager").flatMap { perk -> perk.rewardPool }.ifEmpty { DEFAULT_TINY_FORAGER_POOL }
-        val candidates = pool.mapNotNull(RoleItemStacks::fromId)
+        val candidates = pool.mapNotNull { item -> RoleItemStacks.fromId(item, "tiny_forager reward") }
         if (candidates.isEmpty()) return
         val stack = candidates[player.random.nextInt(candidates.size)]
         event.drops.add(ItemEntity(player.level(), event.pos.x + 0.5, event.pos.y + 0.5, event.pos.z + 0.5, stack.copy()))

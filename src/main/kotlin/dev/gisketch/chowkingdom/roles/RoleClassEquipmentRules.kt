@@ -69,7 +69,7 @@ internal object RoleClassEquipmentRules {
     fun grantStartingItems(player: ServerPlayer, classId: String) {
         val role = RolesConfig.roleClass(classId) ?: return
         val items = role.perks.filter { perk -> perk.type == "starting_items" }.flatMap { perk -> perk.startingItems }
-        val stacks = items.mapNotNull(RoleItemStacks::fromId)
+        val stacks = items.mapNotNull { item -> RoleItemStacks.fromId(item, "class $classId starting item") }
         if (stacks.isEmpty() || !RoleStore.markStartingItemsGranted(player.uuid, classId)) return
         stacks.forEach { stack -> if (!player.inventory.add(stack)) player.drop(stack, false) }
     }
