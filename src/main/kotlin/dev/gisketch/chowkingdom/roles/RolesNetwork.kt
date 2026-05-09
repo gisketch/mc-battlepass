@@ -67,6 +67,7 @@ object RolesNetwork {
             openOnboarding = openOnboarding,
             jobRankUnlockOverallLevels = JobLevels.jobRankUnlockOverallLevels(),
             catchRateBonusPercentByRank = JobLevels.catchRateBonusPercentByRank(),
+            mountSpeedBonusPercentByRank = JobLevels.mountSpeedBonusPercentByRank(),
         )
     }
 
@@ -111,6 +112,7 @@ data class RolesSyncPayload(
     val openOnboarding: Boolean,
     val jobRankUnlockOverallLevels: List<Int>,
     val catchRateBonusPercentByRank: List<Double>,
+    val mountSpeedBonusPercentByRank: List<Double>,
 ) : CustomPacketPayload {
     override fun type(): CustomPacketPayload.Type<RolesSyncPayload> = TYPE
 
@@ -127,6 +129,7 @@ data class RolesSyncPayload(
                 openOnboarding = buffer.readBoolean(),
                 jobRankUnlockOverallLevels = readIntList(buffer, MAX_JOB_RANKS),
                 catchRateBonusPercentByRank = readDoubleList(buffer, MAX_JOB_RANKS),
+                mountSpeedBonusPercentByRank = readDoubleList(buffer, MAX_JOB_RANKS),
             )
 
             override fun encode(buffer: RegistryFriendlyByteBuf, value: RolesSyncPayload) {
@@ -145,6 +148,7 @@ data class RolesSyncPayload(
                 buffer.writeBoolean(value.openOnboarding)
                 writeIntList(buffer, value.jobRankUnlockOverallLevels, MAX_JOB_RANKS)
                 writeDoubleList(buffer, value.catchRateBonusPercentByRank, MAX_JOB_RANKS)
+                writeDoubleList(buffer, value.mountSpeedBonusPercentByRank, MAX_JOB_RANKS)
             }
         }
     }

@@ -55,9 +55,19 @@ object RolesConfig {
     private fun loadDefinitions(directory: Path): Map<String, RoleDefinition> = Files.list(directory).use { stream ->
         stream.filter { path -> path.extension.equals("toml", ignoreCase = true) }
             .map { path -> readDefinition(path) }
+            .map(::withBundledDefaultPerks)
             .filter { definition -> definition.id.isNotBlank() }
             .toList()
             .associateBy { definition -> definition.id }
+    }
+
+    private fun withBundledDefaultPerks(definition: RoleDefinition): RoleDefinition {
+        val bundled = defaultJobs().firstOrNull { job -> job.id == definition.id } ?: return definition
+        bundled.perks
+            .filter { perk -> perk.type == "mount_speed" }
+            .filterNot { defaultPerk -> definition.perks.any { perk -> perk.type == defaultPerk.type && perk.pokemonType == defaultPerk.pokemonType } }
+            .forEach { perk -> definition.perks += perk.copy() }
+        return definition
     }
 
     private fun readDefinition(path: Path): RoleDefinition = try {
@@ -122,12 +132,17 @@ object RolesConfig {
                 pokemonType = pokemonType,
                 multiplier = 1.05,
             ),
+            RolePerkDefinition(
+                type = "mount_speed",
+                pokemonType = pokemonType,
+            ),
         ),
     )
 
     private fun defaultJobScaling(): JobScalingDefinition = JobScalingDefinition(
         jobRankUnlockOverallLevels = JobLevels.fallbackJobRankUnlockOverallLevels.toMutableList(),
         catchRateBonusPercentByRank = JobLevels.fallbackCatchRateBonusPercentByRank.toMutableList(),
+        mountSpeedBonusPercentByRank = JobLevels.fallbackMountSpeedBonusPercentByRank.toMutableList(),
     )
 
     private fun defaultRogue(): RoleDefinition = RoleDefinition(

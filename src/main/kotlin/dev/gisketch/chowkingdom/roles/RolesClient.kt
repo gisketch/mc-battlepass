@@ -202,6 +202,7 @@ object RolesClientState {
     private var classesById: Map<String, RoleUiDefinitionPayload> = emptyMap()
     private var jobRankUnlockOverallLevels: List<Int> = JobLevels.fallbackJobRankUnlockOverallLevels
     private var catchRateBonusPercentByRank: List<Double> = JobLevels.fallbackCatchRateBonusPercentByRank
+    private var mountSpeedBonusPercentByRank: List<Double> = JobLevels.fallbackMountSpeedBonusPercentByRank
     private val playerIcons: MutableMap<UUID, RoleNametagIcons> = linkedMapOf()
     private val playerRoleIds: MutableMap<UUID, RoleProfileIds> = linkedMapOf()
 
@@ -210,6 +211,7 @@ object RolesClientState {
         classesById = payload.classes.associateBy { role -> role.id }
         jobRankUnlockOverallLevels = payload.jobRankUnlockOverallLevels.ifEmpty { JobLevels.fallbackJobRankUnlockOverallLevels }
         catchRateBonusPercentByRank = payload.catchRateBonusPercentByRank.ifEmpty { JobLevels.fallbackCatchRateBonusPercentByRank }
+        mountSpeedBonusPercentByRank = payload.mountSpeedBonusPercentByRank.ifEmpty { JobLevels.fallbackMountSpeedBonusPercentByRank }
         playerIcons.clear()
         playerRoleIds.clear()
         payload.players.forEach { player ->
@@ -261,6 +263,11 @@ object RolesClientState {
         return perk.bonusPercentByLevel.getOrNull(rank - 1) ?: catchRateBonusPercentByRank.getOrElse(rank - 1) { catchRateBonusPercentByRank.lastOrNull() ?: 0.0 }
     }
 
+    fun mountSpeedBonusPercent(perk: RolePerkUiPayload, rank: Int): Double {
+        if (rank <= 0) return 0.0
+        return perk.bonusPercentByLevel.getOrNull(rank - 1) ?: mountSpeedBonusPercentByRank.getOrElse(rank - 1) { mountSpeedBonusPercentByRank.lastOrNull() ?: 0.0 }
+    }
+
     private fun overallLevelFor(playerId: UUID): Int = BattlepassClientState.playerProgress(playerId)?.xpByPass?.values?.sum()?.div(BATTLEPASS_XP_PER_LEVEL) ?: 0
 
     private fun perkTooltipLine(perk: RolePerkUiPayload, rank: Int): String? = when (perk.type) {
@@ -269,7 +276,11 @@ object RolesClientState {
             val target = perk.pokemonType.ifBlank { "matching" }.replaceFirstChar { char -> char.titlecase(Locale.ROOT) }
             "${formatBonusPercent(bonus)} catch rate for $target Pokemon"
         }
-        "mount_speed" -> "${formatMultiplier(perk.multiplier)}x mount speed"
+        "mount_speed" -> {
+            val bonus = mountSpeedBonusPercent(perk, rank)
+            val target = perk.pokemonType.ifBlank { "matching" }.replaceFirstChar { char -> char.titlecase(Locale.ROOT) }
+            "${formatBonusPercent(bonus)} mount speed for $target Pokemon"
+        }
         "quality_food_harvest_bonus" -> "${formatMultiplier(perk.multiplier)}x quality food harvest"
         "prevent_crop_trample" -> "Prevents crop trampling"
         else -> perk.type.replace('_', ' ').replaceFirstChar { char -> char.titlecase(Locale.ROOT) }

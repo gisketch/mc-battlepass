@@ -143,6 +143,10 @@ object RolesFeature {
                                 .then(
                                     Commands.literal("catch-rate")
                                         .then(Commands.argument("player", EntityArgument.player()).executes(::debugCatchRate)),
+                                )
+                                .then(
+                                    Commands.literal("mount-speed")
+                                        .then(Commands.argument("player", EntityArgument.player()).executes(::debugMountSpeed)),
                                 ),
                         )
                         .then(
@@ -249,6 +253,34 @@ object RolesFeature {
             {
                 Component.literal(
                     "${debug.playerName}: ${debug.species} types=[$types] overallLv=${debug.overallLevel} jobRank=${debug.jobLevel} base=${formatCatchRate(debug.baseCatchRate)} final=${formatCatchRate(debug.finalCatchRate)} modifier=${formatBonusPercent(debug.multiplier - 1.0)} (${formatMultiplier(debug.multiplier)}x)",
+                )
+            },
+            false,
+        )
+        context.source.sendSuccess({ Component.literal("jobs=[$jobs] perks=[$perks]") }, false)
+        return 1
+    }
+
+    private fun debugMountSpeed(context: CommandContext<CommandSourceStack>): Int {
+        val player = EntityArgument.getPlayer(context, "player")
+        val debug = JobPerkDebug.lastMountSpeed(player)
+        if (debug == null) {
+            context.source.sendSuccess({ Component.literal("${player.gameProfile.name}: no Cobblemon mount-speed ride recorded yet.") }, false)
+            return 1
+        }
+        val types = debug.pokemonTypes.sorted().joinToString(", ").ifBlank { "unknown" }
+        val jobs = debug.activeJobIds.joinToString(", ").ifBlank { "none" }
+        val perks = debug.appliedPerks.joinToString(", ") { entry ->
+            val roleName = entry.roleDisplayName.ifBlank { entry.roleId }
+            "$roleName:${entry.pokemonType ?: "any"} Rank ${entry.jobLevel} ${formatBonusPercent(entry.bonusPercent)} (${formatMultiplier(entry.multiplier)}x)"
+        }.ifBlank { "none" }
+        val speeds = debug.styleSpeeds.joinToString(", ") { speed ->
+            "${speed.style} ${formatMountSpeed(speed.baseSpeed)}->${formatMountSpeed(speed.finalSpeed)}"
+        }.ifBlank { "none" }
+        context.source.sendSuccess(
+            {
+                Component.literal(
+                    "${debug.playerName}: ${debug.species} types=[$types] overallLv=${debug.overallLevel} jobRank=${debug.jobLevel} modifier=${formatBonusPercent(debug.multiplier - 1.0)} (${formatMultiplier(debug.multiplier)}x) speeds=[$speeds]",
                 )
             },
             false,
@@ -503,6 +535,8 @@ object RolesFeature {
     }
 
     private fun formatCatchRate(value: Double): String = String.format(Locale.ROOT, "%.2f", value)
+
+    private fun formatMountSpeed(value: Double): String = String.format(Locale.ROOT, "%.2f", value)
 
     private fun formatMultiplier(value: Double): String = String.format(Locale.ROOT, "%.2f", value)
 

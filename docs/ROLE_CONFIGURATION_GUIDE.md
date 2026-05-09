@@ -56,6 +56,7 @@ icon = "textures/gui/jobs/botanist.png"
 description = "Reads leaf, vine, and bloom signs to work with Grass Pokemon."
 perks = [
   { type = "cobblemon_catch_rate", pokemon_type = "grass" },
+  { type = "mount_speed", pokemon_type = "grass" },
 ]
 ```
 
@@ -64,7 +65,7 @@ Current job perk types:
 - `prevent_crop_trample`: cancels farmland trampling for active players.
 - `quality_food_harvest_bonus`: rerolls Quality Food quality on crop drops. Uses `multiplier`.
 - `cobblemon_catch_rate`: active Cobblemon catch-rate scaling. Uses `pokemon_type` and optional `bonus_percent_by_level` override. Configs without `bonus_percent_by_level` use `catch_rate_bonus_percent_by_rank` from `roles/job_scaling.toml`. Matching active jobs stack multiplicatively.
-- `mount_speed`: data hook for Pokemon type mount speed scaling. Uses `pokemon_type` and `multiplier`.
+- `mount_speed`: active Cobblemon mount-speed scaling. Uses `pokemon_type` and optional `bonus_percent_by_level` override. Configs without `bonus_percent_by_level` use `mount_speed_bonus_percent_by_rank` from `roles/job_scaling.toml`. Matching active jobs stack multiplicatively.
 
 ## Class TOML Shape
 
@@ -203,7 +204,20 @@ Default `catch_rate_bonus_percent_by_rank`:
 - Rank 4: `0.25`
 - Rank 5: `0.50`
 
+Default `mount_speed_bonus_percent_by_rank`:
+
+- Rank 1: `0.03`
+- Rank 2: `0.05`
+- Rank 3: `0.09`
+- Rank 4: `0.14`
+- Rank 5: `0.20`
+
 Players with active jobs and rank 1+ get visible inventory status rows. Each active job uses its configured role icon, renders as `Lv. N Job Name`, does not emit potion particles, and keeps rank perk details in the hover tooltip. At overall level 0, active jobs remain assigned but rank-scaled perks are inactive.
+
+Debug commands:
+
+- `/ck roles debug catch-rate <player>`: last Cobblemon catch-rate throw snapshot.
+- `/ck roles debug mount-speed <player>`: last Cobblemon ride snapshot with per-style speed before and after the perk.
 
 ## Adding A New Class
 

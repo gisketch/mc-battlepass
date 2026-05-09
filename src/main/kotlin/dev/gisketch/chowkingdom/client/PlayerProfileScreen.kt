@@ -176,7 +176,11 @@ private class PlayerProfileScreen : Screen(Component.literal("Profile")) {
             val rankText = if (jobRank > 0) "Rank $jobRank" else "Rank locked"
             ProfilePerk("${percentText(bonus)} ${typeLabel(perk.pokemonType)} catch rate", "${role.displayName} improves catch rate for ${typeLabel(perk.pokemonType)} Pokemon. Current job rank: $rankText.")
         }
-        "mount_speed" -> ProfilePerk("${multiplierText(perk.multiplier)}x ${typeLabel(perk.pokemonType)} mount speed", "${role.displayName} has a data hook for ${typeLabel(perk.pokemonType)} Pokemon mount speed.")
+        "mount_speed" -> {
+            val bonus = RolesClientState.mountSpeedBonusPercent(perk, jobRank)
+            val rankText = if (jobRank > 0) "Rank $jobRank" else "Rank locked"
+            ProfilePerk("${percentText(bonus)} ${typeLabel(perk.pokemonType)} mount speed", "${role.displayName} improves mount speed for ${typeLabel(perk.pokemonType)} Pokemon. Current job rank: $rankText.")
+        }
         "quality_food_harvest_bonus" -> ProfilePerk("${multiplierText(perk.multiplier)}x Quality Food harvest", "${role.displayName} rerolls Quality Food crop drops based on this multiplier.")
         "prevent_crop_trample" -> ProfilePerk("Prevents crop trampling", "${role.displayName} cancels farmland trampling while active.")
         "starting_items" -> ProfilePerk("Starting items: ${perk.startingItems.size}", perk.startingItems.joinToString(", ").ifBlank { "No starting items configured." })

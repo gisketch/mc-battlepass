@@ -1,6 +1,7 @@
 package dev.gisketch.chowkingdom.battlepass
 
 import dev.gisketch.chowkingdom.ChowKingdomMod
+import dev.gisketch.chowkingdom.roles.CobblemonMountSpeedStyleDebug
 import dev.gisketch.chowkingdom.roles.JobPerkDebug
 import dev.gisketch.chowkingdom.roles.RolePerks
 import net.minecraft.resources.ResourceLocation
@@ -25,6 +26,7 @@ object CobblemonBattlepassIntegration {
             subscribeRaw(eventsClass, "POKEMON_CATCH_RATE", ::handlePokemonCatchRate)
             subscribeRaw(eventsClass, "POKEMON_CAPTURED", ::handlePokemonCaught)
             subscribeRaw(eventsClass, "POKEMON_SENT_POST", ::handlePokemonSentOut)
+            subscribeRaw(eventsClass, "RIDE_EVENT_POST", ::handleRidePost)
             subscribeRaw(eventsClass, "FRIENDSHIP_UPDATED", ::handleFriendshipUpdated)
             ChowKingdomMod.LOGGER.info("Registered Cobblemon battlepass integration")
         }.onFailure { exception ->
@@ -66,6 +68,20 @@ object CobblemonBattlepassIntegration {
         val finalCatchRate = (baseCatchRate * breakdown.multiplier).coerceAtLeast(0.0)
         if (finalCatchRate != baseCatchRate) event.javaClass.getMethod("setCatchRate", java.lang.Float.TYPE).invoke(event, finalCatchRate.toFloat())
         JobPerkDebug.recordCatchRate(player, pokemonSpecies(pokemon), types, baseCatchRate, breakdown, finalCatchRate)
+    }
+
+    private fun handleRidePost(event: Any) {
+        runCatching {
+            val player = event.javaClass.getMethod("getPlayer").invoke(event) as? ServerPlayer ?: return
+            val pokemonEntity = event.javaClass.getMethod("getPokemon").invoke(event) ?: return
+            val pokemon = pokemonEntity.javaClass.getMethod("getPokemon").invoke(pokemonEntity)
+            val types = pokemonTypes(pokemon)
+            val breakdown = RolePerks.pokemonTypeMultiplierBreakdown(player, "mount_speed", types)
+            val styleSpeeds = applyMountSpeed(pokemonEntity, breakdown.multiplier)
+            JobPerkDebug.recordMountSpeed(player, pokemonSpecies(pokemon), types, breakdown, styleSpeeds)
+        }.onFailure { exception ->
+            ChowKingdomMod.LOGGER.debug("Cobblemon mount speed perk unavailable", exception)
+        }
     }
 
     private fun handlePokemonCaught(event: Any) {
@@ -223,6 +239,29 @@ object CobblemonBattlepassIntegration {
         runCatching { target.javaClass.getMethod(methodName).invoke(target) as? Boolean == true }.getOrDefault(false)
 
     private fun pokemonFriendship(pokemon: Any): Int? = runCatching { pokemon.javaClass.getMethod("getFriendship").invoke(pokemon) as? Int }.getOrNull()
+
+    private fun applyMountSpeed(pokemonEntity: Any, multiplier: Double): List<CobblemonMountSpeedStyleDebug> {
+        val rideProp = pokemonEntity.javaClass.getMethod("getRideProp").invoke(pokemonEntity)
+        val behaviours = rideProp.javaClass.getMethod("getBehaviours").invoke(rideProp) as? Map<*, *> ?: return emptyList()
+        val speedStat = Class.forName("com.cobblemon.mod.common.api.riding.stats.RidingStat").enumConstants.first { value -> (value as Enum<*>).name == "SPEED" }
+        val overrideMethod = pokemonEntity.javaClass.methods.firstOrNull { method -> method.name == "overrideRideStat\$common" && method.parameterTypes.size == 3 } ?: return emptyList()
+        val applied = mutableListOf<CobblemonMountSpeedStyleDebug>()
+        behaviours.forEach { (style, settings) ->
+            if (style == null || settings == null) return@forEach
+            val baseSpeed = ridingSettingValue(settings, speedStat) ?: return@forEach
+            val finalSpeed = baseSpeed * multiplier.coerceAtLeast(0.0)
+            overrideMethod.invoke(pokemonEntity, style, speedStat, finalSpeed)
+            applied += CobblemonMountSpeedStyleDebug(styleName(style), baseSpeed, finalSpeed)
+        }
+        return applied
+    }
+
+    private fun styleName(style: Any): String = (style as? Enum<*>)?.name?.lowercase(Locale.ROOT) ?: style.toString().normalizedToken()
+
+    private fun ridingSettingValue(settings: Any, stat: Any): Double? = runCatching {
+        val calculate = settings.javaClass.methods.first { method -> method.name == "calculate" && method.parameterTypes.size == 2 }
+        (calculate.invoke(settings, stat, 0.0f) as? Number)?.toDouble()
+    }.getOrNull()
 
     private fun namedToken(value: Any): String = runCatching {
         value.javaClass.getMethod("getName").invoke(value).toString().normalizedToken()

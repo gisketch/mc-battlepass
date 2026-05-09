@@ -53,6 +53,7 @@ object RolePerks {
 
     private fun scaledMultiplier(perk: RolePerkDefinition, jobLevel: Int): Double = when (perk.type) {
         "cobblemon_catch_rate" -> JobLevels.catchRateMultiplier(perk, jobLevel)
+        "mount_speed" -> JobLevels.mountSpeedMultiplier(perk, jobLevel)
         else -> perk.bonusPercentByLevel.getOrNull(jobLevel - 1)?.let { bonusPercent -> (1.0 + bonusPercent).coerceAtLeast(0.0) } ?: perk.multiplier.coerceAtLeast(0.0)
     }
 }

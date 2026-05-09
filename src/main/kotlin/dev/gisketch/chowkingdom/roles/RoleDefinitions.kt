@@ -21,6 +21,8 @@ data class JobScalingDefinition(
     var jobRankUnlockOverallLevels: MutableList<Int> = mutableListOf(),
     @SerializedName(value = "catch_rate_bonus_percent_by_rank", alternate = ["catchRateBonusPercentByRank"])
     var catchRateBonusPercentByRank: MutableList<Double> = mutableListOf(),
+    @SerializedName(value = "mount_speed_bonus_percent_by_rank", alternate = ["mountSpeedBonusPercentByRank"])
+    var mountSpeedBonusPercentByRank: MutableList<Double> = mutableListOf(),
 )
 
 data class RolePerkDefinition(
