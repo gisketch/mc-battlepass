@@ -196,3 +196,16 @@ Fields:
 - Put non-scaling unique perk chance in the first `bonus_percent_by_level` value.
 - Existing runtime TOML is not overwritten by Kotlin defaults.
 - After edits, run `/ck roles reload` or restart the client/server.
+
+## Botanist Testing
+
+Use `/ck roles debug botanist` for yourself, or `/ck roles debug botanist <player>` for another player. Run the same command again to turn it off. Role debug commands render live overlays instead of chat spam.
+
+The command shows a live center-screen debug overlay with:
+
+- active jobs, overall level, and job rank.
+- active Botanist chances for crop bonus drops, Quality Harvest, Seasonal Farmer planting, Gentle Steps, and legacy Quality Food multiplier.
+- configured Botanist perk rows from the loaded job TOML.
+- looked-at block stats: crop state, maturity, Serene Seasons current season, crop season tags, favored-season result, and stored Botanist planting chance.
+
+For RNG testing, temporarily set relevant chances to `1.0`, run `/ck roles reload`, then restore the normal values.

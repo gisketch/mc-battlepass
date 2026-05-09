@@ -28,6 +28,8 @@ import net.minecraft.world.item.Item
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 import net.minecraft.world.level.block.CropBlock
+import net.minecraft.world.phys.BlockHitResult
+import net.minecraft.world.phys.HitResult
 import net.neoforged.bus.api.EventPriority
 import net.neoforged.bus.api.IEventBus
 import net.neoforged.fml.loading.FMLEnvironment
@@ -66,6 +68,10 @@ object RolesFeature {
         RolesConfig.load()
         RoleStore.load()
         RolesNetwork.register(modBus)
+        LiveDebugHelper.register(modBus)
+        LiveDebugHelper.registerProvider("catch-rate", "Catch Rate", ::catchRateDebugLines)
+        LiveDebugHelper.registerProvider("mount-speed", "Mount Speed", ::mountSpeedDebugLines)
+        LiveDebugHelper.registerProvider("botanist", "Botanist", ::botanistDebugLines)
         if (FMLEnvironment.dist.isClient) registerClientHooks()
         NeoForge.EVENT_BUS.addListener(::onRegisterCommands)
         NeoForge.EVENT_BUS.addListener(::onServerStarted)
@@ -153,6 +159,11 @@ object RolesFeature {
                                 .then(
                                     Commands.literal("mount-speed")
                                         .then(Commands.argument("player", EntityArgument.player()).executes(::debugMountSpeed)),
+                                )
+                                .then(
+                                    Commands.literal("botanist")
+                                        .executes(::debugBotanist)
+                                        .then(Commands.argument("player", EntityArgument.player()).executes(::debugBotanist)),
                                 ),
                         )
                         .then(
@@ -244,56 +255,149 @@ object RolesFeature {
 
     private fun debugCatchRate(context: CommandContext<CommandSourceStack>): Int {
         val player = EntityArgument.getPlayer(context, "player")
+        return toggleLiveDebug(context, player, "catch-rate", "Catch-rate")
+    }
+
+    private fun catchRateDebugLines(player: ServerPlayer): List<String> {
         val debug = JobPerkDebug.lastCatchRate(player)
-        if (debug == null) {
-            context.source.sendSuccess({ Component.literal("${player.gameProfile.name}: no Cobblemon catch-rate throw recorded yet.") }, false)
-            return 1
-        }
+            ?: return listOf("Player: ${player.gameProfile.name}", "Status: No Cobblemon catch-rate throw recorded yet")
         val types = debug.pokemonTypes.sorted().joinToString(", ").ifBlank { "unknown" }
-        val jobs = debug.activeJobIds.joinToString(", ").ifBlank { "none" }
+        val jobs = readableJobIds(debug.activeJobIds)
         val perks = debug.appliedPerks.joinToString(", ") { entry ->
             val roleName = entry.roleDisplayName.ifBlank { entry.roleId }
-            "$roleName:${entry.pokemonType ?: "any"} Rank ${entry.jobLevel} ${formatBonusPercent(entry.bonusPercent)} (${formatMultiplier(entry.multiplier)}x)"
+            val type = entry.pokemonType?.let(::readableText) ?: "Any type"
+            "$roleName, $type, Rank ${entry.jobLevel}, ${formatBonusPercent(entry.bonusPercent)} (${formatMultiplier(entry.multiplier)}x)"
         }.ifBlank { "none" }
-        context.source.sendSuccess(
-            {
-                Component.literal(
-                    "${debug.playerName}: ${debug.species} types=[$types] overallLv=${debug.overallLevel} jobRank=${debug.jobLevel} base=${formatCatchRate(debug.baseCatchRate)} final=${formatCatchRate(debug.finalCatchRate)} modifier=${formatBonusPercent(debug.multiplier - 1.0)} (${formatMultiplier(debug.multiplier)}x)",
-                )
-            },
-            false,
+        return listOf(
+            "Player: ${debug.playerName}",
+            "Pokemon: ${debug.species}",
+            "Types: $types",
+            "Overall Level: ${debug.overallLevel}",
+            "Job Rank: ${debug.jobLevel}",
+            "Catch Rate: ${formatCatchRate(debug.baseCatchRate)} -> ${formatCatchRate(debug.finalCatchRate)}",
+            "Modifier: ${formatBonusPercent(debug.multiplier - 1.0)} (${formatMultiplier(debug.multiplier)}x)",
+            "Active Jobs: $jobs",
+            "Matching Perks: $perks",
         )
-        context.source.sendSuccess({ Component.literal("jobs=[$jobs] perks=[$perks]") }, false)
-        return 1
     }
 
     private fun debugMountSpeed(context: CommandContext<CommandSourceStack>): Int {
         val player = EntityArgument.getPlayer(context, "player")
+        return toggleLiveDebug(context, player, "mount-speed", "Mount-speed")
+    }
+
+    private fun mountSpeedDebugLines(player: ServerPlayer): List<String> {
         val debug = JobPerkDebug.lastMountSpeed(player)
-        if (debug == null) {
-            context.source.sendSuccess({ Component.literal("${player.gameProfile.name}: no Cobblemon mount-speed ride recorded yet.") }, false)
-            return 1
-        }
+            ?: return listOf("Player: ${player.gameProfile.name}", "Status: No Cobblemon mount-speed ride recorded yet")
         val types = debug.pokemonTypes.sorted().joinToString(", ").ifBlank { "unknown" }
-        val jobs = debug.activeJobIds.joinToString(", ").ifBlank { "none" }
+        val jobs = readableJobIds(debug.activeJobIds)
         val perks = debug.appliedPerks.joinToString(", ") { entry ->
             val roleName = entry.roleDisplayName.ifBlank { entry.roleId }
-            "$roleName:${entry.pokemonType ?: "any"} Rank ${entry.jobLevel} ${formatBonusPercent(entry.bonusPercent)} (${formatMultiplier(entry.multiplier)}x)"
+            val type = entry.pokemonType?.let(::readableText) ?: "Any type"
+            "$roleName, $type, Rank ${entry.jobLevel}, ${formatBonusPercent(entry.bonusPercent)} (${formatMultiplier(entry.multiplier)}x)"
         }.ifBlank { "none" }
         val speeds = debug.styleSpeeds.joinToString(", ") { speed ->
-            "${speed.style} ${formatMountSpeed(speed.baseSpeed)}->${formatMountSpeed(speed.finalSpeed)}"
+            "${readableText(speed.style)} ${formatMountSpeed(speed.baseSpeed)} -> ${formatMountSpeed(speed.finalSpeed)}"
         }.ifBlank { "none" }
-        context.source.sendSuccess(
-            {
-                Component.literal(
-                    "${debug.playerName}: ${debug.species} types=[$types] overallLv=${debug.overallLevel} jobRank=${debug.jobLevel} modifier=${formatBonusPercent(debug.multiplier - 1.0)} (${formatMultiplier(debug.multiplier)}x) speeds=[$speeds]",
-                )
-            },
-            false,
+        return listOf(
+            "Player: ${debug.playerName}",
+            "Pokemon: ${debug.species}",
+            "Types: $types",
+            "Overall Level: ${debug.overallLevel}",
+            "Job Rank: ${debug.jobLevel}",
+            "Modifier: ${formatBonusPercent(debug.multiplier - 1.0)} (${formatMultiplier(debug.multiplier)}x)",
+            "Ride Speeds: $speeds",
+            "Active Jobs: $jobs",
+            "Matching Perks: $perks",
         )
-        context.source.sendSuccess({ Component.literal("jobs=[$jobs] perks=[$perks]") }, false)
+    }
+
+    private fun debugBotanist(context: CommandContext<CommandSourceStack>): Int {
+        val player = runCatching { EntityArgument.getPlayer(context, "player") }.getOrElse { context.source.playerOrException }
+        return toggleLiveDebug(context, player, "botanist", "Botanist")
+    }
+
+    private fun toggleLiveDebug(context: CommandContext<CommandSourceStack>, player: ServerPlayer, providerId: String, label: String): Int {
+        val enabled = LiveDebugHelper.toggle(player, providerId)
+        val state = if (enabled) "enabled" else "disabled"
+        context.source.sendSuccess({ Component.literal("$label live debug $state for ${player.gameProfile.name}.") }, false)
         return 1
     }
+
+    private fun botanistDebugLines(player: ServerPlayer): List<String> {
+        val job = RolesConfig.job("botanist")
+        val activeJobs = RoleStore.activeJobIds(player)
+        val overallLevel = JobLevels.overallLevel(player)
+        val jobRank = JobLevels.jobLevel(player)
+        val activeCropChance = RolePerks.configuredJobChance(player, "crop_bonus_drop_chance")
+        val activeQualityChance = RolePerks.configuredJobChance(player, "quality_harvest_upgrade_chance")
+        val activeSeasonalChance = RolePerks.seasonalFarmerGrowthChance(player)
+        val hasGentleSteps = RolePerks.jobPerks(player, "gentle_steps").isNotEmpty()
+        val botanistPerks = job?.perks.orEmpty()
+        val configuredPerks = botanistPerks.joinToString(" | ") { perk -> botanistPerkDebug(perk, jobRank) }.ifBlank { "none" }
+        val jobs = readableJobIds(activeJobs)
+        return listOf(
+            "Player: ${player.gameProfile.name}",
+            "Botanist Active: ${yesNo("botanist" in activeJobs)}",
+            "Active Jobs: $jobs",
+            "Overall Level: $overallLevel",
+            "Job Rank: $jobRank",
+            "Crop Bonus Drops: ${formatBonusPercent(activeCropChance)}",
+            "Quality Harvest: ${formatBonusPercent(activeQualityChance)}",
+            "Seasonal Farmer: ${formatBonusPercent(activeSeasonalChance)}",
+            "Gentle Steps: ${yesNo(hasGentleSteps)}",
+            "Legacy Quality Food: ${formatMultiplier(RolePerks.qualityFoodHarvestMultiplier(player))}x",
+            "Configured Perks: $configuredPerks",
+        ) + botanistLookDebugLines(player)
+    }
+
+    private fun botanistPerkDebug(perk: RolePerkDefinition, jobRank: Int): String = when (perk.type) {
+        "cobblemon_catch_rate" -> "Catch Rate (${readablePerkType(perk)}) ${formatBonusPercent(JobLevels.catchRateBonusPercent(perk, jobRank))}"
+        "mount_speed" -> "Mount Speed (${readablePerkType(perk)}) ${formatBonusPercent(JobLevels.mountSpeedBonusPercent(perk, jobRank))}"
+        "crop_bonus_drop_chance" -> "Crop Bonus Drops ${formatBonusPercent(JobLevels.configuredBonusPercent(perk, jobRank))}"
+        "quality_harvest_upgrade_chance" -> "Quality Harvest ${formatBonusPercent(JobLevels.configuredBonusPercent(perk, jobRank))}"
+        "seasonal_farmer" -> "Seasonal Farmer ${formatBonusPercent(perk.bonusPercentByLevel.firstOrNull() ?: 0.0)}"
+        "gentle_steps" -> "Gentle Steps enabled"
+        else -> readableText(perk.type)
+    }
+
+    private fun botanistLookDebugLines(player: ServerPlayer): List<String> {
+        val level = player.level() as? ServerLevel ?: return listOf("Look Target: unavailable outside a server level")
+        val hit = player.pick(8.0, 0.0f, false) as? BlockHitResult ?: return listOf("Look Target: none")
+        if (hit.type != HitResult.Type.BLOCK) return listOf("Look Target: none")
+        val pos = hit.blockPos
+        val state = level.getBlockState(pos)
+        val blockId = BuiltInRegistries.BLOCK.getKey(state.block)
+        val crop = state.block as? CropBlock
+        val mature = crop?.isMaxAge(state)
+        val season = SereneSeasonSupport.currentSeason(level) ?: "unavailable"
+        val seasonTags = SereneSeasonSupport.cropSeasonTags(state).joinToString(", ") { tag -> readableText(tag) }.ifBlank { "none" }
+        val favored = yesNo(SereneSeasonSupport.isFavoredSeasonCrop(level, pos, state))
+        val plantedChance = BotanistPlantingData.get(player.server).growthChance(level, pos)
+        return listOf(
+            "Look Block: $blockId",
+            "Look Position: ${pos.x}, ${pos.y}, ${pos.z}",
+            "Look Crop: ${yesNo(crop != null)}",
+            "Look Mature: ${mature?.let(::yesNo) ?: "n/a"}",
+            "Current Season: ${readableText(season)}",
+            "Crop Season Tags: $seasonTags",
+            "Favored Now: $favored",
+            "Botanist Planted Chance: ${formatBonusPercent(plantedChance)}",
+        )
+    }
+
+    private fun readablePerkType(perk: RolePerkDefinition): String = perk.pokemonType?.let(::readableText) ?: "Any type"
+
+    private fun readableJobIds(jobIds: Iterable<String>): String = jobIds.joinToString(", ") { jobId ->
+        RolesConfig.job(jobId)?.displayName?.ifBlank { null } ?: readableText(jobId)
+    }.ifBlank { "none" }
+
+    private fun readableText(value: String): String = value.replace('_', ' ').replace('-', ' ')
+        .split(' ')
+        .filter(String::isNotBlank)
+        .joinToString(" ") { word -> word.replaceFirstChar { char -> char.titlecase(Locale.ROOT) } }
+
+    private fun yesNo(value: Boolean): String = if (value) "Yes" else "No"
 
     private fun setJob(context: CommandContext<CommandSourceStack>): Int {
         val player = EntityArgument.getPlayer(context, "player")

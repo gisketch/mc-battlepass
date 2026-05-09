@@ -24,7 +24,12 @@ object SereneSeasonSupport {
         return state.`is`(SEASON_CROP_TAGS[season] ?: return false)
     }
 
-    private fun currentSeason(level: Level): String? = runCatching {
+    fun cropSeasonTags(state: BlockState): List<String> = buildList {
+        if (state.`is`(YEAR_ROUND_CROPS)) add("year_round")
+        SEASON_CROP_TAGS.forEach { (season, tag) -> if (state.`is`(tag)) add(season) }
+    }
+
+    fun currentSeason(level: Level): String? = runCatching {
         val helper = Class.forName("sereneseasons.api.season.SeasonHelper")
         val method = helper.methods.firstOrNull { method ->
             method.name == "getSeasonState" && method.parameterCount == 1 && method.parameterTypes[0].isAssignableFrom(level.javaClass)
