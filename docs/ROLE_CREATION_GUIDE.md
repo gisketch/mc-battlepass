@@ -313,6 +313,62 @@ When incoming damage drops the player below 30% HP, grants Speed II for 5 second
 
 Fields: none.
 
+### `projectile_damage_reduction`
+
+Reduces projectile damage taken by the player.
+
+Fields:
+
+- `bonus_percent_by_level`: rank damage reduction list. Esper default is `[0.05, 0.10, 0.15, 0.20, 0.25]`.
+
+### `telekinesis_lite`
+
+Lets the player pick up dropped items from farther away.
+
+Fields:
+
+- `bonus_percent_by_level`: rank pickup range bonus in blocks. Esper default is `[0.5, 1.0, 1.5, 2.0, 2.5]`.
+
+### `focus_mind`
+
+Standing still for 3 seconds grants Haste I for 5 seconds. Moving cancels the charge. Cooldown is 30 seconds.
+
+Fields: none.
+
+### `premonition`
+
+Taking projectile damage grants Speed I and Resistance I for 4 seconds. Cooldown is 60 seconds.
+
+Fields: none.
+
+### `knockback_lite`
+
+Adds bonus knockback on melee hits.
+
+Fields:
+
+- `bonus_percent_by_level`: rank knockback bonus list. Martial Artist default is `[0.03, 0.06, 0.09, 0.12, 0.15]`.
+
+### `agility_lite`
+
+Landing a melee hit grants attack speed for 3 seconds.
+
+Fields:
+
+- `bonus_percent_by_level`: rank attack speed bonus list. Martial Artist default is `[0.02, 0.04, 0.06, 0.08, 0.10]`.
+
+### `combo_flow`
+
+Every 3rd consecutive melee hit on the same mob deals `+10%` damage. Combo resets after 4 seconds without hitting that mob.
+
+Fields: none.
+
+### `second_wind`
+
+Killing a hostile mob restores 1 heart. Cooldown is 20 seconds.
+
+Fields: none.
+
 ### `quality_harvest_upgrade_chance`
 
 Chance to upgrade Quality Food crop drops on fully-grown crop harvest.

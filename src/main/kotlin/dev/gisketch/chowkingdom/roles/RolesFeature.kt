@@ -20,6 +20,7 @@ import net.neoforged.fml.loading.FMLEnvironment
 import net.neoforged.neoforge.common.NeoForge
 import net.neoforged.neoforge.event.RegisterCommandsEvent
 import net.neoforged.neoforge.event.entity.living.LivingDamageEvent
+import net.neoforged.neoforge.event.entity.living.LivingDeathEvent
 import net.neoforged.neoforge.event.entity.player.ItemFishedEvent
 import net.neoforged.neoforge.event.entity.player.ItemTooltipEvent
 import net.neoforged.neoforge.event.entity.player.PlayerEvent
@@ -64,6 +65,7 @@ object RolesFeature {
         NeoForge.EVENT_BUS.addListener(::onBreakSpeed)
         NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST, ::onItemFished)
         NeoForge.EVENT_BUS.addListener(::onLivingDamagePre)
+        NeoForge.EVENT_BUS.addListener(::onLivingDeath)
         NeoForge.EVENT_BUS.addListener(::onPlayerTickPost)
         NeoForge.EVENT_BUS.addListener(::onItemTooltip)
     }
@@ -376,9 +378,15 @@ object RolesFeature {
     private fun onLivingDamagePre(event: LivingDamageEvent.Pre) {
         (event.entity as? ServerPlayer)?.let { player -> MagmaScoutPerks.onLivingDamage(player, event) }
         (event.entity as? ServerPlayer)?.let { player -> FalconerPerks.onLivingDamage(player, event) }
+        (event.entity as? ServerPlayer)?.let { player -> EsperPerks.onLivingDamage(player, event) }
         BugScoutPerks.onLivingDamage(event)
         ShadeRunnerPerks.onLivingDamage(event)
+        MartialArtistPerks.onLivingDamage(event)
         RoleClassEquipmentRules.onLivingDamagePre(event)
+    }
+
+    private fun onLivingDeath(event: LivingDeathEvent) {
+        MartialArtistPerks.onLivingDeath(event)
     }
 
     private fun onPlayerTickPost(event: PlayerTickEvent.Post) {
@@ -390,6 +398,8 @@ object RolesFeature {
         BugScoutPerks.onPlayerTick(player)
         FalconerPerks.onPlayerTick(player)
         ShadeRunnerPerks.onPlayerTick(player)
+        EsperPerks.onPlayerTick(player)
+        MartialArtistPerks.onPlayerTick(player)
         applyJobRankEffect(player)
     }
 

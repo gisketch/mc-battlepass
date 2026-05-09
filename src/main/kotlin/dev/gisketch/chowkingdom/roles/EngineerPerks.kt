@@ -12,8 +12,6 @@ import net.minecraft.world.entity.ai.attributes.Attributes
 import net.minecraft.world.entity.item.ItemEntity
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.block.state.BlockState
-import net.minecraft.world.phys.BlockHitResult
-import net.minecraft.world.phys.HitResult
 import net.neoforged.neoforge.event.entity.player.PlayerEvent
 import java.util.UUID
 
@@ -70,7 +68,7 @@ internal object EngineerPerks {
     private fun applyTechnicianReach(player: ServerPlayer) {
         val attribute = player.getAttribute(Attributes.BLOCK_INTERACTION_RANGE) ?: return
         val bonus = RolePerks.configuredJobMaxBonusPercent(player, "technician_reach").coerceAtLeast(0.0)
-        if (bonus <= 0.0 || !isLookingAtMachine(player, bonus)) {
+        if (bonus <= 0.0) {
             attribute.removeModifier(TECHNICIAN_REACH_MODIFIER)
             return
         }
@@ -81,18 +79,6 @@ internal object EngineerPerks {
                 AttributeModifier.Operation.ADD_VALUE,
             ),
         )
-    }
-
-    private fun isLookingAtMachine(player: ServerPlayer, bonus: Double): Boolean {
-        val hit = player.pick(5.0 + bonus, 0.0f, false) as? BlockHitResult ?: return false
-        if (hit.type != HitResult.Type.BLOCK) return false
-        return isEngineerMachine(player.level().getBlockState(hit.blockPos))
-    }
-
-    private fun isEngineerMachine(state: BlockState): Boolean {
-        val id = BuiltInRegistries.BLOCK.getKey(state.block).toString()
-        if (id.startsWith("create:") || id.startsWith("oritech:")) return true
-        return id in REDSTONE_MACHINE_BLOCKS
     }
 
     private fun isChargedMaintenanceBlock(state: BlockState): Boolean {
@@ -110,19 +96,4 @@ internal object EngineerPerks {
 
     private fun isEngineerTool(stack: ItemStack): Boolean = stack.`is`(ItemTags.PICKAXES) || stack.`is`(ItemTags.AXES) || stack.`is`(ItemTags.SHOVELS)
 
-    private val REDSTONE_MACHINE_BLOCKS = setOf(
-        "minecraft:redstone_wire",
-        "minecraft:repeater",
-        "minecraft:comparator",
-        "minecraft:observer",
-        "minecraft:piston",
-        "minecraft:sticky_piston",
-        "minecraft:dispenser",
-        "minecraft:dropper",
-        "minecraft:hopper",
-        "minecraft:lever",
-        "minecraft:redstone_lamp",
-        "minecraft:daylight_detector",
-        "minecraft:target",
-    )
 }

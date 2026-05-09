@@ -138,7 +138,7 @@ private fun rolePerkDisplay(role: RoleUiDefinitionPayload, perk: RolePerkUiPaylo
             RolePerkDisplay(
                 title = "Technician's Reach",
                 value = "+${formatDecimal(RolesClientState.configuredBonusPercent(perk, displayRank))} blocks",
-                detail = "${role.displayName} gains extra block interaction range only while targeting redstone, Create, or Oritech machine blocks.",
+                detail = "${role.displayName} gains extra block interaction range for all blocks.",
                 group = RolePerkDisplayGroup.UNIQUE,
                 rankValues = ranks,
             )
@@ -279,6 +279,70 @@ private fun rolePerkDisplay(role: RoleUiDefinitionPayload, perk: RolePerkUiPaylo
             title = "Shadow Escape",
             value = "120s CD",
             detail = "Dropping below 30% HP grants Speed II for 5 seconds and smoke particles, without true invisibility.",
+            group = RolePerkDisplayGroup.UNIQUE,
+        )
+        "projectile_damage_reduction" -> {
+            val ranks = rankValues { rank -> RolesClientState.configuredBonusPercent(perk, rank) }
+            RolePerkDisplay(
+                title = "Projectile Protection-lite",
+                value = valueAtRank(ranks, displayRank),
+                detail = "${role.displayName} reduces projectile damage. Current job rank: $rankText.",
+                group = RolePerkDisplayGroup.PASSIVE,
+                rankValues = ranks,
+            )
+        }
+        "telekinesis_lite" -> {
+            val ranks = rankNumberValues { rank -> "Lv.$rank +${formatDecimal(RolesClientState.configuredBonusPercent(perk, rank))} blocks" }
+            RolePerkDisplay(
+                title = "Telekinesis-lite",
+                value = "+${formatDecimal(RolesClientState.configuredBonusPercent(perk, displayRank))} blocks",
+                detail = "${role.displayName} can pick up dropped items from farther away.",
+                group = RolePerkDisplayGroup.PASSIVE,
+                rankValues = ranks,
+            )
+        }
+        "focus_mind" -> RolePerkDisplay(
+            title = "Focus Mind",
+            value = "30s CD",
+            detail = "Standing still for 3 seconds grants Haste I for 5 seconds. Moving cancels the charge.",
+            group = RolePerkDisplayGroup.UNIQUE,
+        )
+        "premonition" -> RolePerkDisplay(
+            title = "Premonition",
+            value = "60s CD",
+            detail = "Taking projectile damage grants Speed I and Resistance I for 4 seconds.",
+            group = RolePerkDisplayGroup.UNIQUE,
+        )
+        "knockback_lite" -> {
+            val ranks = rankValues { rank -> RolesClientState.configuredBonusPercent(perk, rank) }
+            RolePerkDisplay(
+                title = "Knockback-lite",
+                value = valueAtRank(ranks, displayRank),
+                detail = "${role.displayName} adds melee knockback. Current job rank: $rankText.",
+                group = RolePerkDisplayGroup.PASSIVE,
+                rankValues = ranks,
+            )
+        }
+        "agility_lite" -> {
+            val ranks = rankValues { rank -> RolesClientState.configuredBonusPercent(perk, rank) }
+            RolePerkDisplay(
+                title = "Agility-lite",
+                value = valueAtRank(ranks, displayRank),
+                detail = "${role.displayName} gains attack speed for 3 seconds after landing a melee hit. Current job rank: $rankText.",
+                group = RolePerkDisplayGroup.PASSIVE,
+                rankValues = ranks,
+            )
+        }
+        "combo_flow" -> RolePerkDisplay(
+            title = "Combo Flow",
+            value = "+10%",
+            detail = "Every 3rd consecutive melee hit on the same mob deals bonus damage. Resets after 4 seconds without hitting.",
+            group = RolePerkDisplayGroup.UNIQUE,
+        )
+        "second_wind" -> RolePerkDisplay(
+            title = "Second Wind",
+            value = "20s CD",
+            detail = "Killing a hostile mob restores 1 heart.",
             group = RolePerkDisplayGroup.UNIQUE,
         )
         "nether_hunter_catch_rate_bonus" -> RolePerkDisplay(
