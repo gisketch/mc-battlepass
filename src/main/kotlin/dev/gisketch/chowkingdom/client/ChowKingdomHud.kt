@@ -16,6 +16,7 @@ import dev.gisketch.chowkingdom.wallets.ChowcoinClientState
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.Font
 import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.components.PlayerFaceRenderer
 import net.minecraft.client.gui.screens.ChatScreen
 import net.minecraft.client.resources.sounds.SimpleSoundInstance
 import net.minecraft.core.registries.BuiltInRegistries
@@ -75,18 +76,12 @@ object ChowKingdomHud {
         val coinText = formatChowcoins(ChowcoinClientState.displayBalance(now))
         val left = HUD_PADDING
 
-        val coinX = left
-        val coinY = HUD_PADDING
-        val coinIconY = coinY + (font.lineHeight - COMPACT_COIN_SIZE) / 2 + COMPACT_COIN_ICON_Y_OFFSET
-        renderIcon(guiGraphics, CHOWCOIN_TEXTURE, coinX, coinIconY, COMPACT_COIN_SIZE, COMPACT_COIN_TEXTURE_SIZE)
-        val coinTextX = coinX + COMPACT_COIN_SIZE + COMPACT_COIN_TEXT_GAP
-        drawCkdmShadowed(guiGraphics, font, coinText, coinTextX, coinY + COMPACT_COIN_TEXT_Y, COMPACT_WHITE, COMPACT_BLACK_SHADOW, COMPACT_SHADOW_OFFSET, CKDM_BOLD_FONT)
-        renderChowcoinDelta(guiGraphics, font, coinText, coinTextX, coinY + COMPACT_COIN_TEXT_Y, now)
-        renderStatRow(guiGraphics, font, coinTextX + ckdmWidth(font, coinText, CKDM_BOLD_FONT) + chowcoinDeltaPush(font, now) + COMPACT_STAT_GROUP_GAP, coinY, playerId)
+        val statsY = HUD_PADDING
+        renderStatusStatsRow(guiGraphics, minecraft, font, left, statsY, playerId, coinText, now)
 
         if (hudMissions.isEmpty()) return
 
-        val headerY = coinY + COMPACT_COIN_SIZE + COMPACT_MISSIONS_TOP_GAP
+        val headerY = statsY + COMPACT_STATS_ROW_HEIGHT + COMPACT_MISSIONS_TOP_GAP
         drawCkdmShadowed(guiGraphics, font, MISSIONS_HEADER, left, headerY, COMPACT_GOLD, COMPACT_BLACK_SHADOW, COMPACT_SHADOW_OFFSET, CKDM_BOLD_SMALL_FONT)
 
         hudMissions.forEachIndexed { index, mission ->
@@ -104,8 +99,13 @@ object ChowKingdomHud {
 
     private fun npcQuestHudMissions(minecraft: Minecraft, maxTextWidth: Int): List<HudMission> =
         NpcQuestClientState.activeQuests().take(MAX_NPC_QUEST_HUD_ROWS).map { quest ->
-            val details = if (quest.goal > 0) " (${quest.progress.coerceAtMost(quest.goal)}/${quest.goal})" else ""
-            HudMission(fitCkdmText(minecraft.font, quest.description + details, (maxTextWidth / COMPACT_MISSION_TEXT_SCALE).toInt(), CKDM_BOLD_SMALL_FONT), ItemStack.EMPTY, quest)
+            val title = if (quest.goal > 0 && quest.progress >= quest.goal) {
+                "Talk to ${quest.npcName} to claim your rewards"
+            } else {
+                val details = if (quest.goal > 0) " (${quest.progress.coerceAtMost(quest.goal)}/${quest.goal})" else ""
+                quest.description + details
+            }
+            HudMission(fitCkdmText(minecraft.font, title, (maxTextWidth / COMPACT_MISSION_TEXT_SCALE).toInt(), CKDM_BOLD_SMALL_FONT), ItemStack.EMPTY, quest)
         }
 
     private fun compactHudMissions(minecraft: Minecraft, missions: List<BattlepassTrackedMissions.TrackedMission>, playerId: java.util.UUID, showGoal: Boolean, maxTextWidth: Int): List<HudMission> =
@@ -153,18 +153,57 @@ object ChowKingdomHud {
         guiGraphics.blit(texture, x, y, size, size, 40.0f, 8.0f, 8, 8, NPC_SKIN_TEXTURE_SIZE, NPC_SKIN_TEXTURE_SIZE)
     }
 
-    private fun renderStatRow(guiGraphics: GuiGraphics, font: Font, x: Int, y: Int, playerId: java.util.UUID) {
-        val iconY = y + (font.lineHeight - COMPACT_STAT_ICON_SIZE) / 2 + COMPACT_COIN_ICON_Y_OFFSET
+    private fun renderStatusStatsRow(guiGraphics: GuiGraphics, minecraft: Minecraft, font: Font, x: Int, y: Int, playerId: java.util.UUID, coinText: String, now: Long) {
+        val levelText = overallBattlepassLevel(playerId).toString()
         val pokemonText = formatCompactNumber(BattlepassClientState.uniquePokemonCaught(playerId))
-        renderScaledItem(guiGraphics, pokeBallStack(), x, iconY, COMPACT_STAT_ICON_SIZE)
-        val pokemonTextX = x + COMPACT_STAT_ICON_SIZE + COMPACT_STAT_TEXT_GAP
-        drawCkdmShadowed(guiGraphics, font, pokemonText, pokemonTextX, y + COMPACT_COIN_TEXT_Y, COMPACT_WHITE, COMPACT_BLACK_SHADOW, COMPACT_SHADOW_OFFSET, CKDM_BOLD_FONT)
-
-        val hostileX = pokemonTextX + ckdmWidth(font, pokemonText, CKDM_BOLD_FONT) + COMPACT_STAT_GROUP_GAP
         val hostileText = formatCompactNumber(BattlepassClientState.hostileMonstersKilled(playerId))
-        renderIcon(guiGraphics, HOSTILE_KILLS_TEXTURE, hostileX, iconY, COMPACT_STAT_ICON_SIZE, COMPACT_STAT_ICON_TEXTURE_SIZE)
-        drawCkdmShadowed(guiGraphics, font, hostileText, hostileX + COMPACT_STAT_ICON_SIZE + COMPACT_STAT_TEXT_GAP, y + COMPACT_COIN_TEXT_Y, COMPACT_WHITE, COMPACT_BLACK_SHADOW, COMPACT_SHADOW_OFFSET, CKDM_BOLD_FONT)
+        val playerWidth = COMPACT_PLAYER_HEAD_SIZE + COMPACT_STAT_TEXT_GAP + levelTextWidth(font, levelText)
+        val coinWidth = COMPACT_COIN_SIZE + COMPACT_COIN_TEXT_GAP + ckdmWidth(font, coinText, CKDM_BOLD_FONT) + chowcoinDeltaPush(font, now)
+        val pokemonWidth = COMPACT_STAT_ICON_SIZE + COMPACT_STAT_TEXT_GAP + ckdmWidth(font, pokemonText, CKDM_BOLD_FONT)
+        val playerX = x
+        val coinX = playerX + playerWidth + COMPACT_TOP_STAT_GROUP_GAP
+        val pokemonX = coinX + coinWidth + COMPACT_TOP_STAT_GROUP_GAP
+        val killsX = pokemonX + pokemonWidth + COMPACT_TOP_STAT_GROUP_GAP
+        val valueY = y + COMPACT_STAT_TEXT_Y
+        val iconY = y
+
+        renderPlayerHead(guiGraphics, minecraft, playerId, playerX, iconY, COMPACT_PLAYER_HEAD_SIZE)
+        drawLevelText(guiGraphics, font, levelText, playerX + COMPACT_PLAYER_HEAD_SIZE + COMPACT_STAT_TEXT_GAP, valueY)
+
+        renderIcon(guiGraphics, CHOWCOIN_TEXTURE, coinX, iconY, COMPACT_COIN_SIZE, COMPACT_COIN_TEXTURE_SIZE)
+        val coinTextX = coinX + COMPACT_COIN_SIZE + COMPACT_COIN_TEXT_GAP
+        drawCkdmShadowed(guiGraphics, font, coinText, coinTextX, valueY, COMPACT_WHITE, COMPACT_BLACK_SHADOW, COMPACT_SHADOW_OFFSET, CKDM_BOLD_FONT)
+        renderChowcoinDelta(guiGraphics, font, coinText, coinTextX, valueY, now)
+
+        renderScaledItem(guiGraphics, pokeBallStack(), pokemonX, iconY, COMPACT_STAT_ICON_SIZE)
+        val pokemonTextX = pokemonX + COMPACT_STAT_ICON_SIZE + COMPACT_STAT_TEXT_GAP
+        drawCkdmShadowed(guiGraphics, font, pokemonText, pokemonTextX, valueY, COMPACT_WHITE, COMPACT_BLACK_SHADOW, COMPACT_SHADOW_OFFSET, CKDM_BOLD_FONT)
+
+        renderIcon(guiGraphics, HOSTILE_KILLS_TEXTURE, killsX, iconY, COMPACT_STAT_ICON_SIZE, COMPACT_STAT_ICON_TEXTURE_SIZE)
+        drawCkdmShadowed(guiGraphics, font, hostileText, killsX + COMPACT_STAT_ICON_SIZE + COMPACT_STAT_TEXT_GAP, valueY, COMPACT_WHITE, COMPACT_BLACK_SHADOW, COMPACT_SHADOW_OFFSET, CKDM_BOLD_FONT)
     }
+
+    private fun drawLevelText(guiGraphics: GuiGraphics, font: Font, levelText: String, x: Int, y: Int) {
+        drawCkdmShadowedScaled(guiGraphics, font, LEVEL_PREFIX, x, y + COMPACT_LEVEL_PREFIX_Y_OFFSET, COMPACT_LEVEL_PREFIX_SCALE, COMPACT_GOLD, COMPACT_BLACK_SHADOW, COMPACT_SMALL_SHADOW_OFFSET, CKDM_BOLD_SMALL_FONT)
+        val numberX = x + (ckdmWidth(font, LEVEL_PREFIX, CKDM_BOLD_SMALL_FONT) * COMPACT_LEVEL_PREFIX_SCALE).toInt() + COMPACT_LEVEL_NUMBER_GAP
+        drawCkdmShadowed(guiGraphics, font, levelText, numberX, y, COMPACT_WHITE, COMPACT_BLACK_SHADOW, COMPACT_SHADOW_OFFSET, CKDM_BOLD_FONT)
+    }
+
+    private fun levelTextWidth(font: Font, levelText: String): Int = (ckdmWidth(font, LEVEL_PREFIX, CKDM_BOLD_SMALL_FONT) * COMPACT_LEVEL_PREFIX_SCALE).toInt() + COMPACT_LEVEL_NUMBER_GAP + ckdmWidth(font, levelText, CKDM_BOLD_FONT)
+
+    private fun renderPlayerHead(guiGraphics: GuiGraphics, minecraft: Minecraft, playerId: java.util.UUID, x: Int, y: Int, size: Int) {
+        val skin = minecraft.connection?.getPlayerInfo(playerId)?.skin
+        if (skin != null) {
+            PlayerFaceRenderer.draw(guiGraphics, skin, x, y, size)
+            return
+        }
+        RenderSystem.enableBlend()
+        RenderSystem.defaultBlendFunc()
+        guiGraphics.blit(STEVE_TEXTURE, x, y, size, size, 8.0f, 8.0f, 8, 8, NPC_SKIN_TEXTURE_SIZE, NPC_SKIN_TEXTURE_SIZE)
+        guiGraphics.blit(STEVE_TEXTURE, x, y, size, size, 40.0f, 8.0f, 8, 8, NPC_SKIN_TEXTURE_SIZE, NPC_SKIN_TEXTURE_SIZE)
+    }
+
+    private fun overallBattlepassLevel(playerId: java.util.UUID): Int = (BattlepassClientState.playerProgress(playerId)?.xpByPass?.values?.sum() ?: 0) / BATTLEPASS_XP_PER_LEVEL
 
     private fun missionGoal(event: BattlepassXpEventDefinition): Int = when {
         BattlepassMissionService.isCappedRepeating(event) -> event.xpCap
@@ -358,22 +397,22 @@ object ChowKingdomHud {
     }
 
     private const val MISSIONS_HEADER = "Missions"
+    private const val LEVEL_PREFIX = "Lv."
     private const val HUD_PADDING = 8
     private const val COMPACT_HUD_MAX_WIDTH = 360
     private const val COMPACT_MIN_TEXT_WIDTH = 72
-    private const val COMPACT_COIN_SIZE = 9
+    private const val COMPACT_STATS_ROW_HEIGHT = 12
+    private const val COMPACT_COIN_SIZE = 11
     private const val COMPACT_COIN_TEXTURE_SIZE = 16
     private const val COMPACT_COIN_TEXT_GAP = 4
-    private const val COMPACT_COIN_TEXT_Y = 0
-    private const val COMPACT_COIN_ICON_Y_OFFSET = -1
     private const val COMPACT_MISSIONS_TOP_GAP = 5
     private const val COMPACT_HEADER_LINE_HEIGHT = 8
     private const val COMPACT_MISSION_HEADER_GAP = 2
-    private const val COMPACT_MISSION_ROW_HEIGHT = 11
-    private const val COMPACT_MISSION_ICON_SIZE = 9
+    private const val COMPACT_MISSION_ROW_HEIGHT = 13
+    private const val COMPACT_MISSION_ICON_SIZE = 11
     private const val COMPACT_MISSION_ICON_GAP = 4
     private const val COMPACT_MISSION_TEXT_Y = 1
-    private const val COMPACT_MISSION_TEXT_SCALE = 0.82f
+    private const val COMPACT_MISSION_TEXT_SCALE = 0.92f
     private const val COMPACT_WHITE = 0xFFFFFFFF.toInt()
     private const val COMPACT_GOLD = 0xFFFFD24A.toInt()
     private const val CHOWCOIN_DELTA_GAIN = 0xFF4BFF7A.toInt()
@@ -382,11 +421,17 @@ object ChowKingdomHud {
     private const val COMPACT_SHADOW_OFFSET = 1
     private const val CHOWCOIN_DELTA_GAP = 7
     private const val CHOWCOIN_DELTA_TO_STATS_GAP = 10
-    private const val COMPACT_STAT_ICON_SIZE = 9
+    private const val COMPACT_PLAYER_HEAD_SIZE = 11
+    private const val COMPACT_STAT_ICON_SIZE = 11
     private const val COMPACT_STAT_ICON_TEXTURE_SIZE = 16
     private const val COMPACT_STAT_TEXT_GAP = 4
-    private const val COMPACT_STAT_GROUP_GAP = 10
+    private const val COMPACT_STAT_TEXT_Y = 1
+    private const val COMPACT_TOP_STAT_GROUP_GAP = 12
+    private const val COMPACT_LEVEL_PREFIX_SCALE = 0.72f
+    private const val COMPACT_LEVEL_PREFIX_Y_OFFSET = 2
+    private const val COMPACT_LEVEL_NUMBER_GAP = 1
     private const val COMPACT_SMALL_SHADOW_OFFSET = 1
+    private const val BATTLEPASS_XP_PER_LEVEL = 100
     private const val MAX_NPC_QUEST_HUD_ROWS = 4
     private const val NPC_SKIN_TEXTURE_SIZE = 64
     private const val VANILLA_ITEM_SIZE = 16
