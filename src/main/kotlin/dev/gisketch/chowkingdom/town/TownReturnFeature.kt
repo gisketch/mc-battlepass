@@ -4,6 +4,7 @@ import com.mojang.brigadier.arguments.IntegerArgumentType
 import com.mojang.brigadier.builder.LiteralArgumentBuilder
 import com.mojang.brigadier.context.CommandContext
 import dev.gisketch.chowkingdom.ChowKingdomMod
+import dev.gisketch.chowkingdom.roles.RoleStore
 import dev.gisketch.chowkingdom.snackbar.SnackbarIconKind
 import dev.gisketch.chowkingdom.snackbar.SnackbarNetwork
 import dev.gisketch.chowkingdom.snackbar.SnackbarNotification
@@ -14,6 +15,7 @@ import net.minecraft.ChatFormatting
 import net.minecraft.commands.CommandSourceStack
 import net.minecraft.commands.Commands
 import net.minecraft.commands.arguments.EntityArgument
+import net.minecraft.core.particles.DustParticleOptions
 import net.minecraft.core.particles.ParticleTypes
 import net.minecraft.core.registries.Registries
 import net.minecraft.network.chat.Component
@@ -43,6 +45,7 @@ import net.neoforged.neoforge.event.server.ServerStartedEvent
 import net.neoforged.neoforge.event.tick.ServerTickEvent
 import net.neoforged.neoforge.registries.DeferredHolder
 import net.neoforged.neoforge.registries.DeferredRegister
+import org.joml.Vector3f
 import java.util.UUID
 import java.util.function.Supplier
 import kotlin.math.abs
@@ -60,6 +63,7 @@ object TownReturnFeature {
     fun register(modBus: IEventBus) {
         ITEMS.register(modBus)
         TownReturnStore.load()
+        TownReturnConfig.load()
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, ::onEntityInteractSpecific)
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, ::onEntityInteract)
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, ::onRightClickBlock)
@@ -103,7 +107,7 @@ object TownReturnFeature {
         if (stack.isEmpty) return
 
         val abilities = player.abilities
-        val channel = ActiveTownCharmChannel(player.uuid, player.level().dimension(), player.x, player.y, player.z, player.isNoGravity, abilities.mayfly, abilities.flying, player.server.tickCount, player.server.tickCount + CHANNEL_TICKS)
+        val channel = ActiveTownCharmChannel(player.uuid, player.level().dimension(), player.x, player.y, player.z, player.isNoGravity, abilities.mayfly, abilities.flying, player.server.tickCount, player.server.tickCount + CHANNEL_TICKS, TownReturnConfig.colorFor(activeJobId(player)).sanitized())
         channels[player.uuid] = channel
         player.closeContainer()
         player.stopUsingItem()
@@ -115,6 +119,7 @@ object TownReturnFeature {
 
     private fun onServerStarted(event: ServerStartedEvent) {
         TownReturnStore.load()
+        TownReturnConfig.load()
     }
 
     private fun onServerTick(event: ServerTickEvent.Post) {
@@ -289,23 +294,54 @@ object TownReturnFeature {
     private fun animate(player: ServerPlayer, channel: ActiveTownCharmChannel, tick: Int) {
         val progress = channel.progress(tick)
         renderChannelRing(player, channel, tick)
+        renderDestinationRing(player, channel, tick)
         if (tick % SOUND_INTERVAL_TICKS == 0) player.playNotifySound(SoundEvents.AMETHYST_BLOCK_CHIME, SoundSource.PLAYERS, 0.25f, 0.9f + progress.toFloat() * 0.4f)
     }
 
     private fun renderChannelRing(player: ServerPlayer, channel: ActiveTownCharmChannel, tick: Int) {
         val level = player.level() as? ServerLevel ?: return
+        val loop = ringLoop(tick, channel)
+        val radius = RING_RADIUS * easeInOut(loop.expandProgress)
+        val ringY = channelTargetY(channel, tick) + RING_BASE_Y_OFFSET + loop.liftProgress * RING_LIFT_HEIGHT
+        renderParticleRing(level, channel.x, ringY, channel.z, radius, loop.visiblePoints, channel.color, loop.spin)
+    }
+
+    private fun renderDestinationRing(player: ServerPlayer, channel: ActiveTownCharmChannel, tick: Int) {
+        val portal = TownReturnStore.portal() ?: return
+        val level = TownReturnStore.portalLevel(player.server) ?: return
+        val pos = portal.blockPos()
+        val loop = ringLoop(tick, channel)
+        val incomingProgress = easeInOut((Math.floorMod(tick - channel.startedAtTick, INCOMING_RING_LOOP_TICKS).toDouble() / INCOMING_RING_LOOP_TICKS.toDouble()).coerceIn(0.0, 1.0))
+        val radius = RING_RADIUS * (0.75 + incomingProgress * 0.25)
+        val ringY = pos.y + INCOMING_RING_START_Y - incomingProgress * INCOMING_RING_DROP
+        val visiblePoints = (RING_POINTS * (1.0 - incomingProgress * RING_FADE_RATIO)).toInt().coerceAtLeast(RING_MIN_POINTS)
+        renderParticleRing(level, pos.x + 0.5, ringY, pos.z + 0.5, radius, visiblePoints, channel.color, loop.spin)
+    }
+
+    private fun ringLoop(tick: Int, channel: ActiveTownCharmChannel): RingLoop {
         val loopTick = Math.floorMod(tick - channel.startedAtTick, RING_LOOP_TICKS)
         val expanding = loopTick <= RING_EXPAND_TICKS
         val expandProgress = (loopTick.toDouble() / RING_EXPAND_TICKS.toDouble()).coerceIn(0.0, 1.0)
         val liftProgress = if (expanding) 0.0 else ((loopTick - RING_EXPAND_TICKS).toDouble() / (RING_LOOP_TICKS - RING_EXPAND_TICKS).toDouble()).coerceIn(0.0, 1.0)
-        val radius = RING_RADIUS * easeInOut(expandProgress)
-        val ringY = channelTargetY(channel, tick) + RING_BASE_Y_OFFSET + liftProgress * RING_LIFT_HEIGHT
         val visiblePoints = (RING_POINTS * (1.0 - liftProgress * RING_FADE_RATIO)).toInt().coerceAtLeast(RING_MIN_POINTS)
         val spin = (tick - channel.startedAtTick).toDouble() * RING_SPIN_PER_TICK
+        return RingLoop(expandProgress, liftProgress, visiblePoints, spin)
+    }
+
+    private fun renderParticleRing(level: ServerLevel, centerX: Double, centerY: Double, centerZ: Double, radius: Double, visiblePoints: Int, color: TownReturnParticleColor, spin: Double) {
+        val dust = dustParticle(color)
         repeat(visiblePoints) { index ->
             val angle = spin + index.toDouble() / visiblePoints.toDouble() * PI * 2.0
-            level.sendParticles(ParticleTypes.END_ROD, channel.x + cos(angle) * radius, ringY, channel.z + sin(angle) * radius, 1, 0.0, 0.0, 0.0, 0.0)
+            val x = centerX + cos(angle) * radius
+            val z = centerZ + sin(angle) * radius
+            level.sendParticles(dust, x, centerY, z, 1, 0.0, 0.0, 0.0, 0.0)
+            if (index % SPARKLE_INTERVAL == 0) level.sendParticles(ParticleTypes.END_ROD, x, centerY + SPARKLE_Y_OFFSET, z, 1, 0.0, 0.0, 0.0, 0.0)
         }
+    }
+
+    private fun dustParticle(color: TownReturnParticleColor): DustParticleOptions {
+        val sanitized = color.sanitized()
+        return DustParticleOptions(Vector3f(sanitized.red / 255.0f, sanitized.green / 255.0f, sanitized.blue / 255.0f), sanitized.scale)
     }
 
     private fun onRegisterCommands(event: RegisterCommandsEvent) {
@@ -392,6 +428,9 @@ object TownReturnFeature {
 
     private fun isChanneling(player: ServerPlayer): Boolean = channels.containsKey(player.uuid)
 
+    private fun activeJobId(player: ServerPlayer): String = RoleStore.activeJobIds(player).firstOrNull()
+        ?: RoleStore.jobId(player).ifBlank { "default" }
+
     private fun notify(player: ServerPlayer, title: String, content: String = "", type: SnackbarType = SnackbarType.GENERIC, sound: String = SnackbarSounds.forType(type)) {
         SnackbarNetwork.send(player, SnackbarNotification.item(itemIcon(), title, content, type, sound))
     }
@@ -429,7 +468,7 @@ object TownReturnFeature {
     private const val CHANNEL_DURATION_MS = CHANNEL_TICKS * 50L
     private const val CHANNEL_PROGRESS_TO = 999
     private const val CHANNEL_PROGRESS_TIER = 1000
-    private const val PARTICLE_INTERVAL_TICKS = 2
+    private const val PARTICLE_INTERVAL_TICKS = 4
     private const val SOUND_INTERVAL_TICKS = 20
     private const val MONSTER_BLOCK_RADIUS = 16.0
     private const val RISE_TICKS = TICKS_PER_SECOND
@@ -437,13 +476,18 @@ object TownReturnFeature {
     private const val FINAL_FLOAT_EXTRA_HEIGHT = 0.5
     private const val RING_LOOP_TICKS = 30
     private const val RING_EXPAND_TICKS = 10
-    private const val RING_POINTS = 22
-    private const val RING_MIN_POINTS = 7
+    private const val RING_POINTS = 16
+    private const val RING_MIN_POINTS = 5
     private const val RING_RADIUS = 1.15
     private const val RING_BASE_Y_OFFSET = 0.15
     private const val RING_LIFT_HEIGHT = 1.25
     private const val RING_FADE_RATIO = 0.7
     private const val RING_SPIN_PER_TICK = 0.08
+    private const val INCOMING_RING_LOOP_TICKS = 24
+    private const val INCOMING_RING_START_Y = 3.0
+    private const val INCOMING_RING_DROP = 2.7
+    private const val SPARKLE_INTERVAL = 4
+    private const val SPARKLE_Y_OFFSET = 0.02
     private const val LOCK_CHASE_XZ = 0.35
     private const val LOCK_CHASE_Y = 0.35
     private const val LOCK_VELOCITY_XZ = 0.08
@@ -465,6 +509,7 @@ private data class ActiveTownCharmChannel(
     val wasFlying: Boolean,
     val startedAtTick: Int,
     val completeAtTick: Int,
+    val color: TownReturnParticleColor,
 ) {
     constructor(playerId: UUID, dimension: net.minecraft.resources.ResourceKey<Level>, x: Double, y: Double, z: Double, wasNoGravity: Boolean, startedAtTick: Int, completeAtTick: Int) : this(
         playerId,
@@ -477,7 +522,10 @@ private data class ActiveTownCharmChannel(
         false,
         startedAtTick,
         completeAtTick,
+        TownReturnParticleColor(),
     )
 
     fun progress(tick: Int): Double = ((tick - startedAtTick).toDouble() / (completeAtTick - startedAtTick).toDouble()).coerceIn(0.0, 1.0)
 }
+
+    private data class RingLoop(val expandProgress: Double, val liftProgress: Double, val visiblePoints: Int, val spin: Double)
