@@ -125,6 +125,37 @@ Fields:
 - `pokemon_type`: Cobblemon type id.
 - `bonus_percent_by_level`: rank catch-rate bonus list. A single value is reused for higher ranks. Diver default is `[0.20]`.
 
+### `fire_damage_reduction`
+
+Reduces fire-tagged damage, including lava damage.
+
+Fields:
+
+- `bonus_percent_by_level`: rank damage reduction list. Magma Scout default is `[0.10, 0.18, 0.28, 0.40, 0.55]`.
+
+### `lava_walker`
+
+Reduces lava/magma tick damage. Rank 3+ adds a short lava safety grace window on cooldown.
+
+Fields:
+
+- `bonus_percent_by_level`: rank damage reduction list. Magma Scout default is `[0.12, 0.20, 0.28, 0.36, 0.45]`.
+
+### `nether_hunter_catch_rate_bonus`
+
+Extra catch-rate bonus for matching Pokemon types while the player is in the Nether or near lava.
+
+Fields:
+
+- `pokemon_type`: Cobblemon type id.
+- `bonus_percent_by_level`: rank catch-rate bonus list. A single value is reused for higher ranks. Magma Scout default is `[0.05]`.
+
+### `heat_burst`
+
+Taking fire damage grants a short Speed and Resistance burst on a 90 second cooldown.
+
+Fields: none.
+
 ### `quality_harvest_upgrade_chance`
 
 Chance to upgrade Quality Food crop drops on fully-grown crop harvest.

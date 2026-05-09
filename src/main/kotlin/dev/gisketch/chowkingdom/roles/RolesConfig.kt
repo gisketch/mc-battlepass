@@ -63,6 +63,10 @@ object RolesConfig {
 
     private fun withBundledDefaultPerks(definition: RoleDefinition): RoleDefinition {
         val bundled = defaultJobs().firstOrNull { job -> job.id == definition.id } ?: return definition
+        definition.perks.forEach { existing ->
+            val defaultPerk = bundled.perks.firstOrNull { perk -> perk.type == existing.type && perk.pokemonType == existing.pokemonType } ?: return@forEach
+            if (existing.bonusPercentByLevel.isEmpty() && defaultPerk.bonusPercentByLevel.isNotEmpty()) existing.bonusPercentByLevel += defaultPerk.bonusPercentByLevel
+        }
         bundled.perks
             .filter { perk -> perk.type in BUNDLED_BACKFILL_PERK_TYPES }
             .filterNot { defaultPerk -> definition.perks.any { perk -> perk.type == defaultPerk.type && perk.pokemonType == defaultPerk.pokemonType } }
@@ -103,7 +107,7 @@ object RolesConfig {
     private fun defaultJobs(): List<RoleDefinition> = listOf(
         botanistJob(),
         diverJob(),
-        typedJob("magma_scout", "Magma Scout", "fire", "Scouts hot springs, ash fields, and lava paths for Fire Pokemon."),
+        magmaScoutJob(),
         typedJob("engineer", "Engineer", "electric", "Tunes circuits, rails, and storms to find Electric Pokemon."),
         typedJob("field_researcher", "Field Researcher", "normal", "Studies everyday habitats and migration trails for Normal Pokemon."),
         typedJob("bug_scout", "Bug Scout", "bug", "Checks groves, flowers, and old logs for Bug Pokemon."),
@@ -177,6 +181,27 @@ object RolesConfig {
         )
     }
 
+    private fun magmaScoutJob(): RoleDefinition = typedJob("magma_scout", "Magma Scout", "fire", "Scouts hot springs, ash fields, and lava paths for Fire Pokemon.").also { role ->
+        role.perks.firstOrNull { perk -> perk.type == "cobblemon_catch_rate" }?.bonusPercentByLevel = mutableListOf(0.05, 0.10, 0.18, 0.28, 0.40)
+        role.perks.firstOrNull { perk -> perk.type == "mount_speed" }?.bonusPercentByLevel = mutableListOf(0.03, 0.05, 0.09, 0.14, 0.20)
+        role.perks += RolePerkDefinition(
+            type = "fire_damage_reduction",
+            bonusPercentByLevel = mutableListOf(0.10, 0.18, 0.28, 0.40, 0.55),
+        )
+        role.perks += RolePerkDefinition(
+            type = "lava_walker",
+            bonusPercentByLevel = mutableListOf(0.12, 0.20, 0.28, 0.36, 0.45),
+        )
+        role.perks += RolePerkDefinition(
+            type = "nether_hunter_catch_rate_bonus",
+            pokemonType = "fire",
+            bonusPercentByLevel = mutableListOf(0.05),
+        )
+        role.perks += RolePerkDefinition(
+            type = "heat_burst",
+        )
+    }
+
     private fun defaultJobScaling(): JobScalingDefinition = JobScalingDefinition(
         jobRankUnlockOverallLevels = JobLevels.fallbackJobRankUnlockOverallLevels.toMutableList(),
         catchRateBonusPercentByRank = JobLevels.fallbackCatchRateBonusPercentByRank.toMutableList(),
@@ -195,6 +220,10 @@ object RolesConfig {
         "underwater_mining_penalty_reduction",
         "fishing_bonus_drop_chance",
         "rain_catch_rate_bonus",
+        "fire_damage_reduction",
+        "lava_walker",
+        "nether_hunter_catch_rate_bonus",
+        "heat_burst",
     )
 
     private fun defaultRogue(): RoleDefinition = RoleDefinition(

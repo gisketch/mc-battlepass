@@ -4,7 +4,9 @@ import dev.gisketch.chowkingdom.ChowKingdomMod
 import dev.gisketch.chowkingdom.roles.CobblemonMountSpeedStyleDebug
 import dev.gisketch.chowkingdom.roles.JobPerkDebug
 import dev.gisketch.chowkingdom.roles.RolePerks
+import net.minecraft.tags.FluidTags
 import net.minecraft.resources.ResourceLocation
+import net.minecraft.world.level.Level
 import net.minecraft.server.level.ServerPlayer
 import net.minecraft.server.level.ServerLevel
 import net.neoforged.neoforge.server.ServerLifecycleHooks
@@ -66,9 +68,10 @@ object CobblemonBattlepassIntegration {
         val types = pokemonTypes(pokemon)
         val breakdown = RolePerks.pokemonTypeMultiplierBreakdown(player, "cobblemon_catch_rate", types)
         val rainBreakdown = if (isRaining(player)) RolePerks.pokemonTypeMultiplierBreakdown(player, "rain_catch_rate_bonus", types) else null
-        val combinedBreakdown = rainBreakdown?.let { rain ->
-            breakdown.copy(multiplier = breakdown.multiplier * rain.multiplier, entries = breakdown.entries + rain.entries)
-        } ?: breakdown
+        val netherHunterBreakdown = if (isNetherHunterArea(player)) RolePerks.pokemonTypeMultiplierBreakdown(player, "nether_hunter_catch_rate_bonus", types) else null
+        val combinedBreakdown = listOfNotNull(breakdown, rainBreakdown, netherHunterBreakdown).reduce { total, next ->
+            total.copy(multiplier = total.multiplier * next.multiplier, entries = total.entries + next.entries)
+        }
         val baseCatchRate = (event.javaClass.getMethod("getCatchRate").invoke(event) as? Number)?.toDouble() ?: return
         val finalCatchRate = (baseCatchRate * combinedBreakdown.multiplier).coerceAtLeast(0.0)
         if (finalCatchRate != baseCatchRate) event.javaClass.getMethod("setCatchRate", java.lang.Float.TYPE).invoke(event, finalCatchRate.toFloat())
@@ -78,6 +81,16 @@ object CobblemonBattlepassIntegration {
     private fun isRaining(player: ServerPlayer): Boolean {
         val level = player.level() as? ServerLevel ?: return false
         return level.isRainingAt(player.blockPosition()) || level.isRaining
+    }
+
+    private fun isNetherHunterArea(player: ServerPlayer): Boolean {
+        val level = player.level() as? ServerLevel ?: return false
+        if (level.dimension() == Level.NETHER) return true
+        val center = player.blockPosition()
+        for (x in -4..4) for (y in -2..2) for (z in -4..4) {
+            if (level.getFluidState(center.offset(x, y, z)).`is`(FluidTags.LAVA)) return true
+        }
+        return false
     }
 
     private fun handleRidePost(event: Any) {

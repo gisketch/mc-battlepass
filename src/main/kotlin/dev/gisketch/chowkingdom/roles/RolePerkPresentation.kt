@@ -93,6 +93,38 @@ private fun rolePerkDisplay(role: RoleUiDefinitionPayload, perk: RolePerkUiPaylo
             detail = "${role.displayName} can gain one copied extra fishing drop. Current job rank: $rankText.",
             group = RolePerkDisplayGroup.UNIQUE,
         )
+        "fire_damage_reduction" -> {
+            val ranks = rankValues { rank -> RolesClientState.configuredBonusPercent(perk, rank) }
+            RolePerkDisplay(
+                title = "Fire Protection-lite",
+                value = valueAtRank(ranks, displayRank),
+                detail = "${role.displayName} reduces fire and lava damage. Current job rank: $rankText.",
+                group = RolePerkDisplayGroup.PASSIVE,
+                rankValues = ranks,
+            )
+        }
+        "lava_walker" -> {
+            val ranks = rankValues { rank -> RolesClientState.configuredBonusPercent(perk, rank) }
+            RolePerkDisplay(
+                title = "Lava Walker-lite",
+                value = valueAtRank(ranks, displayRank),
+                detail = "${role.displayName} reduces lava and magma tick damage, with short lava grace windows at higher ranks.",
+                group = RolePerkDisplayGroup.PASSIVE,
+                rankValues = ranks,
+            )
+        }
+        "nether_hunter_catch_rate_bonus" -> RolePerkDisplay(
+            title = "Nether Hunter",
+            value = formatBonusPercent(RolesClientState.configuredBonusPercent(perk, displayRank)),
+            detail = "${role.displayName} gains extra Fire Pokemon catch rate in the Nether or near lava.",
+            group = RolePerkDisplayGroup.UNIQUE,
+        )
+        "heat_burst" -> RolePerkDisplay(
+            title = "Heat Burst",
+            value = "90s CD",
+            detail = "Taking fire damage triggers a short speed and resistance burst. Cooldown is 90 seconds.",
+            group = RolePerkDisplayGroup.UNIQUE,
+        )
         "rain_catch_rate_bonus" -> {
             val target = typeLabel(perk.pokemonType)
             RolePerkDisplay(

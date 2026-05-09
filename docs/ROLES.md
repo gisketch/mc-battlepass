@@ -118,3 +118,5 @@ Debug command:
 - `/ck roles debug botanist [player]` toggles a live center-screen overlay with Botanist stats, configured perks, and looked-at crop season/planting data for fast perk testing.
 
 Diver defaults add water utility perks on top of Water catch rate and Water mount speed: swim speed `[8%, 14%, 22%, 32%, 45%]`, underwater mining penalty reduction `[15%, 25%, 40%, 60%, 80%]`, `10%` fishing bonus drop chance, and `20%` extra Water catch rate while raining.
+
+Magma Scout defaults use Fire catch rate `[5%, 10%, 18%, 28%, 40%]` and Fire mount speed `[3%, 5%, 9%, 14%, 20%]`. Extra perks: Fire Protection-lite damage reduction `[10%, 18%, 28%, 40%, 55%]`, Lava Walker-lite tick damage reduction `[12%, 20%, 28%, 36%, 45%]` plus rank 3+ lava grace windows, Nether Hunter `+5%` Fire catch rate in Nether/near-lava areas, and Heat Burst speed/resistance after fire damage on a 90s cooldown.
