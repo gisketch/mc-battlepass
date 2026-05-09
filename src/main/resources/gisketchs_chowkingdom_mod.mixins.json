@@ -8,12 +8,16 @@
   ],
   "client": [
     "ClientPacketListenerMixin",
+    "EMFAnimationParagliderPauseMixin",
     "EntityRendererMixin",
     "GuiStaminaAirOffsetMixin",
     "GuiGraphicsAccessor",
     "KeyboardHandlerMixin",
+    "HumanoidModelParagliderPoseMixin",
     "LivingEntityRendererMixin",
     "ParagliderGuiLayersMixin",
+    "PlayerModelParagliderPoseMixin",
+    "PlayerRendererRevivePoseMixin",
     "XaeroRadarColorHelperMixin",
     "XaeroRadarIconManagerMixin"
   ],

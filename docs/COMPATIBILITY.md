@@ -50,6 +50,8 @@ Behavior:
 - Paraglider's native stamina wheel is hidden client-side and replaced with Chow Kingdom's 9-slice stamina GUI in the vanilla right-side survival HUD lane.
 - Air bubbles move upward while the custom stamina GUI is visible, so underwater air and stamina do not overlap.
 - The custom stamina GUI uses the yellow fill texture for both normal and recovery states.
+- Paragliding players get the raised-arm pose reapplied late in `HumanoidModel`/`PlayerModel` animation setup so player animation resource packs do not erase the Paraglider pose.
+- When Entity Model Features/Fresh Animations player CEM animations are present, CKDM pauses EMF player animation evaluation while Paraglider pose is active, then lets EMF resume after paragliding.
 
 Hot reload:
 
@@ -61,6 +63,7 @@ One Paraglider stamina wheel is 1000 stamina. Tune the JSON first before changin
 
 - This layer is optional and uses reflection. Chow Kingdom still loads without Paragliders, ParCool, Epic Fight, or Epic x ParCool.
 - The custom Paraglider stamina GUI is client-only; stamina values still come from Paraglider's client stamina state.
+- The Paraglider pose compatibility hooks are client-only and check Paraglider movement/item state through reflection. The EMF hook is optional and still lets CKDM load without Entity Model Features.
 - ParCool/Epic Fight config patching happens on mod startup. Some client HUD settings may require a restart after first patch.
 - Epic Fight reflection hooks attach per player while the player is ticking server-side.
 

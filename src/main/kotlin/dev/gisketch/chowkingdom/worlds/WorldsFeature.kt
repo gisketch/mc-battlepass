@@ -26,7 +26,7 @@ object WorldsFeature {
     val SKY_LANDS: ResourceKey<Level> = ResourceKey.create(Registries.DIMENSION, ResourceLocation.fromNamespaceAndPath("ckdm", "sky_lands"))
 
     fun register() {
-        NeoForge.EVENT_BUS.addListener(::onPlayerLoggedIn)
+        WorldsSpawnConfig.load()
         NeoForge.EVENT_BUS.addListener(::onPlayerRespawn)
         NeoForge.EVENT_BUS.addListener(::onPlayerTick)
         NeoForge.EVENT_BUS.addListener(::onSpawnPlacementCheck)
@@ -34,21 +34,10 @@ object WorldsFeature {
         NeoForge.EVENT_BUS.addListener(::onRegisterCommands)
     }
 
-    private fun onPlayerLoggedIn(event: PlayerEvent.PlayerLoggedInEvent) {
-        val player = event.entity as? ServerPlayer ?: return
-        if (player.persistentData.getBoolean(FIRST_WORLD_SPAWN_TAG) || player.persistentData.getBoolean(FIRST_SKY_LANDS_SPAWN_TAG)) return
-        player.server.execute {
-            if (sendToDefaultSpawn(player, setRespawn = true)) {
-                player.persistentData.putBoolean(FIRST_WORLD_SPAWN_TAG, true)
-                player.persistentData.putBoolean(FIRST_SKY_LANDS_SPAWN_TAG, true)
-            }
-        }
-    }
-
     private fun onPlayerRespawn(event: PlayerEvent.PlayerRespawnEvent) {
         val player = event.entity as? ServerPlayer ?: return
         if (event.isEndConquered || player.respawnPosition != null) return
-        player.server.execute { sendToDefaultSpawn(player, setRespawn = true) }
+        player.server.execute { sendToConfiguredWorldSpawn(player) }
     }
 
     private fun onPlayerTick(event: PlayerTickEvent.Post) {
@@ -136,7 +125,7 @@ object WorldsFeature {
     private fun cozyWorld(context: CommandContext<CommandSourceStack>): Int = cozyWorld(context, EntityArgument.getPlayer(context, "player"))
 
     private fun cozyWorld(context: CommandContext<CommandSourceStack>, player: ServerPlayer): Int {
-        return if (sendToCozyWorld(player, setRespawn = true)) {
+        return if (sendToCozyWorld(player)) {
             context.source.sendSuccess({ Component.literal("Sent ${player.gameProfile.name} to Cozy World.").withStyle(ChatFormatting.GREEN) }, true)
             1
         } else {
@@ -150,7 +139,7 @@ object WorldsFeature {
     private fun skyLands(context: CommandContext<CommandSourceStack>): Int = skyLands(context, EntityArgument.getPlayer(context, "player"))
 
     private fun skyLands(context: CommandContext<CommandSourceStack>, player: ServerPlayer): Int {
-        return if (sendToSkyLands(player, setRespawn = true)) {
+        return if (sendToSkyLands(player)) {
             context.source.sendSuccess({ Component.literal("Sent ${player.gameProfile.name} to Sky Lands.").withStyle(ChatFormatting.GREEN) }, true)
             1
         } else {
@@ -171,24 +160,23 @@ object WorldsFeature {
         return 1
     }
 
-    private fun sendToSkyLands(player: ServerPlayer, setRespawn: Boolean): Boolean {
+    private fun sendToSkyLands(player: ServerPlayer): Boolean {
         val level = player.server.getLevel(SKY_LANDS) ?: return false
-        return sendToLevelSpawn(player, level, setRespawn)
+        return sendToLevelSpawn(player, level)
     }
 
-    private fun sendToCozyWorld(player: ServerPlayer, setRespawn: Boolean): Boolean {
+    private fun sendToCozyWorld(player: ServerPlayer): Boolean {
         val level = player.server.getLevel(COZY_WORLD) ?: return false
-        return sendToLevelSpawn(player, level, setRespawn)
+        return sendToLevelSpawn(player, level)
     }
 
-    private fun sendToDefaultSpawn(player: ServerPlayer, setRespawn: Boolean): Boolean {
-        val level = player.server.getLevel(COZY_WORLD) ?: player.server.getLevel(SKY_LANDS) ?: return false
-        return sendToLevelSpawn(player, level, setRespawn)
+    private fun sendToConfiguredWorldSpawn(player: ServerPlayer): Boolean {
+        val level = player.server.getLevel(WorldsSpawnConfig.worldSpawnDimension()) ?: player.server.overworld()
+        return sendToLevelSpawn(player, level)
     }
 
-    private fun sendToLevelSpawn(player: ServerPlayer, level: net.minecraft.server.level.ServerLevel, setRespawn: Boolean): Boolean {
+    private fun sendToLevelSpawn(player: ServerPlayer, level: net.minecraft.server.level.ServerLevel): Boolean {
         val pos = level.sharedSpawnPos
-        if (setRespawn) player.setRespawnPosition(level.dimension(), pos, 0.0f, true, false)
         player.teleportTo(level, pos.x + 0.5, (pos.y + 1).toDouble(), pos.z + 0.5, 0.0f, 0.0f)
         return true
     }
@@ -200,6 +188,7 @@ object WorldsFeature {
             return 0
         }
         level.setDefaultSpawnPos(pos, angle)
+        WorldsSpawnConfig.setWorldSpawnDimension(level.dimension())
         context.source.sendSuccess({ Component.translatable("commands.setworldspawn.success", pos.x, pos.y, pos.z, angle) }, true)
         return 1
     }
@@ -218,8 +207,6 @@ object WorldsFeature {
         MobSpawnType.TRIAL_SPAWNER,
     )
     private val SET_WORLD_SPAWN_DIMENSIONS = setOf(Level.OVERWORLD, COZY_WORLD, SKY_LANDS)
-    private const val FIRST_WORLD_SPAWN_TAG = "ckdm_first_world_spawn"
-    private const val FIRST_SKY_LANDS_SPAWN_TAG = "ckdm_first_sky_lands_spawn"
     private const val SKY_LANDS_FALLTHROUGH_Y = 48.0
     private const val SKY_LANDS_RETURN_Y = 64.0
     private const val OVERWORLD_FALLTHROUGH_Y = 320.0

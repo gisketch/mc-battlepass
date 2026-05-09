@@ -85,6 +85,20 @@ object ParagliderStaminaBridge {
         }.getOrDefault(false)
     }
 
+    fun shouldRenderParaglidingPose(player: Player): Boolean {
+        if (!ModList.get().isLoaded("paraglider")) return false
+        return isParaglidingInAir(player) || isParaglidingItem(player.mainHandItem) || isParaglidingItem(player.offhandItem)
+    }
+
+    private fun isParaglidingItem(stack: net.minecraft.world.item.ItemStack): Boolean {
+        if (stack.isEmpty) return false
+        val api = api ?: return false
+        return runCatching {
+            val caps = api.getCaps.invoke(null, stack) ?: return false
+            api.itemIsParagliding.invoke(caps, stack) as? Boolean == true
+        }.getOrDefault(false)
+    }
+
     private class StaminaApi {
         private val staminaClass = Class.forName("tictim.paraglider.api.stamina.Stamina")
         private val movementClass = Class.forName("tictim.paraglider.api.movement.Movement")
@@ -102,5 +116,9 @@ object ParagliderStaminaBridge {
         val staminaDelta = movementClass.getMethod("staminaDelta")
         val setRecoveryDelay = movementClass.getMethod("setRecoveryDelay", java.lang.Integer.TYPE)
         val paragliding = playerStateClass.getMethod("paragliding")
+        private val paragliderUtilsClass = Class.forName("tictim.paraglider.ParagliderUtils")
+        private val paragliderItemCapabilityClass = Class.forName("tictim.paraglider.api.ParagliderItemCapability")
+        val getCaps = paragliderUtilsClass.getMethod("getCaps", net.minecraft.world.item.ItemStack::class.java)
+        val itemIsParagliding = paragliderItemCapabilityClass.getMethod("isParagliding", net.minecraft.world.item.ItemStack::class.java)
     }
 }

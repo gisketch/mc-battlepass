@@ -6,6 +6,7 @@ Revive turns lethal player damage into an incapacitated state.
 
 - Lethal damage cancels normal death and marks the player incapacitated.
 - Incapacitated players glow red for other players, crawl with very slow movement, and stay at minimum health/food.
+- Incapacitated players render lying down with a limp pose, including when resource-pack player animations would otherwise leave them standing.
 - Incapacitated players cannot be damaged and are ignored as AI attack targets; only revive interactions should matter while downed.
 - KO permits camera, movement keys, and chat only; item use, right-click actions, attack, block break/place, item tossing, jump, and sprint are blocked.
 - The incapacitated player sees a faint full red world overlay with the cause title and revive countdown while normal HUD and chat remain usable.
