@@ -18,11 +18,13 @@ import net.neoforged.bus.api.EventPriority
 import net.neoforged.bus.api.IEventBus
 import net.neoforged.fml.loading.FMLEnvironment
 import net.neoforged.neoforge.common.NeoForge
+import net.neoforged.neoforge.event.AnvilUpdateEvent
 import net.neoforged.neoforge.event.RegisterCommandsEvent
 import net.neoforged.neoforge.event.entity.living.LivingDamageEvent
 import net.neoforged.neoforge.event.entity.living.LivingDeathEvent
 import net.neoforged.neoforge.event.entity.player.ItemFishedEvent
 import net.neoforged.neoforge.event.entity.player.ItemTooltipEvent
+import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent
 import net.neoforged.neoforge.event.entity.player.PlayerEvent
 import net.neoforged.neoforge.event.level.BlockDropsEvent
 import net.neoforged.neoforge.event.level.BlockEvent
@@ -58,12 +60,15 @@ object RolesFeature {
         NeoForge.EVENT_BUS.addListener(::onServerStarted)
         NeoForge.EVENT_BUS.addListener(::onPlayerLoggedIn)
         NeoForge.EVENT_BUS.addListener(::onFarmlandTrample)
+        NeoForge.EVENT_BUS.addListener(::onRightClickBlock)
         NeoForge.EVENT_BUS.addListener(::onBlockPlace)
         NeoForge.EVENT_BUS.addListener(::onBlockBreak)
+        NeoForge.EVENT_BUS.addListener(::onAnvilUpdate)
         NeoForge.EVENT_BUS.addListener(::onCropGrowPre)
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGH, ::onBlockDrops)
         NeoForge.EVENT_BUS.addListener(::onBreakSpeed)
         NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST, ::onItemFished)
+        NeoForge.EVENT_BUS.addListener(::onItemSmelted)
         NeoForge.EVENT_BUS.addListener(::onLivingDamagePre)
         NeoForge.EVENT_BUS.addListener(::onLivingDeath)
         NeoForge.EVENT_BUS.addListener(::onPlayerTickPost)
@@ -349,12 +354,23 @@ object RolesFeature {
 
     private fun onBlockPlace(event: BlockEvent.EntityPlaceEvent) {
         BotanistPerks.onBlockPlace(event)
+        MasonPerks.onBlockPlace(event)
+    }
+
+    private fun onRightClickBlock(event: PlayerInteractEvent.RightClickBlock) {
+        MasonPerks.onRightClickBlock(event)
     }
 
     private fun onBlockBreak(event: BlockEvent.BreakEvent) {
         val player = event.player as? ServerPlayer ?: return
         BotanistPerks.onBlockBreak(event)
         EngineerPerks.onBlockBreak(player, event.state)
+        ExcavatorPerks.onBlockBreak(event)
+        BlacksmithPerks.onBlockBreak(event)
+    }
+
+    private fun onAnvilUpdate(event: AnvilUpdateEvent) {
+        BlacksmithPerks.onAnvilUpdate(event)
     }
 
     private fun onCropGrowPre(event: CropGrowEvent.Pre) {
@@ -364,16 +380,22 @@ object RolesFeature {
     private fun onBlockDrops(event: BlockDropsEvent) {
         BotanistPerks.onBlockDrops(event)
         BugScoutPerks.onBlockDrops(event)
+        ExcavatorPerks.onBlockDrops(event)
     }
 
     private fun onBreakSpeed(event: PlayerEvent.BreakSpeed) {
         EngineerPerks.onBreakSpeed(event)
         DiverPerks.onBreakSpeed(event)
         MountaineerPerks.onBreakSpeed(event)
+        ExcavatorPerks.onBreakSpeed(event)
     }
 
     private fun onItemFished(event: ItemFishedEvent) {
         DiverPerks.onItemFished(event)
+    }
+
+    private fun onItemSmelted(event: PlayerEvent.ItemSmeltedEvent) {
+        BlacksmithPerks.onItemSmelted(event)
     }
 
     private fun onLivingDamagePre(event: LivingDamageEvent.Pre) {
@@ -381,6 +403,8 @@ object RolesFeature {
         (event.entity as? ServerPlayer)?.let { player -> FalconerPerks.onLivingDamage(player, event) }
         (event.entity as? ServerPlayer)?.let { player -> EsperPerks.onLivingDamage(player, event) }
         (event.entity as? ServerPlayer)?.let { player -> MountaineerPerks.onLivingDamage(player, event) }
+        (event.entity as? ServerPlayer)?.let { player -> MasonPerks.onLivingDamage(player, event) }
+        SpiritMediumPerks.onLivingDamage(event)
         BugScoutPerks.onLivingDamage(event)
         ShadeRunnerPerks.onLivingDamage(event)
         MartialArtistPerks.onLivingDamage(event)
@@ -390,6 +414,8 @@ object RolesFeature {
 
     private fun onLivingDeath(event: LivingDeathEvent) {
         MartialArtistPerks.onLivingDeath(event)
+        BlacksmithPerks.onLivingDeath(event)
+        SpiritMediumPerks.onLivingDeath(event)
     }
 
     private fun onPlayerTickPost(event: PlayerTickEvent.Post) {
@@ -405,6 +431,9 @@ object RolesFeature {
         MartialArtistPerks.onPlayerTick(player)
         MountaineerPerks.onPlayerTick(player)
         ShinobiPerks.onPlayerTick(player)
+        MasonPerks.onPlayerTick(player)
+        ExcavatorPerks.onPlayerTick(player)
+        SpiritMediumPerks.onPlayerTick(player)
         applyJobRankEffect(player)
     }
 

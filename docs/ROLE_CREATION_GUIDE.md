@@ -425,6 +425,125 @@ Taking damage while sneaking grants Speed II for 4 seconds. Cooldown is 60 secon
 
 Fields: none.
 
+### `explosion_damage_reduction`
+
+Reduces explosion damage taken by the player.
+
+Fields:
+
+- `bonus_percent_by_level`: rank damage reduction list. Mason default is `[0.05, 0.08, 0.12, 0.16, 0.20]`.
+
+### `builders_reach`
+
+Adds block placement and block interaction range. Attack range is not changed.
+
+Fields:
+
+- `bonus_percent_by_level`: rank range bonus in blocks. Mason default is `[0.5, 0.75, 1.0, 1.5, 2.0]`.
+
+### `steady_hands`
+
+Placing stone, brick, wood, glass, or decorative blocks has a fixed chance to refund the placed block.
+
+Fields:
+
+- `bonus_percent_by_level`: chance list. A single value is reused for higher ranks. Mason default is `[0.03]`.
+
+### `masons_eye`
+
+Sneak-right-clicking a block with an empty hand toggles particle highlights for matching blocks within 12 blocks.
+
+Fields: none.
+
+### `terrain_mining_speed`
+
+Adds mining speed for dirt, sand, gravel, clay, mud, and stone blocks. Ores are ignored.
+
+Fields:
+
+- `bonus_percent_by_level`: rank mining speed bonus list. Excavator default is `[0.04, 0.08, 0.12, 0.16, 0.20]`.
+
+### `excavation_lite`
+
+Area-mines soft blocks by rank: rank 1 disabled, rank 2 `2x1`, rank 3 `2x2`, rank 4 `3x2`, rank 5 `3x3`. Sneak mining stays `1x1`. Ores are ignored. Tool durability is consumed per extra block.
+
+Fields: none.
+
+### `archaeologist`
+
+Breaking sand, gravel, clay, or suspicious dig blocks can drop a small treasure item.
+
+Fields:
+
+- `bonus_percent_by_level`: chance list. A single value is reused for higher ranks. Excavator default is `[0.05]`.
+- `reward_pool`: item ids with optional `*count`. Excavator default includes flint, iron nuggets, gold nuggets, and emeralds.
+
+### `tunnel_sense`
+
+While underground below Y=40, grants Night Vision.
+
+Fields: none.
+
+### `unbreaking_lite`
+
+Chance to restore 1 durability to the held item after mining or kills.
+
+Fields:
+
+- `bonus_percent_by_level`: rank chance list. Blacksmith default is `[0.02, 0.04, 0.06, 0.08, 0.10]`.
+
+### `repairing_lite`
+
+Chance to repair the held item by 1 durability after mining ores or killing mobs. Cooldown is 30 seconds.
+
+Fields:
+
+- `bonus_percent_by_level`: rank chance list. Blacksmith default is `[0.02, 0.03, 0.04, 0.05, 0.06]`.
+
+### `forge_discount`
+
+Reduces anvil repair and combine XP costs.
+
+Fields:
+
+- `bonus_percent_by_level`: discount list. A single value is reused for higher ranks. Blacksmith default is `[0.20]`.
+
+### `ore_tempering`
+
+When a player takes smelted iron, copper, or gold ingots from a furnace, each ingot has a chance to create one bonus ingot.
+
+Fields:
+
+- `bonus_percent_by_level`: chance list. A single value is reused for higher ranks. Blacksmith default is `[0.10]`.
+
+### `soul_speed_lite`
+
+Adds movement speed on soul sand, soul soil, and spooky blocks.
+
+Fields:
+
+- `bonus_percent_by_level`: rank speed list. Spirit Medium default is `[0.10, 0.20, 0.30, 0.40, 0.50]`.
+
+### `ethereal_step_lite`
+
+When dropping below 25% HP, grants Resistance by rank: rank 1 Resistance I for 2 seconds, rank 2 Resistance I for 3 seconds, rank 3 Resistance I for 4 seconds, rank 4 Resistance I for 5 seconds, rank 5 Resistance II for 5 seconds. Cooldown is 120 seconds.
+
+Fields: none.
+
+### `spirit_sight`
+
+Crouching makes undead mobs within 16 blocks glow for 5 seconds. Cooldown is 30 seconds.
+
+Fields: none.
+
+### `grave_whisper`
+
+Killing undead has a chance to grant 10-50 chowcoins. Weekly cap is 500 chowcoins.
+
+Fields:
+
+- `bonus_percent_by_level`: chance list. A single value is reused for higher ranks. Spirit Medium default is `[0.05]`.
+
 ### `quality_harvest_upgrade_chance`
 
 Chance to upgrade Quality Food crop drops on fully-grown crop harvest.

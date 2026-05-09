@@ -409,6 +409,126 @@ private fun rolePerkDisplay(role: RoleUiDefinitionPayload, perk: RolePerkUiPaylo
             detail = "Taking damage while sneaking grants Speed II for 4 seconds.",
             group = RolePerkDisplayGroup.UNIQUE,
         )
+        "explosion_damage_reduction" -> {
+            val ranks = rankValues { rank -> RolesClientState.configuredBonusPercent(perk, rank) }
+            RolePerkDisplay(
+                title = "Blast Protection-lite",
+                value = valueAtRank(ranks, displayRank),
+                detail = "${role.displayName} reduces explosion damage. Current job rank: $rankText.",
+                group = RolePerkDisplayGroup.PASSIVE,
+                rankValues = ranks,
+            )
+        }
+        "builders_reach" -> {
+            val ranks = rankNumberValues { rank -> "Lv.$rank +${formatDecimal(RolesClientState.configuredBonusPercent(perk, rank))} blocks" }
+            RolePerkDisplay(
+                title = "Builder's Reach",
+                value = "+${formatDecimal(RolesClientState.configuredBonusPercent(perk, displayRank))} blocks",
+                detail = "${role.displayName} gains block placement and block interaction range. Attack range is unchanged.",
+                group = RolePerkDisplayGroup.PASSIVE,
+                rankValues = ranks,
+            )
+        }
+        "steady_hands" -> RolePerkDisplay(
+            title = "Steady Hands",
+            value = formatBonusPercent(RolesClientState.configuredBonusPercent(perk, displayRank)),
+            detail = "Placing stone, brick, wood, glass, or decorative blocks can refund the placed block.",
+            group = RolePerkDisplayGroup.UNIQUE,
+        )
+        "masons_eye" -> RolePerkDisplay(
+            title = "Mason's Eye",
+            value = "12 blocks",
+            detail = "Sneak-right-click a block with an empty hand to toggle particle highlights for matching nearby blocks.",
+            group = RolePerkDisplayGroup.UNIQUE,
+        )
+        "terrain_mining_speed" -> {
+            val ranks = rankValues { rank -> RolesClientState.configuredBonusPercent(perk, rank) }
+            RolePerkDisplay(
+                title = "Efficiency-lite Terrain Speed",
+                value = valueAtRank(ranks, displayRank),
+                detail = "${role.displayName} mines dirt, sand, gravel, clay, mud, and stone faster. Current job rank: $rankText.",
+                group = RolePerkDisplayGroup.PASSIVE,
+                rankValues = ranks,
+            )
+        }
+        "excavation_lite" -> RolePerkDisplay(
+            title = "Excavation-lite",
+            value = excavationShapeLabel(displayRank),
+            detail = "Area-mines soft blocks by rank. Sneak mining stays 1x1. Ores are ignored and tool durability is consumed per block.",
+            group = RolePerkDisplayGroup.UNIQUE,
+        )
+        "archaeologist" -> RolePerkDisplay(
+            title = "Archaeologist",
+            value = formatBonusPercent(RolesClientState.configuredBonusPercent(perk, displayRank)),
+            detail = "Breaking sand, gravel, clay, or suspicious dig blocks can drop a small treasure item.",
+            group = RolePerkDisplayGroup.UNIQUE,
+        )
+        "tunnel_sense" -> RolePerkDisplay(
+            title = "Tunnel Sense",
+            value = "Y<40",
+            detail = "While underground below Y=40, gain Night Vision.",
+            group = RolePerkDisplayGroup.UNIQUE,
+        )
+        "unbreaking_lite" -> {
+            val ranks = rankValues { rank -> RolesClientState.configuredBonusPercent(perk, rank) }
+            RolePerkDisplay(
+                title = "Unbreaking-lite",
+                value = valueAtRank(ranks, displayRank),
+                detail = "${role.displayName} can restore 1 durability after mining or kills. Current job rank: $rankText.",
+                group = RolePerkDisplayGroup.PASSIVE,
+                rankValues = ranks,
+            )
+        }
+        "repairing_lite" -> {
+            val ranks = rankValues { rank -> RolesClientState.configuredBonusPercent(perk, rank) }
+            RolePerkDisplay(
+                title = "Repairing-lite",
+                value = valueAtRank(ranks, displayRank),
+                detail = "Mining ores or killing mobs can repair the held item by 1 durability. Cooldown is 30 seconds.",
+                group = RolePerkDisplayGroup.UNIQUE,
+                rankValues = ranks,
+            )
+        }
+        "forge_discount" -> RolePerkDisplay(
+            title = "Forge Discount",
+            value = formatBonusPercent(RolesClientState.configuredBonusPercent(perk, displayRank)),
+            detail = "Anvil repair and combine XP costs are reduced.",
+            group = RolePerkDisplayGroup.UNIQUE,
+        )
+        "ore_tempering" -> RolePerkDisplay(
+            title = "Ore Tempering",
+            value = formatBonusPercent(RolesClientState.configuredBonusPercent(perk, displayRank)),
+            detail = "Smelting iron, copper, or gold ingots can produce bonus ingots for the player taking the furnace output.",
+            group = RolePerkDisplayGroup.UNIQUE,
+        )
+        "soul_speed_lite" -> {
+            val ranks = rankValues { rank -> RolesClientState.configuredBonusPercent(perk, rank) }
+            RolePerkDisplay(
+                title = "Soul Speed-lite",
+                value = valueAtRank(ranks, displayRank),
+                detail = "${role.displayName} moves faster on soul sand, soul soil, and spooky blocks. Current job rank: $rankText.",
+                group = RolePerkDisplayGroup.PASSIVE,
+                rankValues = ranks,
+            )
+        }
+        "ethereal_step_lite" -> RolePerkDisplay(
+            title = "Ethereal Step-lite",
+            value = etherealStepLabel(displayRank),
+            detail = "Dropping below 25% HP grants Resistance. Cooldown is 120 seconds.",
+            group = RolePerkDisplayGroup.UNIQUE,
+        )
+        "spirit_sight" -> RolePerkDisplay(
+            title = "Spirit Sight",
+            value = "16 blocks",
+            detail = "Crouching makes nearby undead glow for 5 seconds. Cooldown is 30 seconds.",
+            group = RolePerkDisplayGroup.UNIQUE,
+        )
+        "grave_whisper" -> RolePerkDisplay(
+            title = "Grave Whisper",
+            value = formatBonusPercent(RolesClientState.configuredBonusPercent(perk, displayRank)),
+            detail = "Killing undead can grant 10-50 chowcoins, capped weekly.",
+            group = RolePerkDisplayGroup.UNIQUE,
+        )
         "nether_hunter_catch_rate_bonus" -> RolePerkDisplay(
             title = "Nether Hunter",
             value = formatBonusPercent(RolesClientState.configuredBonusPercent(perk, displayRank)),
@@ -503,4 +623,20 @@ private fun chargedMaintenanceCooldownSeconds(rank: Int): Int = when {
     rank == 3 -> 45
     rank == 2 -> 50
     else -> 60
+}
+
+private fun excavationShapeLabel(rank: Int): String = when {
+    rank >= 5 -> "3x3"
+    rank == 4 -> "3x2"
+    rank == 3 -> "2x2"
+    rank == 2 -> "2x1"
+    else -> "1x1"
+}
+
+private fun etherealStepLabel(rank: Int): String = when {
+    rank >= 5 -> "Res II 5s"
+    rank == 4 -> "Res I 5s"
+    rank == 3 -> "Res I 4s"
+    rank == 2 -> "Res I 3s"
+    else -> "Res I 2s"
 }

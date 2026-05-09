@@ -117,10 +117,10 @@ object RolesConfig {
         martialArtistJob(),
         mountaineerJob(),
         shinobiJob(),
-        typedJob("mason", "Mason", "rock", "Reads cliffs, ruins, and quarry marks to find Rock Pokemon."),
-        typedJob("excavator", "Excavator", "ground", "Cuts tunnels and studies soil shifts for Ground Pokemon."),
-        typedJob("blacksmith", "Blacksmith", "steel", "Works anvils, ore, and machine scrap around Steel Pokemon."),
-        typedJob("spirit_medium", "Spirit Medium", "ghost", "Listens at old paths and quiet places for Ghost Pokemon."),
+        masonJob(),
+        excavatorJob(),
+        blacksmithJob(),
+        spiritMediumJob(),
         typedJob("drake_tamer", "Drake Tamer", "dragon", "Studies old scales, high dens, and legends around Dragon Pokemon."),
         typedJob("performer", "Performer", "fairy", "Uses rhythm, charm, and bright places to meet Fairy Pokemon."),
     )
@@ -392,6 +392,86 @@ object RolesConfig {
         )
     }
 
+    private fun masonJob(): RoleDefinition = typedJob("mason", "Mason", "rock", "Reads cliffs, ruins, and quarry marks to find Rock Pokemon.").also { role ->
+        role.perks.firstOrNull { perk -> perk.type == "cobblemon_catch_rate" }?.bonusPercentByLevel = mutableListOf(0.05, 0.10, 0.18, 0.28, 0.40)
+        role.perks.firstOrNull { perk -> perk.type == "mount_speed" }?.bonusPercentByLevel = mutableListOf(0.03, 0.05, 0.09, 0.14, 0.20)
+        role.perks += RolePerkDefinition(
+            type = "explosion_damage_reduction",
+            bonusPercentByLevel = mutableListOf(0.05, 0.08, 0.12, 0.16, 0.20),
+        )
+        role.perks += RolePerkDefinition(
+            type = "builders_reach",
+            bonusPercentByLevel = mutableListOf(0.5, 0.75, 1.0, 1.5, 2.0),
+        )
+        role.perks += RolePerkDefinition(
+            type = "steady_hands",
+            bonusPercentByLevel = mutableListOf(0.03),
+        )
+        role.perks += RolePerkDefinition(
+            type = "masons_eye",
+        )
+    }
+
+    private fun excavatorJob(): RoleDefinition = typedJob("excavator", "Excavator", "ground", "Cuts tunnels and studies soil shifts for Ground Pokemon.").also { role ->
+        role.perks.firstOrNull { perk -> perk.type == "cobblemon_catch_rate" }?.bonusPercentByLevel = mutableListOf(0.05, 0.10, 0.18, 0.28, 0.40)
+        role.perks.firstOrNull { perk -> perk.type == "mount_speed" }?.bonusPercentByLevel = mutableListOf(0.03, 0.05, 0.09, 0.14, 0.20)
+        role.perks += RolePerkDefinition(
+            type = "terrain_mining_speed",
+            bonusPercentByLevel = mutableListOf(0.04, 0.08, 0.12, 0.16, 0.20),
+        )
+        role.perks += RolePerkDefinition(
+            type = "excavation_lite",
+        )
+        role.perks += RolePerkDefinition(
+            type = "archaeologist",
+            bonusPercentByLevel = mutableListOf(0.05),
+            rewardPool = mutableListOf("minecraft:flint", "minecraft:iron_nugget*2", "minecraft:gold_nugget", "minecraft:emerald"),
+        )
+        role.perks += RolePerkDefinition(
+            type = "tunnel_sense",
+        )
+    }
+
+    private fun blacksmithJob(): RoleDefinition = typedJob("blacksmith", "Blacksmith", "steel", "Works anvils, ore, and machine scrap around Steel Pokemon.").also { role ->
+        role.perks.firstOrNull { perk -> perk.type == "cobblemon_catch_rate" }?.bonusPercentByLevel = mutableListOf(0.05, 0.10, 0.18, 0.28, 0.40)
+        role.perks.firstOrNull { perk -> perk.type == "mount_speed" }?.bonusPercentByLevel = mutableListOf(0.03, 0.05, 0.09, 0.14, 0.20)
+        role.perks += RolePerkDefinition(
+            type = "unbreaking_lite",
+            bonusPercentByLevel = mutableListOf(0.02, 0.04, 0.06, 0.08, 0.10),
+        )
+        role.perks += RolePerkDefinition(
+            type = "repairing_lite",
+            bonusPercentByLevel = mutableListOf(0.02, 0.03, 0.04, 0.05, 0.06),
+        )
+        role.perks += RolePerkDefinition(
+            type = "forge_discount",
+            bonusPercentByLevel = mutableListOf(0.20),
+        )
+        role.perks += RolePerkDefinition(
+            type = "ore_tempering",
+            bonusPercentByLevel = mutableListOf(0.10),
+        )
+    }
+
+    private fun spiritMediumJob(): RoleDefinition = typedJob("spirit_medium", "Spirit Medium", "ghost", "Listens at old paths and quiet places for Ghost Pokemon.").also { role ->
+        role.perks.firstOrNull { perk -> perk.type == "cobblemon_catch_rate" }?.bonusPercentByLevel = mutableListOf(0.05, 0.10, 0.18, 0.28, 0.40)
+        role.perks.firstOrNull { perk -> perk.type == "mount_speed" }?.bonusPercentByLevel = mutableListOf(0.03, 0.05, 0.09, 0.14, 0.20)
+        role.perks += RolePerkDefinition(
+            type = "soul_speed_lite",
+            bonusPercentByLevel = mutableListOf(0.10, 0.20, 0.30, 0.40, 0.50),
+        )
+        role.perks += RolePerkDefinition(
+            type = "ethereal_step_lite",
+        )
+        role.perks += RolePerkDefinition(
+            type = "spirit_sight",
+        )
+        role.perks += RolePerkDefinition(
+            type = "grave_whisper",
+            bonusPercentByLevel = mutableListOf(0.05),
+        )
+    }
+
     private fun defaultJobScaling(): JobScalingDefinition = JobScalingDefinition(
         jobRankUnlockOverallLevels = JobLevels.fallbackJobRankUnlockOverallLevels.toMutableList(),
         catchRateBonusPercentByRank = JobLevels.fallbackCatchRateBonusPercentByRank.toMutableList(),
@@ -450,6 +530,22 @@ object RolesConfig {
         "shinobi_sneak_speed",
         "toxic_resistance",
         "smoke_step",
+        "explosion_damage_reduction",
+        "builders_reach",
+        "steady_hands",
+        "masons_eye",
+        "terrain_mining_speed",
+        "excavation_lite",
+        "archaeologist",
+        "tunnel_sense",
+        "unbreaking_lite",
+        "repairing_lite",
+        "forge_discount",
+        "ore_tempering",
+        "soul_speed_lite",
+        "ethereal_step_lite",
+        "spirit_sight",
+        "grave_whisper",
     )
 
     private fun defaultRogue(): RoleDefinition = RoleDefinition(
