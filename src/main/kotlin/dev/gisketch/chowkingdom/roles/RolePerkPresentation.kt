@@ -113,6 +113,174 @@ private fun rolePerkDisplay(role: RoleUiDefinitionPayload, perk: RolePerkUiPaylo
                 rankValues = ranks,
             )
         }
+        "tool_mining_speed" -> {
+            val ranks = rankValues { rank -> RolesClientState.configuredBonusPercent(perk, rank) }
+            RolePerkDisplay(
+                title = "Efficiency-lite Tool Speed",
+                value = valueAtRank(ranks, displayRank),
+                detail = "${role.displayName} mines faster with pickaxes, axes, and shovels. Current job rank: $rankText.",
+                group = RolePerkDisplayGroup.PASSIVE,
+                rankValues = ranks,
+            )
+        }
+        "magnet" -> {
+            val ranks = rankNumberValues { rank -> "Lv.$rank ${formatBlocks(RolesClientState.configuredBonusPercent(perk, rank))}" }
+            RolePerkDisplay(
+                title = "Magnet-lite",
+                value = formatBlocks(RolesClientState.configuredBonusPercent(perk, displayRank)),
+                detail = "${role.displayName} slowly pulls nearby dropped items, skipping protected or pickup-delay items where detectable.",
+                group = RolePerkDisplayGroup.PASSIVE,
+                rankValues = ranks,
+            )
+        }
+        "technician_reach" -> {
+            val ranks = rankNumberValues { rank -> "Lv.$rank +${formatDecimal(RolesClientState.configuredBonusPercent(perk, rank))} blocks" }
+            RolePerkDisplay(
+                title = "Technician's Reach",
+                value = "+${formatDecimal(RolesClientState.configuredBonusPercent(perk, displayRank))} blocks",
+                detail = "${role.displayName} gains extra block interaction range only while targeting redstone, Create, or Oritech machine blocks.",
+                group = RolePerkDisplayGroup.UNIQUE,
+                rankValues = ranks,
+            )
+        }
+        "charged_maintenance" -> {
+            val ranks = rankNumberValues { rank -> "Lv.$rank ${formatBonusPercent(RolesClientState.configuredBonusPercent(perk, rank))}/${chargedMaintenanceCooldownSeconds(rank)}s" }
+            RolePerkDisplay(
+                title = "Charged Maintenance",
+                value = "${formatBonusPercent(RolesClientState.configuredBonusPercent(perk, displayRank))}/${chargedMaintenanceCooldownSeconds(displayRank)}s",
+                detail = "Mining redstone, copper, or iron can repair the held tool by 1 durability, then starts a rank-scaled cooldown.",
+                group = RolePerkDisplayGroup.UNIQUE,
+                rankValues = ranks,
+            )
+        }
+        "luck_lite" -> {
+            val ranks = rankNumberValues { rank -> "Lv.$rank +${formatWhole(RolesClientState.configuredBonusPercent(perk, rank))} Luck" }
+            RolePerkDisplay(
+                title = "Luck-lite",
+                value = "+${formatWhole(RolesClientState.configuredBonusPercent(perk, displayRank))} Luck",
+                detail = "Non-combat luck bonus for fishing, simple loot rolls, research rewards, and non-combat bonus tables.",
+                group = RolePerkDisplayGroup.PASSIVE,
+                rankValues = ranks,
+            )
+        }
+        "surveyor_chowcoins" -> {
+            val ranks = rankNumberValues { rank -> "Lv.$rank +${formatWhole(RolesClientState.configuredBonusPercent(perk, rank))} Chowcoins/scan" }
+            RolePerkDisplay(
+                title = "Surveyor",
+                value = "+${formatWhole(RolesClientState.configuredBonusPercent(perk, displayRank))} Chowcoins/scan",
+                detail = "Pokemon scans grant Chowcoins while Field Researcher is active. Weekly cap: 500 Chowcoins from this perk.",
+                group = RolePerkDisplayGroup.UNIQUE,
+                rankValues = ranks,
+            )
+        }
+        "first_encounter_bp_xp" -> RolePerkDisplay(
+            title = "First Encounter Bonus",
+            value = "+5 Cozy BP XP",
+            detail = "First time catching or scanning a species grants Cozy Battlepass XP once per species.",
+            group = RolePerkDisplayGroup.UNIQUE,
+        )
+        "field_notes" -> RolePerkDisplay(
+            title = "Field Notes",
+            value = "Every 10 scans",
+            detail = "Every 10 unique Pokedex scans grants one reward from the configured pokedex reward pool.",
+            group = RolePerkDisplayGroup.UNIQUE,
+        )
+        "arthropod_damage_bonus" -> {
+            val ranks = rankValues { rank -> RolesClientState.configuredBonusPercent(perk, rank) }
+            RolePerkDisplay(
+                title = "Bane of Arthropods-lite",
+                value = valueAtRank(ranks, displayRank),
+                detail = "${role.displayName} deals bonus damage against arthropod and insect-like mobs. Current job rank: $rankText.",
+                group = RolePerkDisplayGroup.PASSIVE,
+                rankValues = ranks,
+            )
+        }
+        "web_walker" -> {
+            val ranks = rankValues { rank -> RolesClientState.configuredBonusPercent(perk, rank) }
+            RolePerkDisplay(
+                title = "Web Walker-lite",
+                value = valueAtRank(ranks, displayRank),
+                detail = "${role.displayName} retains movement in cobwebs and sticky blocks. Current job rank: $rankText.",
+                group = RolePerkDisplayGroup.PASSIVE,
+                rankValues = ranks,
+            )
+        }
+        "tiny_forager" -> RolePerkDisplay(
+            title = "Tiny Forager",
+            value = formatBonusPercent(RolesClientState.configuredBonusPercent(perk, displayRank)),
+            detail = "Breaking grass, leaves, or flowers can drop one extra seed, berry, or bug-themed forage item.",
+            group = RolePerkDisplayGroup.UNIQUE,
+        )
+        "swarm_sense" -> RolePerkDisplay(
+            title = "Swarm Sense",
+            value = "45s CD",
+            detail = "When 5 or more hostile mobs are within 8 blocks, gain Speed I for 6 seconds.",
+            group = RolePerkDisplayGroup.UNIQUE,
+        )
+        "fall_damage_reduction" -> {
+            val ranks = rankValues { rank -> RolesClientState.configuredBonusPercent(perk, rank) }
+            RolePerkDisplay(
+                title = "Feather Falling-lite",
+                value = valueAtRank(ranks, displayRank),
+                detail = "${role.displayName} reduces fall damage. Current job rank: $rankText.",
+                group = RolePerkDisplayGroup.PASSIVE,
+                rankValues = ranks,
+            )
+        }
+        "slow_fall_lite" -> {
+            val ranks = rankNumberValues { rank -> "Lv.$rank ${formatWhole(RolesClientState.configuredBonusPercent(perk, rank))}s" }
+            RolePerkDisplay(
+                title = "Slow Fall-lite",
+                value = "${formatWhole(RolesClientState.configuredBonusPercent(perk, displayRank))}s",
+                detail = "If falling more than 8 blocks, apply Slow Falling. Cooldown is 45 seconds.",
+                group = RolePerkDisplayGroup.PASSIVE,
+                rankValues = ranks,
+            )
+        }
+        "high_ground_speed" -> RolePerkDisplay(
+            title = "High Ground",
+            value = formatBonusPercent(RolesClientState.configuredBonusPercent(perk, displayRank)),
+            detail = "Above Y=100, gain a fixed movement speed bonus.",
+            group = RolePerkDisplayGroup.UNIQUE,
+        )
+        "scouts_leap" -> RolePerkDisplay(
+            title = "Scout's Leap",
+            value = "+25% jump",
+            detail = "After sprinting for 5 seconds, the next jump is higher. Cooldown is 20 seconds.",
+            group = RolePerkDisplayGroup.UNIQUE,
+        )
+        "swift_sneak_lite" -> {
+            val ranks = rankValues { rank -> RolesClientState.configuredBonusPercent(perk, rank) }
+            RolePerkDisplay(
+                title = "Swift Sneak-lite",
+                value = valueAtRank(ranks, displayRank),
+                detail = "${role.displayName} gains movement speed while sneaking. Current job rank: $rankText.",
+                group = RolePerkDisplayGroup.PASSIVE,
+                rankValues = ranks,
+            )
+        }
+        "nightstep" -> {
+            val ranks = rankValues { rank -> RolesClientState.configuredBonusPercent(perk, rank) }
+            RolePerkDisplay(
+                title = "Nightstep",
+                value = valueAtRank(ranks, displayRank),
+                detail = "${role.displayName} gains movement speed at night or in low light. Current job rank: $rankText.",
+                group = RolePerkDisplayGroup.PASSIVE,
+                rankValues = ranks,
+            )
+        }
+        "backstab_lite" -> RolePerkDisplay(
+            title = "Backstab-lite",
+            value = formatBonusPercent(RolesClientState.configuredBonusPercent(perk, displayRank)),
+            detail = "First melee hit against a mob from behind deals bonus damage. Per-target cooldown is 10 seconds.",
+            group = RolePerkDisplayGroup.UNIQUE,
+        )
+        "shadow_escape" -> RolePerkDisplay(
+            title = "Shadow Escape",
+            value = "120s CD",
+            detail = "Dropping below 30% HP grants Speed II for 5 seconds and smoke particles, without true invisibility.",
+            group = RolePerkDisplayGroup.UNIQUE,
+        )
         "nether_hunter_catch_rate_bonus" -> RolePerkDisplay(
             title = "Nether Hunter",
             value = formatBonusPercent(RolesClientState.configuredBonusPercent(perk, displayRank)),
@@ -183,6 +351,8 @@ private fun rankValues(valueAtRank: (Int) -> Double): List<String> = (1..RolesCl
     "Lv.$rank ${formatBonusPercent(valueAtRank(rank))}"
 }
 
+private fun rankNumberValues(valueAtRank: (Int) -> String): List<String> = (1..RolesClientState.maxJobRank().coerceAtLeast(1)).map(valueAtRank)
+
 private fun valueAtRank(values: List<String>, rank: Int): String = values.getOrNull((rank - 1).coerceAtLeast(0)) ?: values.lastOrNull().orEmpty()
 
 private fun typeLabel(raw: String): String = raw.ifBlank { "Matching" }.replace('_', ' ').replaceFirstChar { char -> if (char.isLowerCase()) char.titlecase(Locale.ROOT) else char.toString() }
@@ -192,3 +362,17 @@ private fun prettyId(raw: String): String = raw.replace('_', ' ').replaceFirstCh
 private fun formatBonusPercent(value: Double): String = String.format(Locale.US, "+%.0f%%", value * 100.0)
 
 private fun formatMultiplier(value: Double): String = if (value % 1.0 == 0.0) value.toInt().toString() else String.format(Locale.US, "%.2f", value).trimEnd('0').trimEnd('.')
+
+private fun formatBlocks(value: Double): String = "${formatDecimal(value)} blocks"
+
+private fun formatDecimal(value: Double): String = String.format(Locale.US, "%.2f", value).trimEnd('0').trimEnd('.')
+
+private fun formatWhole(value: Double): String = value.toInt().toString()
+
+private fun chargedMaintenanceCooldownSeconds(rank: Int): Int = when {
+    rank >= 5 -> 30
+    rank == 4 -> 40
+    rank == 3 -> 45
+    rank == 2 -> 50
+    else -> 60
+}

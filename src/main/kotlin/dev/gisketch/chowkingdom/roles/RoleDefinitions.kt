@@ -54,4 +54,6 @@ data class RolePerkDefinition(
     var wrongArmorDisablesSprint: Boolean = false,
     @SerializedName(value = "starting_items", alternate = ["startingItems"])
     var startingItems: MutableList<String> = mutableListOf(),
+    @SerializedName(value = "reward_pool", alternate = ["rewardPool"])
+    var rewardPool: MutableList<String> = mutableListOf(),
 )

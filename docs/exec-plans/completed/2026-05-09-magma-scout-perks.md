@@ -11,7 +11,7 @@ Add Magma Scout Fire job perks: custom Fire catch scaling, Fire mount scaling, F
 - Fire mount speed uses 3/5/9/14/20% override.
 - Fire Protection-lite reduces fire-tagged damage by rank.
 - Lava Walker-lite reduces lava/magma tick damage and adds short grace windows at higher ranks.
-- Nether Hunter adds +5% Fire catch rate in Nether or near lava.
+- Nether Hunter adds +15% Fire catch rate in Nether or near lava.
 - Heat Burst grants short speed/resistance after fire damage with cooldown.
 - Onboarding/profile perk formatting recognizes new perks.
 - Docs updated.

@@ -108,11 +108,11 @@ object RolesConfig {
         botanistJob(),
         diverJob(),
         magmaScoutJob(),
-        typedJob("engineer", "Engineer", "electric", "Tunes circuits, rails, and storms to find Electric Pokemon."),
-        typedJob("field_researcher", "Field Researcher", "normal", "Studies everyday habitats and migration trails for Normal Pokemon."),
-        typedJob("bug_scout", "Bug Scout", "bug", "Checks groves, flowers, and old logs for Bug Pokemon."),
-        typedJob("falconer", "Falconer", "flying", "Reads wind lanes and high nests to work with Flying Pokemon."),
-        typedJob("shade_runner", "Shade Runner", "dark", "Moves through alleys, caves, and moonlit routes for Dark Pokemon."),
+        engineerJob(),
+        fieldResearcherJob(),
+        bugScoutJob(),
+        falconerJob(),
+        shadeRunnerJob(),
         typedJob("esper", "Esper", "psychic", "Follows strange signals and quiet pressure around Psychic Pokemon."),
         typedJob("martial_artist", "Martial Artist", "fighting", "Studies training grounds and hard roads for Fighting Pokemon."),
         typedJob("mountaineer", "Mountaineer", "ice", "Crosses frost lines and high passes to find Ice Pokemon."),
@@ -195,10 +195,124 @@ object RolesConfig {
         role.perks += RolePerkDefinition(
             type = "nether_hunter_catch_rate_bonus",
             pokemonType = "fire",
-            bonusPercentByLevel = mutableListOf(0.05),
+            bonusPercentByLevel = mutableListOf(0.15),
         )
         role.perks += RolePerkDefinition(
             type = "heat_burst",
+        )
+    }
+
+    private fun engineerJob(): RoleDefinition = typedJob("engineer", "Engineer", "electric", "Tunes circuits, rails, and storms to find Electric Pokemon.").also { role ->
+        role.perks.firstOrNull { perk -> perk.type == "cobblemon_catch_rate" }?.bonusPercentByLevel = mutableListOf(0.05, 0.10, 0.18, 0.28, 0.40)
+        role.perks.firstOrNull { perk -> perk.type == "mount_speed" }?.bonusPercentByLevel = mutableListOf(0.03, 0.05, 0.09, 0.14, 0.20)
+        role.perks += RolePerkDefinition(
+            type = "tool_mining_speed",
+            bonusPercentByLevel = mutableListOf(0.02, 0.04, 0.06, 0.08, 0.10),
+        )
+        role.perks += RolePerkDefinition(
+            type = "magnet",
+            bonusPercentByLevel = mutableListOf(1.5, 2.0, 2.5, 3.0, 3.5),
+        )
+        role.perks += RolePerkDefinition(
+            type = "technician_reach",
+            bonusPercentByLevel = mutableListOf(0.25, 0.50, 0.75, 1.0, 1.25),
+        )
+        role.perks += RolePerkDefinition(
+            type = "charged_maintenance",
+            bonusPercentByLevel = mutableListOf(0.02, 0.03, 0.04, 0.05, 0.06),
+        )
+    }
+
+    private fun fieldResearcherJob(): RoleDefinition = typedJob("field_researcher", "Field Researcher", "normal", "Studies everyday habitats and migration trails for Normal Pokemon.").also { role ->
+        role.perks.firstOrNull { perk -> perk.type == "cobblemon_catch_rate" }?.bonusPercentByLevel = mutableListOf(0.05, 0.10, 0.18, 0.28, 0.40)
+        role.perks.firstOrNull { perk -> perk.type == "mount_speed" }?.bonusPercentByLevel = mutableListOf(0.03, 0.05, 0.09, 0.14, 0.20)
+        role.perks += RolePerkDefinition(
+            type = "luck_lite",
+            bonusPercentByLevel = mutableListOf(1.0, 2.0, 3.0, 4.0, 5.0),
+        )
+        role.perks += RolePerkDefinition(
+            type = "surveyor_chowcoins",
+            bonusPercentByLevel = mutableListOf(2.0, 4.0, 6.0, 8.0, 10.0),
+        )
+        role.perks += RolePerkDefinition(
+            type = "first_encounter_bp_xp",
+            bonusPercentByLevel = mutableListOf(5.0),
+        )
+        role.perks += RolePerkDefinition(
+            type = "field_notes",
+            rewardPool = mutableListOf(
+                "cobblemon:rare_candy",
+                "cobblemon:exp_candy_s*2",
+                "cobblemon:poke_ball*8",
+                "cobblemon:great_ball*4",
+            ),
+        )
+    }
+
+    private fun bugScoutJob(): RoleDefinition = typedJob("bug_scout", "Bug Scout", "bug", "Checks groves, flowers, and old logs for Bug Pokemon.").also { role ->
+        role.perks.firstOrNull { perk -> perk.type == "cobblemon_catch_rate" }?.bonusPercentByLevel = mutableListOf(0.05, 0.10, 0.18, 0.28, 0.40)
+        role.perks.firstOrNull { perk -> perk.type == "mount_speed" }?.bonusPercentByLevel = mutableListOf(0.03, 0.05, 0.09, 0.14, 0.20)
+        role.perks += RolePerkDefinition(
+            type = "arthropod_damage_bonus",
+            bonusPercentByLevel = mutableListOf(0.04, 0.08, 0.12, 0.16, 0.20),
+        )
+        role.perks += RolePerkDefinition(
+            type = "web_walker",
+            bonusPercentByLevel = mutableListOf(0.20, 0.35, 0.50, 0.65, 0.80),
+        )
+        role.perks += RolePerkDefinition(
+            type = "tiny_forager",
+            bonusPercentByLevel = mutableListOf(0.03),
+            rewardPool = mutableListOf(
+                "minecraft:wheat_seeds",
+                "minecraft:sweet_berries",
+                "minecraft:string",
+                "minecraft:spider_eye",
+            ),
+        )
+        role.perks += RolePerkDefinition(
+            type = "swarm_sense",
+        )
+    }
+
+    private fun falconerJob(): RoleDefinition = typedJob("falconer", "Falconer", "flying", "Reads wind lanes and high nests to work with Flying Pokemon.").also { role ->
+        role.perks.firstOrNull { perk -> perk.type == "cobblemon_catch_rate" }?.bonusPercentByLevel = mutableListOf(0.05, 0.10, 0.18, 0.28, 0.40)
+        role.perks.firstOrNull { perk -> perk.type == "mount_speed" }?.bonusPercentByLevel = mutableListOf(0.03, 0.05, 0.09, 0.14, 0.20)
+        role.perks += RolePerkDefinition(
+            type = "fall_damage_reduction",
+            bonusPercentByLevel = mutableListOf(0.10, 0.20, 0.30, 0.40, 0.50),
+        )
+        role.perks += RolePerkDefinition(
+            type = "slow_fall_lite",
+            bonusPercentByLevel = mutableListOf(1.0, 2.0, 3.0, 4.0, 5.0),
+        )
+        role.perks += RolePerkDefinition(
+            type = "high_ground_speed",
+            bonusPercentByLevel = mutableListOf(0.05),
+        )
+        role.perks += RolePerkDefinition(
+            type = "scouts_leap",
+            bonusPercentByLevel = mutableListOf(0.25),
+        )
+    }
+
+    private fun shadeRunnerJob(): RoleDefinition = typedJob("shade_runner", "Shade Runner", "dark", "Moves through alleys, caves, and moonlit routes for Dark Pokemon.").also { role ->
+        role.perks.firstOrNull { perk -> perk.type == "cobblemon_catch_rate" }?.bonusPercentByLevel = mutableListOf(0.05, 0.10, 0.18, 0.28, 0.40)
+        role.perks.firstOrNull { perk -> perk.type == "mount_speed" }?.bonusPercentByLevel = mutableListOf(0.03, 0.05, 0.09, 0.14, 0.20)
+        role.perks += RolePerkDefinition(
+            type = "swift_sneak_lite",
+            bonusPercentByLevel = mutableListOf(0.10, 0.20, 0.30, 0.40, 0.50),
+        )
+        role.perks += RolePerkDefinition(
+            type = "nightstep",
+            bonusPercentByLevel = mutableListOf(0.02, 0.04, 0.06, 0.08, 0.10),
+        )
+        role.perks += RolePerkDefinition(
+            type = "backstab_lite",
+            bonusPercentByLevel = mutableListOf(0.15),
+        )
+        role.perks += RolePerkDefinition(
+            type = "shadow_escape",
         )
     }
 
@@ -224,6 +338,26 @@ object RolesConfig {
         "lava_walker",
         "nether_hunter_catch_rate_bonus",
         "heat_burst",
+        "tool_mining_speed",
+        "magnet",
+        "technician_reach",
+        "charged_maintenance",
+        "luck_lite",
+        "surveyor_chowcoins",
+        "first_encounter_bp_xp",
+        "field_notes",
+        "arthropod_damage_bonus",
+        "web_walker",
+        "tiny_forager",
+        "swarm_sense",
+        "fall_damage_reduction",
+        "slow_fall_lite",
+        "high_ground_speed",
+        "scouts_leap",
+        "swift_sneak_lite",
+        "nightstep",
+        "backstab_lite",
+        "shadow_escape",
     )
 
     private fun defaultRogue(): RoleDefinition = RoleDefinition(

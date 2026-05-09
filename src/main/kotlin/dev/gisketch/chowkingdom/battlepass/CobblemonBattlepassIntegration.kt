@@ -2,17 +2,29 @@ package dev.gisketch.chowkingdom.battlepass
 
 import dev.gisketch.chowkingdom.ChowKingdomMod
 import dev.gisketch.chowkingdom.roles.CobblemonMountSpeedStyleDebug
+import dev.gisketch.chowkingdom.roles.FieldResearcherProgressStore
 import dev.gisketch.chowkingdom.roles.JobPerkDebug
 import dev.gisketch.chowkingdom.roles.RolePerks
+import dev.gisketch.chowkingdom.snackbar.SnackbarIcons
+import dev.gisketch.chowkingdom.snackbar.SnackbarNetwork
+import dev.gisketch.chowkingdom.snackbar.SnackbarNotification
+import dev.gisketch.chowkingdom.snackbar.SnackbarSounds
+import dev.gisketch.chowkingdom.snackbar.SnackbarType
+import dev.gisketch.chowkingdom.wallets.ChowcoinNetwork
+import dev.gisketch.chowkingdom.wallets.ChowcoinStore
 import net.minecraft.tags.FluidTags
+import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.resources.ResourceLocation
-import net.minecraft.world.level.Level
 import net.minecraft.server.level.ServerPlayer
 import net.minecraft.server.level.ServerLevel
+import net.minecraft.world.item.ItemStack
+import net.minecraft.world.item.Items
+import net.minecraft.world.level.Level
 import net.neoforged.neoforge.server.ServerLifecycleHooks
 import java.util.UUID
 import java.util.function.Consumer
 import java.util.Locale
+import kotlin.math.roundToInt
 
 object CobblemonBattlepassIntegration {
     private var registered = false
@@ -53,11 +65,16 @@ object CobblemonBattlepassIntegration {
         val playerId = event.javaClass.getMethod("getPlayerUUID").invoke(event) as? UUID ?: return
         val player = ServerLifecycleHooks.getCurrentServer()?.playerList?.getPlayer(playerId) ?: return
         val manager = event.javaClass.getMethod("getPokedexManager").invoke(event)
+        applyFieldNotes(player, registeredSpeciesRecords(manager).count { record -> record.seen })
         setPokedexProgress(player, manager)
     }
 
     private fun handlePokemonScanned(event: Any) {
         val player = event.javaClass.getMethod("getPlayer").invoke(event) as? ServerPlayer ?: return
+        val manager = playerPokedexManager(player)
+        val uniqueScans = manager?.let { registeredSpeciesRecords(it).count { record -> record.seen } } ?: 0
+        val pokemon = pokemonFromScanEvent(event)
+        applyFieldResearcherScanRewards(player, pokemon?.let(::pokemonSpecies), uniqueScans)
         syncPokedexProgress(player)
     }
 
@@ -110,6 +127,7 @@ object CobblemonBattlepassIntegration {
     private fun handlePokemonCaught(event: Any) {
         val player = event.javaClass.getMethod("getPlayer").invoke(event) as? ServerPlayer ?: return
         val pokemon = event.javaClass.getMethod("getPokemon").invoke(event)
+        applyFirstEncounterBonus(player, pokemonSpecies(pokemon))
         recordPokemonEvent(player, "cobblemon:pokemon_caught", pokemon)
         syncPokedexProgress(player)
     }
@@ -187,6 +205,65 @@ object CobblemonBattlepassIntegration {
             changed = BattlepassMissionProgressStore.setEventProgress(player, "cobblemon:catch_${generation.id}_pokemon", generationRecords.count { record -> record.caught }) or changed
         }
         return changed
+    }
+
+    private fun applyFieldResearcherScanRewards(player: ServerPlayer, species: String?, uniqueScans: Int) {
+        applySurveyorReward(player)
+        species?.let { value -> applyFirstEncounterBonus(player, value) }
+        applyFieldNotes(player, uniqueScans)
+    }
+
+    private fun applySurveyorReward(player: ServerPlayer) {
+        val amount = RolePerks.configuredJobMaxBonusPercent(player, "surveyor_chowcoins").roundToInt()
+        val granted = FieldResearcherProgressStore.addSurveyorChowcoins(player, amount, SURVEYOR_WEEKLY_CHOWCOIN_CAP)
+        if (granted <= 0) return
+        ChowcoinStore.add(player, granted.toLong())
+        ChowcoinNetwork.syncTo(player)
+        SnackbarNetwork.send(player, SnackbarNotification.texture(SnackbarIcons.CHOWCOIN_TEXTURE, "SURVEYOR", "+$granted Chowcoins from Pokemon scan", SnackbarType.SUCCESS, SnackbarSounds.REWARD))
+    }
+
+    private fun applyFirstEncounterBonus(player: ServerPlayer, species: String) {
+        val xp = RolePerks.configuredJobMaxBonusPercent(player, "first_encounter_bp_xp").roundToInt()
+        if (xp <= 0 || !FieldResearcherProgressStore.markFirstEncounter(player, species)) return
+        val previousXp = BattlepassXpStore.getXp(player, FIELD_RESEARCHER_PASS_ID)
+        BattlepassXpStore.addXp(player, FIELD_RESEARCHER_PASS_ID, xp)
+        BattlepassNetwork.syncAllPlayers()
+        SnackbarNetwork.send(player, SnackbarNotification.battlepassXp("FIRST ENCOUNTER +$xp XP", previousXp, previousXp + xp, 100))
+    }
+
+    private fun applyFieldNotes(player: ServerPlayer, uniqueScans: Int) {
+        val perks = RolePerks.jobPerks(player, "field_notes")
+        if (perks.isEmpty()) return
+        val milestones = FieldResearcherProgressStore.claimFieldNoteMilestones(player, uniqueScans, FIELD_NOTES_SCAN_INTERVAL)
+        if (milestones.isEmpty()) return
+        val rewardPool = perks.flatMap { perk -> perk.rewardPool }.ifEmpty { DEFAULT_FIELD_NOTES_REWARD_POOL }
+        milestones.forEach { milestone ->
+            val candidates = rewardPool.mapNotNull(::stackFromRewardId)
+            if (candidates.isEmpty()) return@forEach
+            val stack = candidates[player.random.nextInt(candidates.size)]
+            if (!player.inventory.add(stack.copy())) player.drop(stack.copy(), false)
+            val itemId = BuiltInRegistries.ITEM.getKey(stack.item).toString()
+            SnackbarNetwork.send(player, SnackbarNotification.item(itemId, "FIELD NOTES", "$milestone unique scans: ${stack.count} x ${stack.hoverName.string}", SnackbarType.SUCCESS, SnackbarSounds.REWARD))
+        }
+    }
+
+    private fun pokemonFromScanEvent(event: Any): Any? {
+        val directMethodNames = listOf("getPokemon", "getScannedPokemon")
+        directMethodNames.forEach { methodName ->
+            runCatching { event.javaClass.getMethod(methodName).invoke(event) }.getOrNull()?.let { return it }
+        }
+        val entity = listOf("getPokemonEntity", "getEntity", "getScannedEntity")
+            .firstNotNullOfOrNull { methodName -> runCatching { event.javaClass.getMethod(methodName).invoke(event) }.getOrNull() }
+            ?: return null
+        return runCatching { entity.javaClass.getMethod("getPokemon").invoke(entity) }.getOrNull()
+    }
+
+    private fun stackFromRewardId(raw: String): ItemStack? {
+        val parts = raw.split("*", limit = 2)
+        val id = parts[0].trim()
+        val count = parts.getOrNull(1)?.trim()?.toIntOrNull()?.coerceIn(1, 64) ?: 1
+        val item = BuiltInRegistries.ITEM.getOptional(ResourceLocation.parse(id)).orElse(Items.AIR)
+        return item.takeIf { value -> value != Items.AIR }?.let { value -> ItemStack(value, count) }
     }
 
     private fun playerPokedexManager(player: ServerPlayer): Any? = runCatching {
@@ -339,6 +416,9 @@ object CobblemonBattlepassIntegration {
     private const val POKEDEX_SEEN_ORDINAL = 1
     private const val POKEDEX_CAUGHT_ORDINAL = 2
     private const val MAX_FRIENDSHIP = 255
+    private const val FIELD_RESEARCHER_PASS_ID = "cozy"
+    private const val FIELD_NOTES_SCAN_INTERVAL = 10
+    private const val SURVEYOR_WEEKLY_CHOWCOIN_CAP = 500
     private val POKEDEX_SEEN_NAMES = setOf("seen", "encountered")
     private val POKEDEX_CAUGHT_NAMES = setOf("caught", "captured", "owned")
     private data class PokedexSpeciesRecordProgress(val nationalDexNumber: Int?, val seen: Boolean, val caught: Boolean)
@@ -361,5 +441,11 @@ object CobblemonBattlepassIntegration {
         "snivy", "tepig", "oshawott", "chespin", "fennekin", "froakie",
         "rowlet", "litten", "popplio", "grookey", "scorbunny", "sobble",
         "sprigatito", "fuecoco", "quaxly",
+    )
+    private val DEFAULT_FIELD_NOTES_REWARD_POOL = listOf(
+        "cobblemon:rare_candy",
+        "cobblemon:exp_candy_s*2",
+        "cobblemon:poke_ball*8",
+        "cobblemon:great_ball*4",
     )
 }

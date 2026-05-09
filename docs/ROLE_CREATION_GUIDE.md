@@ -148,11 +148,168 @@ Extra catch-rate bonus for matching Pokemon types while the player is in the Net
 Fields:
 
 - `pokemon_type`: Cobblemon type id.
-- `bonus_percent_by_level`: rank catch-rate bonus list. A single value is reused for higher ranks. Magma Scout default is `[0.05]`.
+- `bonus_percent_by_level`: rank catch-rate bonus list. A single value is reused for higher ranks. Magma Scout default is `[0.15]`.
 
 ### `heat_burst`
 
 Taking fire damage grants a short Speed and Resistance burst on a 90 second cooldown.
+
+Fields: none.
+
+### `tool_mining_speed`
+
+Improves mining speed while using a pickaxe, axe, or shovel.
+
+Fields:
+
+- `bonus_percent_by_level`: rank speed bonus list. Engineer default is `[0.02, 0.04, 0.06, 0.08, 0.10]`.
+
+### `magnet`
+
+Slowly pulls nearby dropped items toward the player. Relic tokens and pickup-delay items are skipped.
+
+Fields:
+
+- `bonus_percent_by_level`: rank radius list in blocks. Engineer default is `[1.5, 2.0, 2.5, 3.0, 3.5]`.
+
+### `technician_reach`
+
+Adds block interaction range only while targeting redstone, Create, or Oritech machine blocks.
+
+Fields:
+
+- `bonus_percent_by_level`: rank range bonus list in blocks. Engineer default is `[0.25, 0.50, 0.75, 1.0, 1.25]`.
+
+### `charged_maintenance`
+
+Mining redstone, copper, or iron has a chance to repair the held tool by 1 durability, then starts a rank cooldown.
+
+Fields:
+
+- `bonus_percent_by_level`: rank repair chance list. Engineer default is `[0.02, 0.03, 0.04, 0.05, 0.06]`.
+
+### `luck_lite`
+
+Adds player Luck as a non-combat utility bonus for systems that read the vanilla luck attribute.
+
+Fields:
+
+- `bonus_percent_by_level`: rank Luck values. Field Researcher default is `[1.0, 2.0, 3.0, 4.0, 5.0]`.
+
+### `surveyor_chowcoins`
+
+Grants Chowcoins when Cobblemon fires a Pokemon scan event. The perk has a fixed weekly cap of 500 Chowcoins.
+
+Fields:
+
+- `bonus_percent_by_level`: rank Chowcoins per scan. Field Researcher default is `[2.0, 4.0, 6.0, 8.0, 10.0]`.
+
+### `first_encounter_bp_xp`
+
+Grants Cozy Battlepass XP the first time the player catches or scans a Pokemon species.
+
+Fields:
+
+- `bonus_percent_by_level`: XP amount. Field Researcher default is `[5.0]`.
+
+### `field_notes`
+
+Grants one configured item reward every 10 unique Pokedex scans.
+
+Fields:
+
+- `reward_pool`: item ids with optional `*count`, like `cobblemon:rare_candy` or `cobblemon:poke_ball*8`.
+
+### `arthropod_damage_bonus`
+
+Increases player damage against vanilla arthropods and insect-like mobs.
+
+Fields:
+
+- `bonus_percent_by_level`: rank damage bonus list. Bug Scout default is `[0.04, 0.08, 0.12, 0.16, 0.20]`.
+
+### `web_walker`
+
+Retains movement in cobwebs and sticky blocks by adding movement speed and restoring horizontal motion while touching sticky blocks.
+
+Fields:
+
+- `bonus_percent_by_level`: rank retention list. Bug Scout default is `[0.20, 0.35, 0.50, 0.65, 0.80]`.
+
+### `tiny_forager`
+
+Breaking grass, leaves, or flowers can drop one extra configured forage item.
+
+Fields:
+
+- `bonus_percent_by_level`: chance list. A single value is reused for higher ranks. Bug Scout default is `[0.03]`.
+- `reward_pool`: item ids with optional `*count`. Bug Scout default includes wheat seeds, sweet berries, string, and spider eye.
+
+### `swarm_sense`
+
+When 5 or more hostile mobs are within 8 blocks, grants Speed I for 6 seconds. Cooldown is 45 seconds.
+
+Fields: none.
+
+### `fall_damage_reduction`
+
+Reduces fall damage taken by the player.
+
+Fields:
+
+- `bonus_percent_by_level`: rank damage reduction list. Falconer default is `[0.10, 0.20, 0.30, 0.40, 0.50]`.
+
+### `slow_fall_lite`
+
+If the player has fallen more than 8 blocks, applies Slow Falling for a rank-scaled duration. Cooldown is 45 seconds.
+
+Fields:
+
+- `bonus_percent_by_level`: rank duration list in seconds. Falconer default is `[1.0, 2.0, 3.0, 4.0, 5.0]`.
+
+### `high_ground_speed`
+
+Adds movement speed while the player is above Y=100.
+
+Fields:
+
+- `bonus_percent_by_level`: speed bonus list. A single value is reused for higher ranks. Falconer default is `[0.05]`.
+
+### `scouts_leap`
+
+After sprinting on the ground for 5 seconds, boosts the next jump. Cooldown is 20 seconds.
+
+Fields:
+
+- `bonus_percent_by_level`: jump boost list. Falconer default is `[0.25]`.
+
+### `swift_sneak_lite`
+
+Adds movement speed while sneaking.
+
+Fields:
+
+- `bonus_percent_by_level`: rank speed bonus list. Shade Runner default is `[0.10, 0.20, 0.30, 0.40, 0.50]`.
+
+### `nightstep`
+
+Adds movement speed while the player is in low light or at night.
+
+Fields:
+
+- `bonus_percent_by_level`: rank speed bonus list. Shade Runner default is `[0.02, 0.04, 0.06, 0.08, 0.10]`.
+
+### `backstab_lite`
+
+First melee hit against a mob from behind deals bonus damage. Cooldown is tracked per attacker-target pair for 10 seconds.
+
+Fields:
+
+- `bonus_percent_by_level`: damage bonus list. A single value is reused for higher ranks. Shade Runner default is `[0.15]`.
+
+### `shadow_escape`
+
+When incoming damage drops the player below 30% HP, grants Speed II for 5 seconds and smoke particles. It does not grant true invisibility. Cooldown is 120 seconds.
 
 Fields: none.
 
