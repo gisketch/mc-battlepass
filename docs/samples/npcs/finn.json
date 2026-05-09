@@ -52,5 +52,9 @@
     "I'm awake. Is everything okay?",
     "You woke me up, but I'm listening."
   ],
-  "work_target_blocks": ["minecraft:campfire", "minecraft:crafting_table", "minecraft:barrel"]
+  "work_blocks": [
+    { "id": "minecraft:barrel", "count": 3, "display_name": "barrels" },
+    { "id": "minecraft:item_frame", "count": 2, "display_name": "item frames" },
+    { "id": "#minecraft:beds", "count": 1, "display_name": "bed" }
+  ]
 }

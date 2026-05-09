@@ -24,7 +24,7 @@ class NpcDefinition(
     @SerializedName("npc_interaction_messages") var npcInteractionMessages: MutableList<String> = mutableListOf(),
     @SerializedName("hurt_messages") var hurtMessages: MutableList<String> = mutableListOf(),
     @SerializedName("wake_messages") var wakeMessages: MutableList<String> = mutableListOf(),
-    @SerializedName("work_target_blocks") var workTargetBlocks: MutableList<String> = mutableListOf(),
+    @SerializedName("work_blocks") var workBlocks: MutableList<NpcWorkBlockRequirementDefinition> = mutableListOf(),
 ) {
     fun normalized(fallbackId: String, friendshipDefaults: NpcFriendshipMessagesDefinition = NpcFriendshipMessagesDefinition.default()): NpcDefinition = apply {
         id = id.trim().ifBlank { fallbackId }
@@ -48,7 +48,10 @@ class NpcDefinition(
         npcInteractionMessages = npcInteractionMessages.map(String::trim).filter(String::isNotBlank).distinct().toMutableList()
         hurtMessages = hurtMessages.map(String::trim).filter(String::isNotBlank).ifEmpty { defaultHurtMessages() }.toMutableList()
         wakeMessages = wakeMessages.map(String::trim).filter(String::isNotBlank).ifEmpty { defaultWakeMessages() }.toMutableList()
-        workTargetBlocks = workTargetBlocks.map(String::trim).filter(String::isNotBlank).distinct().toMutableList()
+        workBlocks = workBlocks.map { requirement -> requirement.normalized() }
+            .filter { requirement -> requirement.id.isNotBlank() && requirement.count > 0 }
+            .distinctBy { requirement -> requirement.id.lowercase() }
+            .toMutableList()
     }
 
     fun displayName(): String = if (title.isBlank()) name else "$name, $title"
@@ -223,6 +226,7 @@ class NpcLlmMessageUsageDefinition(
     @SerializedName("work_move") var workMove: Boolean = false,
     @SerializedName("work_fire") var workFire: Boolean = false,
     @SerializedName("assigned_workplace") var assignedWorkplace: Boolean = false,
+    @SerializedName("work_missing_blocks") var workMissingBlocks: Boolean = true,
 ) {
     fun normalized(): NpcLlmMessageUsageDefinition = apply {
         if (shopSingle || shopNormal || shopBulk) shop = true
@@ -235,6 +239,7 @@ class NpcWorkSettingsDefinition(
     @SerializedName("move_llm_prompt") var moveLlmPrompt: String = "The player wants to move your workplace. Say you gave them a new job application and tell them to use it on the new work block.",
     @SerializedName("fire_llm_prompt") var fireLlmPrompt: String = "The player fired you from your workplace. React in character as newly unemployed, without being too dramatic.",
     @SerializedName("assigned_workplace_llm_prompt") var assignedWorkplaceLlmPrompt: String = "The player assigned this block as your workplace. Thank them and say you will work around it.",
+    @SerializedName("missing_work_blocks_llm_prompt") var missingWorkBlocksLlmPrompt: String = "The player tried to use your workplace, but required work blocks are missing nearby. Missing: {missing}. Full requirement: {requirements}. Workplace: {workplace}. Reply in character and tell them what to add before you can work.",
 ) {
     fun normalized(): NpcWorkSettingsDefinition = apply {
         applicationLlmPrompt = applicationLlmPrompt.trim().ifBlank { "The player asked you to start work but you do not have a workplace. Give them a job application and tell them to use it on the block you should work around." }
@@ -242,6 +247,19 @@ class NpcWorkSettingsDefinition(
         moveLlmPrompt = moveLlmPrompt.trim().ifBlank { "The player wants to move your workplace. Say you gave them a new job application and tell them to use it on the new work block." }
         fireLlmPrompt = fireLlmPrompt.trim().ifBlank { "The player fired you from your workplace. React in character as newly unemployed, without being too dramatic." }
         assignedWorkplaceLlmPrompt = assignedWorkplaceLlmPrompt.trim().ifBlank { "The player assigned this block as your workplace. Thank them and say you will work around it." }
+        missingWorkBlocksLlmPrompt = missingWorkBlocksLlmPrompt.trim().ifBlank { "The player tried to use your workplace, but required work blocks are missing nearby. Missing: {missing}. Full requirement: {requirements}. Workplace: {workplace}. Reply in character and tell them what to add before you can work." }
+    }
+}
+
+class NpcWorkBlockRequirementDefinition(
+    var id: String = "",
+    var count: Int = 1,
+    @SerializedName("display_name") var displayName: String = "",
+) {
+    fun normalized(): NpcWorkBlockRequirementDefinition = apply {
+        id = id.trim().lowercase()
+        count = count.coerceIn(1, 256)
+        displayName = displayName.trim()
     }
 }
 

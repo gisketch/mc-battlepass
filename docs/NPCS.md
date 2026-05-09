@@ -17,17 +17,17 @@ Conversation-specific runtime rules live in [NPC Conversations](NPC_CONVERSATION
 - Job application item: `gisketchs_chowkingdom_mod:job_application`.
 - Entity id: `gisketchs_chowkingdom_mod:npc`.
 
-Place a camping block to spawn a random eligible camper from the configured NPC pool. Right-click the block later to retry if no NPC is currently present and camp cooldown is ready. Right-click an unhoused camper to open dialog and receive a rent contract. Use the rent contract on a bed to assign that NPC's home. Use the WORK dialog action to receive a job application when the NPC has no workplace; right-click a block with it while the NPC is nearby to set that block as the workplace.
+Place a camping block to spawn a random eligible camper from the configured NPC pool. Right-click the block later to retry if no NPC is currently present and camp cooldown is ready. Right-click an unhoused camper to open dialog and receive a rent contract. Use the rent contract on a bed to assign that NPC's home. Use the WORK dialog action to receive a job application when the NPC has no workplace; the NPC follows nearby players holding their job application. Right-click a block with it while the NPC is nearby to set that block as the workplace, after configured `work_blocks` are present nearby.
 
 ## Dialog
 
 NPC dialog opens as a local screen panel near the bottom of the screen. The panel uses `textures/gui/9slice_container_grey.png`, shows the NPC head avatar, renders the NPC name in the CKDM bold font, renders dialog body copy with the normal Minecraft font, and shows right-side action buttons for Talk, Buy, Gift, Work, and Bye. The panel enters with a bottom-anchored scale/slide animation, the dialog body types in, and the vanilla hotbar is hidden while the dialog screen is open.
 
-Buy opens the store template configured on the NPC job definition. NPC stores share the same store TOML pool by store id, but each NPC uses its own stock key, so two NPCs can roll different daily/weekly items and deplete stock independently. WORK grants a job application if the NPC has no workplace, or opens workplace management with MOVE and FIRE if one is assigned. MOVE gives a fresh job application for reassignment. FIRE clears the assigned workplace and leaves the NPC unemployed until WORK is used again. After a successful NPC store purchase, the owning NPC opens a close-only follow-up dialog chosen from `shop_messages` by friendship category and quantity bucket. Gift is disabled unless the player is holding an item, shows a hover hint, consumes one held item on success, and plays a reaction dialog with a single OKAY close button. Locked relic/player-locked items are rejected by the existing relic transfer guard. Bye closes the normal screen.
+Buy opens the store template configured on the NPC job definition. NPC stores share the same store TOML pool by store id, but each NPC uses its own stock key, so two NPCs can roll different daily/weekly items and deplete stock independently. WORK grants a job application if the NPC has no workplace, or opens workplace management with MOVE and FIRE if one is assigned. MOVE gives a fresh job application for reassignment. FIRE clears the assigned workplace and leaves the NPC unemployed until WORK is used again. If configured `work_blocks` are missing around the workplace, assignment fails or the shop stays closed, and the NPC opens a close-only missing-block dialog. After a successful NPC store purchase, the owning NPC opens a close-only follow-up dialog chosen from `shop_messages` by friendship category and quantity bucket. Gift is disabled unless the player is holding an item, shows a hover hint, consumes one held item on success, and plays a reaction dialog with a single OKAY close button. Locked relic/player-locked items are rejected by the existing relic transfer guard. Bye closes the normal screen.
 
 Talk opens a text input inside the existing dialog. Submitting sends the message to the server, validates NPC distance/state, shows a pending `...` in the dialog and nearby balloon while waiting, then replaces it with the validated LLM reply or a configured fallback. LLM provider settings are global in NPC `settings.toml`; `llm_message_usage` controls which message surfaces may use LLM text. V1 supports `openai_compatible` and `gemini` provider modes and expects JSON output with a single `message` field. When `llm_streaming = true`, OpenAI-compatible dialog replies stream partial direct-answer text into the dialog; Gemini keeps the non-streaming path.
 
-Workplace dialogs can use LLM text when `llm_message_usage.work_application`, `work_manage`, `work_move`, `work_fire`, or `assigned_workplace` are enabled. Prompt text for those surfaces lives under `[work]` in NPC `settings.toml`.
+Workplace dialogs can use LLM text when `llm_message_usage.work_application`, `work_manage`, `work_move`, `work_fire`, `assigned_workplace`, or `work_missing_blocks` are enabled. Prompt text for those surfaces lives under `[work]` in NPC `settings.toml`. Missing work-block prompts receive `{missing}`, `{requirements}`, `{workplace}`, and `{action}`.
 
 The dialog header shows the NPC avatar, name, and a 10-icon friendship row. Positive levels render filled hearts, negative levels render angry icons, and remaining slots render empty hearts. Dialog body text uses the CKDM small bold font at 75% white opacity.
 
@@ -66,7 +66,7 @@ Each NPC is one TOML file:
 - `hurt_messages`: NPC speech pool used every third hit from the same player. Supports `{player}`.
 - `wake_messages`: NPC speech pool used when a sleeping NPC is right-clicked. Supports `{player}`.
 - `npc_interaction_messages`: Optional NPC-specific world-space lines for NPC-to-NPC micro interactions. Supports `{npc}` and `{other}` and is added on top of shared generic interaction lines.
-- `work_target_blocks`: Legacy block ids/tags the job can path toward for non-work fallback roaming. Work schedule activity now prefers the assigned workplace block from world state.
+- `work_blocks`: Required nearby blocks/entities for workplace assignment and selling. Each entry has `id`, `count`, and optional `display_name`. Block ids, block tags like `#minecraft:beds`, entity ids like `minecraft:item_frame`, and entity tags are supported. Counts are scanned around the workplace using `job_definition.work_scan_radius`; bed halves count as one bed.
 
 Shared generic messages live in `friendship_messages.toml` and affect every NPC. NPC TOML files can add their own message lines under the same keys; those NPC-specific lines join the shared random pool with higher weight.
 
@@ -103,6 +103,20 @@ lost_house_llm_prompt = "Your assigned bed or home was removed. Tell the player 
 [llm_message_usage]
 camper_needs_house = false
 camper_lost_house = false
+work_missing_blocks = true
+
+[work]
+missing_work_blocks_llm_prompt = "The player tried to use your workplace, but required work blocks are missing nearby. Missing: {missing}. Full requirement: {requirements}. Workplace: {workplace}. Reply in character and tell them what to add before you can work."
+```
+
+Example workplace requirements:
+
+```toml
+work_blocks = [
+	{ id = "minecraft:barrel", count = 3, display_name = "barrels" },
+	{ id = "minecraft:item_frame", count = 2, display_name = "item frames" },
+	{ id = "#minecraft:beds", count = 1, display_name = "bed" },
+]
 ```
 
 NPC quest behavior:

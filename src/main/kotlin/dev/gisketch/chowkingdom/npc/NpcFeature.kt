@@ -34,6 +34,7 @@ import net.minecraft.tags.TagKey
 import net.minecraft.world.InteractionHand
 import net.minecraft.world.InteractionResult
 import net.minecraft.world.entity.EntityType
+import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.Mob
 import net.minecraft.world.entity.MobCategory
 import net.minecraft.world.entity.ai.attributes.Attributes
@@ -344,6 +345,14 @@ object NpcFeature {
             }
             return
         }
+        val workplace = NpcStore.workplacePos(definition.id)
+        if (workplace != null) {
+            val workBlocks = workBlockStatus(player.level(), workplace, definition)
+            if (!workBlocks.ready) {
+                openMissingWorkBlocksDialog(player, npc, definition, workplace, workBlocks, assigning = false)
+                return
+            }
+        }
         val storeId = definition.storeId().lowercase()
         if (storeId.isBlank() || !StoreShopFeature.openStore(player, storeId, definition.storeStockKey(), "${definition.name}'s stock")) {
             npcSnackbar(player, definition.name, "No shop ready.", SnackbarType.ERROR)
@@ -357,6 +366,90 @@ object NpcFeature {
         val workStarts = definition.schedule.activities.filter { entry -> entry.activity == "work" }.map { entry -> entry.fromHour }
         if (workStarts.isEmpty()) return null
         return workStarts.filter { hour -> hour > currentHour }.minOrNull() ?: workStarts.minOrNull()
+    }
+
+    private fun openMissingWorkBlocksDialog(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, workplace: BlockPos, status: NpcWorkBlockStatus, assigning: Boolean) {
+        npc.startTalkingTo(player, NPC_DIALOG_DURATION_TICKS)
+        val friendship = NpcStore.friendshipSnapshot(definition.id, player)
+        val missing = formatMissingWorkBlocks(status)
+        val requirements = formatRequiredWorkBlocks(status)
+        val fallback = if (assigning) {
+            "I need $missing near this workplace before I can start working."
+        } else {
+            "I cannot open shop yet. I am missing $missing near my workplace."
+        }
+        val llmEnabled = workLlmEnabled { usage -> usage.workMissingBlocks }
+        val responseToken = if (llmEnabled) NpcDialogTokens.next() else 0L
+        NpcNetwork.openDialog(player, dialogPayload(definition, npc, if (llmEnabled) "..." else fallback, false, friendship.level, closeOnly = true, closeLabel = "OKAY", responseToken = responseToken))
+        if (llmEnabled) {
+            val prompt = NpcConfig.settings().work.missingWorkBlocksLlmPrompt
+                .replace("{missing}", missing)
+                .replace("{requirements}", requirements)
+                .replace("{workplace}", workplace.toShortString())
+                .replace("{action}", if (assigning) "assigning a new workplace" else "opening shop during work hours")
+            NpcLlmService.event(player, npc, definition, fallback, prompt, npcRecordType = "npc_work_blocks_missing", responseToken = responseToken)
+        } else {
+            NpcStore.recordConversation(definition.id, player, definition.name, fallback, "npc_work_blocks_missing")
+        }
+        npcSnackbar(player, definition.name, "Missing: $missing", SnackbarType.ERROR)
+    }
+
+    private fun workBlockStatus(level: Level, center: BlockPos, definition: NpcDefinition): NpcWorkBlockStatus {
+        val counts = definition.workBlocks.map { requirement ->
+            NpcWorkBlockCount(requirement, countWorkBlocks(level, center, definition, requirement) + countWorkEntities(level, center, definition, requirement))
+        }
+        return NpcWorkBlockStatus(counts)
+    }
+
+    private fun countWorkBlocks(level: Level, center: BlockPos, definition: NpcDefinition, requirement: NpcWorkBlockRequirementDefinition): Int {
+        val radius = definition.jobDefinition.workScanRadius
+        val yRadius = max(3, radius / 2)
+        var count = 0
+        val beds = linkedSetOf<BlockPos>()
+        BlockPos.betweenClosed(center.offset(-radius, -yRadius, -radius), center.offset(radius, yRadius, radius)).forEach { mutablePos ->
+            val pos = mutablePos.immutable()
+            val state = level.getBlockState(pos)
+            if (!matchesWorkBlock(state, requirement.id)) return@forEach
+            if (state.`is`(BlockTags.BEDS)) beds += canonicalBedPos(level, pos) else count++
+        }
+        return count + beds.size
+    }
+
+    private fun countWorkEntities(level: Level, center: BlockPos, definition: NpcDefinition, requirement: NpcWorkBlockRequirementDefinition): Int {
+        val radius = definition.jobDefinition.workScanRadius.toDouble()
+        val yRadius = max(3, definition.jobDefinition.workScanRadius / 2).toDouble()
+        val box = AABB(center.x - radius, center.y - yRadius, center.z - radius, center.x + radius + 1.0, center.y + yRadius + 1.0, center.z + radius + 1.0)
+        return level.getEntitiesOfClass(Entity::class.java, box) { entity -> matchesWorkEntity(entity.type, requirement.id) }.size
+    }
+
+    private fun matchesWorkBlock(state: BlockState, raw: String): Boolean {
+        if (raw.startsWith("#")) {
+            val id = runCatching { ResourceLocation.parse(raw.removePrefix("#")) }.getOrNull() ?: return false
+            return state.`is`(TagKey.create(Registries.BLOCK, id))
+        }
+        return BuiltInRegistries.BLOCK.getKey(state.block).toString() == raw
+    }
+
+    private fun matchesWorkEntity(type: EntityType<*>, raw: String): Boolean {
+        if (raw.startsWith("#")) {
+            val id = runCatching { ResourceLocation.parse(raw.removePrefix("#")) }.getOrNull() ?: return false
+            return type.`is`(TagKey.create(Registries.ENTITY_TYPE, id))
+        }
+        return BuiltInRegistries.ENTITY_TYPE.getKey(type).toString() == raw
+    }
+
+    private fun formatMissingWorkBlocks(status: NpcWorkBlockStatus): String = status.counts
+        .filter { count -> count.missing > 0 }
+        .joinToString(", ") { count -> "${count.missing} ${workBlockLabel(count.requirement)}" }
+        .ifBlank { "nothing" }
+
+    private fun formatRequiredWorkBlocks(status: NpcWorkBlockStatus): String = status.counts
+        .joinToString(", ") { count -> "${count.present}/${count.requirement.count} ${workBlockLabel(count.requirement)}" }
+        .ifBlank { "none" }
+
+    private fun workBlockLabel(requirement: NpcWorkBlockRequirementDefinition): String {
+        if (requirement.displayName.isNotBlank()) return requirement.displayName
+        return requirement.id.removePrefix("#").substringAfter(':').replace('_', ' ')
     }
 
     fun syncFriends(player: ServerPlayer) {
@@ -393,7 +486,9 @@ object NpcFeature {
     private fun friendShopStatus(definition: NpcDefinition, currentHour: Int, player: ServerPlayer): String {
         if (definition.storeId().isBlank()) return "No shop"
         return if (NpcTime.activityAt(definition.schedule, player.level()) == "work") {
-            if (NpcStore.workplacePos(definition.id) == null) return if (NpcStore.workFired(definition.id)) "Unemployed" else "No workplace"
+            val workplace = NpcStore.workplacePos(definition.id) ?: return if (NpcStore.workFired(definition.id)) "Unemployed" else "No workplace"
+            val workBlocks = workBlockStatus(player.level(), workplace, definition)
+            if (!workBlocks.ready) return "Missing ${formatMissingWorkBlocks(workBlocks)}"
             val close = currentWorkClose(definition, currentHour)
             if (close == null) "Shop Open" else "Shop Open (closes at ${formatHour(close)})"
         } else {
@@ -769,6 +864,11 @@ object NpcFeature {
             npcSnackbar(player, definition.name, "${definition.name} needs to be near the work block.", SnackbarType.ERROR)
             return false
         }
+        val workBlocks = workBlockStatus(player.level(), workplacePos, definition)
+        if (!workBlocks.ready) {
+            openMissingWorkBlocksDialog(player, npc, definition, workplacePos, workBlocks, assigning = true)
+            return false
+        }
         NpcStore.setWorkplace(npcId, workplacePos)
         NpcStore.recordGlobalEvent("npc_workplace_assigned", "${definition.name} got a workplace at ${workplacePos.toShortString()} from ${player.gameProfile.name}.")
         npc.startTalkingTo(player, NPC_DIALOG_DURATION_TICKS)
@@ -793,6 +893,7 @@ object NpcFeature {
             NpcTaskCandidate(NpcTaskPriority.Critical) { NpcBrainOverrides.tick(entity, definition) },
             NpcTaskCandidate(NpcTaskPriority.QuestClaim) { tryQuestClaimApproach(entity, definition) },
             NpcTaskCandidate(NpcTaskPriority.ContractFollow) { tryFollowRentContractHolder(entity, definition) },
+            NpcTaskCandidate(NpcTaskPriority.JobApplicationFollow) { tryFollowJobApplicationHolder(entity, definition) },
             NpcTaskCandidate(NpcTaskPriority.NpcInteraction) { tryNpcMicroInteraction(entity, definition) },
             NpcTaskCandidate(NpcTaskPriority.OutgoingGift) { tryOutgoingGift(entity, definition) },
             NpcTaskCandidate(NpcTaskPriority.QuestOffer) { NpcQuestService.tryShowOfferBalloon(entity, definition) },
@@ -834,6 +935,29 @@ object NpcFeature {
 
     private fun playerHoldsRentContract(player: ServerPlayer, npcId: String): Boolean {
         return NpcRentContractData.readNpcId(player.mainHandItem) == npcId || NpcRentContractData.readNpcId(player.offhandItem) == npcId
+    }
+
+    private fun tryFollowJobApplicationHolder(npc: ChowNpcEntity, definition: NpcDefinition): Boolean {
+        val level = npc.level() as? ServerLevel ?: return false
+        val holder = level.players()
+            .filter { player -> player.isAlive && !player.isSpectator && player.distanceToSqr(npc) <= CONTRACT_FOLLOW_SCAN_RADIUS_SQR }
+            .firstOrNull { player -> playerHoldsJobApplication(player, definition.id) }
+            ?: return false
+        if (npc.isSleeping) npc.stopSleeping()
+        npc.debugActivity = "work"
+        npc.debugGoal = "follow_job_application"
+        npc.debugTargetPos = holder.blockPosition().immutable()
+        npc.lookControl.setLookAt(holder, 30.0f, 30.0f)
+        if (npc.distanceToSqr(holder) > CONTRACT_FOLLOW_STOP_DISTANCE_SQR) {
+            npc.navigation.moveTo(holder.x, holder.y, holder.z, 0.95)
+        } else {
+            npc.navigation.stop()
+        }
+        return true
+    }
+
+    private fun playerHoldsJobApplication(player: ServerPlayer, npcId: String): Boolean {
+        return NpcJobApplicationData.readNpcId(player.mainHandItem) == npcId || NpcJobApplicationData.readNpcId(player.offhandItem) == npcId
     }
 
     private fun tryQuestClaimApproach(npc: ChowNpcEntity, definition: NpcDefinition): Boolean {
@@ -1220,11 +1344,10 @@ object NpcFeature {
             entity.navigation.moveTo(target.x + 0.5, target.y.toDouble(), target.z + 0.5, 0.8)
             return
         }
-        val workTarget = findWorkTarget(entity, definition)
-        val target = workTarget ?: randomRoamTarget(entity, definition) ?: return
+        val target = randomRoamTarget(entity, definition) ?: return
         if (entity.isSleeping) entity.stopSleeping()
         entity.debugActivity = activity
-        entity.debugGoal = if (workTarget != null) "work_target" else "roam"
+        entity.debugGoal = "roam"
         entity.debugTargetPos = target.immutable()
         entity.navigation.moveTo(target.x + 0.5, target.y.toDouble(), target.z + 0.5, 0.8)
     }
@@ -2198,42 +2321,25 @@ object NpcFeature {
         return null
     }
 
-    private fun findWorkTarget(entity: ChowNpcEntity, definition: NpcDefinition): BlockPos? {
-        if (definition.workTargetBlocks.isEmpty()) return null
-        val base = entity.homePos ?: entity.campPos ?: entity.blockPosition()
-        val random = entity.random
-        val radius = definition.jobDefinition.workScanRadius
-        val yRadius = max(3, radius / 2)
-        repeat(32) {
-            val pos = BlockPos(
-                base.x + random.nextInt(radius * 2 + 1) - radius,
-                base.y + random.nextInt(yRadius * 2 + 1) - yRadius,
-                base.z + random.nextInt(radius * 2 + 1) - radius,
-            )
-            if (matchesAny(entity.level().getBlockState(pos), definition.workTargetBlocks)) return pos.above()
-        }
-        return null
-    }
-
-    private fun matchesAny(state: BlockState, targets: List<String>): Boolean = targets.any { raw ->
-        if (raw.startsWith("#")) {
-            val id = runCatching { ResourceLocation.parse(raw.removePrefix("#")) }.getOrNull() ?: return@any false
-            state.`is`(TagKey.create(Registries.BLOCK, id))
-        } else {
-            BuiltInRegistries.BLOCK.getKey(state.block).toString() == raw
-        }
-    }
-
     private data class NpcLookHit(val npc: ChowNpcEntity, val along: Double, val distanceSqr: Double)
 
     private data class NpcOutgoingGiftApproach(val playerId: UUID, val startedAtTick: Long)
 
     private data class NpcTaskCandidate(val priority: NpcTaskPriority, val run: () -> Boolean)
 
+    private data class NpcWorkBlockStatus(val counts: List<NpcWorkBlockCount>) {
+        val ready: Boolean = counts.all { count -> count.present >= count.requirement.count }
+    }
+
+    private data class NpcWorkBlockCount(val requirement: NpcWorkBlockRequirementDefinition, val present: Int) {
+        val missing: Int = (requirement.count - present).coerceAtLeast(0)
+    }
+
     private enum class NpcTaskPriority(val weight: Int) {
         Critical(100),
         QuestClaim(95),
         ContractFollow(90),
+        JobApplicationFollow(88),
         NpcInteraction(80),
         OutgoingGift(70),
         QuestOffer(65),

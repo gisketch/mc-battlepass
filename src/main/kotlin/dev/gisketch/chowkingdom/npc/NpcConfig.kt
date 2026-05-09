@@ -179,7 +179,11 @@ object NpcConfig {
             "I'm awake. Is everything okay?",
             "You woke me up, but I'm listening.",
         ),
-        workTargetBlocks = mutableListOf("minecraft:campfire", "minecraft:crafting_table", "minecraft:barrel"),
+        workBlocks = mutableListOf(
+            NpcWorkBlockRequirementDefinition(id = "minecraft:barrel", count = 3, displayName = "barrels"),
+            NpcWorkBlockRequirementDefinition(id = "minecraft:item_frame", count = 2, displayName = "item frames"),
+            NpcWorkBlockRequirementDefinition(id = "#minecraft:beds", count = 1, displayName = "bed"),
+        ),
     )
 }
 

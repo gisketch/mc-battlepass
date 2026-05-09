@@ -32,6 +32,7 @@ object NpcLlmService {
     private val activeWorldChatRequests = ConcurrentHashMap<String, Long>()
     private val cancelledResponseTokens = ConcurrentHashMap.newKeySet<Long>()
     private val detachedResponseTokens = ConcurrentHashMap.newKeySet<Long>()
+    private val recentDialogReplies = ConcurrentHashMap<NpcRecentDialogReplyKey, NpcRecentDialogReply>()
     private val recentLlmErrors = ArrayDeque<NpcLlmDebugEntry>()
 
     fun debugErrorLines(limit: Int = 8): List<String> = synchronized(recentLlmErrors) {
@@ -64,9 +65,13 @@ object NpcLlmService {
     }
 
     fun leaveDialog(player: ServerPlayer, npcId: String) {
-        detachFromTalkSession(player, npcId)
-        val request = activeNpcRequests[npcId] ?: return
-        if (request.playerId == player.uuid) detachedResponseTokens += request.responseToken
+        val detachedTalk = detachFromTalkSession(player, npcId)
+        val request = activeNpcRequests[npcId]
+        if (request?.playerId == player.uuid) {
+            detachedResponseTokens += request.responseToken
+            return
+        }
+        if (!detachedTalk) showRecentDialogReplyBalloon(player, npcId)
     }
 
     fun joinConversation(player: ServerPlayer, npcId: String) {
@@ -379,17 +384,20 @@ object NpcLlmService {
         }
     }
 
-    private fun detachFromTalkSession(player: ServerPlayer, npcId: String) {
-        val session = talkSessions[npcId] ?: return
+    private fun detachFromTalkSession(player: ServerPlayer, npcId: String): Boolean {
+        val session = talkSessions[npcId] ?: return false
         var removeSession = false
+        var detached = false
         synchronized(session) {
             val participant = session.participants.remove(player.uuid)
             if (participant != null && (participant.responseToken != 0L || session.activeResponseToken != 0L)) {
                 session.detachedParticipants[player.uuid] = participant.copy()
+                detached = session.activeResponseToken != 0L
             }
             removeSession = session.activeResponseToken == 0L && session.pendingTurns.isEmpty() && session.participants.isEmpty() && session.detachedParticipants.isEmpty()
         }
         if (removeSession) talkSessions.remove(npcId, session)
+        return detached
     }
 
     private fun startRequest(npcId: String, player: ServerPlayer, responseToken: Long): Boolean {
@@ -695,6 +703,7 @@ object NpcLlmService {
         val reply = sanitizeReply(message, settings, fallbackMessage)
         val publicReply = stripDialogMarkup(reply)
         val detached = responseToken != 0L && detachedResponseTokens.remove(responseToken)
+        rememberDialogReply(player.uuid, definition.id, publicReply)
         npc.startTalkingTo(player, NPC_LLM_TALK_DURATION_TICKS)
         if (playerMessage.isNotBlank()) NpcStore.recordConversation(definition.id, player, player.gameProfile.name, playerMessage.take(MAX_PLAYER_MESSAGE_LENGTH), "player_llm_talk")
         NpcStore.recordConversation(definition.id, player, definition.name, publicReply, npcRecordType)
@@ -702,7 +711,8 @@ object NpcLlmService {
         if (sendTalkResponse && !detached) NpcNetwork.sendTalkResponse(player, definition.id, reply, responseToken)
         relayNpcTalk(player, npc, definition, publicReply)
         val excludedPlayer = if (excludePlayerFromBalloon && !detached) player.uuid else null
-        if (showBalloon) NpcFeature.showBalloonToNearby(npc.level() as ServerLevel, npc, publicReply, NPC_LLM_REPLY_BALLOON_TICKS, excludedPlayer)
+        val balloonTicks = if (detached) NPC_LLM_DETACHED_REPLY_BALLOON_TICKS else NPC_LLM_REPLY_BALLOON_TICKS
+        if (showBalloon) NpcFeature.showBalloonToNearby(npc.level() as ServerLevel, npc, publicReply, balloonTicks, excludedPlayer)
         NpcFeature.relayNpcDialogToDiscord(player, definition, publicReply)
     }
 
@@ -730,6 +740,7 @@ object NpcLlmService {
         }
         onlineParticipants.forEach { (participant, participantPlayer) ->
             NpcStore.recordConversation(definition.id, participantPlayer, definition.name, reply, "npc_llm_group_reply")
+            rememberDialogReply(participantPlayer.uuid, definition.id, reply)
             NpcNetwork.sendTalkResponse(participantPlayer, definition.id, reply, participant.responseToken)
         }
         if (memorable.isNotBlank()) {
@@ -787,6 +798,22 @@ object NpcLlmService {
         NpcWorldChatService.recordNpcReply(definition.name, reply, "discord")
         NpcStore.recordGlobalEvent("npc_world_chat", "${definition.name} replied to Discord user $speakerName")
         if (memorable.isNotBlank()) NpcStore.recordGlobalMemory("discord_user_memory", "$speakerName: $memorable")
+    }
+
+    private fun rememberDialogReply(playerId: UUID, npcId: String, message: String) {
+        recentDialogReplies[NpcRecentDialogReplyKey(playerId, npcId)] = NpcRecentDialogReply(message, System.currentTimeMillis())
+    }
+
+    private fun showRecentDialogReplyBalloon(player: ServerPlayer, npcId: String) {
+        val key = NpcRecentDialogReplyKey(player.uuid, npcId)
+        val reply = recentDialogReplies[key] ?: return
+        if (System.currentTimeMillis() - reply.createdAtMs > RECENT_DIALOG_REPLY_REPLAY_MS) {
+            recentDialogReplies.remove(key, reply)
+            return
+        }
+        val npc = NpcFeature.existingNpc(player.server, npcId) ?: return
+        if (npc.level() != player.level()) return
+        NpcNetwork.showBalloon(player, npc.id, reply.message, NPC_LLM_DETACHED_REPLY_BALLOON_TICKS)
     }
 
     private fun relayPlayerTalk(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, message: String) {
@@ -1023,6 +1050,8 @@ object NpcLlmService {
     private const val NPC_LLM_TALK_DURATION_TICKS = 20 * 12
     private const val NPC_LLM_PENDING_BALLOON_TICKS = 40
     private const val NPC_LLM_REPLY_BALLOON_TICKS = 120
+    private const val NPC_LLM_DETACHED_REPLY_BALLOON_TICKS = 60
+    private const val RECENT_DIALOG_REPLY_REPLAY_MS = 30_000L
     private const val STREAM_PARTIAL_STEP = 12
     private const val LOG_BODY_LIMIT = 600
     private const val LLM_DEBUG_BODY_LIMIT = 220
@@ -1043,6 +1072,10 @@ private data class ActiveNpcRequest(val playerId: UUID, val responseToken: Long)
 data class NpcGiftSentimentResult(val message: String, val giftSentiment: String, val memorable: String = "")
 
 private data class NpcLlmCompletion(val message: String, val memorable: String = "", val giftSentiment: String = "")
+
+private data class NpcRecentDialogReplyKey(val playerId: UUID, val npcId: String)
+
+private data class NpcRecentDialogReply(val message: String, val createdAtMs: Long)
 
 private data class NpcLlmDebugEntry(
     val timestamp: Long,
