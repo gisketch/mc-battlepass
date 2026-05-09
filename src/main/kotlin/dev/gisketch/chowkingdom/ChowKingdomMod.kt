@@ -73,7 +73,7 @@ class ChowKingdomMod(modBus: IEventBus, container: ModContainer) {
         DiscordFeature.register()
         SnackbarFeature.register(modBus)
         RelicRouletteFeature.register(modBus)
-        RecipeDisablerFeature.register()
+        RecipeDisablerFeature.register(modBus)
         NpcFeature.register(modBus)
         if (FMLEnvironment.dist == Dist.CLIENT) {
             container.registerExtensionPoint(IConfigScreenFactory::class.java) {

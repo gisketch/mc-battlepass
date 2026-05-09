@@ -177,7 +177,7 @@ Resident state tracks each NPC's entity UUID, camp position, assigned home bed, 
 
 Greeting state is tracked per NPC/player. It stores the last greeting day, the real-time greeting cooldown expiry, and the first-chat day used to stop repeat greetings and prevent duplicate daily friendship rewards.
 
-NPC quest state is tracked per player. It stores the active 15:00 reset period, accepted NPC quests, completed NPC ids for that period, and per-NPC decline cooldown ticks. When the period changes, active unclaimed NPC quests expire.
+NPC quest state is tracked per player. It stores the active 15:00 reset period, accepted NPC quests with their next 15:00 expiry tick, completed NPC ids for that period, and per-NPC decline cooldown ticks. When the period changes, active unclaimed NPC quests expire only after their stored expiry tick.
 
 Outgoing NPC gift state is tracked per NPC/player. It stores the current scheduled gift day/hour and the last offered day, so a ready gift attempt either delivers or times out, then cools down until the next in-game day.
 

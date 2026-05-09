@@ -64,18 +64,32 @@ object NpcStore {
     }
 
     fun questState(player: ServerPlayer, period: Long, onExpired: ((List<NpcAcceptedQuestState>) -> Unit)? = null): NpcPlayerQuestState {
+        return questState(player, period, Long.MAX_VALUE, onExpired)
+    }
+
+    fun questState(player: ServerPlayer, period: Long, currentTick: Long, onExpired: ((List<NpcAcceptedQuestState>) -> Unit)? = null): NpcPlayerQuestState {
         if (!loaded) load()
         val state = data.playerQuests.getOrPut(player.stringUUID) { NpcPlayerQuestState() }
         if (state.period != period) {
-            val expired = state.active.values.toList()
+            val active = state.active.values.onEach { quest ->
+                if (quest.expiresAtTick <= 0L) quest.expiresAtTick = questExpiryTick(quest)
+            }
+            val expired = active.filter { quest -> quest.expiresAtTick <= currentTick }
+            val kept = active.filterNot { quest -> quest.expiresAtTick <= currentTick }
             state.period = period
-            state.active.clear()
+            state.active = kept.associateByTo(linkedMapOf()) { quest -> quest.npcId }
             state.completedNpcIds.clear()
             state.declinedUntilTick.clear()
             if (expired.isNotEmpty()) onExpired?.invoke(expired)
             save()
         }
         return state
+    }
+
+    private fun questExpiryTick(quest: NpcAcceptedQuestState): Long = when {
+        quest.expiresAtTick > 0L -> quest.expiresAtTick
+        quest.acceptedAtTick > 0L -> NpcTime.nextDayAtHour(quest.acceptedAtTick, NpcFeature.plazaMeetupStartHour())
+        else -> 0L
     }
 
     fun saveQuestState() {
@@ -531,6 +545,7 @@ class NpcAcceptedQuestState(
     var fetchItem: String = "",
     var fetchCount: Int = 0,
     var acceptedAtTick: Long = 0L,
+    var expiresAtTick: Long = 0L,
 )
 
 class NpcFriendshipState(

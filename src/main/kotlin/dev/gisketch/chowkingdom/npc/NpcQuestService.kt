@@ -35,7 +35,7 @@ object NpcQuestService {
         lastObservedPeriod = period
         server.playerList.players.forEach { player ->
             val expired = mutableListOf<NpcAcceptedQuestState>()
-            val state = NpcStore.questState(player, period) { quests ->
+            val state = NpcStore.questState(player, period, player.level().dayTime) { quests ->
                 expired += quests
                 notifyExpired(player, quests)
             }
@@ -193,6 +193,7 @@ object NpcQuestService {
         }
         if (definition.id in state.completedNpcIds || state.active.containsKey(definition.id)) return
         val goal = if (offer.category == "fetch") offer.fetchCount else offer.goal
+        val acceptedAtTick = player.level().dayTime
         state.active[definition.id] = NpcAcceptedQuestState(
             npcId = definition.id,
             npcName = definition.name,
@@ -206,7 +207,8 @@ object NpcQuestService {
             goal = goal,
             fetchItem = offer.fetchItem,
             fetchCount = offer.fetchCount,
-            acceptedAtTick = player.level().dayTime,
+            acceptedAtTick = acceptedAtTick,
+            expiresAtTick = nextQuestResetTick(acceptedAtTick),
         )
         NpcStore.saveQuestState()
         syncTo(player)
@@ -297,7 +299,9 @@ object NpcQuestService {
     private fun currentPeriod(level: Level): Long = NpcTime.periodForReset(level.dayTime, NpcFeature.plazaMeetupStartHour())
 
     private fun questState(player: ServerPlayer, period: Long = currentPeriod(player)): NpcPlayerQuestState =
-        NpcStore.questState(player, period) { expired -> notifyExpired(player, expired) }
+        NpcStore.questState(player, period, player.level().dayTime) { expired -> notifyExpired(player, expired) }
+
+    private fun nextQuestResetTick(dayTime: Long): Long = NpcTime.nextDayAtHour(dayTime, NpcFeature.plazaMeetupStartHour())
 
     private fun notifyExpired(player: ServerPlayer, expired: List<NpcAcceptedQuestState>) {
         expired.forEach { quest ->
