@@ -268,6 +268,13 @@ object RolesClientState {
         return perk.bonusPercentByLevel.getOrNull(rank - 1) ?: mountSpeedBonusPercentByRank.getOrElse(rank - 1) { mountSpeedBonusPercentByRank.lastOrNull() ?: 0.0 }
     }
 
+    fun configuredBonusPercent(perk: RolePerkUiPayload, rank: Int): Double {
+        if (rank <= 0) return 0.0
+        return perk.bonusPercentByLevel.getOrNull(rank - 1) ?: 0.0
+    }
+
+    fun firstBonusPercent(perk: RolePerkUiPayload): Double = perk.bonusPercentByLevel.firstOrNull() ?: 0.0
+
     private fun overallLevelFor(playerId: UUID): Int = BattlepassClientState.playerProgress(playerId)?.xpByPass?.values?.sum()?.div(BATTLEPASS_XP_PER_LEVEL) ?: 0
 
     private fun perkTooltipLine(perk: RolePerkUiPayload, rank: Int): String? = when (perk.type) {
@@ -281,6 +288,10 @@ object RolesClientState {
             val target = perk.pokemonType.ifBlank { "matching" }.replaceFirstChar { char -> char.titlecase(Locale.ROOT) }
             "${formatBonusPercent(bonus)} mount speed for $target Pokemon"
         }
+        "crop_bonus_drop_chance" -> "${formatBonusPercent(configuredBonusPercent(perk, rank))} bonus crop drop chance"
+        "quality_harvest_upgrade_chance" -> "${formatBonusPercent(configuredBonusPercent(perk, rank))} Quality Harvest upgrade chance"
+        "gentle_steps" -> "Cannot trample farmland"
+        "seasonal_farmer" -> "${formatBonusPercent(firstBonusPercent(perk))} favored-season crop growth"
         "quality_food_harvest_bonus" -> "${formatMultiplier(perk.multiplier)}x quality food harvest"
         "prevent_crop_trample" -> "Prevents crop trampling"
         else -> perk.type.replace('_', ' ').replaceFirstChar { char -> char.titlecase(Locale.ROOT) }

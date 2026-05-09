@@ -36,6 +36,11 @@ object JobLevels {
             ?: mountSpeedBonusPercentByRank().getOrElse(jobLevel - 1) { mountSpeedBonusPercentByRank().last() }
     }
 
+    fun configuredBonusPercent(perk: RolePerkDefinition, jobLevel: Int): Double {
+        if (jobLevel <= 0) return 0.0
+        return perk.bonusPercentByLevel.getOrNull(jobLevel - 1) ?: 0.0
+    }
+
     fun jobRankUnlockOverallLevels(): List<Int> = RolesConfig.jobScaling().jobRankUnlockOverallLevels
         .filter { level -> level > 0 }
         .distinct()

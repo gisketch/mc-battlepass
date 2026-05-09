@@ -64,7 +64,7 @@ object RolesConfig {
     private fun withBundledDefaultPerks(definition: RoleDefinition): RoleDefinition {
         val bundled = defaultJobs().firstOrNull { job -> job.id == definition.id } ?: return definition
         bundled.perks
-            .filter { perk -> perk.type == "mount_speed" }
+            .filter { perk -> perk.type in BUNDLED_BACKFILL_PERK_TYPES }
             .filterNot { defaultPerk -> definition.perks.any { perk -> perk.type == defaultPerk.type && perk.pokemonType == defaultPerk.pokemonType } }
             .forEach { perk -> definition.perks += perk.copy() }
         return definition
@@ -101,7 +101,7 @@ object RolesConfig {
     }
 
     private fun defaultJobs(): List<RoleDefinition> = listOf(
-        typedJob("botanist", "Botanist", "grass", "Reads leaf, vine, and bloom signs to work with Grass Pokemon."),
+        botanistJob(),
         typedJob("diver", "Diver", "water", "Works rivers, reefs, and rain routes to track Water Pokemon."),
         typedJob("magma_scout", "Magma Scout", "fire", "Scouts hot springs, ash fields, and lava paths for Fire Pokemon."),
         typedJob("engineer", "Engineer", "electric", "Tunes circuits, rails, and storms to find Electric Pokemon."),
@@ -139,11 +139,33 @@ object RolesConfig {
         ),
     )
 
+    private fun botanistJob(): RoleDefinition = typedJob("botanist", "Botanist", "grass", "Reads leaf, vine, and bloom signs to work with Grass Pokemon.").also { role ->
+        role.perks += RolePerkDefinition(
+            type = "crop_bonus_drop_chance",
+            bonusPercentByLevel = DEFAULT_BOTANIST_HARVEST_CHANCES.toMutableList(),
+        )
+        role.perks += RolePerkDefinition(
+            type = "quality_harvest_upgrade_chance",
+            bonusPercentByLevel = DEFAULT_BOTANIST_HARVEST_CHANCES.toMutableList(),
+        )
+        role.perks += RolePerkDefinition(
+            type = "gentle_steps",
+        )
+        role.perks += RolePerkDefinition(
+            type = "seasonal_farmer",
+            bonusPercentByLevel = mutableListOf(DEFAULT_SEASONAL_FARMER_GROWTH_CHANCE),
+        )
+    }
+
     private fun defaultJobScaling(): JobScalingDefinition = JobScalingDefinition(
         jobRankUnlockOverallLevels = JobLevels.fallbackJobRankUnlockOverallLevels.toMutableList(),
         catchRateBonusPercentByRank = JobLevels.fallbackCatchRateBonusPercentByRank.toMutableList(),
         mountSpeedBonusPercentByRank = JobLevels.fallbackMountSpeedBonusPercentByRank.toMutableList(),
     )
+
+    private val DEFAULT_BOTANIST_HARVEST_CHANCES = listOf(0.02, 0.04, 0.06, 0.08, 0.10)
+    private const val DEFAULT_SEASONAL_FARMER_GROWTH_CHANCE = 0.10
+    private val BUNDLED_BACKFILL_PERK_TYPES = setOf("mount_speed", "crop_bonus_drop_chance", "quality_harvest_upgrade_chance", "gentle_steps", "seasonal_farmer")
 
     private fun defaultRogue(): RoleDefinition = RoleDefinition(
         id = "rogue",

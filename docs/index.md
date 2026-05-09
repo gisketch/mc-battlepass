@@ -23,6 +23,7 @@
 - [Revive](REVIVE.md)
 - [Jobs And Classes](ROLES.md)
 - [Jobs And Classes Creation Guide](ROLE_CONFIGURATION_GUIDE.md)
+- [Role Creation Guide](ROLE_CREATION_GUIDE.md)
 - [Compatibility](COMPATIBILITY.md)
 - [Harness Workflow](HARNESS.md)
 

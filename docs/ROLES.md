@@ -2,7 +2,7 @@
 
 Roles are server-owned and data-driven.
 
-For step-by-step creation and tuning, see [Jobs And Classes Creation Guide](ROLE_CONFIGURATION_GUIDE.md).
+For step-by-step creation and tuning, see [Jobs And Classes Creation Guide](ROLE_CONFIGURATION_GUIDE.md) and [Role Creation Guide](ROLE_CREATION_GUIDE.md).
 
 ## Files
 
@@ -37,6 +37,8 @@ Commands require permission level 2.
 
 - Jobs: `botanist` Grass, `diver` Water, `magma_scout` Fire, `engineer` Electric, `field_researcher` Normal, `bug_scout` Bug, `falconer` Flying, `shade_runner` Dark, `esper` Psychic, `martial_artist` Fighting, `mountaineer` Ice, `shinobi` Poison, `mason` Rock, `excavator` Ground, `blacksmith` Steel, `spirit_medium` Ghost, `drake_tamer` Dragon, `performer` Fairy, and local `seed_merchant` seed shop support.
 - Each default job defines `cobblemon_catch_rate` and `mount_speed` hooks for its Pokemon type. Catch-rate bonus scales by job rank with default bonuses of +5%, +10%, +15%, +25%, +50%. Mount-speed bonus scales by job rank with default bonuses of +3%, +5%, +9%, +14%, +20%.
+- Botanist also defines `crop_bonus_drop_chance` and `quality_harvest_upgrade_chance`. Both run only on fully-grown crop harvests and default to +2%, +4%, +6%, +8%, and +10% by job rank. Quality Harvest upgrades Quality Food drops from none to Iron, Iron to Gold, and Gold to Diamond; Diamond stays Diamond.
+- Botanist unique perks are `gentle_steps` and `seasonal_farmer`. Gentle Steps prevents farmland trampling. Seasonal Farmer marks crops planted by Botanist players, then gives those crops a default +10% extra growth chance when Serene Seasons tags the crop for the current season or as year-round.
 - `rogue`: starts with a book, diamond axe, and leather boots. Only Rogue-tagged equipment avoids class penalties.
 - `warrior`: starts with a book, wooden sword, and iron boots. Only Warrior-tagged equipment avoids class penalties.
 

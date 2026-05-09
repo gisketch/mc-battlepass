@@ -181,6 +181,21 @@ private class PlayerProfileScreen : Screen(Component.literal("Profile")) {
             val rankText = if (jobRank > 0) "Rank $jobRank" else "Rank locked"
             ProfilePerk("${percentText(bonus)} ${typeLabel(perk.pokemonType)} mount speed", "${role.displayName} improves mount speed for ${typeLabel(perk.pokemonType)} Pokemon. Current job rank: $rankText.")
         }
+        "crop_bonus_drop_chance" -> {
+            val bonus = RolesClientState.configuredBonusPercent(perk, jobRank)
+            val rankText = if (jobRank > 0) "Rank $jobRank" else "Rank locked"
+            ProfilePerk("${percentText(bonus)} bonus crop drops", "${role.displayName} can add one extra drop when harvesting fully-grown crops. Current job rank: $rankText.")
+        }
+        "quality_harvest_upgrade_chance" -> {
+            val bonus = RolesClientState.configuredBonusPercent(perk, jobRank)
+            val rankText = if (jobRank > 0) "Rank $jobRank" else "Rank locked"
+            ProfilePerk("${percentText(bonus)} Quality Harvest", "${role.displayName} can upgrade fully-grown crop drops from none to Iron, Iron to Gold, or Gold to Diamond. Current job rank: $rankText.")
+        }
+        "gentle_steps" -> ProfilePerk("Gentle Steps", "${role.displayName} cannot trample farmland while active.")
+        "seasonal_farmer" -> {
+            val bonus = RolesClientState.firstBonusPercent(perk)
+            ProfilePerk("${percentText(bonus)} Seasonal Farmer", "Crops planted by ${role.displayName} grow faster during their Serene Seasons favored season.")
+        }
         "quality_food_harvest_bonus" -> ProfilePerk("${multiplierText(perk.multiplier)}x Quality Food harvest", "${role.displayName} rerolls Quality Food crop drops based on this multiplier.")
         "prevent_crop_trample" -> ProfilePerk("Prevents crop trampling", "${role.displayName} cancels farmland trampling while active.")
         "starting_items" -> ProfilePerk("Starting items: ${perk.startingItems.size}", perk.startingItems.joinToString(", ").ifBlank { "No starting items configured." })

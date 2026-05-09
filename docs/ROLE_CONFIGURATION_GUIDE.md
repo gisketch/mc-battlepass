@@ -57,6 +57,10 @@ description = "Reads leaf, vine, and bloom signs to work with Grass Pokemon."
 perks = [
   { type = "cobblemon_catch_rate", pokemon_type = "grass" },
   { type = "mount_speed", pokemon_type = "grass" },
+  { type = "crop_bonus_drop_chance", bonus_percent_by_level = [0.02, 0.04, 0.06, 0.08, 0.10] },
+  { type = "quality_harvest_upgrade_chance", bonus_percent_by_level = [0.02, 0.04, 0.06, 0.08, 0.10] },
+  { type = "gentle_steps" },
+  { type = "seasonal_farmer", bonus_percent_by_level = [0.10] },
 ]
 ```
 
@@ -64,6 +68,10 @@ Current job perk types:
 
 - `prevent_crop_trample`: cancels farmland trampling for active players.
 - `quality_food_harvest_bonus`: rerolls Quality Food quality on crop drops. Uses `multiplier`.
+- `crop_bonus_drop_chance`: chance to add one extra drop stack item when harvesting a fully-grown crop. Uses `bonus_percent_by_level`.
+- `quality_harvest_upgrade_chance`: chance to upgrade a fully-grown crop drop through Quality Food tiers, none to Iron, Iron to Gold, Gold to Diamond. Uses `bonus_percent_by_level`.
+- `gentle_steps`: cancels farmland trampling for active players.
+- `seasonal_farmer`: marks crops planted by active players. Marked crops use the first `bonus_percent_by_level` value as an extra growth chance when Serene Seasons says the crop is in its favored season.
 - `cobblemon_catch_rate`: active Cobblemon catch-rate scaling. Uses `pokemon_type` and optional `bonus_percent_by_level` override. Configs without `bonus_percent_by_level` use `catch_rate_bonus_percent_by_rank` from `roles/job_scaling.toml`. Matching active jobs stack multiplicatively.
 - `mount_speed`: active Cobblemon mount-speed scaling. Uses `pokemon_type` and optional `bonus_percent_by_level` override. Configs without `bonus_percent_by_level` use `mount_speed_bonus_percent_by_rank` from `roles/job_scaling.toml`. Matching active jobs stack multiplicatively.
 
