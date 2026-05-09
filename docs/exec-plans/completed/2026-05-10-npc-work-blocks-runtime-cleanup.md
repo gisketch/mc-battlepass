@@ -20,5 +20,6 @@ Use runtime NPC config, delete stale root config, remove legacy work target bloc
 - 2026-05-10: Revised Huntress Wizard, Professor Chowfan, and Shou Mai runtime work blocks to fit their lore/jobs.
 - 2026-05-10: Deleted stale root NPC config directory.
 - 2026-05-10: Added 3-second closed-dialog LLM reply balloon replay.
+- 2026-05-10: Added job application tooltip rows for required work blocks with item icons.
 - 2026-05-10: `./gradlew.bat build --console=plain` passed.
 - 2026-05-10: `bash ./scripts/check-sonata.sh` passed.

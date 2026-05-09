@@ -440,17 +440,12 @@ object NpcFeature {
 
     private fun formatMissingWorkBlocks(status: NpcWorkBlockStatus): String = status.counts
         .filter { count -> count.missing > 0 }
-        .joinToString(", ") { count -> "${count.missing} ${workBlockLabel(count.requirement)}" }
+        .joinToString(", ") { count -> "${count.missing} ${count.requirement.label()}" }
         .ifBlank { "nothing" }
 
     private fun formatRequiredWorkBlocks(status: NpcWorkBlockStatus): String = status.counts
-        .joinToString(", ") { count -> "${count.present}/${count.requirement.count} ${workBlockLabel(count.requirement)}" }
+        .joinToString(", ") { count -> "${count.present}/${count.requirement.count} ${count.requirement.label()}" }
         .ifBlank { "none" }
-
-    private fun workBlockLabel(requirement: NpcWorkBlockRequirementDefinition): String {
-        if (requirement.displayName.isNotBlank()) return requirement.displayName
-        return requirement.id.removePrefix("#").substringAfter(':').replace('_', ' ')
-    }
 
     fun syncFriends(player: ServerPlayer) {
         val currentHour = NpcTime.hour(player.level())

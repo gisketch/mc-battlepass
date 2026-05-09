@@ -35,6 +35,13 @@ class NpcJobApplicationItem(properties: Properties) : Item(properties) {
             val name = definition?.name ?: npcId
             tooltipComponents += Component.literal("For $name").withStyle(ChatFormatting.GRAY)
             tooltipComponents += Component.literal("Right-click a work block.").withStyle(ChatFormatting.DARK_GRAY)
+            val workBlocks = definition?.workBlocks.orEmpty()
+            if (workBlocks.isNotEmpty()) {
+                tooltipComponents += Component.literal("Needs nearby:").withStyle(ChatFormatting.GRAY)
+                workBlocks.forEach { requirement ->
+                    tooltipComponents += Component.literal("${requirement.count} x ${requirement.label()}").withStyle(ChatFormatting.DARK_GRAY)
+                }
+            }
         }
     }
 }

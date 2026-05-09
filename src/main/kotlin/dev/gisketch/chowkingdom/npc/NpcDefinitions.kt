@@ -261,6 +261,8 @@ class NpcWorkBlockRequirementDefinition(
         count = count.coerceIn(1, 256)
         displayName = displayName.trim()
     }
+
+    fun label(): String = displayName.ifBlank { id.removePrefix("#").substringAfter(':').replace('_', ' ') }
 }
 
 class NpcCampersSettingsDefinition(

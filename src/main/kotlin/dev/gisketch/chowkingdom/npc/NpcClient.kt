@@ -33,6 +33,7 @@ import net.minecraft.client.resources.sounds.SimpleSoundInstance
 import net.minecraft.network.chat.Component
 import net.minecraft.network.chat.FormattedText
 import net.minecraft.network.chat.MutableComponent
+import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.sounds.SoundEvent
 import net.minecraft.sounds.SoundSource
@@ -41,6 +42,7 @@ import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.player.ChatVisiblity
 import net.minecraft.world.inventory.tooltip.TooltipComponent
 import net.minecraft.world.item.ItemStack
+import net.minecraft.world.item.Items
 import net.neoforged.bus.api.IEventBus
 import net.neoforged.neoforge.client.event.EntityRenderersEvent
 import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent
@@ -219,14 +221,36 @@ object NpcClient {
 
     private fun registerTooltipFactories(event: RegisterClientTooltipComponentFactoriesEvent) {
         event.register(NpcRentContractTooltip::class.java, ::NpcRentContractClientTooltip)
+        event.register(NpcJobApplicationTooltip::class.java, ::NpcJobApplicationClientTooltip)
     }
 
     private fun gatherRentContractTooltip(event: RenderTooltipEvent.GatherComponents) {
         val npcId = NpcRentContractData.readNpcId(event.itemStack)
-        if (npcId.isBlank()) return
-        val definition = NpcConfig.get(npcId)
-        val name = definition?.name ?: npcId
-        event.tooltipElements.add(1.coerceAtMost(event.tooltipElements.size), Either.right(NpcRentContractTooltip(npcId, name)))
+        if (npcId.isNotBlank()) {
+            val definition = NpcConfig.get(npcId)
+            val name = definition?.name ?: npcId
+            event.tooltipElements.add(1.coerceAtMost(event.tooltipElements.size), Either.right(NpcRentContractTooltip(npcId, name)))
+            return
+        }
+        val jobNpcId = NpcJobApplicationData.readNpcId(event.itemStack)
+        if (jobNpcId.isBlank()) return
+        val requirements = NpcConfig.get(jobNpcId)?.workBlocks.orEmpty()
+        if (requirements.isEmpty()) return
+        val entries = requirements.map { requirement ->
+            NpcJobApplicationTooltipEntry(workBlockIconStack(requirement), requirement.count, requirement.label())
+        }
+        event.tooltipElements.add(event.tooltipElements.size, Either.right(NpcJobApplicationTooltip(entries)))
+    }
+
+    private fun workBlockIconStack(requirement: NpcWorkBlockRequirementDefinition): ItemStack {
+        val iconId = when (requirement.id) {
+            "#minecraft:beds" -> "minecraft:red_bed"
+            else -> requirement.id.removePrefix("#")
+        }
+        val item = runCatching { BuiltInRegistries.ITEM.get(ResourceLocation.parse(iconId)) }.getOrDefault(Items.PAPER)
+            .takeUnless { resolved -> resolved == Items.AIR }
+            ?: Items.PAPER
+        return ItemStack(item, requirement.count.coerceIn(1, 64))
     }
 
     private fun hideHotbarDuringDialog(event: RenderGuiLayerEvent.Pre) {
@@ -580,6 +604,25 @@ class NpcRentContractClientTooltip(private val tooltip: NpcRentContractTooltip) 
         guiGraphics.blit(texture, x, y, 24, 24, 8.0f, 8.0f, 8, 8, 64, 64)
         guiGraphics.blit(texture, x, y, 24, 24, 40.0f, 8.0f, 8, 8, 64, 64)
         guiGraphics.drawString(font, tooltip.npcName, x + 28, y + 8, 0xFFFFFFFF.toInt(), false)
+    }
+}
+
+class NpcJobApplicationTooltip(val entries: List<NpcJobApplicationTooltipEntry>) : TooltipComponent
+
+class NpcJobApplicationTooltipEntry(val stack: ItemStack, val count: Int, val label: String)
+
+class NpcJobApplicationClientTooltip(private val tooltip: NpcJobApplicationTooltip) : ClientTooltipComponent {
+    override fun getHeight(): Int = tooltip.entries.size * 18
+
+    override fun getWidth(font: Font): Int = tooltip.entries.maxOfOrNull { entry -> 24 + font.width("${entry.count} x ${entry.label}") } ?: 0
+
+    override fun renderImage(font: Font, x: Int, y: Int, guiGraphics: GuiGraphics) {
+        tooltip.entries.forEachIndexed { index, entry ->
+            val rowY = y + index * 18
+            guiGraphics.renderItem(entry.stack, x, rowY)
+            guiGraphics.renderItemDecorations(font, entry.stack, x, rowY)
+            guiGraphics.drawString(font, "${entry.count} x ${entry.label}", x + 22, rowY + 4, 0xFFAAAAAA.toInt(), false)
+        }
     }
 }
 
