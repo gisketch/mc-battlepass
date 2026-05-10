@@ -114,3 +114,4 @@ Add a minimal GeckoLib-backed custom animation path for Chow Kingdom NPCs and de
 - 2026-05-10: Reworked the third-hit SBL retaliation override to use reusable custom animation templates: run with `running` until in range, play `attack`, fire damage from the template hit event, then restore previous held items and custom-animation renderer state.
 - 2026-05-10: Tightened retaliation range handling: NPCs now chase with coordinate movement until within melee swing range, and the attack template only applies damage if the player remains within hit range at the swing event tick.
 - 2026-05-10: Reduced retaliation swing start/hit distance, moved the attack hit event earlier in the swing, and added a direct health-damage fallback when Minecraft damage sources reject an otherwise valid melee hit.
+- 2026-05-10: Increased retaliation chase speed so the custom running animation closes distance faster before the attack swing.

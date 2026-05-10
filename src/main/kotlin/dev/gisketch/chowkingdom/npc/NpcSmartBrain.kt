@@ -316,7 +316,7 @@ object NpcSmartBrainOverrides {
     private const val ATTACK_BACK_MAX_TICKS = 160
     private const val ATTACK_START_DISTANCE_SQR = 4.0
     private const val ATTACK_HIT_DISTANCE_SQR = 5.0625
-    private const val ATTACK_CHASE_SPEED = 1.25
+    private const val ATTACK_CHASE_SPEED = 1.75
     private const val ATTACK_DAMAGE = 4.0f
     private const val ATTACK_KNOCKBACK = 0.35
     private const val ATTACK_COOLDOWN_TICKS = 13
