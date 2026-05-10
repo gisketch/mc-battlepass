@@ -69,7 +69,9 @@ Current values:
 
 Wrong weapons deal reduced damage, reduce attack speed while held, apply an item cooldown after attacks, spend at least the configured wrong-weapon stamina floor, and show compact `Classes:` tooltip compatibility lines. Wrong armor disables sprinting while worn and uses the same class compatibility tooltip. Starting items are only inventory grants after class application; allowed weapons and armor come from `equipment_affinity` tags/patterns, not `starting_items`.
 
-Equipment affinity supports deny patterns with `weapon_exclude_patterns` and `armor_exclude_patterns`. Matching is `allowed tag or pattern` and `not excluded`; entries in pattern arrays can also be item tags by using `#namespace:path`.
+Equipment affinity supports deny patterns with `weapon_exclude_patterns` and `armor_exclude_patterns`. Matching is `allowed tag or pattern` and `not excluded`; entries in pattern arrays can also be item tags by using `#namespace:path`. Weapon-like items that match no class affinity and no global whitelist show `Weapon unconfigured, ask @gisketch for help`.
+
+Use `/unconfigured` or `/ck roles unconfigured` as an operator to scan loaded items for unconfigured weapons. The command prints codeblocks in game, posts them to Discord through the configured webhook, and writes a generated datapack tag at `#gisketchs_chowkingdom_mod:unconfigured`; run `/reload` before EMI sees the refreshed generated tag.
 
 Inventory slots render a grey overlay on weapon-like items and armor that none of the player's active classes can use. Global whitelist matches keep normal rendering.
 

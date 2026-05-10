@@ -1,20 +1,26 @@
 package dev.gisketch.chowkingdom.roles
 
+import com.google.gson.GsonBuilder
+import com.google.gson.JsonArray
+import com.google.gson.JsonObject
 import com.mojang.brigadier.arguments.StringArgumentType
 import com.mojang.brigadier.context.CommandContext
 import com.mojang.brigadier.suggestion.SuggestionProvider
 import dev.gisketch.chowkingdom.ChowKingdomMod
 import dev.gisketch.chowkingdom.compat.PehkuiScaleBridge
+import dev.gisketch.chowkingdom.discord.DiscordWebhookClient
 import net.minecraft.commands.CommandSourceStack
 import net.minecraft.commands.Commands
 import net.minecraft.commands.SharedSuggestionProvider
 import net.minecraft.commands.arguments.EntityArgument
 import net.minecraft.core.registries.Registries
 import net.minecraft.network.chat.Component
+import net.minecraft.server.MinecraftServer
 import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.InteractionResult
 import net.minecraft.world.effect.MobEffect
 import net.minecraft.world.effect.MobEffectInstance
+import net.minecraft.world.level.storage.LevelResource
 import net.neoforged.bus.api.EventPriority
 import net.neoforged.bus.api.IEventBus
 import net.neoforged.fml.loading.FMLEnvironment
@@ -34,9 +40,11 @@ import net.neoforged.neoforge.event.server.ServerStartedEvent
 import net.neoforged.neoforge.event.tick.PlayerTickEvent
 import net.neoforged.neoforge.registries.DeferredHolder
 import net.neoforged.neoforge.registries.DeferredRegister
+import java.nio.file.Files
 import java.util.function.Supplier
 
 object RolesFeature {
+    private val GSON = GsonBuilder().setPrettyPrinting().create()
     private val MOB_EFFECTS: DeferredRegister<MobEffect> = DeferredRegister.create(Registries.MOB_EFFECT, ChowKingdomMod.MOD_ID)
     private val JOB_STATUS_EFFECTS: List<DeferredHolder<MobEffect, JobRankMobEffect>> = (0 until MAX_JOB_STATUS_EFFECTS).map { slot ->
         MOB_EFFECTS.register("job_status_${slot + 1}", Supplier { JobRankMobEffect(slot) })
@@ -137,6 +145,7 @@ object RolesFeature {
     }
 
     private fun onRegisterCommands(event: RegisterCommandsEvent) {
+        event.dispatcher.register(Commands.literal("unconfigured").requires { source -> source.hasPermission(2) }.executes(::unconfiguredWeapons))
         event.dispatcher.register(
             Commands.literal("ck")
                 .then(Commands.literal("onboarding").requires { source -> source.hasPermission(2) }.executes(::resetOnboarding))
@@ -144,6 +153,7 @@ object RolesFeature {
                     Commands.literal("roles")
                         .requires { source -> source.hasPermission(2) }
                         .then(Commands.literal("reload").executes(::reloadRoles))
+                        .then(Commands.literal("unconfigured").executes(::unconfiguredWeapons))
                         .then(Commands.literal("list").executes(::listRoles))
                         .then(
                             Commands.literal("get")
@@ -241,6 +251,49 @@ object RolesFeature {
         val classes = RolesConfig.classes().joinToString(", ") { role -> role.id }
         context.source.sendSuccess({ Component.literal("Jobs: $jobs | Classes: $classes") }, false)
         return 1
+    }
+
+    private fun unconfiguredWeapons(context: CommandContext<CommandSourceStack>): Int {
+        val ids = RoleClassEquipmentRules.unconfiguredWeaponIds()
+        writeUnconfiguredTagDatapack(context.source.server, ids)
+        val chunks = codeblockChunks(ids)
+        context.source.sendSuccess({ Component.literal("Unconfigured weapons: ${ids.size}. Wrote datapack tag #${ChowKingdomMod.MOD_ID}:unconfigured. Run /reload before EMI sees the refreshed tag.") }, true)
+        chunks.forEach { chunk -> context.source.sendSuccess({ Component.literal(chunk) }, false) }
+        chunks.forEach { chunk -> DiscordWebhookClient.send(chunk) }
+        return ids.size.coerceAtLeast(1)
+    }
+
+    private fun codeblockChunks(ids: List<String>): List<String> {
+        if (ids.isEmpty()) return listOf("Unconfigured weapons: 0\n```text\nnone\n```")
+        val chunks = mutableListOf<String>()
+        val current = StringBuilder()
+        ids.forEach { id ->
+            if (current.length + id.length + 1 > DISCORD_CODEBLOCK_BODY_LIMIT) {
+                chunks += "Unconfigured weapons\n```text\n$current```"
+                current.clear()
+            }
+            current.append(id).append('\n')
+        }
+        if (current.isNotEmpty()) chunks += "Unconfigured weapons\n```text\n$current```"
+        return chunks
+    }
+
+    private fun writeUnconfiguredTagDatapack(server: MinecraftServer, ids: List<String>) {
+        val root = server.getWorldPath(LevelResource.DATAPACK_DIR).resolve("chowkingdom_unconfigured")
+        val tagDirectory = root.resolve("data").resolve(ChowKingdomMod.MOD_ID).resolve("tags").resolve("item")
+        runCatching {
+            Files.createDirectories(tagDirectory)
+            Files.writeString(root.resolve("pack.mcmeta"), """{"pack":{"pack_format":48,"description":"Chowkingdom generated unconfigured weapon tag"}}""")
+            val values = JsonArray()
+            ids.forEach(values::add)
+            val tag = JsonObject().also { json ->
+                json.addProperty("replace", true)
+                json.add("values", values)
+            }
+            Files.writeString(tagDirectory.resolve("unconfigured.json"), GSON.toJson(tag))
+        }.onFailure { exception ->
+            ChowKingdomMod.LOGGER.warn("Failed to write unconfigured weapon datapack tag", exception)
+        }
     }
 
     private fun getRoles(context: CommandContext<CommandSourceStack>): Int {
@@ -470,4 +523,5 @@ object RolesFeature {
     }
 
     private const val MAX_JOB_STATUS_EFFECTS = 2
+    private const val DISCORD_CODEBLOCK_BODY_LIMIT = 1800
 }

@@ -47,7 +47,7 @@ internal object RoleClassEquipmentRules {
         if (classIds.isEmpty()) return
         val stack = event.itemStack
         when {
-            isWeaponLike(stack) && !isGloballyAllowedWeapon(stack) -> classTooltipLine(classIds, stack, ActiveClassEquipment::allowsWeapon)?.let(event.toolTip::add)
+            isWeaponLike(stack) && !isGloballyAllowedWeapon(stack) -> event.toolTip.add(classTooltipLine(classIds, stack, ActiveClassEquipment::allowsWeapon) ?: unconfiguredWeaponTooltip())
             stack.item is ArmorItem && !RecipeDisablerFeature.isCosmeticized(stack) && !isGloballyAllowedArmor(stack) -> classTooltipLine(classIds, stack, ActiveClassEquipment::allowsArmor)?.let(event.toolTip::add)
         }
     }
@@ -80,6 +80,13 @@ internal object RoleClassEquipmentRules {
             else -> false
         }
     }
+
+    fun unconfiguredWeaponIds(): List<String> = BuiltInRegistries.ITEM.asSequence()
+        .map { item -> BuiltInRegistries.ITEM.getKey(item).toString() to ItemStack(item) }
+        .filter { (_, stack) -> !stack.isEmpty && isUnconfiguredWeapon(stack) }
+        .map { (id, _) -> id }
+        .sorted()
+        .toList()
 
     private fun equipmentAffinities(player: ServerPlayer): List<RolePerkDefinition> = RolePerks.classPerks(player, "equipment_affinity")
 
@@ -117,6 +124,10 @@ internal object RoleClassEquipmentRules {
         }
         return line
     }
+
+    private fun unconfiguredWeaponTooltip(): Component = Component.literal("Weapon unconfigured, ask @gisketch for help").withStyle(ChatFormatting.DARK_RED)
+
+    private fun isUnconfiguredWeapon(stack: ItemStack): Boolean = isWeaponLike(stack) && !isGloballyAllowedWeapon(stack) && configuredClassEquipment().none { entry -> entry.allowsWeapon(stack) }
 
     private fun applyWrongWeaponAttackSpeed(player: ServerPlayer, perks: List<RolePerkDefinition>) {
         val attribute = player.getAttribute(Attributes.ATTACK_SPEED) ?: return
