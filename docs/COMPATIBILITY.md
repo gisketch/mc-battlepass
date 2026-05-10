@@ -65,6 +65,7 @@ Behavior:
 - When Punchy and Shield n Parry are present, CKDM suppresses Punchy's first-person arm render while Shield n Parry's parry visual is active so Punchy does not duplicate the parry hand/item render.
 - When AzureLib Armor renders an entity that lacks AzureLib's animator accessor, CKDM makes the accessor lookup return null instead of throwing so AzureLib Armor can use its non-animated fallback path.
 - Witcher RPG armor textures are mirrored into the vanilla armor texture path expected by the AzureLib fallback renderer, so armor such as Griffin and Grandmaster Feline boots do not render as missing texture after the crash guard takes effect.
+- When Bosses'Rise / BlockFactory Bosses is present, CKDM disables its player dodge-roll functionality completely: the roll packet action is canceled, roll charges are hidden, active roll state is cleared, and roll invulnerability is disabled.
 
 Hot reload:
 
@@ -81,6 +82,7 @@ One Paraglider stamina wheel is 1000 stamina. Tune the JSON first before changin
 - Epic Fight reflection hooks attach per player while the player is ticking server-side.
 - Punchy parry compatibility is client-only and optional. CKDM still loads without Punchy or Shield n Parry.
 - AzureLib Armor crash protection is client-only and optional. CKDM still loads without AzureLib Armor.
+- BlockFactory Bosses roll removal is optional. CKDM still loads without Bosses'Rise / BlockFactory Bosses.
 
 ## Xaero + Cobblemon Radar
 
