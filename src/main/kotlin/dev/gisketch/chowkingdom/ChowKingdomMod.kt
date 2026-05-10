@@ -18,6 +18,7 @@ import dev.gisketch.chowkingdom.client.ChowKingdomHud
 import dev.gisketch.chowkingdom.client.InventoryMenuClient
 import dev.gisketch.chowkingdom.client.ParagliderAttackInputClient
 import dev.gisketch.chowkingdom.client.PlayerListHudClient
+import dev.gisketch.chowkingdom.compat.SpellEngineClassLockBridge
 import dev.gisketch.chowkingdom.compat.UnifiedStaminaFeature
 import dev.gisketch.chowkingdom.config.TomlConfigIO
 import dev.gisketch.chowkingdom.discord.DiscordFeature
@@ -70,6 +71,7 @@ class ChowKingdomMod(modBus: IEventBus, container: ModContainer) {
         ShopsFeature.register(modBus)
         ProfilesFeature.register(modBus)
         RolesFeature.register(modBus)
+        SpellEngineClassLockBridge.register()
         UnifiedStaminaFeature.register()
         ReviveFeature.register(modBus)
         TradingFeature.register(modBus)

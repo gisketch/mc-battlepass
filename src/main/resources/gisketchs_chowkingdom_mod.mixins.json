@@ -10,6 +10,7 @@
   ],
   "client": [
     "AbstractContainerScreenAccessor",
+    "AbstractContainerScreenClassLockMixin",
     "AzureLibArmorAnimatorAccessorMixin",
     "BlockFactoryRollHudMixin",
     "ClientPacketListenerMixin",
