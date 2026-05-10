@@ -8,6 +8,7 @@
   ],
   "client": [
     "AbstractContainerScreenAccessor",
+    "AzureLibArmorAnimatorAccessorMixin",
     "ClientPacketListenerMixin",
     "EMFAnimationParagliderPauseMixin",
     "EntityRendererMixin",
@@ -17,6 +18,8 @@
     "LivingEntityRendererMixin",
     "PlayerModelParagliderPoseMixin",
     "PlayerRendererRevivePoseMixin",
+    "PunchyArmRendererParryMixin",
+    "PunchyConfigParryMixin",
     "XaeroRadarColorHelperMixin",
     "XaeroRadarIconManagerMixin"
   ],

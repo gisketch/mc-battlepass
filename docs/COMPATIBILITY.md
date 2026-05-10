@@ -62,6 +62,8 @@ Behavior:
 - Paraglider's native stamina wheel remains the visible stamina HUD. Chow Kingdom no longer registers its custom Paraglider stamina bar.
 - Paragliding players get the raised-arm pose reapplied late in `HumanoidModel`/`PlayerModel` animation setup so player animation resource packs do not erase the Paraglider pose.
 - When Entity Model Features/Fresh Animations player CEM animations are present, CKDM pauses EMF player animation evaluation while Paraglider pose is active, then lets EMF resume after paragliding.
+- When Punchy and Shield n Parry are present, CKDM suppresses Punchy's first-person arm render while Shield n Parry's parry visual is active so Punchy does not duplicate the parry hand/item render.
+- When AzureLib Armor renders an entity that lacks AzureLib's animator accessor, CKDM makes the accessor lookup return null instead of throwing so AzureLib Armor can use its non-animated fallback path.
 
 Hot reload:
 
@@ -76,6 +78,8 @@ One Paraglider stamina wheel is 1000 stamina. Tune the JSON first before changin
 - The Paraglider pose compatibility hooks are client-only and check Paraglider movement/item state through reflection. The EMF hook is optional and still lets CKDM load without Entity Model Features.
 - ParCool/Epic Fight config patching happens on mod startup. Some client HUD settings may require a restart after first patch.
 - Epic Fight reflection hooks attach per player while the player is ticking server-side.
+- Punchy parry compatibility is client-only and optional. CKDM still loads without Punchy or Shield n Parry.
+- AzureLib Armor crash protection is client-only and optional. CKDM still loads without AzureLib Armor.
 
 ## Xaero + Cobblemon Radar
 
