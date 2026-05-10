@@ -33,6 +33,7 @@ import net.neoforged.neoforge.event.AnvilUpdateEvent
 import net.neoforged.neoforge.event.RegisterCommandsEvent
 import net.neoforged.neoforge.event.entity.living.LivingDamageEvent
 import net.neoforged.neoforge.event.entity.living.LivingDeathEvent
+import net.neoforged.neoforge.event.entity.living.LivingEntityUseItemEvent
 import net.neoforged.neoforge.event.entity.player.ItemFishedEvent
 import net.neoforged.neoforge.event.entity.player.ItemTooltipEvent
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent
@@ -79,6 +80,7 @@ object RolesFeature {
         NeoForge.EVENT_BUS.addListener(::onFarmlandTrample)
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, ::onRightClickItem)
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, ::onRightClickBlock)
+        NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, ::onUseItemStart)
         NeoForge.EVENT_BUS.addListener(::onBlockPlace)
         NeoForge.EVENT_BUS.addListener(::onBlockBreak)
         NeoForge.EVENT_BUS.addListener(::onAnvilUpdate)
@@ -481,6 +483,13 @@ object RolesFeature {
         if (!RoleClassEquipmentRules.shouldBlockWeaponUse(player, event.itemStack)) return
         event.isCanceled = true
         event.cancellationResult = InteractionResult.FAIL
+    }
+
+    private fun onUseItemStart(event: LivingEntityUseItemEvent.Start) {
+        val player = event.entity as? ServerPlayer ?: return
+        if (!RoleClassEquipmentRules.shouldBlockWeaponUse(player, event.item)) return
+        event.isCanceled = true
+        event.duration = 0
     }
 
     private fun onBlockBreak(event: BlockEvent.BreakEvent) {

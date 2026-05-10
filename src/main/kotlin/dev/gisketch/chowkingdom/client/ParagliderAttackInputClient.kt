@@ -22,7 +22,7 @@ object ParagliderAttackInputClient {
     private fun onInteractionKey(event: InputEvent.InteractionKeyMappingTriggered) {
         val minecraft = Minecraft.getInstance()
         val player = minecraft.player ?: return
-        if (event.isUseItem && shouldBlockUse(player.mainHandItem)) {
+        if (event.isUseItem && (shouldBlockUse(player.mainHandItem) || shouldBlockUse(player.offhandItem))) {
             event.isCanceled = true
             event.setSwingHand(false)
             return
