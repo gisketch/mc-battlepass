@@ -1498,7 +1498,7 @@ object NpcFeature {
     }
 
     fun moveToActivityTarget(entity: ChowNpcEntity, definition: NpcDefinition, activity: String) {
-        if (activity == "meetup") {
+        if (activity == NpcScheduleDefinition.MEETUP_ACTIVITY) {
             val target = randomPlazaTarget(entity) ?: return
             if (entity.isSleeping) entity.stopSleeping()
             entity.debugActivity = activity
@@ -1561,11 +1561,7 @@ object NpcFeature {
     }
 
     fun activityFor(entity: ChowNpcEntity, definition: NpcDefinition): String {
-        val level = entity.level()
-        val activity = NpcTime.activityAt(definition.schedule, level)
-        if (activity == "sleep" || plazaMeetupTarget() == null) return activity
-        val hour = NpcTime.hour(level)
-        return if (hour in NPC_PLAZA_MEETUP_START_HOUR until NPC_PLAZA_MEETUP_END_HOUR) "meetup" else activity
+        return NpcTime.activityAt(definition.schedule, entity.level())
     }
 
     private fun randomPlazaTarget(entity: ChowNpcEntity): BlockPos? {
@@ -1600,11 +1596,24 @@ object NpcFeature {
         NpcWorldChatService.tick(event.server)
     }
 
-    fun plazaMeetupStartHour(): Int = NPC_PLAZA_MEETUP_START_HOUR
+    fun plazaMeetupStartHour(): Int = meetupEntries().minOfOrNull { entry -> entry.fromHour } ?: NPC_DEFAULT_MEETUP_START_HOUR
 
     fun isPlazaMeetupHour(level: Level): Boolean {
         val hour = NpcTime.hour(level)
-        return hour in NPC_PLAZA_MEETUP_START_HOUR until NPC_PLAZA_MEETUP_END_HOUR
+        return meetupEntries().any { entry -> entry.includes(hour) }
+    }
+
+    fun isNpcMeetupHour(level: Level, definition: NpcDefinition): Boolean {
+        return definition.schedule.activityAtHour(NpcTime.hour(level)) == NpcScheduleDefinition.MEETUP_ACTIVITY
+    }
+
+    private fun meetupEntries(): List<NpcScheduleEntryDefinition> = NpcConfig.all().flatMap { definition -> definition.schedule.meetupEntries() }
+
+    private fun meetupWindowLabel(): String {
+        val ranges = meetupEntries()
+            .map { entry -> "${entry.fromHour.toString().padStart(2, '0')}:00-${entry.toHour.toString().padStart(2, '0')}:00" }
+            .distinct()
+        return ranges.ifEmpty { listOf("${NPC_DEFAULT_MEETUP_START_HOUR}:00-${NPC_DEFAULT_MEETUP_END_HOUR}:00") }.joinToString(",")
     }
 
     private fun onLivingDamagePre(event: LivingDamageEvent.Pre) {
@@ -2037,7 +2046,7 @@ object NpcFeature {
             fallback != null -> "camping_block_fallback"
             else -> "none"
         }
-        context.source.sendSuccess({ Component.literal("NPC plaza center=$label pos=${active?.toShortString() ?: "unset"} radius=${plazaMeetupRadius()} meetup=${NPC_PLAZA_MEETUP_START_HOUR}:00-${NPC_PLAZA_MEETUP_END_HOUR}:00") }, false)
+        context.source.sendSuccess({ Component.literal("NPC plaza center=$label pos=${active?.toShortString() ?: "unset"} radius=${plazaMeetupRadius()} meetup=${meetupWindowLabel()}") }, false)
         return 1
     }
 
@@ -2905,8 +2914,8 @@ object NpcFeature {
     private const val NPC_MICRO_INTERACTION_BALLOON_TICKS = 100
     private const val NPC_AUTO_TASK_COOLDOWN_MIN_TICKS = 200L
     private const val NPC_AUTO_TASK_COOLDOWN_MAX_TICKS = 300L
-    private const val NPC_PLAZA_MEETUP_START_HOUR = 15
-    private const val NPC_PLAZA_MEETUP_END_HOUR = 20
+    private const val NPC_DEFAULT_MEETUP_START_HOUR = 15
+    private const val NPC_DEFAULT_MEETUP_END_HOUR = 20
     private const val NPC_PLAZA_CAMP_FALLBACK_RADIUS = 10
     private const val NPC_PLAZA_MICRO_COOLDOWN_TICKS = 120L
     private const val CONTRACT_BED_ASSIGN_RADIUS_SQR = 7.0 * 7.0

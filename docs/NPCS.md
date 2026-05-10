@@ -134,13 +134,13 @@ work_blocks = [
 NPC quest behavior:
 
 - NPC quests live in each NPC TOML under `[missions]` / `missions.pool`.
-- Quests are offered only during town-center meetup (`15:00-20:00`) and reset at in-game `15:00`.
+- Quests are offered only while that NPC's schedule activity is `meetup`. Quest reset uses the earliest configured `meetup` start hour, so keep all NPCs on the same meetup window when they should gather together.
 - New quest offers require the NPC to have a valid home bed and an assigned workplace. Active quest rewards can still be claimed if the NPC later loses either assignment.
 - A player can accept at most 4 active NPC quests per reset period.
-- Declining an NPC quest suppresses that NPC's offer for 1 in-game hour; the same daily offer remains until the next 15:00 reset.
+- Declining an NPC quest suppresses that NPC's offer for 1 in-game hour; the same daily offer remains until the next meetup reset.
 - Task quests progress from existing battlepass mission signals such as `minecraft:monster_killed` or `cobblemon:pokemon_caught`.
 - Fetch quests complete when the player returns to the NPC with the configured item; the required item count is consumed on reward claim.
-- Rewards grant configured battlepass XP to `pass_id` and optional `chowcoins` immediately. Unclaimed completed NPC quests expire at the next 15:00 reset.
+- Rewards grant configured battlepass XP to `pass_id` and optional `chowcoins` immediately. Unclaimed completed NPC quests expire at the next meetup reset.
 
 Example NPC quest config:
 
@@ -204,7 +204,7 @@ Resident state tracks each NPC's entity UUID, camp position, assigned home bed, 
 
 Greeting state is tracked per NPC/player. It stores the last greeting day, the real-time greeting cooldown expiry, and the first-chat day used to stop repeat greetings and prevent duplicate daily friendship rewards.
 
-NPC quest state is tracked per player. It stores the active 15:00 reset period, accepted NPC quests with their next 15:00 expiry tick, completed NPC ids for that period, and per-NPC decline cooldown ticks. When the period changes, active unclaimed NPC quests expire only after their stored expiry tick.
+NPC quest state is tracked per player. It stores the active meetup reset period, accepted NPC quests with their next meetup expiry tick, completed NPC ids for that period, and per-NPC decline cooldown ticks. When the period changes, active unclaimed NPC quests expire only after their stored expiry tick.
 
 Outgoing NPC gift state is tracked per NPC/player. It stores the current scheduled gift day/hour and the last offered day, so a ready gift attempt either delivers or times out, then cools down until the next in-game day.
 
@@ -241,7 +241,7 @@ Future LLM prompt building should read `NpcStore.llmContext(npcId, player)` and 
 
 The LLM context includes the current friendship snapshot: points, level, and category. Gift history is two-way: player-to-NPC gifts and NPC-to-player gifts are both saved into conversation history, and a short player memory is recorded for each gift direction. Treat this as high-priority tone context for future generated NPC replies.
 
-Current built-in activities are `work`, `home`, and `sleep`. If an older NPC config has no schedule, the loader supplies the default `06-20 work`, `20-22 home`, `22-06 sleep` routine. During `sleep`, Finn walks to his assigned bed and uses the sleeping pose when close enough.
+Current built-in activities are `work`, `meetup`, `home`, and `sleep`. `meet up`, `meet_up`, `town_center`, `town plaza`, and `plaza` normalize to `meetup`. If an older NPC config has no schedule, the loader supplies the default `06-15 work`, `15-20 meetup`, `20-22 home`, `22-06 sleep` routine. During `sleep`, Finn walks to his assigned bed and uses the sleeping pose when close enough.
 
 Right-clicking a sleeping NPC wakes it, opens wake-specific dialog, pauses sleep while talking, then lets the brain return it to sleep when the dialog window ends and the schedule is still `sleep`.
 

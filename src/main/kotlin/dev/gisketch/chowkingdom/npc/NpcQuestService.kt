@@ -144,7 +144,7 @@ object NpcQuestService {
             val progress = displayProgress(player, active)
             return if (readyForClaim(player, active)) NpcQuestFriendSummary("Quest Finished", progress, active.goal) else NpcQuestFriendSummary("In Progress", progress, active.goal)
         }
-        if (!NpcFeature.isPlazaMeetupHour(player.level())) return NpcQuestFriendSummary("No Quest", 0, 0)
+        if (!NpcFeature.isNpcMeetupHour(player.level(), definition)) return NpcQuestFriendSummary("No Quest", 0, 0)
         val period = currentPeriod(player)
         val periodState = questState(player, period)
         val offer = selectedOffer(player, definition, period)

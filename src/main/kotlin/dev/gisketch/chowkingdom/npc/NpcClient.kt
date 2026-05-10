@@ -43,6 +43,7 @@ import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.sounds.SoundEvent
 import net.minecraft.sounds.SoundSource
+import net.minecraft.util.FormattedCharSequence
 import net.minecraft.util.RandomSource
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.player.ChatVisiblity
@@ -956,11 +957,12 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         renderAvatar(guiGraphics, payload.npcId, x + PAD, y + PAD)
 
         val nameX = x + PAD + AVATAR_SIZE + TEXT_GAP
-        val buttonX = x + panelWidth - PAD - BUTTON_WIDTH
+        val buttonX = x + panelWidth + BUTTON_OUTSIDE_GAP
         val dialogX = x + PAD
         val dialogY = y + PAD + AVATAR_SIZE + 10
-        val dialogWidth = buttonX - dialogX - TEXT_GAP
-        val buttonTop = buttonTop(panelHeight)
+        val dialogWidth = panelWidth - PAD * 2
+        val dialogWrapWidth = (dialogWidth / DIALOG_TEXT_SCALE).toInt().coerceAtLeast(1)
+        val buttonTop = buttonTop(panelHeight, actions().size)
         val name = ckdmText(payload.name)
         drawScaledString(guiGraphics, name, nameX, y + NAME_Y, NAME_SCALE, NAME_COLOR, NAME_SHADOW)
         renderFriendship(guiGraphics, nameX, y + FRIENDSHIP_Y, payload.friendshipLevel)
@@ -971,12 +973,12 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         highestVisibleCharacters = visibleCharacters
         playAnimalese(visibleCharacters)
         val visibleMessage = currentRenderMessage().take(visibleCharacters)
-        val shadowLines = font.split(ckdmDialogText(stripDialogMarkup(visibleMessage)), dialogWidth)
-        val lines = font.split(dialogTextComponent(visibleMessage), dialogWidth)
+        val shadowLines = font.split(ckdmDialogText(stripDialogMarkup(visibleMessage)), dialogWrapWidth)
+        val lines = font.split(dialogTextComponent(visibleMessage), dialogWrapWidth)
         var lineY = dialogY
         lines.take(layout.dialogLineLimit).forEachIndexed { index, line ->
-            shadowLines.getOrNull(index)?.let { shadowLine -> guiGraphics.drawString(font, shadowLine, dialogX + 1, lineY + 1, DIALOG_SHADOW, false) }
-            guiGraphics.drawString(font, line, dialogX, lineY, DIALOG_COLOR, false)
+            shadowLines.getOrNull(index)?.let { shadowLine -> drawScaledString(guiGraphics, shadowLine, dialogX + 1, lineY + 1, DIALOG_TEXT_SCALE, DIALOG_SHADOW) }
+            drawScaledString(guiGraphics, line, dialogX, lineY, DIALOG_TEXT_SCALE, DIALOG_COLOR)
             lineY += LINE_HEIGHT
         }
         if (talkMode) talkInput?.render(guiGraphics, localMouse.first, localMouse.second, partialTick)
@@ -1202,6 +1204,15 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         pose.popPose()
     }
 
+    private fun drawScaledString(guiGraphics: GuiGraphics, text: FormattedCharSequence, x: Int, y: Int, scale: Float, color: Int) {
+        val pose = guiGraphics.pose()
+        pose.pushPose()
+        pose.translate(x.toFloat(), y.toFloat(), 0.0f)
+        pose.scale(scale, scale, 1.0f)
+        guiGraphics.drawString(font, text, 0, 0, color, false)
+        pose.popPose()
+    }
+
     private fun actionLabel(action: DialogAction): String = when {
         talkMode && action == DialogAction.Talk -> "SEND"
         questMode() && action == DialogAction.Talk -> "ACCEPT"
@@ -1273,10 +1284,11 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         val panelHeight = layout.panelHeight
         val x = layout.x
         val y = layout.y
-        val buttonX = x + panelWidth - PAD - BUTTON_WIDTH
-        val buttonY = y + buttonTop(panelHeight)
-        return actions().firstOrNull { action ->
-            val top = buttonY + actions().indexOf(action) * BUTTON_STEP
+        val buttonX = x + panelWidth + BUTTON_OUTSIDE_GAP
+        val currentActions = actions()
+        val buttonY = y + buttonTop(panelHeight, currentActions.size)
+        return currentActions.firstOrNull { action ->
+            val top = buttonY + currentActions.indexOf(action) * BUTTON_STEP
             mouseX in buttonX until buttonX + BUTTON_WIDTH && mouseY in top until top + BUTTON_HEIGHT
         }
     }
@@ -1327,7 +1339,7 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
     private fun classChangePageCount(): Int = ((payload.classChangeOptions.size - 1) / CLASS_CHANGE_VISIBLE_OPTIONS + 1).coerceAtLeast(1)
 
     private fun classChangeArea(layout: DialogLayout): ClassChangeArea {
-        val width = layout.panelWidth - PAD * 2 - BUTTON_WIDTH - TEXT_GAP
+        val width = layout.panelWidth - PAD * 2
         return ClassChangeArea(layout.x + PAD, layout.y + PAD + AVATAR_SIZE + 36, width)
     }
 
@@ -1341,19 +1353,25 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         else -> true
     }
 
-    private fun buttonTop(panelHeight: Int): Int = if (payload.closeOnly) (panelHeight - BUTTON_HEIGHT) / 2 else BUTTON_TOP
+    private fun buttonTop(panelHeight: Int, actionCount: Int): Int {
+        if (payload.closeOnly) return (panelHeight - BUTTON_HEIGHT) / 2
+        val stackHeight = BUTTON_HEIGHT + (actionCount - 1).coerceAtLeast(0) * BUTTON_STEP
+        return (panelHeight - stackHeight).coerceAtLeast(BUTTON_TOP_MIN)
+    }
 
     private fun layout(): DialogLayout {
-        val panelWidth = 356.coerceAtMost(width - 24)
-        val dialogWidth = panelWidth - PAD * 2 - BUTTON_WIDTH - TEXT_GAP
+        val maxPanelWidth = (width - 24 - BUTTON_OUTSIDE_GAP - BUTTON_WIDTH).coerceAtLeast(260)
+        val panelWidth = DIALOG_PANEL_WIDTH.coerceAtMost(maxPanelWidth)
+        val dialogWidth = panelWidth - PAD * 2
         val fullLineCount = dialogLineCount(dialogWidth).coerceIn(1, BASE_DIALOG_LINES + MAX_EXTRA_DIALOG_LINES)
         val extraLines = (fullLineCount - BASE_DIALOG_LINES).coerceAtLeast(0)
         val classChangeReserve = if (classChangeMode()) CLASS_CHANGE_PANEL_RESERVE else 0
         val talkReserve = ((INPUT_HEIGHT + INPUT_GAP) * talkProgress()).toInt()
         val maxPanelHeight = (height - 24 - talkReserve).coerceAtLeast(BASE_PANEL_HEIGHT)
-        val targetPanelHeight = (BASE_PANEL_HEIGHT + extraLines * LINE_HEIGHT + if (extraLines > 0) DYNAMIC_BOTTOM_PAD else 0 + classChangeReserve).coerceAtMost(maxPanelHeight)
+        val dynamicBottomPad = if (extraLines > 0) DYNAMIC_BOTTOM_PAD else 0
+        val targetPanelHeight = (BASE_PANEL_HEIGHT + extraLines * LINE_HEIGHT + dynamicBottomPad + classChangeReserve).coerceAtMost(maxPanelHeight)
         val panelHeight = animatedPanelHeight(targetPanelHeight)
-        val x = (width - panelWidth) / 2
+        val x = (width - panelWidth - BUTTON_OUTSIDE_GAP - BUTTON_WIDTH) / 2
         val y = height - panelHeight - 34 - talkReserve
         return DialogLayout(
             x = x,
@@ -1388,8 +1406,9 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
 
     private fun dialogLineCount(dialogWidth: Int): Int {
         val visibleMessage = stripDialogMarkup(displayMessage)
-        val wrapped = font.split(ckdmDialogText(visibleMessage), dialogWidth).size.coerceAtLeast(1)
-        val averageCharsPerLine = (dialogWidth / 6).coerceAtLeast(24)
+        val wrapWidth = (dialogWidth / DIALOG_TEXT_SCALE).toInt().coerceAtLeast(1)
+        val wrapped = font.split(ckdmDialogText(visibleMessage), wrapWidth).size.coerceAtLeast(1)
+        val averageCharsPerLine = (wrapWidth / 6).coerceAtLeast(24)
         val estimated = (visibleMessage.length + averageCharsPerLine - 1) / averageCharsPerLine
         return maxOf(wrapped, estimated)
     }
@@ -1614,11 +1633,14 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         private const val PANEL_SOURCE_CORNER = 75
         private const val PANEL_DEST_CORNER = 13
         private const val PAD = 14
+        private const val DIALOG_PANEL_WIDTH = 440
+        private const val BUTTON_OUTSIDE_GAP = 10
         private const val BASE_PANEL_HEIGHT = 134
         private const val AVATAR_SIZE = 42
         private const val SKIN_TEXTURE_SIZE = 64
         private const val TEXT_GAP = 12
-        private const val LINE_HEIGHT = 11
+        private const val LINE_HEIGHT = 13
+        private const val DIALOG_TEXT_SCALE = 1.16f
         private const val NAME_Y = 19
         private const val NAME_SCALE = 1.25f
         private const val FRIENDSHIP_Y = 43
@@ -1629,7 +1651,7 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         private const val DYNAMIC_BOTTOM_PAD = 11
         private const val BUTTON_WIDTH = 112
         private const val BUTTON_HEIGHT = 20
-        private const val BUTTON_TOP = 14
+        private const val BUTTON_TOP_MIN = 4
         private const val BUTTON_STEP = 23
         private const val CLASS_CHANGE_PANEL_RESERVE = 110
         private const val CLASS_CHANGE_VISIBLE_OPTIONS = 4

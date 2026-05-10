@@ -6,6 +6,8 @@ import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import dev.gisketch.chowkingdom.ChowKingdomMod
 import dev.gisketch.chowkingdom.discord.DiscordRelay
+import dev.gisketch.chowkingdom.roles.RoleStore
+import dev.gisketch.chowkingdom.roles.RolesConfig
 import dev.gisketch.chowkingdom.shops.StoreShopFeature
 import net.minecraft.ChatFormatting
 import net.minecraft.network.chat.Component
@@ -855,6 +857,7 @@ object NpcLlmService {
         val heldItem = player.mainHandItem.item.toString()
         val worldContext = buildWorldContext(player)
         val npcState = buildNpcState(definition, player)
+        val roleContext = buildPlayerRoleContext(player)
         val storeContext = buildStoreContext(definition)
         val globalEvents = buildGlobalEvents(context)
         val playerMemories = buildMemories(context.playerMemories)
@@ -886,6 +889,8 @@ object NpcLlmService {
             - Do not use emojis, em dashes, smart quotes, or other Unicode symbols.
             - Do not claim you gave items, changed friendship, changed prices, completed quests, teleported anyone, healed anyone, or changed the world.
             - If asked to do a game action, suggest the real UI action instead.
+            - Home, bed, camp, workplace, and schedule in NPC state belong to you, the NPC, not the player.
+            - If your home bed is unset, you are the one without a home. Ask the player for help with your bed or rent contract; do not say the player lacks a house.
             - Return JSON only: {"message":"NPC reply here","memorable":null}
             - Set memorable to one short player-specific fact only when the player reveals something important, lasting, and useful later. Otherwise use null.
 
@@ -906,6 +911,9 @@ object NpcLlmService {
 
             NPC state:
             $npcState
+
+            Player jobs and classes:
+            $roleContext
 
             Store context:
             $storeContext
@@ -951,6 +959,24 @@ object NpcLlmService {
         ).joinToString("\n")
     }
 
+    private fun buildPlayerRoleContext(player: ServerPlayer): String {
+        val record = RoleStore.role(player)
+        val activeJobs = record.activeJobIds.map(::roleJobName).ifEmpty { listOf("none") }
+        val activeClasses = record.activeClassIds.map(::roleClassName).ifEmpty { listOf("none") }
+        val primaryJob = record.jobId.takeIf(String::isNotBlank)?.let(::roleJobName) ?: "none"
+        val primaryClass = record.classId.takeIf(String::isNotBlank)?.let(::roleClassName) ?: "none"
+        return listOf(
+            "- Primary job: $primaryJob",
+            "- Active jobs: ${activeJobs.joinToString(", ")}",
+            "- Primary class: $primaryClass",
+            "- Active classes: ${activeClasses.joinToString(", ")}",
+        ).joinToString("\n")
+    }
+
+    private fun roleJobName(id: String): String = RolesConfig.job(id)?.displayName?.ifBlank { id } ?: id
+
+    private fun roleClassName(id: String): String = RolesConfig.roleClass(id)?.displayName?.ifBlank { id } ?: id
+
     private fun buildNpcState(definition: NpcDefinition, player: ServerPlayer): String {
         val liveNpc = NpcFeature.existingNpc(player.server, definition.id)
         val activity = liveNpc?.let { npc -> NpcFeature.activityFor(npc, definition) } ?: NpcTime.activityAt(definition.schedule, player.level())
@@ -969,7 +995,7 @@ object NpcLlmService {
             "- Activity: $activity",
             "- Schedule: $schedule",
             "- Health: $health",
-            "- Home bed: $home",
+            "- Your home bed: $home",
             "- Camp: $camp",
             "- Store id: $store",
             "- Dead: $dead",

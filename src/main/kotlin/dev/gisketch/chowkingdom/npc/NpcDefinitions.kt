@@ -660,11 +660,15 @@ class NpcScheduleDefinition(
         return activities.firstOrNull { entry -> entry.includes(hour) }?.activity ?: DEFAULT_ACTIVITY
     }
 
+    fun meetupEntries(): List<NpcScheduleEntryDefinition> = activities.filter { entry -> entry.activity == MEETUP_ACTIVITY }
+
     companion object {
         private const val DEFAULT_ACTIVITY = "work"
+        const val MEETUP_ACTIVITY = "meetup"
 
         fun defaultActivities(): MutableList<NpcScheduleEntryDefinition> = mutableListOf(
-            NpcScheduleEntryDefinition(fromHour = 6, toHour = 20, activity = "work"),
+            NpcScheduleEntryDefinition(fromHour = 6, toHour = 15, activity = "work"),
+            NpcScheduleEntryDefinition(fromHour = 15, toHour = 20, activity = MEETUP_ACTIVITY),
             NpcScheduleEntryDefinition(fromHour = 20, toHour = 22, activity = "home"),
             NpcScheduleEntryDefinition(fromHour = 22, toHour = 6, activity = "sleep"),
         )
@@ -684,6 +688,10 @@ class NpcScheduleEntryDefinition(
         fromHour = fromHour.coerceIn(0, 23)
         toHour = toHour.coerceIn(0, 24)
         activity = activity.trim().lowercase()
+        activity = when (activity.replace("_", " ").replace("-", " ").trim()) {
+            "meet up", "meetup", "town meetup", "town center", "town plaza", "plaza" -> NpcScheduleDefinition.MEETUP_ACTIVITY
+            else -> activity
+        }
     }
 
     fun includes(hour: Int): Boolean = when {
