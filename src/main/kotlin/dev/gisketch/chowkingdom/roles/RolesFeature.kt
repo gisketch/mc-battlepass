@@ -3,6 +3,7 @@ package dev.gisketch.chowkingdom.roles
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
+import com.mojang.brigadier.arguments.IntegerArgumentType
 import com.mojang.brigadier.arguments.StringArgumentType
 import com.mojang.brigadier.context.CommandContext
 import com.mojang.brigadier.suggestion.SuggestionProvider
@@ -146,6 +147,10 @@ object RolesFeature {
             RolesNetwork.syncTo(player, openOnboarding = true)
             return false
         }
+        if (ClassLicenses.canUnlock(player, roleClass) is ClassLicenseResult.Denied) {
+            RolesNetwork.syncTo(player, openOnboarding = true)
+            return false
+        }
         RoleStore.setPrimaryRoles(player, job.id, roleClass.id, height, weight)
         PehkuiScaleBridge.apply(player, RoleStore.bodyScale(player))
         RoleClassEquipmentRules.grantStartingItems(player, roleClass.id)
@@ -170,6 +175,8 @@ object RolesFeature {
                         .then(Commands.literal("reload").executes(::reloadRoles))
                         .then(Commands.literal("unconfigured").executes(::unconfiguredWeapons))
                         .then(Commands.literal("list").executes(::listRoles))
+                        .then(starterLicensesCommand())
+                        .then(upgradeLicensesCommand())
                         .then(
                             Commands.literal("get")
                                 .then(Commands.argument("player", EntityArgument.player()).executes(::getRoles)),
@@ -245,6 +252,26 @@ object RolesFeature {
         )
     }
 
+    private fun starterLicensesCommand() = Commands.literal("starter_licenses")
+        .requires { source -> source.hasPermission(2) }
+        .then(
+            Commands.literal("set")
+                .then(
+                    Commands.argument("player", EntityArgument.player())
+                        .then(Commands.argument("licenses", IntegerArgumentType.integer(0)).executes(::setStarterLicenses)),
+                ),
+        )
+
+    private fun upgradeLicensesCommand() = Commands.literal("upgrade_licenses")
+        .requires { source -> source.hasPermission(2) }
+        .then(
+            Commands.literal("set")
+                .then(
+                    Commands.argument("player", EntityArgument.player())
+                        .then(Commands.argument("licenses", IntegerArgumentType.integer(0)).executes(::setUpgradeLicenses)),
+                ),
+        )
+
     private fun resetOnboarding(context: CommandContext<CommandSourceStack>): Int {
         val player = context.source.playerOrException
         RoleStore.resetOnboarding(player)
@@ -265,6 +292,24 @@ object RolesFeature {
         val jobs = RolesConfig.jobs().joinToString(", ") { role -> role.id }
         val classes = RolesConfig.classes().joinToString(", ") { role -> role.id }
         context.source.sendSuccess({ Component.literal("Jobs: $jobs | Classes: $classes") }, false)
+        return 1
+    }
+
+    private fun setStarterLicenses(context: CommandContext<CommandSourceStack>): Int {
+        val player = EntityArgument.getPlayer(context, "player")
+        val licenses = IntegerArgumentType.getInteger(context, "licenses")
+        RoleStore.setStarterLicenses(player, licenses)
+        RolesNetwork.syncAllPlayers()
+        context.source.sendSuccess({ Component.literal("Set ${player.gameProfile.name} starter class licenses to $licenses.") }, true)
+        return 1
+    }
+
+    private fun setUpgradeLicenses(context: CommandContext<CommandSourceStack>): Int {
+        val player = EntityArgument.getPlayer(context, "player")
+        val licenses = IntegerArgumentType.getInteger(context, "licenses")
+        RoleStore.setUpgradeLicenses(player, licenses)
+        RolesNetwork.syncAllPlayers()
+        context.source.sendSuccess({ Component.literal("Set ${player.gameProfile.name} upgrade class licenses to $licenses.") }, true)
         return 1
     }
 
@@ -348,7 +393,9 @@ object RolesFeature {
         val record = RoleStore.role(player)
         val jobs = record.activeJobIds.joinToString(", ").ifBlank { record.jobId }
         val classes = record.activeClassIds.joinToString(", ").ifBlank { record.classId }
-        context.source.sendSuccess({ Component.literal("${player.gameProfile.name}: jobs=[$jobs], classes=[$classes]") }, false)
+        val starterLicenses = ClassLicenses.starterLicenses(player)
+        val upgradeLicenses = ClassLicenses.upgradeLicenses(player)
+        context.source.sendSuccess({ Component.literal("${player.gameProfile.name}: jobs=[$jobs], classes=[$classes], starter_licenses=$starterLicenses, upgrade_licenses=$upgradeLicenses") }, false)
         return 1
     }
 
@@ -414,6 +461,13 @@ object RolesFeature {
         val role = RolesConfig.roleClass(classId) ?: run {
             context.source.sendFailure(Component.literal("Unknown class: $classId"))
             return 0
+        }
+        when (val license = ClassLicenses.canUnlock(player, role)) {
+            ClassLicenseResult.Allowed -> Unit
+            is ClassLicenseResult.Denied -> {
+                context.source.sendFailure(license.reason)
+                return 0
+            }
         }
         val changed = RoleStore.addClass(player, role.id)
         RoleClassEquipmentRules.grantStartingItems(player, role.id)

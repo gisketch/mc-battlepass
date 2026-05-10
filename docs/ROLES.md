@@ -27,6 +27,8 @@ The source defaults create editable job/class TOML, but they no longer auto-assi
 - `/ck roles reload`
 - `/ck roles list`
 - `/ck roles get <player>`
+- `/ck roles starter_licenses set <player> <licenses>`
+- `/ck roles upgrade_licenses set <player> <licenses>`
 - `/ck roles set job <player> <job>`
 - `/ck roles set class <player> <class>`
 - `/ck roles add job <player> <job>`
@@ -35,6 +37,14 @@ The source defaults create editable job/class TOML, but they no longer auto-assi
 - `/ck roles remove class <player> <class>`
 
 Commands require permission level 2.
+
+## Class Licenses
+
+Class unlocks use two license pools: starter and upgrade. Stored player license fields are admin grants; effective licenses use the higher of stored grants and level-derived grants from `config/gisketchs_chowkingdom_mod/roles/class_licenses.toml`.
+
+Default starter license unlock levels are `1, 100, 300, 500, 1000`. Default upgrade license unlock levels are `75, 150, 250, 350, 450, 550, 650, 800, 1000`.
+
+Adding a starter class spends starter capacity. Adding an upgrade class spends upgrade capacity and requires at least one configured starter prerequisite from `starter_class_ids` or the built-in fallback upgrade path. Admin `/ck roles set class` force-sets a class; `/ck roles add class` enforces licenses.
 
 ## Current Defaults
 

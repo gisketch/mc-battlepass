@@ -15,6 +15,7 @@ object RolesConfig {
     private var classesById: Map<String, RoleDefinition> = emptyMap()
     private var onboardingDefinition = RolesOnboardingDefinition()
     private var jobScalingDefinition = JobScalingDefinition()
+    private var classLicenseDefinition = ClassLicenseDefinition()
     private var equipmentWhitelistDefinition = EquipmentWhitelistDefinition()
 
     private val root: Path
@@ -25,12 +26,14 @@ object RolesConfig {
         root.resolve("classes").createDirectories()
         writeDefaultIfMissing(root.resolve("onboarding.toml"), defaultOnboarding())
         writeDefaultIfMissing(root.resolve("job_scaling.toml"), defaultJobScaling())
+        writeDefaultIfMissing(root.resolve("class_licenses.toml"), defaultClassLicenses())
         writeDefaultIfMissing(root.resolve("equipment_whitelist.toml"), EquipmentWhitelistDefinition())
         defaultJobs().forEach { definition -> writeDefaultIfMissing(root.resolve("jobs").resolve("${definition.id}.toml"), definition) }
         writeDefaultIfMissing(root.resolve("classes").resolve("rogue.toml"), defaultRogue())
         writeDefaultIfMissing(root.resolve("classes").resolve("warrior.toml"), defaultWarrior())
         onboardingDefinition = readOnboarding(root.resolve("onboarding.toml"))
         jobScalingDefinition = readJobScaling(root.resolve("job_scaling.toml"))
+        classLicenseDefinition = readClassLicenses(root.resolve("class_licenses.toml"))
         equipmentWhitelistDefinition = readEquipmentWhitelist(root.resolve("equipment_whitelist.toml"))
         jobsById = loadDefinitions(root.resolve("jobs"))
         classesById = loadDefinitions(root.resolve("classes"))
@@ -76,6 +79,8 @@ object RolesConfig {
     }
 
     fun jobScaling(): JobScalingDefinition = jobScalingDefinition
+
+    fun classLicenses(): ClassLicenseDefinition = classLicenseDefinition
 
     fun equipmentWhitelist(): EquipmentWhitelistDefinition = equipmentWhitelistDefinition
 
@@ -131,6 +136,13 @@ object RolesConfig {
     } catch (exception: Exception) {
         ChowKingdomMod.LOGGER.warn("Failed to load role job scaling config {}", path, exception)
         defaultJobScaling()
+    }
+
+    private fun readClassLicenses(path: Path): ClassLicenseDefinition = try {
+        TomlConfigIO.read(path, ClassLicenseDefinition::class.java, ::defaultClassLicenses)
+    } catch (exception: Exception) {
+        ChowKingdomMod.LOGGER.warn("Failed to load role class license config {}", path, exception)
+        defaultClassLicenses()
     }
 
     private fun readEquipmentWhitelist(path: Path): EquipmentWhitelistDefinition = try {
@@ -561,6 +573,11 @@ object RolesConfig {
         jobRankUnlockOverallLevels = JobLevels.fallbackJobRankUnlockOverallLevels.toMutableList(),
         catchRateBonusPercentByRank = JobLevels.fallbackCatchRateBonusPercentByRank.toMutableList(),
         mountSpeedBonusPercentByRank = JobLevels.fallbackMountSpeedBonusPercentByRank.toMutableList(),
+    )
+
+    private fun defaultClassLicenses(): ClassLicenseDefinition = ClassLicenseDefinition(
+        starterLicenseUnlockOverallLevels = ClassLicenses.fallbackStarterUnlockOverallLevels.toMutableList(),
+        upgradeLicenseUnlockOverallLevels = ClassLicenses.fallbackUpgradeUnlockOverallLevels.toMutableList(),
     )
 
     private val DEFAULT_BOTANIST_HARVEST_CHANCES = listOf(0.02, 0.04, 0.06, 0.08, 0.10)

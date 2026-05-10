@@ -79,6 +79,10 @@ object RoleStore {
 
     fun activeClassIds(player: ServerPlayer): Set<String> = role(player).activeClassIds.toSet()
 
+    fun starterLicenses(player: ServerPlayer): Int = role(player).starterLicenses.coerceAtLeast(0)
+
+    fun upgradeLicenses(player: ServerPlayer): Int = role(player).upgradeLicenses.coerceAtLeast(0)
+
     fun activeClassIds(playerId: UUID): Set<String> {
         if (!loaded) load()
         return players[playerId.toString()]?.activeClassIds?.toSet().orEmpty()
@@ -114,6 +118,18 @@ object RoleStore {
         record.activeClassIds.add(classId)
         record.unlockedJobs.add(jobId)
         record.unlockedClasses.add(classId)
+        save()
+    }
+
+    fun setStarterLicenses(player: ServerPlayer, licenses: Int) {
+        val record = ensureRecord(player)
+        record.starterLicenses = licenses.coerceAtLeast(0)
+        save()
+    }
+
+    fun setUpgradeLicenses(player: ServerPlayer, licenses: Int) {
+        val record = ensureRecord(player)
+        record.upgradeLicenses = licenses.coerceAtLeast(0)
         save()
     }
 
@@ -198,6 +214,8 @@ class PlayerRoleRecord(
     var weight: Double = DEFAULT_BODY_SCALE,
     var activeJobIds: MutableSet<String> = linkedSetOf(),
     var activeClassIds: MutableSet<String> = linkedSetOf(),
+    var starterLicenses: Int = 1,
+    var upgradeLicenses: Int = 0,
     var unlockedJobs: MutableSet<String> = linkedSetOf(),
     var unlockedClasses: MutableSet<String> = linkedSetOf(),
     var grantedStartingItems: MutableSet<String> = linkedSetOf(),

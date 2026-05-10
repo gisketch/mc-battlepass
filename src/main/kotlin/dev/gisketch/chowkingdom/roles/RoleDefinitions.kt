@@ -30,6 +30,13 @@ data class JobScalingDefinition(
     var mountSpeedBonusPercentByRank: MutableList<Double> = mutableListOf(),
 )
 
+data class ClassLicenseDefinition(
+    @SerializedName(value = "starter_license_unlock_overall_levels", alternate = ["starterLicenseUnlockOverallLevels"])
+    var starterLicenseUnlockOverallLevels: MutableList<Int> = mutableListOf(),
+    @SerializedName(value = "upgrade_license_unlock_overall_levels", alternate = ["upgradeLicenseUnlockOverallLevels"])
+    var upgradeLicenseUnlockOverallLevels: MutableList<Int> = mutableListOf(),
+)
+
 data class EquipmentWhitelistDefinition(
     @SerializedName(value = "weapon_tags", alternate = ["weaponTags"])
     var weaponTags: MutableList<String> = mutableListOf(),
