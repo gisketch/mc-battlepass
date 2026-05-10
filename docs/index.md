@@ -21,6 +21,7 @@
 - [Spawning And Worlds](SPAWNING.md)
 - [Town Return](TOWN_RETURN.md)
 - [NPCs](NPCS.md)
+- [NPC Custom Animation AI](NPC_CUSTOM_ANIMATION_AI.md)
 - [NPC Conversations](NPC_CONVERSATIONS.md)
 - [Revive](REVIVE.md)
 - [Jobs And Classes](ROLES.md)

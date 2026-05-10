@@ -30,6 +30,7 @@ import net.minecraft.client.renderer.entity.MobRenderer
 import net.minecraft.client.renderer.entity.layers.HumanoidArmorLayer
 import net.minecraft.client.renderer.entity.layers.ItemInHandLayer
 import net.minecraft.client.renderer.texture.DynamicTexture
+import net.minecraft.client.renderer.texture.OverlayTexture
 import net.minecraft.client.resources.sounds.SimpleSoundInstance
 import net.minecraft.network.chat.Component
 import net.minecraft.network.chat.FormattedText
@@ -646,12 +647,101 @@ private class NpcGeoHeldItemLayer(renderer: GeoEntityRenderer<ChowNpcEntity>) : 
             super.renderStackForBone(poseStack, bone, stack, animatable, bufferSource, partialTick, packedLight, packedOverlay)
             return
         }
+        val leftHand = bone.name == "left_hand_item"
+        val transformType = getTransformTypeForStack(bone, stack, animatable)
         poseStack.pushPose()
-        poseStack.translate(0.0, 0.35, 0.0)
-        poseStack.scale(0.75f, 0.75f, 0.75f)
-        if (bone.name == "left_hand_item") poseStack.mulPose(Axis.YP.rotationDegrees(180.0f))
-        super.renderStackForBone(poseStack, bone, stack, animatable, bufferSource, partialTick, packedLight, packedOverlay)
+        val flatItem = isFlatItem(stack, animatable)
+        applyHeldWeaponSocketTransform(poseStack, animatable, leftHand, flatItem)
+        applyHeldWeaponModelSpaceTransform(poseStack, leftHand, flatItem)
+        if (animatable.heldItemDebugRotSpace != "socket") applyHeldWeaponDebugRotation(poseStack, animatable)
+        Minecraft.getInstance().itemRenderer.renderStatic(
+            animatable,
+            stack,
+            transformType,
+            leftHand,
+            poseStack,
+            bufferSource,
+            animatable.level(),
+            packedLight,
+            OverlayTexture.NO_OVERLAY,
+            animatable.id + transformType.ordinal,
+        )
         poseStack.popPose()
+    }
+
+    private fun isFlatItem(stack: ItemStack, animatable: ChowNpcEntity): Boolean {
+        val model = Minecraft.getInstance().itemRenderer.getModel(stack, animatable.level(), animatable, animatable.id)
+        return !model.isGui3d
+    }
+
+    private fun applyHeldWeaponSocketTransform(poseStack: PoseStack, animatable: ChowNpcEntity, leftHand: Boolean, flatItem: Boolean) {
+        if (flatItem) {
+            val side = if (leftHand) -1.0f else 1.0f
+            poseStack.mulPose(Axis.ZP.rotationDegrees(HELD_WEAPON_FLAT_SOCKET_AXIS_Z_DEGREES * side))
+        }
+        val side = if (leftHand) -1.0f else 1.0f
+        poseStack.translate((HELD_WEAPON_SOCKET_OFFSET_X * side).toDouble(), HELD_WEAPON_SOCKET_OFFSET_Y.toDouble(), HELD_WEAPON_SOCKET_OFFSET_Z.toDouble())
+        if (animatable.heldItemDebugRotSpace == "socket") applyHeldWeaponDebugRotation(poseStack, animatable)
+        applyHeldWeaponDebugPositionAndScale(poseStack, animatable)
+    }
+
+    private fun applyHeldWeaponModelSpaceTransform(poseStack: PoseStack, leftHand: Boolean, flatItem: Boolean) {
+        if (flatItem) {
+            applyFlatWeaponTransform(poseStack, leftHand)
+        } else {
+            applyModeledWeaponTransform(poseStack, leftHand)
+        }
+        if (leftHand) poseStack.mulPose(Axis.ZP.rotationDegrees(HELD_WEAPON_LEFT_HAND_ITEM_AXIS_Z_DEGREES))
+    }
+
+    private fun applyFlatWeaponTransform(poseStack: PoseStack, leftHand: Boolean) {
+        val side = if (leftHand) -1.0f else 1.0f
+        poseStack.mulPose(Axis.YP.rotationDegrees(HELD_WEAPON_FLAT_AXIS_Y_DEGREES * side))
+        poseStack.mulPose(Axis.XP.rotationDegrees(HELD_WEAPON_FLAT_AXIS_X_DEGREES))
+        poseStack.mulPose(Axis.ZP.rotationDegrees(HELD_WEAPON_FLAT_AXIS_Z_DEGREES * side))
+        poseStack.scale(HELD_WEAPON_SCALE, HELD_WEAPON_SCALE, HELD_WEAPON_SCALE)
+    }
+
+    private fun applyModeledWeaponTransform(poseStack: PoseStack, leftHand: Boolean) {
+        val side = if (leftHand) -1.0f else 1.0f
+        poseStack.mulPose(Axis.YP.rotationDegrees(HELD_WEAPON_MODELED_AXIS_Y_DEGREES * side))
+        poseStack.mulPose(Axis.XP.rotationDegrees(HELD_WEAPON_MODELED_AXIS_X_DEGREES))
+        poseStack.mulPose(Axis.ZP.rotationDegrees(HELD_WEAPON_MODELED_AXIS_Z_DEGREES * side))
+        poseStack.scale(HELD_WEAPON_SCALE, HELD_WEAPON_SCALE, HELD_WEAPON_SCALE)
+    }
+
+    private fun applyHeldWeaponDebugRotation(poseStack: PoseStack, animatable: ChowNpcEntity) {
+        animatable.heldItemDebugRotOrder.forEach { axis ->
+            when (axis) {
+                'x' -> if (animatable.heldItemDebugRotX != 0.0f) poseStack.mulPose(Axis.XP.rotationDegrees(animatable.heldItemDebugRotX))
+                'y' -> if (animatable.heldItemDebugRotY != 0.0f) poseStack.mulPose(Axis.YP.rotationDegrees(animatable.heldItemDebugRotY))
+                'z' -> if (animatable.heldItemDebugRotZ != 0.0f) poseStack.mulPose(Axis.ZP.rotationDegrees(animatable.heldItemDebugRotZ))
+            }
+        }
+    }
+
+    private fun applyHeldWeaponDebugPositionAndScale(poseStack: PoseStack, animatable: ChowNpcEntity) {
+        if (animatable.heldItemDebugPosX != 0.0f || animatable.heldItemDebugPosY != 0.0f || animatable.heldItemDebugPosZ != 0.0f) {
+            poseStack.translate(animatable.heldItemDebugPosX.toDouble(), animatable.heldItemDebugPosY.toDouble(), animatable.heldItemDebugPosZ.toDouble())
+        }
+        if (animatable.heldItemDebugScale != 1.0f) {
+            poseStack.scale(animatable.heldItemDebugScale, animatable.heldItemDebugScale, animatable.heldItemDebugScale)
+        }
+    }
+
+    companion object {
+        private const val HELD_WEAPON_SCALE = 0.9f
+        private const val HELD_WEAPON_SOCKET_OFFSET_X = 0.0f
+        private const val HELD_WEAPON_SOCKET_OFFSET_Y = 0.0f
+        private const val HELD_WEAPON_SOCKET_OFFSET_Z = -0.4f
+        private const val HELD_WEAPON_FLAT_SOCKET_AXIS_Z_DEGREES = 90.0f
+        private const val HELD_WEAPON_FLAT_AXIS_Y_DEGREES = -90.0f
+        private const val HELD_WEAPON_FLAT_AXIS_X_DEGREES = 90.0f
+        private const val HELD_WEAPON_FLAT_AXIS_Z_DEGREES = 135.0f
+        private const val HELD_WEAPON_MODELED_AXIS_Y_DEGREES = -90.0f
+        private const val HELD_WEAPON_MODELED_AXIS_X_DEGREES = 45.0f
+        private const val HELD_WEAPON_MODELED_AXIS_Z_DEGREES = 45.0f
+        private const val HELD_WEAPON_LEFT_HAND_ITEM_AXIS_Z_DEGREES = 90.0f
     }
 }
 

@@ -69,3 +69,45 @@ Add a minimal GeckoLib-backed custom animation path for Chow Kingdom NPCs and de
 - 2026-05-10: Re-ran Gradle build and Sonata structure checks after freeze fix; both passed.
 - 2026-05-10: Adjusted Gecko held-item rendering to use the hand-item bone transform and accept namespaced item IDs in `/npc animation wear`.
 - 2026-05-10: Re-ran Gradle build and Sonata structure checks after held-item transform update; both passed.
+- 2026-05-10: Removed unsafe GeckoLib cache clearing from the NPC animation resource reload path after reload-time render crash.
+- 2026-05-10: Re-ran Gradle build and Sonata structure checks before the reload crash fix; both passed.
+- 2026-05-10: Recalibrated Gecko held-item transform so a `right_hand_item` bone rotation of `[-90, 0, 0]` points the sword forward.
+- 2026-05-10: Re-ran Gradle build and Sonata structure checks after held-item recalibration; both passed.
+- 2026-05-10: Recalibrated held-item transform again after in-game test showed the sword axis pointing toward the head.
+- 2026-05-10: Re-ran Gradle build and Sonata structure checks after reload crash fix and item-axis adjustment; both passed.
+- 2026-05-10: Replaced raw 90/180 item rotations with a 45 degree in-plane alignment for vanilla diagonal sword sprites.
+- 2026-05-10: Re-ran Gradle build and Sonata structure checks after diagonal sprite alignment; both passed.
+- 2026-05-10: Limited the 45 degree sprite alignment to flat generated item models so real 3D item models keep their authored orientation.
+- 2026-05-10: Re-ran Gradle build and Sonata structure checks after item model type split; both passed.
+- 2026-05-10: Split flat-sprite and 3D-model hand transforms after in-game test: flat sprites get diagonal alignment plus forward lift, 3D models get the previous near-good orientation plus forward flip.
+- 2026-05-10: Re-ran Gradle build and Sonata structure checks after updated flat/3D hand transforms; both passed.
+- 2026-05-10: Recalibrated held-item transforms again after in-game test: flat sprites now get an outward hand offset plus an extra roll for vertical crossguards, while 3D models get a separate yaw correction away from right-front.
+- 2026-05-10: Added a synced custom animation play id so repeated one-shot debug animations force GeckoLib controller reset instead of freezing on the old clip state.
+- 2026-05-10: Re-ran Gradle build and Sonata structure checks after transform and replay reset changes; both passed.
+- 2026-05-10: Scrapped manual flat-sprite/3D held-item placement and rebuilt Gecko hand-item rendering around vanilla third-person player hand transforms.
+- 2026-05-10: Re-ran Gradle build and Sonata structure checks after vanilla hand-transform replacement; both passed.
+- 2026-05-10: Removed `-90,0,0` base rotation from hand-item geo bones after in-game test showed vanilla hand transforms were being double-pitched toward the feet/backwards.
+- 2026-05-10: Re-ran Gradle build and Sonata structure checks after neutral hand-socket update; both passed.
+- 2026-05-10: Moved Gecko item socket pivots to the arm origins after in-game comparison showed vanilla held-item placement starts from the arm model part origin, not the wrist/hand endpoint.
+- 2026-05-10: Re-ran Gradle build and Sonata structure checks after arm-origin socket update; both passed.
+- 2026-05-10: Reverted the arm-origin socket experiment after in-game test put swords above head height; kept authored hand pivots and removed the vanilla arm-origin adapter from the Gecko held-item renderer.
+- 2026-05-10: Re-ran Gradle build and Sonata structure checks after direct authored-socket render update; both passed.
+- 2026-05-10: Fixed attack clip hand-item keyframes to use `[-90,0,0]` as the forward baseline instead of `[0,0,0]`, which was correctly making the sword point upward.
+- 2026-05-10: Re-ran Gradle build and Sonata structure checks after attack socket rotation fix; both passed.
+- 2026-05-10: Set `right_hand_item` and `left_hand_item` geo defaults to `[-90,0,0]` so running, walking, idle, and hurt inherit the forward weapon socket; normalized guard/parry hand-item rotations to the same baseline.
+- 2026-05-10: Re-ran Gradle build and Sonata structure checks after all-animation socket rotation normalization; both passed.
+- 2026-05-10: Removed Minecraft `THIRD_PERSON_*` item display transforms from Gecko hand-item sockets; hand items now render with `ItemDisplayContext.NONE` so Blockbench socket rotations are the only weapon rotations.
+- 2026-05-10: Removed temporary hand-axis debug clips after identifying the extra item display transform as the source of the game-only rotation mismatch.
+- 2026-05-10: Re-ran Gradle build and Sonata structure checks after raw item context update; both passed.
+- 2026-05-10: Restored a narrow item-model-space orientation adapter on top of the authored socket: flat items get the 45 degree sprite correction, 3D models get a separate 45 degree pitch correction, and both avoid the vanilla `THIRD_PERSON_*` translation that moved the weapon off the hand.
+- 2026-05-10: Reset the Gecko weapon contract from scratch: `right_hand_item` and `left_hand_item` now use `[0,0,0]` as forward-with-vertical-crossguard, visible weapon-axis debug bones define the expected socket space, and `playerlike.animation.json` is reduced to a zero-rotation `idle` clip for calibration.
+- 2026-05-10: Re-ran Gradle build and Sonata structure checks after the socket reset; both passed.
+- 2026-05-10: Reverted the mistaken visual-axis remap and added `/npc animation itemrot <x> <y> <z>` so held-item adapter axes can be calibrated live against the visible debug weapon bones.
+- 2026-05-10: Re-ran Gradle build and Sonata structure checks after the debug item-rotation command; both passed.
+- 2026-05-10: Baked confirmed held-item debug offsets into the base adapter: 3D items add `Z +45`, flat items add the observed `Z +90` direction correction. Added `/npc animation itemrotorder <order>` to test crossguard correction without guessing Euler order.
+- 2026-05-10: Added `/npc animation itemrotspace socket|item`; socket-space debug rotations apply before the item adapter so X/Y/Z stay aligned with the authored hand socket instead of the diagonal item-local axes.
+- 2026-05-10: Re-ran Gradle build with in-process Kotlin compilation after daemon cache corruption and re-ran Sonata structure checks; both passed.
+- 2026-05-10: Added synced `/npc animation itempos <x> <y> <z>` and `/npc animation itemscale <scale>` calibration commands so grip offset and size can be tuned live before baking the final held-item adapter.
+- 2026-05-10: Made item position debug always run in socket space and baked the confirmed flat-item default as socket-space `Z +90` before the existing flat adapter; kept the flat adapter `Z 135` because that was part of the last known-good 2D orientation.
+- 2026-05-10: Baked held-item socket position offset `0,0,-0.4`, added left/offhand wear aliases for `left_hand_item`, and removed visible weapon-axis debug cube bones from the geo.
+- 2026-05-10: Baked the observed left-hand-only item-space `Z +90` correction so `left_hand_item` matches the right-hand held sword orientation without changing right-hand rendering.

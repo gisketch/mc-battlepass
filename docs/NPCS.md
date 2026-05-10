@@ -6,6 +6,8 @@ In-world NPC AI uses [SmartBrainLib](references/smartbrainlib.md). CKDM still ow
 
 Conversation-specific runtime rules live in [NPC Conversations](NPC_CONVERSATIONS.md).
 
+Custom Gecko animation AI planning lives in [NPC Custom Animation AI](NPC_CUSTOM_ANIMATION_AI.md).
+
 ## Current Slice
 
 - One default NPC: `finn`; additional NPC TOML files join the camping-block camper pool.
@@ -281,11 +283,18 @@ Home beds are validated against live bed blocks. If the assigned bed is broken o
 - `/npc debug balloon <id> <message>`: show a timed test balloon above the spawned NPC for nearby players.
 - `/npc animation debug`: toggle a Steve-textured Chow Kingdom NPC debug entity for the command player.
 - `/npc animation custom_animation true|false`: toggle GeckoLib custom animation mode on the active debug Steve, or the NPC under the crosshair when no debug Steve is active.
-- `/npc animation idle`: enable custom animation mode and run the idle alias on the active debug Steve, or the NPC under the crosshair when no debug Steve is active. If `idle` is missing, the command resolves to the first matching idle-style JSON key such as `idle_bouncy`.
-- `/npc animation walk`: enable custom animation mode and run the walk alias on the active debug Steve, or the NPC under the crosshair when no debug Steve is active. If `walk` is missing, the command resolves to matching JSON keys such as `walking`.
-- `/npc animation attack`: enable custom animation mode and run the attack alias on the active debug Steve, or the NPC under the crosshair when no debug Steve is active. If `attack` is missing, the command resolves to matching JSON keys such as `attack_sword_fast`, then returns to idle after the non-loop clip finishes.
-- `/npc animation reload` or `/npc animations reload`: reload animation IDs from `playerlike.animation.json` and request a client resource reload.
-- `/npc animation wear <item>` or `/npc animations wear <item>`: equip the active debug Steve or looked-at NPC with `hat`, `chestplate`, `leggings`, `boots`, `sword`, any item id such as `minecraft:iron_sword`, or `clear`. Held items render on Gecko hand-item bones, so `wear sword` follows the attack animation. Vanilla armor layers render on the normal/playerlike NPC renderers; the current Gecko custom renderer does not draw vanilla armor layers yet.
+- `/npc animation idle`: enable custom animation mode and run the idle alias on the active debug Steve, or the NPC under the crosshair when no debug Steve is active.
+- `/npc animation walk`: enable custom animation mode and run the walk alias on the active debug Steve, or the NPC under the crosshair when no debug Steve is active. The current weapon-socket reset file only defines `idle`, so this command is expected to fail until walk clips are re-authored.
+- `/npc animation attack`: enable custom animation mode and run the attack alias on the active debug Steve, or the NPC under the crosshair when no debug Steve is active. The current weapon-socket reset file only defines `idle`, so this command is expected to fail until attack clips are re-authored.
+- Replaying the same one-shot debug animation forces a GeckoLib controller reset, so repeated `/npc animation attack` calls restart the attack clip instead of holding the previous finished pose.
+- `/npc animation reload` or `/npc animations reload`: reload animation IDs from `playerlike.animation.json` and request a client resource reload. The resource reload sees files from the active client resource pack/classpath; in a dev run, source edits may still require Gradle resource processing if the client is serving `build/resources/main`.
+- `/npc animation wear <item>` or `/npc animations wear <item>`: equip the active debug Steve or looked-at NPC with `hat`, `chestplate`, `leggings`, `boots`, `sword`, `left_sword`, `left <item>`, any item id such as `minecraft:iron_sword`, or `clear`. Held items render directly on authored Gecko hand-item socket bones using raw item model context plus one fixed item-model-space adapter. Vanilla armor layers render on the normal/playerlike NPC renderers; the current Gecko custom renderer does not draw vanilla armor layers yet.
+- `/npc animation itemrot <x> <y> <z>`: add temporary synced raw item rotation offsets after the fixed held-item adapter. `/npc animation itemrot reset` clears the offsets.
+- `/npc animation itempos <x> <y> <z>`: add temporary synced item position offsets in socket space. `/npc animation itempos reset` clears the position offsets.
+- `/npc animation itemscale <scale>`: add a temporary synced uniform item scale multiplier. `/npc animation itemscale reset` returns to `1`.
+- `/npc animation itemrotorder <order>`: change the debug offset application order. Accepted values are `xyz`, `xzy`, `yxz`, `yzx`, `zxy`, and `zyx`.
+- `/npc animation itemrotspace socket|item`: choose whether debug offsets apply in socket space before the item adapter or item-local space after the adapter. Use `socket` when calibrating visible roll/pitch/yaw against the debug weapon bones.
+- Gecko hand-item socket default rotation is `[0, 0, 0]`, meaning a held sword points forward and its crossguard is vertical.
 - `/npc animation <animation>` or `/npc animations <animation>`: play any animation key from `playerlike.animation.json`; suggestions are refreshed from the JSON file.
 - `/ck npc ...` and `/chowkingdom npc ...`: aliases.
 

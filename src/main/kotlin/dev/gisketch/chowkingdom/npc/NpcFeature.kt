@@ -1,6 +1,7 @@
 package dev.gisketch.chowkingdom.npc
 
 import com.mojang.brigadier.arguments.BoolArgumentType
+import com.mojang.brigadier.arguments.FloatArgumentType
 import com.mojang.brigadier.arguments.IntegerArgumentType
 import com.mojang.brigadier.arguments.StringArgumentType
 import com.mojang.brigadier.builder.LiteralArgumentBuilder
@@ -92,7 +93,7 @@ object NpcFeature {
     private val npcAutoTaskCooldownUntil: MutableMap<UUID, Long> = linkedMapOf()
     private val pendingShopNpcs: MutableMap<UUID, String> = linkedMapOf()
     private val animationDebugTargets: MutableMap<UUID, UUID> = linkedMapOf()
-    private val animationWearAliases = listOf("clear", "none", "hat", "helmet", "chestplate", "leggings", "boots", "sword")
+    private val animationWearAliases = listOf("clear", "none", "hat", "helmet", "chestplate", "leggings", "boots", "sword", "left_sword", "offhand_sword", "left sword", "left minecraft:iron_sword", "offhand minecraft:iron_sword")
     private var debugTimeMultiplier: Int = 1
 
     val CAMPING_BLOCK: DeferredHolder<Block, CampingBlock> = BLOCKS.register("camping_block", Supplier { CampingBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.OAK_PLANKS).strength(1.5f).noOcclusion()) })
@@ -1735,6 +1736,35 @@ object NpcFeature {
             Commands.literal("wear")
                 .then(Commands.argument("item", StringArgumentType.greedyString()).suggests(::suggestAnimationWearables).executes(::animationWearCommand)),
         )
+        .then(
+            Commands.literal("itemrot")
+                .then(Commands.literal("reset").executes(::animationItemRotResetCommand))
+                .then(
+                    Commands.argument("x", FloatArgumentType.floatArg(-3600.0f, 3600.0f))
+                        .then(
+                            Commands.argument("y", FloatArgumentType.floatArg(-3600.0f, 3600.0f))
+                                .then(Commands.argument("z", FloatArgumentType.floatArg(-3600.0f, 3600.0f)).executes(::animationItemRotCommand)),
+                        ),
+                ),
+        )
+        .then(
+            Commands.literal("itempos")
+                .then(Commands.literal("reset").executes(::animationItemPosResetCommand))
+                .then(
+                    Commands.argument("x", FloatArgumentType.floatArg(-16.0f, 16.0f))
+                        .then(
+                            Commands.argument("y", FloatArgumentType.floatArg(-16.0f, 16.0f))
+                                .then(Commands.argument("z", FloatArgumentType.floatArg(-16.0f, 16.0f)).executes(::animationItemPosCommand)),
+                        ),
+                ),
+        )
+        .then(
+            Commands.literal("itemscale")
+                .then(Commands.literal("reset").executes(::animationItemScaleResetCommand))
+                .then(Commands.argument("scale", FloatArgumentType.floatArg(0.05f, 5.0f)).executes(::animationItemScaleCommand)),
+        )
+        .then(Commands.literal("itemrotorder").then(Commands.argument("order", StringArgumentType.word()).suggests(::suggestAnimationItemRotOrders).executes(::animationItemRotOrderCommand)))
+        .then(Commands.literal("itemrotspace").then(Commands.argument("space", StringArgumentType.word()).suggests(::suggestAnimationItemRotSpaces).executes(::animationItemRotSpaceCommand)))
         .then(Commands.literal("idle").executes(::animationIdleCommand))
         .then(Commands.literal("walk").executes(::animationWalkCommand))
         .then(Commands.literal("attack").executes(::animationAttackCommand))
@@ -1747,6 +1777,12 @@ object NpcFeature {
         animationWearAliases.forEach(builder::suggest)
         return SharedSuggestionProvider.suggestResource(BuiltInRegistries.ITEM.keySet(), builder)
     }
+
+    private fun suggestAnimationItemRotOrders(context: CommandContext<CommandSourceStack>, builder: com.mojang.brigadier.suggestion.SuggestionsBuilder) =
+        SharedSuggestionProvider.suggest(listOf("xyz", "xzy", "yxz", "yzx", "zxy", "zyx"), builder)
+
+    private fun suggestAnimationItemRotSpaces(context: CommandContext<CommandSourceStack>, builder: com.mojang.brigadier.suggestion.SuggestionsBuilder) =
+        SharedSuggestionProvider.suggest(listOf("socket", "item"), builder)
 
     private fun llmStatusCommand(context: CommandContext<CommandSourceStack>): Int {
         val settings = NpcConfig.settings().llm
@@ -2106,8 +2142,111 @@ object NpcFeature {
             return 0
         }
         npc.setItemSlot(wearable.slot, wearable.stack.copy())
-        val suffix = if (npc.customAnimation && wearable.slot != EquipmentSlot.MAINHAND) " Gecko custom renderer does not draw vanilla armor layers yet." else ""
+        val suffix = if (npc.customAnimation && wearable.slot != EquipmentSlot.MAINHAND && wearable.slot != EquipmentSlot.OFFHAND) " Gecko custom renderer does not draw vanilla armor layers yet." else ""
         context.source.sendSuccess({ Component.literal("Equipped ${wearable.id} on ${animationTargetName(npc)} ${wearable.slot.name.lowercase()}.${suffix}").withStyle(ChatFormatting.GREEN) }, true)
+        return 1
+    }
+
+    private fun animationItemRotCommand(context: CommandContext<CommandSourceStack>): Int {
+        val player = context.source.playerOrException
+        val npc = animationCommandTarget(player) ?: run {
+            context.source.sendFailure(Component.literal("No animation debug Steve or Chow Kingdom NPC under crosshair."))
+            return 0
+        }
+        val x = FloatArgumentType.getFloat(context, "x")
+        val y = FloatArgumentType.getFloat(context, "y")
+        val z = FloatArgumentType.getFloat(context, "z")
+        npc.setHeldItemDebugRotation(x, y, z)
+        context.source.sendSuccess({ Component.literal("Set held item debug rot on ${animationTargetName(npc)}: x=$x y=$y z=$z. Applied after base item adapter in X -> Y -> Z order.").withStyle(ChatFormatting.GOLD) }, true)
+        return 1
+    }
+
+    private fun animationItemRotResetCommand(context: CommandContext<CommandSourceStack>): Int {
+        val player = context.source.playerOrException
+        val npc = animationCommandTarget(player) ?: run {
+            context.source.sendFailure(Component.literal("No animation debug Steve or Chow Kingdom NPC under crosshair."))
+            return 0
+        }
+        npc.resetHeldItemDebugTransform()
+        context.source.sendSuccess({ Component.literal("Reset held item debug transform on ${animationTargetName(npc)}.").withStyle(ChatFormatting.GRAY) }, true)
+        return 1
+    }
+
+    private fun animationItemPosCommand(context: CommandContext<CommandSourceStack>): Int {
+        val player = context.source.playerOrException
+        val npc = animationCommandTarget(player) ?: run {
+            context.source.sendFailure(Component.literal("No animation debug Steve or Chow Kingdom NPC under crosshair."))
+            return 0
+        }
+        val x = FloatArgumentType.getFloat(context, "x")
+        val y = FloatArgumentType.getFloat(context, "y")
+        val z = FloatArgumentType.getFloat(context, "z")
+        npc.setHeldItemDebugPosition(x, y, z)
+        context.source.sendSuccess({ Component.literal("Set held item debug pos on ${animationTargetName(npc)}: x=$x y=$y z=$z in ${npc.heldItemDebugRotSpace} space.").withStyle(ChatFormatting.GOLD) }, true)
+        return 1
+    }
+
+    private fun animationItemPosResetCommand(context: CommandContext<CommandSourceStack>): Int {
+        val player = context.source.playerOrException
+        val npc = animationCommandTarget(player) ?: run {
+            context.source.sendFailure(Component.literal("No animation debug Steve or Chow Kingdom NPC under crosshair."))
+            return 0
+        }
+        npc.setHeldItemDebugPosition(0.0f, 0.0f, 0.0f)
+        context.source.sendSuccess({ Component.literal("Reset held item debug position on ${animationTargetName(npc)}.").withStyle(ChatFormatting.GRAY) }, true)
+        return 1
+    }
+
+    private fun animationItemScaleCommand(context: CommandContext<CommandSourceStack>): Int {
+        val player = context.source.playerOrException
+        val npc = animationCommandTarget(player) ?: run {
+            context.source.sendFailure(Component.literal("No animation debug Steve or Chow Kingdom NPC under crosshair."))
+            return 0
+        }
+        val scale = FloatArgumentType.getFloat(context, "scale")
+        npc.updateHeldItemDebugScale(scale)
+        context.source.sendSuccess({ Component.literal("Set held item debug scale on ${animationTargetName(npc)}: ${npc.heldItemDebugScale}.").withStyle(ChatFormatting.GOLD) }, true)
+        return 1
+    }
+
+    private fun animationItemScaleResetCommand(context: CommandContext<CommandSourceStack>): Int {
+        val player = context.source.playerOrException
+        val npc = animationCommandTarget(player) ?: run {
+            context.source.sendFailure(Component.literal("No animation debug Steve or Chow Kingdom NPC under crosshair."))
+            return 0
+        }
+        npc.updateHeldItemDebugScale(1.0f)
+        context.source.sendSuccess({ Component.literal("Reset held item debug scale on ${animationTargetName(npc)}.").withStyle(ChatFormatting.GRAY) }, true)
+        return 1
+    }
+
+    private fun animationItemRotOrderCommand(context: CommandContext<CommandSourceStack>): Int {
+        val player = context.source.playerOrException
+        val npc = animationCommandTarget(player) ?: run {
+            context.source.sendFailure(Component.literal("No animation debug Steve or Chow Kingdom NPC under crosshair."))
+            return 0
+        }
+        val order = StringArgumentType.getString(context, "order")
+        if (!npc.setHeldItemDebugRotationOrder(order)) {
+            context.source.sendFailure(Component.literal("Invalid order '$order'. Use xyz, xzy, yxz, yzx, zxy, or zyx."))
+            return 0
+        }
+        context.source.sendSuccess({ Component.literal("Set held item debug rotation order on ${animationTargetName(npc)}: ${npc.heldItemDebugRotOrder}.").withStyle(ChatFormatting.GOLD) }, true)
+        return 1
+    }
+
+    private fun animationItemRotSpaceCommand(context: CommandContext<CommandSourceStack>): Int {
+        val player = context.source.playerOrException
+        val npc = animationCommandTarget(player) ?: run {
+            context.source.sendFailure(Component.literal("No animation debug Steve or Chow Kingdom NPC under crosshair."))
+            return 0
+        }
+        val space = StringArgumentType.getString(context, "space")
+        if (!npc.setHeldItemDebugRotationSpace(space)) {
+            context.source.sendFailure(Component.literal("Invalid space '$space'. Use socket or item."))
+            return 0
+        }
+        context.source.sendSuccess({ Component.literal("Set held item debug rotation space on ${animationTargetName(npc)}: ${npc.heldItemDebugRotSpace}.").withStyle(ChatFormatting.GOLD) }, true)
         return 1
     }
 
@@ -2124,20 +2263,26 @@ object NpcFeature {
     }
 
     private fun animationWearable(requested: String): AnimationWearable? {
-        val normalized = requested.trim().lowercase()
+        val rawNormalized = requested.trim().lowercase()
+        val leftHand = rawNormalized.startsWith("left ") || rawNormalized.startsWith("offhand ") || rawNormalized.startsWith("left_") || rawNormalized.startsWith("offhand_")
+        val normalized = rawNormalized
+            .removePrefix("left ")
+            .removePrefix("offhand ")
+            .removePrefix("left_")
+            .removePrefix("offhand_")
         val alias = when (normalized) {
             "hat", "helmet" -> AnimationWearable(EquipmentSlot.HEAD, ItemStack(Items.IRON_HELMET), "minecraft:iron_helmet")
             "chestplate" -> AnimationWearable(EquipmentSlot.CHEST, ItemStack(Items.IRON_CHESTPLATE), "minecraft:iron_chestplate")
             "leggings" -> AnimationWearable(EquipmentSlot.LEGS, ItemStack(Items.IRON_LEGGINGS), "minecraft:iron_leggings")
             "boots" -> AnimationWearable(EquipmentSlot.FEET, ItemStack(Items.IRON_BOOTS), "minecraft:iron_boots")
-            "sword" -> AnimationWearable(EquipmentSlot.MAINHAND, ItemStack(Items.IRON_SWORD), "minecraft:iron_sword")
+            "sword" -> AnimationWearable(if (leftHand) EquipmentSlot.OFFHAND else EquipmentSlot.MAINHAND, ItemStack(Items.IRON_SWORD), "minecraft:iron_sword")
             else -> null
         }
         if (alias != null) return alias
         val id = runCatching { ResourceLocation.parse(if (normalized.contains(':')) normalized else "minecraft:$normalized") }.getOrNull() ?: return null
         val item = BuiltInRegistries.ITEM.getOptional(id).orElse(Items.AIR)
         if (item === Items.AIR) return null
-        return AnimationWearable(animationWearSlot(id.path), ItemStack(item), id.toString())
+        return AnimationWearable(if (leftHand) EquipmentSlot.OFFHAND else animationWearSlot(id.path), ItemStack(item), id.toString())
     }
 
     private fun animationWearSlot(itemPath: String): EquipmentSlot = when {
@@ -2189,7 +2334,7 @@ object NpcFeature {
 
     private fun animationTargetName(npc: ChowNpcEntity): String = if (npc.npcId == ChowNpcEntity.ANIMATION_DEBUG_NPC_ID) "animation debug Steve" else npc.npcId
 
-    private val animationWearSlots = listOf(EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET, EquipmentSlot.MAINHAND)
+    private val animationWearSlots = listOf(EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET, EquipmentSlot.MAINHAND, EquipmentSlot.OFFHAND)
 
     private data class AnimationWearable(val slot: EquipmentSlot, val stack: ItemStack, val id: String)
 

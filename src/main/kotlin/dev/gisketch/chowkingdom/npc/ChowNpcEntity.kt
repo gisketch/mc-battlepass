@@ -35,6 +35,7 @@ class ChowNpcEntity(entityType: EntityType<out PathfinderMob>, level: Level) : P
     private var cachedCustomAnimationLoop: Boolean = true
     private var cachedCustomAnimation: RawAnimation = IDLE_ANIMATION
     private var customAnimationEndsAtTick: Int = 0
+    private var observedCustomAnimationPlayId: Int = 0
 
     var npcId: String
         get() = entityData.get(NPC_ID_DATA)
@@ -48,9 +49,39 @@ class ChowNpcEntity(entityType: EntityType<out PathfinderMob>, level: Level) : P
     var customAnimationKey: String
         get() = entityData.get(CUSTOM_ANIMATION_KEY_DATA)
         private set(value) = entityData.set(CUSTOM_ANIMATION_KEY_DATA, value.trim().lowercase())
+    private var customAnimationPlayId: Int
+        get() = entityData.get(CUSTOM_ANIMATION_PLAY_ID_DATA)
+        set(value) = entityData.set(CUSTOM_ANIMATION_PLAY_ID_DATA, value)
     var scriptedAttackTicks: Int
         get() = entityData.get(SCRIPTED_ATTACK_TICKS_DATA)
         private set(value) = entityData.set(SCRIPTED_ATTACK_TICKS_DATA, value.coerceAtLeast(0))
+    var heldItemDebugRotX: Float
+        get() = entityData.get(HELD_ITEM_DEBUG_ROT_X_DATA)
+        private set(value) = entityData.set(HELD_ITEM_DEBUG_ROT_X_DATA, value)
+    var heldItemDebugRotY: Float
+        get() = entityData.get(HELD_ITEM_DEBUG_ROT_Y_DATA)
+        private set(value) = entityData.set(HELD_ITEM_DEBUG_ROT_Y_DATA, value)
+    var heldItemDebugRotZ: Float
+        get() = entityData.get(HELD_ITEM_DEBUG_ROT_Z_DATA)
+        private set(value) = entityData.set(HELD_ITEM_DEBUG_ROT_Z_DATA, value)
+    var heldItemDebugRotOrder: String
+        get() = entityData.get(HELD_ITEM_DEBUG_ROT_ORDER_DATA)
+        private set(value) = entityData.set(HELD_ITEM_DEBUG_ROT_ORDER_DATA, value)
+    var heldItemDebugRotSpace: String
+        get() = entityData.get(HELD_ITEM_DEBUG_ROT_SPACE_DATA)
+        private set(value) = entityData.set(HELD_ITEM_DEBUG_ROT_SPACE_DATA, value)
+    var heldItemDebugPosX: Float
+        get() = entityData.get(HELD_ITEM_DEBUG_POS_X_DATA)
+        private set(value) = entityData.set(HELD_ITEM_DEBUG_POS_X_DATA, value)
+    var heldItemDebugPosY: Float
+        get() = entityData.get(HELD_ITEM_DEBUG_POS_Y_DATA)
+        private set(value) = entityData.set(HELD_ITEM_DEBUG_POS_Y_DATA, value)
+    var heldItemDebugPosZ: Float
+        get() = entityData.get(HELD_ITEM_DEBUG_POS_Z_DATA)
+        private set(value) = entityData.set(HELD_ITEM_DEBUG_POS_Z_DATA, value)
+    var heldItemDebugScale: Float
+        get() = entityData.get(HELD_ITEM_DEBUG_SCALE_DATA)
+        private set(value) = entityData.set(HELD_ITEM_DEBUG_SCALE_DATA, value)
     var campPos: BlockPos? = null
     var homePos: BlockPos? = null
     var debugActivity: String = "idle"
@@ -75,12 +106,27 @@ class ChowNpcEntity(entityType: EntityType<out PathfinderMob>, level: Level) : P
         builder.define(BODY_TYPE_DATA, NpcBodyTypes.NORMAL)
         builder.define(CUSTOM_ANIMATION_DATA, false)
         builder.define(CUSTOM_ANIMATION_KEY_DATA, "")
+        builder.define(CUSTOM_ANIMATION_PLAY_ID_DATA, 0)
         builder.define(SCRIPTED_ATTACK_TICKS_DATA, 0)
+        builder.define(HELD_ITEM_DEBUG_ROT_X_DATA, 0.0f)
+        builder.define(HELD_ITEM_DEBUG_ROT_Y_DATA, 0.0f)
+        builder.define(HELD_ITEM_DEBUG_ROT_Z_DATA, 0.0f)
+        builder.define(HELD_ITEM_DEBUG_ROT_ORDER_DATA, "xyz")
+        builder.define(HELD_ITEM_DEBUG_ROT_SPACE_DATA, "item")
+        builder.define(HELD_ITEM_DEBUG_POS_X_DATA, 0.0f)
+        builder.define(HELD_ITEM_DEBUG_POS_Y_DATA, 0.0f)
+        builder.define(HELD_ITEM_DEBUG_POS_Z_DATA, 0.0f)
+        builder.define(HELD_ITEM_DEBUG_SCALE_DATA, 1.0f)
     }
 
     override fun registerControllers(controllers: AnimatableManager.ControllerRegistrar) {
         controllers.add(AnimationController(this, "custom", 0) { state ->
             if (!customAnimation) return@AnimationController PlayState.STOP
+            val playId = customAnimationPlayId
+            if (playId != observedCustomAnimationPlayId) {
+                observedCustomAnimationPlayId = playId
+                state.controller.forceAnimationReset()
+            }
             if (customAnimationKey.isBlank()) PlayState.STOP else state.setAndContinue(customRawAnimation())
         })
     }
@@ -113,6 +159,7 @@ class ChowNpcEntity(entityType: EntityType<out PathfinderMob>, level: Level) : P
         if (!enabled) {
             customAnimationKey = ""
             customAnimationEndsAtTick = 0
+            customAnimationPlayId = customAnimationPlayId + 1
         }
     }
 
@@ -133,6 +180,43 @@ class ChowNpcEntity(entityType: EntityType<out PathfinderMob>, level: Level) : P
         customAnimation = true
         customAnimationKey = animation.id
         customAnimationEndsAtTick = if (animation.loop) 0 else tickCount + animation.durationTicks()
+        customAnimationPlayId = customAnimationPlayId + 1
+        return true
+    }
+
+    fun setHeldItemDebugRotation(x: Float, y: Float, z: Float) {
+        heldItemDebugRotX = x
+        heldItemDebugRotY = y
+        heldItemDebugRotZ = z
+    }
+
+    fun setHeldItemDebugPosition(x: Float, y: Float, z: Float) {
+        heldItemDebugPosX = x
+        heldItemDebugPosY = y
+        heldItemDebugPosZ = z
+    }
+
+    fun updateHeldItemDebugScale(scale: Float) {
+        heldItemDebugScale = scale.coerceIn(0.05f, 5.0f)
+    }
+
+    fun resetHeldItemDebugTransform() {
+        setHeldItemDebugRotation(0.0f, 0.0f, 0.0f)
+        setHeldItemDebugPosition(0.0f, 0.0f, 0.0f)
+        updateHeldItemDebugScale(1.0f)
+    }
+
+    fun setHeldItemDebugRotationOrder(order: String): Boolean {
+        val normalized = order.trim().lowercase()
+        if (normalized.length != 3 || normalized.toSet() != setOf('x', 'y', 'z')) return false
+        heldItemDebugRotOrder = normalized
+        return true
+    }
+
+    fun setHeldItemDebugRotationSpace(space: String): Boolean {
+        val normalized = space.trim().lowercase()
+        if (normalized != "item" && normalized != "socket") return false
+        heldItemDebugRotSpace = normalized
         return true
     }
 
@@ -198,6 +282,7 @@ class ChowNpcEntity(entityType: EntityType<out PathfinderMob>, level: Level) : P
         if (!customAnimation || customAnimationEndsAtTick == 0 || tickCount < customAnimationEndsAtTick) return
         customAnimationEndsAtTick = 0
         customAnimationKey = (NpcAnimationRegistry.resolve(CUSTOM_ANIMATION_IDLE) ?: NpcAnimationRegistry.firstLooping())?.id.orEmpty()
+        customAnimationPlayId = customAnimationPlayId + 1
     }
 
     override fun customServerAiStep() {
@@ -250,7 +335,17 @@ class ChowNpcEntity(entityType: EntityType<out PathfinderMob>, level: Level) : P
         private val BODY_TYPE_DATA: EntityDataAccessor<String> = SynchedEntityData.defineId(ChowNpcEntity::class.java, EntityDataSerializers.STRING)
         private val CUSTOM_ANIMATION_DATA: EntityDataAccessor<Boolean> = SynchedEntityData.defineId(ChowNpcEntity::class.java, EntityDataSerializers.BOOLEAN)
         private val CUSTOM_ANIMATION_KEY_DATA: EntityDataAccessor<String> = SynchedEntityData.defineId(ChowNpcEntity::class.java, EntityDataSerializers.STRING)
+        private val CUSTOM_ANIMATION_PLAY_ID_DATA: EntityDataAccessor<Int> = SynchedEntityData.defineId(ChowNpcEntity::class.java, EntityDataSerializers.INT)
         private val SCRIPTED_ATTACK_TICKS_DATA: EntityDataAccessor<Int> = SynchedEntityData.defineId(ChowNpcEntity::class.java, EntityDataSerializers.INT)
+        private val HELD_ITEM_DEBUG_ROT_X_DATA: EntityDataAccessor<Float> = SynchedEntityData.defineId(ChowNpcEntity::class.java, EntityDataSerializers.FLOAT)
+        private val HELD_ITEM_DEBUG_ROT_Y_DATA: EntityDataAccessor<Float> = SynchedEntityData.defineId(ChowNpcEntity::class.java, EntityDataSerializers.FLOAT)
+        private val HELD_ITEM_DEBUG_ROT_Z_DATA: EntityDataAccessor<Float> = SynchedEntityData.defineId(ChowNpcEntity::class.java, EntityDataSerializers.FLOAT)
+        private val HELD_ITEM_DEBUG_ROT_ORDER_DATA: EntityDataAccessor<String> = SynchedEntityData.defineId(ChowNpcEntity::class.java, EntityDataSerializers.STRING)
+        private val HELD_ITEM_DEBUG_ROT_SPACE_DATA: EntityDataAccessor<String> = SynchedEntityData.defineId(ChowNpcEntity::class.java, EntityDataSerializers.STRING)
+        private val HELD_ITEM_DEBUG_POS_X_DATA: EntityDataAccessor<Float> = SynchedEntityData.defineId(ChowNpcEntity::class.java, EntityDataSerializers.FLOAT)
+        private val HELD_ITEM_DEBUG_POS_Y_DATA: EntityDataAccessor<Float> = SynchedEntityData.defineId(ChowNpcEntity::class.java, EntityDataSerializers.FLOAT)
+        private val HELD_ITEM_DEBUG_POS_Z_DATA: EntityDataAccessor<Float> = SynchedEntityData.defineId(ChowNpcEntity::class.java, EntityDataSerializers.FLOAT)
+        private val HELD_ITEM_DEBUG_SCALE_DATA: EntityDataAccessor<Float> = SynchedEntityData.defineId(ChowNpcEntity::class.java, EntityDataSerializers.FLOAT)
         const val ANIMATION_DEBUG_NPC_ID = "animation_debug_steve"
         const val CUSTOM_ANIMATION_IDLE = "idle"
         const val CUSTOM_ANIMATION_WALK = "walk"
