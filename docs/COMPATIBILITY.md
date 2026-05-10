@@ -37,7 +37,7 @@ hideEpicFightStaminaHud = true
 
 Behavior:
 
-- Vanilla and Better Combat player attack attempts spend Paraglider stamina; if the player lacks enough stamina, client entity-attack input is canceled before the local swing where possible and the server attack event is canceled before the hit resolves.
+- Vanilla and Better Combat player attack attempts with weapon-like held items spend Paraglider stamina; if the player lacks enough stamina, client entity-attack input is canceled before the local swing where possible and the server attack event is canceled before the hit resolves. Empty hands and non-weapon items keep vanilla behavior and do not spend Chow Kingdom stamina.
 - Blocking incoming damage while actively blocking spends Paraglider stamina.
 - Epic Fight basic attack starts spend Paraglider stamina.
 - Epic Fight jump attack starts spend Paraglider stamina.

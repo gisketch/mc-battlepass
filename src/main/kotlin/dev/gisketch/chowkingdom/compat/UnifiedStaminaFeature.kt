@@ -8,7 +8,10 @@ import net.minecraft.commands.Commands
 import net.minecraft.network.chat.Component
 import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.entity.Entity
+import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.entity.LivingEntity
+import net.minecraft.world.entity.ai.attributes.Attributes
+import net.minecraft.world.item.ItemStack
 import net.neoforged.bus.api.EventPriority
 import net.neoforged.neoforge.common.NeoForge
 import net.neoforged.neoforge.event.RegisterCommandsEvent
@@ -80,6 +83,7 @@ object UnifiedStaminaFeature {
         if (!config.enabled) return
         val attacker = event.entity as? ServerPlayer ?: return
         if (!isLivingAttackTarget(event.target)) return
+        if (!isWeaponLike(attacker.mainHandItem)) return
         if (!spendEpicFightAttack(attacker, config.attackCost)) event.isCanceled = true
     }
 
@@ -174,6 +178,15 @@ object UnifiedStaminaFeature {
     }
 
     private fun isLivingAttackTarget(target: Entity): Boolean = target is LivingEntity && target.isAlive
+
+    private fun isWeaponLike(stack: ItemStack): Boolean {
+        if (stack.isEmpty) return false
+        var weaponLike = false
+        stack.forEachModifier(EquipmentSlot.MAINHAND) { attribute, _ ->
+            if (attribute == Attributes.ATTACK_DAMAGE || attribute == Attributes.ATTACK_SPEED) weaponLike = true
+        }
+        return weaponLike
+    }
 
     private fun processPendingDrains(player: ServerPlayer, config: StaminaCompatDefinition) {
         val drains = pendingDrains[player.uuid] ?: return

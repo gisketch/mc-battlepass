@@ -43,3 +43,4 @@ Return to Paraglider's normal stamina HUD and make attacks reliably spend/block 
 - Created plan after request intake.
 - Removed CKDM custom Paraglider HUD registration path, restored native Paraglider wheel, added client attack input gate, and updated docs.
 - Build passed.
+- Restricted attack stamina spend and client attack gate to weapon-like held items only.
