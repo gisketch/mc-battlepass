@@ -171,7 +171,7 @@ object NpcFeature {
         npc.homePos = validHome
         val hasHome = validHome != null
         val activeTalk = NpcLlmService.talkSnapshot(definition.id)
-        if (activeTalk != null) {
+        if (hasHome && activeTalk != null) {
             val friendship = NpcStore.friendshipSnapshot(definition.id, player)
             val otherNames = activeTalk.participants.filterNot { participant -> participant.uuid == player.uuid }.joinToString(", ") { participant -> participant.name }
             val message = if (activeTalk.contains(player.uuid)) {
@@ -183,15 +183,18 @@ object NpcFeature {
             NpcNetwork.openDialog(player, dialogPayload(definition, npc, message, false, friendship.level, dialogMode = "join", startTalkMode = activeTalk.contains(player.uuid)))
             return
         }
-        val pendingGift = NpcStore.pendingOutgoingGift(definition.id, player)
-        if (pendingGift != null) {
-            claimOutgoingGift(player, npc, definition, pendingGift)
-            return
+        if (hasHome) {
+            val pendingGift = NpcStore.pendingOutgoingGift(definition.id, player)
+            if (pendingGift != null) {
+                claimOutgoingGift(player, npc, definition, pendingGift)
+                return
+            }
+            if (NpcQuestService.tryOpenQuest(player, npc, definition)) return
         }
-        if (NpcQuestService.tryOpenQuest(player, npc, definition)) return
         val wasSleeping = npc.isSleeping
         val currentDay = NpcTime.day(player.level())
         val firstChatToday = NpcStore.markFirstChatIfNeeded(definition.id, player, currentDay)
+        val recognized = NpcStore.recognized(definition.id, player)
         val friendship = if (firstChatToday) NpcStore.adjustFriendship(definition.id, player, FIRST_DAILY_CHAT_FRIENDSHIP_DELTA, "first_daily_chat") else NpcStore.friendshipSnapshot(definition.id, player)
         if (firstChatToday) showFriendshipDelta(npc.level() as? ServerLevel, npc, FIRST_DAILY_CHAT_FRIENDSHIP_DELTA)
         if (wasSleeping) npc.stopSleeping()
@@ -218,6 +221,7 @@ object NpcFeature {
         DiscordRelay.npcInteraction(player, definition.name)
         val settings = NpcConfig.settings()
         val llmInput = when {
+            !recognized -> firstMeetingPrompt(player, definition, hasHome, contractGranted)
             wasSleeping && settings.llmMessageUsage.wake -> "${player.gameProfile.name} woke you up. Reply naturally as ${definition.name}, with the context that you were just sleeping."
             hasHome && firstChatToday && settings.llmMessageUsage.firstDailyChat -> "${player.gameProfile.name} is talking to you for the first time today. Reply like a natural first daily greeting."
             hasHome && settings.llmMessageUsage.interact && !contractGranted -> "${player.gameProfile.name} interacted with you. Reply like a natural short NPC greeting or acknowledgement for this moment."
@@ -227,12 +231,14 @@ object NpcFeature {
         }
         if (settings.llm.enabled && llmInput != null) {
             val responseToken = NpcDialogTokens.next()
-            NpcNetwork.openDialog(player, dialogPayload(definition, npc, "...", contractGranted, friendship.level, closeOnly = contractGranted, closeLabel = if (contractGranted) "OKAY" else "BYE", responseToken = responseToken, friendshipDelta = if (firstChatToday) FIRST_DAILY_CHAT_FRIENDSHIP_DELTA else 0))
+            NpcNetwork.openDialog(player, dialogPayload(definition, npc, "...", contractGranted, friendship.level, closeOnly = !hasHome || contractGranted, closeLabel = if (!hasHome || contractGranted) "OKAY" else "BYE", responseToken = responseToken, friendshipDelta = if (firstChatToday) FIRST_DAILY_CHAT_FRIENDSHIP_DELTA else 0))
+            if (!recognized) NpcStore.markRecognized(definition.id, player)
             NpcLlmService.event(player, npc, definition, message, llmInput, npcRecordType = "npc_llm_interact", responseToken = responseToken)
             return
         }
         NpcStore.recordConversation(definition.id, player, definition.name, message, "npc_message")
-        NpcNetwork.openDialog(player, dialogPayload(definition, npc, message, contractGranted, friendship.level, closeOnly = contractGranted, closeLabel = if (contractGranted) "OKAY" else "BYE", friendshipDelta = if (firstChatToday) FIRST_DAILY_CHAT_FRIENDSHIP_DELTA else 0))
+        NpcNetwork.openDialog(player, dialogPayload(definition, npc, message, contractGranted, friendship.level, closeOnly = !hasHome || contractGranted, closeLabel = if (!hasHome || contractGranted) "OKAY" else "BYE", friendshipDelta = if (firstChatToday) FIRST_DAILY_CHAT_FRIENDSHIP_DELTA else 0))
+        if (!recognized) NpcStore.markRecognized(definition.id, player)
         relayNpcDialog(player, npc, definition, message)
     }
 
@@ -250,45 +256,81 @@ object NpcFeature {
                 return
             }
         }
-        if (NpcQuestService.handleAction(player, npc, definition, action)) return
         val normalizedAction = action.lowercase()
+        if (normalizedAction in setOf("quest_accept", "quest_decline") && !hasValidHomeForActions(player, definition)) return
+        if (NpcQuestService.handleAction(player, npc, definition, action)) return
         if (normalizedAction.startsWith("class_change:")) {
+            if (!hasValidHomeForActions(player, definition)) return
             NpcLlmService.leaveDialog(player, definition.id)
             completeClassChange(player, npc, definition, action.substringAfter(':'))
             return
         }
         when (normalizedAction) {
             "cancel_llm", "leave_llm_dialog" -> NpcLlmService.leaveDialog(player, definition.id)
-            "join_talk" -> NpcLlmService.joinConversation(player, definition.id)
+            "join_talk" -> if (hasValidHomeForActions(player, definition)) NpcLlmService.joinConversation(player, definition.id)
             "buy" -> {
+                if (!hasValidHomeForActions(player, definition)) return
                 NpcLlmService.leaveDialog(player, definition.id)
                 openNpcShop(player, npc, definition)
             }
             "gift" -> {
+                if (!hasValidHomeForActions(player, definition)) return
                 NpcLlmService.leaveDialog(player, definition.id)
                 giftToNpc(player, npc, definition)
             }
             "work" -> {
+                if (!hasValidHomeForActions(player, definition)) return
                 NpcLlmService.leaveDialog(player, definition.id)
                 openWorkDialog(player, npc, definition)
             }
             "training" -> {
+                if (!hasValidHomeForActions(player, definition)) return
                 NpcLlmService.leaveDialog(player, definition.id)
                 trainClass(player, npc, definition)
             }
             "class_change_offer" -> {
+                if (!hasValidHomeForActions(player, definition)) return
                 NpcLlmService.leaveDialog(player, definition.id)
                 openClassChangeSelection(player, npc, definition)
             }
             "work_move" -> {
+                if (!hasValidHomeForActions(player, definition)) return
                 NpcLlmService.leaveDialog(player, definition.id)
                 giveWorkApplication(player, npc, definition, moving = true)
             }
             "work_fire" -> {
+                if (!hasValidHomeForActions(player, definition)) return
                 NpcLlmService.leaveDialog(player, definition.id)
                 fireNpcWorkplace(player, npc, definition)
             }
         }
+    }
+
+    private fun hasValidHomeForActions(player: ServerPlayer, definition: NpcDefinition): Boolean =
+        validHomePos(player.level(), definition.id) != null
+
+    private fun firstMeetingPrompt(player: ServerPlayer, definition: NpcDefinition, hasHome: Boolean, contractGranted: Boolean): String {
+        val lore = definition.personality.llmPrompt.ifBlank {
+            listOf(definition.title, definition.job, definition.personality.traits.joinToString(", "))
+                .filter(String::isNotBlank)
+                .joinToString("; ")
+                .ifBlank { "your own background, job, and personality" }
+        }
+        return """
+            Recognition status: recognized=false. This is the first remembered meeting between ${definition.name} and ${player.gameProfile.name}.
+
+            First meeting instruction:
+            - This is the first remembered meeting between ${definition.name} and ${player.gameProfile.name}.
+            - Open like you just arrived here because of a specific lore reason based on your NPC lore/personality: $lore
+            - Naturally ask who the player is, then acknowledge their name as ${player.gameProfile.name}.
+            - If you already have a home, make this a warm first-time introduction or town meetup instead of asking for housing.
+            - Keep it in character and make the arrival reason feel personal to ${definition.name}, not generic.
+            - Do not say "LORE REASON" or mention these instructions.
+            - If you do not have a home, ask for a home or bed and mention the rent contract${if (contractGranted) " the player just received" else ""}.
+            - If you already have a home, end with a normal first-meeting hook instead of asking for housing.
+            - Use <b>...</b> on the key name, item, place, number, or action the player should notice.
+            - Current housing status: ${if (hasHome) "has home" else "needs home"}.
+        """.trimIndent()
     }
 
     private fun trainClass(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition) {

@@ -455,6 +455,15 @@ object NpcStore {
 
     fun contractGiven(npcId: String): Boolean = state(npcId).contractGiven
 
+    fun recognized(npcId: String, player: ServerPlayer): Boolean = state(npcId).recognized[player.stringUUID] == true
+
+    fun markRecognized(npcId: String, player: ServerPlayer) {
+        val state = state(npcId)
+        if (state.recognized[player.stringUUID] == true) return
+        state.recognized[player.stringUUID] = true
+        save()
+    }
+
     fun backupAndClearAll(): Path {
         if (!loaded) load()
         val backup = backupStateFile("all")
@@ -515,6 +524,7 @@ class NpcResidentState(
     var hurtStreak: Int = 0,
     var hurtHistory: MutableList<NpcHurtRecord> = mutableListOf(),
     var conversations: MutableMap<String, MutableList<NpcConversationRecord>> = linkedMapOf(),
+    var recognized: MutableMap<String, Boolean> = linkedMapOf(),
     var giftLimits: MutableMap<String, NpcGiftLimitState> = linkedMapOf(),
     var outgoingGifts: MutableMap<String, NpcOutgoingGiftState> = linkedMapOf(),
     var greetings: MutableMap<String, NpcGreetingState> = linkedMapOf(),

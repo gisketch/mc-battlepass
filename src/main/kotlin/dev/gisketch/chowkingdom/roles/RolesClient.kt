@@ -349,7 +349,7 @@ data class JobStatusDisplay(
     val tooltip: List<Component>,
 )
 
-internal fun roleIconTexture(rawIcon: String): ResourceLocation? {
+fun roleIconTexture(rawIcon: String): ResourceLocation? {
     val icon = rawIcon.trim()
     if (icon.isBlank()) return null
     return runCatching {
@@ -363,7 +363,7 @@ internal fun roleIconTexture(rawIcon: String): ResourceLocation? {
     }.getOrNull()
 }
 
-internal fun roleIconStack(rawIcon: String): ItemStack {
+fun roleIconStack(rawIcon: String): ItemStack {
     return RoleItemStacks.fromId(rawIcon, "role icon") ?: ItemStack.EMPTY
 }
 

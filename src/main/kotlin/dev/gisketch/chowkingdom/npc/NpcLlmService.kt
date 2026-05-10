@@ -313,6 +313,9 @@ object NpcLlmService {
             - Treat catchphrases as optional style references. Use them rarely, vary the wording, and do not repeat them every reply.
             - Reply in 1 to 3 short sentences.
             - Use plain ASCII only with letters, numbers, spaces, and basic punctuation.
+            - You may use <b>...</b> around short important highlights only. Highlight concrete numbers, item names, class names, costs, counts, requirements, places, deadlines, and action words the player should notice.
+            - Do not highlight whole sentences. Prefer 1 to 4 highlighted spans per reply.
+            - Only use the exact tags <b> and </b>; do not use markdown, HTML tags besides <b>, or nested tags.
             - Do not claim you gave items, changed friendship, changed prices, completed quests, teleported anyone, healed anyone, or changed the world.
             - Return JSON only: {"message":"NPC reply here","memorable":null}
 
@@ -661,6 +664,7 @@ object NpcLlmService {
         val reply = normalized
             .replace(Regex("```.*?```", RegexOption.DOT_MATCHES_ALL), "")
             .replace(EMOJI_PATTERN, "")
+            .replace(UNSUPPORTED_DIALOG_TAG_PATTERN, "")
             .replace(NON_ASCII_PATTERN, "")
             .replace('\n', ' ')
             .replace(WHITESPACE_PATTERN, " ")
@@ -731,6 +735,7 @@ object NpcLlmService {
     ) {
         val settings = NpcConfig.settings().llm
         val reply = sanitizeReply(message, settings, fallbackMessage)
+        val publicReply = stripDialogMarkup(reply)
         npc.startTalkingTo(speaker, NPC_LLM_TALK_DURATION_TICKS)
         target.turns.forEach { turn ->
             speaker.server.playerList.getPlayer(turn.playerId)?.let { turnPlayer ->
@@ -741,8 +746,8 @@ object NpcLlmService {
             speaker.server.playerList.getPlayer(participant.playerId)?.let { player -> participant to player }
         }
         onlineParticipants.forEach { (participant, participantPlayer) ->
-            NpcStore.recordConversation(definition.id, participantPlayer, definition.name, reply, "npc_llm_group_reply")
-            rememberDialogReply(participantPlayer.uuid, definition.id, reply)
+            NpcStore.recordConversation(definition.id, participantPlayer, definition.name, publicReply, "npc_llm_group_reply")
+            rememberDialogReply(participantPlayer.uuid, definition.id, publicReply)
             NpcNetwork.sendTalkResponse(participantPlayer, definition.id, reply, participant.responseToken)
         }
         if (memorable.isNotBlank()) {
@@ -753,9 +758,9 @@ object NpcLlmService {
             }
         }
         val activeParticipantIds = target.activeParticipantIds
-        relayNpcGroupTalk(speaker, npc, definition, onlineParticipants.map { it.first.name }, activeParticipantIds, reply)
-        NpcFeature.showBalloonToNearbyExcept(npc.level() as ServerLevel, npc, reply, NPC_LLM_REPLY_BALLOON_TICKS, activeParticipantIds)
-        NpcFeature.relayNpcDialogToDiscord(speaker, definition, reply)
+        relayNpcGroupTalk(speaker, npc, definition, onlineParticipants.map { it.first.name }, activeParticipantIds, publicReply)
+        NpcFeature.showBalloonToNearbyExcept(npc.level() as ServerLevel, npc, publicReply, NPC_LLM_REPLY_BALLOON_TICKS, activeParticipantIds)
+        NpcFeature.relayNpcDialogToDiscord(speaker, definition, publicReply)
     }
 
     private fun sendWorldChatFinal(
@@ -770,14 +775,15 @@ object NpcLlmService {
     ) {
         val settings = NpcConfig.settings().llm
         val reply = sanitizeReply(message, settings, fallbackMessage)
+        val publicReply = stripDialogMarkup(reply)
         NpcStore.recordConversation(definition.id, player, player.gameProfile.name, playerMessage.take(MAX_PLAYER_MESSAGE_LENGTH), "player_world_chat")
-        NpcStore.recordConversation(definition.id, player, definition.name, reply, "npc_world_chat_reply")
+        NpcStore.recordConversation(definition.id, player, definition.name, publicReply, "npc_world_chat_reply")
         if (memorable.isNotBlank()) NpcStore.recordPlayerMemory(player, "llm_memorable", memorable)
-        NpcNetwork.broadcastWorldChat(player.server, NpcWorldChatPayload(definition.id, definition.name, player.gameProfile.name, player.uuid, "player", reply))
-        DiscordRelay.npcWorldChat(definition.id, definition.name, reply, discordMentionUserId) { messageId ->
+        NpcNetwork.broadcastWorldChat(player.server, NpcWorldChatPayload(definition.id, definition.name, player.gameProfile.name, player.uuid, "player", publicReply))
+        DiscordRelay.npcWorldChat(definition.id, definition.name, publicReply, discordMentionUserId) { messageId ->
             NpcWorldChatService.rememberDiscordNpcMessage(messageId, definition.id)
         }
-        NpcWorldChatService.recordNpcReply(definition.name, reply, channel)
+        NpcWorldChatService.recordNpcReply(definition.name, publicReply, channel)
         NpcStore.recordGlobalEvent("npc_world_chat", "${definition.name} replied to ${player.gameProfile.name} in $channel")
     }
 
@@ -792,12 +798,13 @@ object NpcLlmService {
     ) {
         val settings = NpcConfig.settings().llm
         val reply = sanitizeReply(message, settings, fallbackMessage)
+        val publicReply = stripDialogMarkup(reply)
         val speakerName = discordAuthorName.trim().ifBlank { "Discord" }
-        NpcNetwork.broadcastWorldChat(server, NpcWorldChatPayload(definition.id, definition.name, speakerName, null, "discord", reply))
-        DiscordRelay.npcWorldChat(definition.id, definition.name, reply, fallbackName = discordAuthorName) { messageId ->
+        NpcNetwork.broadcastWorldChat(server, NpcWorldChatPayload(definition.id, definition.name, speakerName, null, "discord", publicReply))
+        DiscordRelay.npcWorldChat(definition.id, definition.name, publicReply, fallbackName = discordAuthorName) { messageId ->
             NpcWorldChatService.rememberDiscordNpcMessage(messageId, definition.id)
         }
-        NpcWorldChatService.recordNpcReply(definition.name, reply, "discord")
+        NpcWorldChatService.recordNpcReply(definition.name, publicReply, "discord")
         NpcStore.recordGlobalEvent("npc_world_chat", "${definition.name} replied to Discord user $speakerName")
         if (memorable.isNotBlank()) NpcStore.recordGlobalMemory("discord_user_memory", "$speakerName: $memorable")
     }
@@ -1073,7 +1080,7 @@ object NpcLlmService {
         NpcFriendshipCategory.BestFriends -> "deeply loyal, playful, personal"
     }
 
-    private const val MAX_PLAYER_MESSAGE_LENGTH = 280
+    private const val MAX_PLAYER_MESSAGE_LENGTH = 2000
     private const val NPC_LLM_ACTION_DISTANCE_SQR = 64.0
     private const val NPC_LLM_HEAR_RADIUS_SQR = 30.0 * 30.0
     private const val NEARBY_PLAYER_RADIUS_SQR = 48.0 * 48.0
@@ -1091,7 +1098,8 @@ object NpcLlmService {
     private val EMOJI_PATTERN = Regex("[\\x{1F000}-\\x{1FAFF}\\x{2600}-\\x{27BF}]")
     private val NON_ASCII_PATTERN = Regex("[^\\x20-\\x7E]")
     private val WHITESPACE_PATTERN = Regex("\\s+")
-    private val DIALOG_MARKUP_TAG_REGEX = Regex("(?i)</?(mission|coin|xp|player)>")
+    private val DIALOG_MARKUP_TAG_REGEX = Regex("(?i)</?(mission|coin|xp|player|b)>")
+    private val UNSUPPORTED_DIALOG_TAG_PATTERN = Regex("(?i)<(?!/?(?:mission|coin|xp|player|b)\\b)[^>]*>")
     private val THINK_BLOCK_PATTERN = Regex("<think>.*?</think>", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL))
     private val THINKING_BLOCK_PATTERN = Regex("<thinking>.*?</thinking>", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL))
     private val ANALYSIS_BLOCK_PATTERN = Regex("<analysis>.*?</analysis>", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL))

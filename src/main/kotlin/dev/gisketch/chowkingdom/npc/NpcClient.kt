@@ -905,7 +905,7 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         options.cameraType = CameraType.FIRST_PERSON
         val layout = layout()
         talkInput = EditBox(font, layout.inputX, layout.inputY, layout.inputWidth, INPUT_HEIGHT, Component.literal("Message ${payload.name}...")).apply {
-            setMaxLength(280)
+            setMaxLength(2000)
             setHint(Component.literal("Message ${payload.name}..."))
             visible = talkMode
         }
@@ -973,7 +973,7 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         highestVisibleCharacters = visibleCharacters
         playAnimalese(visibleCharacters)
         val visibleMessage = currentRenderMessage().take(visibleCharacters)
-        val shadowLines = font.split(ckdmDialogText(stripDialogMarkup(visibleMessage)), dialogWrapWidth)
+        val shadowLines = font.split(dialogTextComponent(visibleMessage, shadow = true), dialogWrapWidth)
         val lines = font.split(dialogTextComponent(visibleMessage), dialogWrapWidth)
         var lineY = dialogY
         lines.take(layout.dialogLineLimit).forEachIndexed { index, line ->
@@ -1407,7 +1407,7 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
     private fun dialogLineCount(dialogWidth: Int): Int {
         val visibleMessage = stripDialogMarkup(displayMessage)
         val wrapWidth = (dialogWidth / DIALOG_TEXT_SCALE).toInt().coerceAtLeast(1)
-        val wrapped = font.split(ckdmDialogText(visibleMessage), wrapWidth).size.coerceAtLeast(1)
+        val wrapped = font.split(dialogTextComponent(visibleMessage), wrapWidth).size.coerceAtLeast(1)
         val averageCharsPerLine = (wrapWidth / 6).coerceAtLeast(24)
         val estimated = (visibleMessage.length + averageCharsPerLine - 1) / averageCharsPerLine
         return maxOf(wrapped, estimated)
@@ -1454,47 +1454,51 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
 
     private fun ckdmSmallText(text: String): Component = Component.literal(text.uppercase(Locale.ROOT)).withStyle { style -> style.withFont(CKDM_SMALL_FONT) }
 
-    private fun ckdmDialogText(text: String): Component = Component.literal(text.uppercase(Locale.ROOT)).withStyle { style -> style.withFont(CKDM_SMALL_FONT) }
-
-    private fun dialogTextComponent(text: String): Component {
+    private fun dialogTextComponent(text: String, shadow: Boolean = false): Component {
         val playerName = minecraft?.player?.gameProfile?.name.orEmpty()
-        val root = Component.literal("").withStyle { style -> style.withFont(CKDM_SMALL_FONT).withColor(DIALOG_COLOR) }
+        val root = Component.literal("").withStyle { style -> style.withColor(if (shadow) DIALOG_SHADOW else DIALOG_COLOR) }
         var color = DIALOG_COLOR
         var cursor = 0
         DIALOG_TAG_REGEX.findAll(text).forEach { match ->
-            appendDialogText(root, text.substring(cursor, match.range.first), color, playerName)
+            appendDialogText(root, text.substring(cursor, match.range.first), color, playerName, shadow)
             val tag = match.groupValues[1].lowercase(Locale.ROOT)
             val closing = match.value.startsWith("</")
             color = if (closing) DIALOG_COLOR else when (tag) {
                 "mission", "player" -> DIALOG_GOLD
                 "coin" -> DIALOG_COIN
                 "xp" -> DIALOG_XP
+                "b" -> DIALOG_HIGHLIGHT
                 else -> DIALOG_COLOR
             }
             cursor = match.range.last + 1
         }
-        appendDialogText(root, text.substring(cursor).replace(Regex("<[^>]*$"), ""), color, playerName)
+        appendDialogText(root, text.substring(cursor).replace(Regex("<[^>]*$"), ""), color, playerName, shadow)
         return root
     }
 
-    private fun appendDialogText(root: MutableComponent, text: String, color: Int, playerName: String) {
+    private fun appendDialogText(root: MutableComponent, text: String, color: Int, playerName: String, shadow: Boolean) {
         if (text.isEmpty()) return
         if (playerName.isBlank()) {
-            root.append(styledDialogText(text, color))
+            root.append(styledDialogText(text, color, highlight = color != DIALOG_COLOR, shadow))
             return
         }
         val regex = Regex(Regex.escape(playerName), RegexOption.IGNORE_CASE)
         var cursor = 0
         regex.findAll(text).forEach { match ->
-            root.append(styledDialogText(text.substring(cursor, match.range.first), color))
-            root.append(styledDialogText(match.value, DIALOG_GOLD))
+            root.append(styledDialogText(text.substring(cursor, match.range.first), color, highlight = color != DIALOG_COLOR, shadow))
+            root.append(styledDialogText(match.value, DIALOG_GOLD, highlight = true, shadow))
             cursor = match.range.last + 1
         }
-        root.append(styledDialogText(text.substring(cursor), color))
+        root.append(styledDialogText(text.substring(cursor), color, highlight = color != DIALOG_COLOR, shadow))
     }
 
-    private fun styledDialogText(text: String, color: Int): Component =
-        Component.literal(text.uppercase(Locale.ROOT)).withStyle { style -> style.withFont(CKDM_SMALL_FONT).withColor(color) }
+    private fun styledDialogText(text: String, color: Int, highlight: Boolean, shadow: Boolean): Component {
+        val displayText = if (highlight) text.uppercase(Locale.ROOT) else text
+        return Component.literal(displayText).withStyle { style ->
+            val fontStyle = if (highlight) style.withFont(CKDM_SMALL_FONT) else style
+            fontStyle.withColor(if (shadow) DIALOG_SHADOW else color)
+        }
+    }
 
     private fun stripDialogMarkup(text: String): String = text.replace(DIALOG_TAG_REGEX, "").replace(Regex("<[^>]*$"), "")
 
@@ -1679,6 +1683,7 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         private const val NAME_COLOR = 0xFFFFFFFF.toInt()
         private const val NAME_SHADOW = 0xCC050505.toInt()
         private const val DIALOG_COLOR = 0xFFFFFFFF.toInt()
+        private const val DIALOG_HIGHLIGHT = 0xFFFFFFFF.toInt()
         private const val DIALOG_SHADOW = 0xCC050505.toInt()
         private const val DIALOG_GOLD = 0xFFFFD24A.toInt()
         private const val DIALOG_COIN = 0xFFFFD35C.toInt()
@@ -1689,7 +1694,7 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         private const val FRIENDSHIP_DELTA_FADE_MS = 260L
         private const val CONTRACT_COLOR = 0xFF83F28F.toInt()
         private const val DISABLED_COLOR = 0xFF8C8778.toInt()
-        private val DIALOG_TAG_REGEX = Regex("(?i)</?(mission|coin|xp|player)>")
+        private val DIALOG_TAG_REGEX = Regex("(?i)</?(mission|coin|xp|player|b)>")
         private val ANIMALESE_PITCHES = setOf("high", "med", "low", "lowest")
     }
 }

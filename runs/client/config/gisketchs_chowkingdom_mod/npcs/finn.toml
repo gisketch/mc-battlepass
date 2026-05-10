@@ -77,7 +77,7 @@ requires_bed = true
 # Config value: voice.animalese_pitch.
 animalese_pitch = "low"
 # Config value: voice.pitch.
-pitch = 0.95
+pitch = 0.8
 # Config value: voice.volume.
 volume = 0.38
 # Config value: voice.radius.

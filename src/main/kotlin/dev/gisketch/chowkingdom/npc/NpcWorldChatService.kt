@@ -169,7 +169,7 @@ private data class NpcWorldChatThinking(
     @Volatile var discordMessageId: String? = null,
 )
 
-private const val MAX_WORLD_CHAT_MESSAGE_LENGTH = 220
+private const val MAX_WORLD_CHAT_MESSAGE_LENGTH = 2000
 private const val MAX_STORED_WORLD_CHAT_LINES = 40
 private const val MAX_RECENT_WORLD_CHAT_LINES = 20
 private const val MAX_TRACKED_DISCORD_NPC_MESSAGES = 200
