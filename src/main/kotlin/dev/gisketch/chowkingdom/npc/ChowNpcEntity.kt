@@ -184,6 +184,13 @@ class ChowNpcEntity(entityType: EntityType<out PathfinderMob>, level: Level) : P
         return true
     }
 
+    fun restoreCustomAnimation(enabled: Boolean, animationKey: String) {
+        customAnimation = enabled
+        customAnimationKey = if (enabled) animationKey else ""
+        customAnimationEndsAtTick = 0
+        customAnimationPlayId = customAnimationPlayId + 1
+    }
+
     fun setHeldItemDebugRotation(x: Float, y: Float, z: Float) {
         heldItemDebugRotX = x
         heldItemDebugRotY = y

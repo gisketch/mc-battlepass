@@ -21,6 +21,9 @@ epicFightInnateSkillCost = 450.0
 epicFightGuardSkillCost = 90.0
 epicFightBlockCost = 150.0
 epicFightParryCost = 260.0
+shieldNParryAttemptCost = 180.0
+shieldNParrySuccessGain = 240.0
+combatRollCost = 320.0
 wrongWeaponAttackMinCostPercent = 0.33
 staminaDrainTicks = 8
 paragliderRecoveryDelayTicksAfterSpend = 80
@@ -34,12 +37,16 @@ hideEpicFightStaminaHud = true
 
 Behavior:
 
-- Player attack damage spends Paraglider stamina.
+- Vanilla and Better Combat player attack attempts spend Paraglider stamina; if the player lacks enough stamina, the attack event is canceled before the hit resolves.
 - Blocking incoming damage while actively blocking spends Paraglider stamina.
 - Epic Fight basic attack starts spend Paraglider stamina.
 - Epic Fight jump attack starts spend Paraglider stamina.
 - Epic Fight weapon innate skills spend Paraglider stamina.
 - Epic Fight guard skills, active blocks, and parries spend Paraglider stamina.
+- Shield n Parry active parry attempts spend Paraglider stamina; if the player lacks enough stamina, the active parry is cleared before damage is resolved.
+- Successful Shield n Parry parries grant `shieldNParrySuccessGain` stamina, so the default net result is a small surplus after paying `shieldNParryAttemptCost`.
+- ParCool dodges use Paraglider stamina through ParCool's forced Paraglider backend.
+- Combat Roll rolls spend `combatRollCost` when the optional Combat Roll API is present.
 - Class-mismatched weapons use the larger of the normal attack cost or `wrongWeaponAttackMinCostPercent` of the player's max Paraglider stamina.
 - Chow Kingdom combat costs are reserved up front, then drained across `staminaDrainTicks` ticks so the Paraglider wheel drains like a stamina action instead of one hard cut.
 - Every successful Chow Kingdom stamina spend pushes Paraglider recovery delay to at least `paragliderRecoveryDelayTicksAfterSpend`.

@@ -176,16 +176,17 @@ This matters because some NPCs may permanently use custom animation mode later, 
 6. Wire the template into SBL behavior.
 7. Run build and in-game smoke.
 
-## First Implementation Pass
+## Implemented First Pass
 
-Implement narrowly:
+The first implementation is intentionally narrow:
 
-- Add `running` and `attack` clips under the new `[0,0,0]` socket contract.
-- Add hard-coded `NpcAnimationTemplates`.
-- Refactor the third-hit retaliation override to use:
+- `running` and `attack` clips are available in `playerlike.animation.json`.
+- Hard-coded `NpcAnimationTemplates` provide reusable `run_with_sword` and `attack_sword` templates.
+- The third-hit retaliation override uses:
   - `run_with_sword` while closing distance.
   - `attack_sword` when in range.
   - template event tick for hit timing.
-- Keep old damage and knockback behavior values unless the animation timing requires adjustment.
+- Previous custom animation state and held items are restored when the override ends.
+- Old damage and knockback behavior values are preserved.
 
 Do not add config files until the Kotlin template registry proves the contract.

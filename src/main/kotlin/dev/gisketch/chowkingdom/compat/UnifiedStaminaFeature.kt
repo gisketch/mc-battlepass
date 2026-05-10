@@ -7,11 +7,14 @@ import net.minecraft.commands.CommandSourceStack
 import net.minecraft.commands.Commands
 import net.minecraft.network.chat.Component
 import net.minecraft.server.level.ServerPlayer
+import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.LivingEntity
+import net.neoforged.bus.api.EventPriority
 import net.neoforged.neoforge.common.NeoForge
 import net.neoforged.neoforge.event.RegisterCommandsEvent
 import net.neoforged.neoforge.event.entity.living.LivingDamageEvent
 import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent
+import net.neoforged.neoforge.event.entity.player.AttackEntityEvent
 import net.neoforged.neoforge.event.entity.player.PlayerEvent
 import net.neoforged.neoforge.event.server.ServerStartedEvent
 import net.neoforged.neoforge.event.tick.PlayerTickEvent
@@ -29,7 +32,9 @@ object UnifiedStaminaFeature {
         ExternalStaminaConfigPatcher.apply(config)
         NeoForge.EVENT_BUS.addListener(::onRegisterCommands)
         NeoForge.EVENT_BUS.addListener(::onServerStarted)
-        NeoForge.EVENT_BUS.addListener(::onLivingDamagePre)
+        NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, ::onAttackEntity)
+        NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, ::onLivingDamagePre)
+        NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST, ::onLivingDamagePost)
         NeoForge.EVENT_BUS.addListener(::onLivingIncomingDamage)
         NeoForge.EVENT_BUS.addListener(::onPlayerLoggedOut)
         NeoForge.EVENT_BUS.addListener(::onPlayerTickPost)
@@ -42,6 +47,8 @@ object UnifiedStaminaFeature {
     fun spendEpicFightGuard(player: ServerPlayer, cost: Double): Boolean = spendOncePerTick(player, cost, epicFightGuardSpendTicks)
 
     fun spendEpicFightBlock(player: ServerPlayer, cost: Double): Boolean = spendOncePerTick(player, cost, blockSpendTicks)
+
+    fun giveStamina(player: ServerPlayer, amount: Double): Boolean = ParagliderStaminaBridge.give(player, amount)
 
     private fun onRegisterCommands(event: RegisterCommandsEvent) {
         event.dispatcher.register(
@@ -68,12 +75,28 @@ object UnifiedStaminaFeature {
         ExternalStaminaConfigPatcher.apply(config)
     }
 
+    private fun onAttackEntity(event: AttackEntityEvent) {
+        val config = StaminaCompatConfig.values()
+        if (!config.enabled) return
+        val attacker = event.entity as? ServerPlayer ?: return
+        if (!isLivingAttackTarget(event.target)) return
+        if (!spendEpicFightAttack(attacker, config.attackCost)) event.isCanceled = true
+    }
+
     private fun onLivingDamagePre(event: LivingDamageEvent.Pre) {
         val config = StaminaCompatConfig.values()
         if (!config.enabled) return
-        val attacker = event.source.entity as? ServerPlayer ?: return
-        if (event.entity !is LivingEntity) return
-        spendEpicFightAttack(attacker, config.attackCost)
+        handleShieldNParryAttempt(event, config)
+    }
+
+    private fun onLivingDamagePost(event: LivingDamageEvent.Pre) {
+        val config = StaminaCompatConfig.values()
+        if (!config.enabled) return
+        val player = event.entity as? ServerPlayer ?: return
+        if (event.originalDamage <= 0.0f || event.newDamage >= event.originalDamage) return
+        if (ShieldNParryStaminaBridge.consumeSuccessfulParry(player, player.level().gameTime)) {
+            giveStamina(player, config.shieldNParrySuccessGain)
+        }
     }
 
     private fun onLivingIncomingDamage(event: LivingIncomingDamageEvent) {
@@ -87,6 +110,8 @@ object UnifiedStaminaFeature {
     private fun onPlayerLoggedOut(event: PlayerEvent.PlayerLoggedOutEvent) {
         val player = event.entity as? ServerPlayer ?: return
         EpicFightStaminaBridge.detach(player)
+        ShieldNParryStaminaBridge.clear(player)
+        CombatRollStaminaBridge.clear(player)
         attackSpendTicks.remove(player.uuid)
         blockSpendTicks.remove(player.uuid)
         epicFightSkillSpendTicks.remove(player.uuid)
@@ -99,6 +124,7 @@ object UnifiedStaminaFeature {
         if (!config.enabled) return
         val player = event.entity as? ServerPlayer ?: return
         processPendingDrains(player, config)
+        CombatRollStaminaBridge.onPlayerTick(player, config)
         EpicFightStaminaBridge.attach(player)
         if (config.disableEpicFightBattleModeWhileParagliding) {
             EpicFightStaminaBridge.updateParaglidingBattleMode(
@@ -139,6 +165,15 @@ object UnifiedStaminaFeature {
         drains += PendingStaminaDrain(cost, drainTicks)
         return true
     }
+
+    private fun handleShieldNParryAttempt(event: LivingDamageEvent.Pre, config: StaminaCompatDefinition) {
+        val player = event.entity as? ServerPlayer ?: return
+        if (!ShieldNParryStaminaBridge.hasActiveParry(player)) return
+        if (spendEpicFightBlock(player, config.shieldNParryAttemptCost)) return
+        ShieldNParryStaminaBridge.clearActiveParry(player)
+    }
+
+    private fun isLivingAttackTarget(target: Entity): Boolean = target is LivingEntity && target.isAlive
 
     private fun processPendingDrains(player: ServerPlayer, config: StaminaCompatDefinition) {
         val drains = pendingDrains[player.uuid] ?: return

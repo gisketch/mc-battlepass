@@ -8,11 +8,9 @@ import net.minecraft.server.level.ServerPlayer
 import net.minecraft.sounds.SoundEvents
 import net.minecraft.sounds.SoundSource
 import net.minecraft.world.InteractionHand
-import net.minecraft.world.entity.EquipmentSlot
+import net.minecraft.world.damagesource.DamageSource
 import net.minecraft.world.entity.ai.memory.MemoryModuleType
 import net.minecraft.world.entity.ai.memory.MemoryStatus
-import net.minecraft.world.item.ItemStack
-import net.minecraft.world.item.Items
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.phys.Vec3
 import net.tslat.smartbrainlib.api.core.BrainActivityGroup
@@ -101,7 +99,6 @@ private object NpcCriticalOverrideTask : NpcSmartBrainTask {
 
 object NpcSmartBrainOverrides {
     private val active: MutableMap<UUID, ActiveOverride> = linkedMapOf()
-    private val weapons = listOf(Items.WOODEN_SWORD, Items.STONE_SWORD, Items.IRON_SWORD, Items.WOODEN_AXE, Items.STONE_AXE)
 
     fun tick(entity: ChowNpcEntity): Boolean {
         active[entity.uuid]?.let { override ->
@@ -124,8 +121,17 @@ object NpcSmartBrainOverrides {
     private fun startAttackBack(entity: ChowNpcEntity, player: ServerPlayer) {
         if (entity.isSleeping) entity.stopSleeping()
         entity.navigation.stop()
-        entity.setItemSlot(EquipmentSlot.MAINHAND, ItemStack(weapons[entity.random.nextInt(weapons.size)]))
-        active[entity.uuid] = ActiveOverride(NpcSmartBrainOverrideType.ATTACK_BACK, entity.tickCount + ATTACK_BACK_MAX_TICKS, player.uuid, attacksRemaining = 2)
+        val snapshot = NpcCustomAnimationController.snapshot(entity)
+        val override = ActiveOverride(
+            type = NpcSmartBrainOverrideType.ATTACK_BACK,
+            untilTick = entity.tickCount + ATTACK_BACK_MAX_TICKS,
+            targetId = player.uuid,
+            attacksRemaining = 2,
+            nextActionTick = entity.tickCount,
+            animationSnapshot = snapshot,
+        )
+        active[entity.uuid] = override
+        playTemplate(entity, override, NpcAnimationTemplates.RUN_WITH_SWORD)
     }
 
     private fun startRunAway(entity: ChowNpcEntity, threatPos: Vec3, goal: String) {
@@ -146,35 +152,98 @@ object NpcSmartBrainOverrides {
         val level = entity.level() as? ServerLevel ?: return false
         val player = override.targetId?.let(level::getPlayerByUUID) as? ServerPlayer ?: return false
         if (!player.isAlive) return false
+        if (override.phase == NpcSmartBrainOverridePhase.ATTACKING) return tickAttackAnimation(entity, player, override)
         if (override.attacksRemaining <= 0) return entity.tickCount < override.nextActionTick
         entity.debugActivity = "override"
         entity.debugGoal = "attack_back"
         entity.debugTargetPos = player.blockPosition().immutable()
         entity.lookControl.setLookAt(player, 30.0f, 30.0f)
         entity.lookAt(EntityAnchorArgument.Anchor.EYES, player.getEyePosition())
-        if (entity.distanceToSqr(player) > ATTACK_REACH_DISTANCE_SQR) {
-            entity.navigation.moveTo(player, ATTACK_CHASE_SPEED)
+        if (entity.distanceToSqr(player) > ATTACK_START_DISTANCE_SQR) {
+            playTemplate(entity, override, NpcAnimationTemplates.RUN_WITH_SWORD)
+            moveTowardTarget(entity, player)
             return true
         }
         entity.navigation.stop()
         if (entity.tickCount >= override.nextActionTick) {
-            scriptedAttack(entity, player)
-            override.attacksRemaining -= 1
-            override.nextActionTick = entity.tickCount + if (override.attacksRemaining <= 0) ATTACK_FINISH_HOLD_TICKS else ATTACK_COOLDOWN_TICKS
+            startAttackAnimation(entity, override)
         }
         return true
     }
 
-    private fun scriptedAttack(entity: ChowNpcEntity, player: ServerPlayer) {
+    private fun startAttackAnimation(entity: ChowNpcEntity, override: ActiveOverride) {
+        playTemplate(entity, override, NpcAnimationTemplates.ATTACK_SWORD, forceRestart = true)
+        override.phase = NpcSmartBrainOverridePhase.ATTACKING
+        override.phaseStartedTick = entity.tickCount
+        override.firedEvents.clear()
+    }
+
+    private fun tickAttackAnimation(entity: ChowNpcEntity, player: ServerPlayer, override: ActiveOverride): Boolean {
+        entity.debugActivity = "override"
+        entity.debugGoal = "attack_swing"
+        entity.debugTargetPos = player.blockPosition().immutable()
+        entity.lookControl.setLookAt(player, 30.0f, 30.0f)
+        entity.lookAt(EntityAnchorArgument.Anchor.EYES, player.getEyePosition())
+        val template = NpcAnimationTemplates.ATTACK_SWORD
+        val elapsed = entity.tickCount - override.phaseStartedTick
+        template.events.forEach { event ->
+            if (elapsed >= event.tick && override.firedEvents.add(event)) {
+                when (event.type) {
+                    NpcAnimationEventType.ATTACK_HIT -> attackHit(entity, player)
+                }
+            }
+        }
+        if (elapsed < template.durationTicks) return true
+        override.attacksRemaining -= 1
+        override.phase = NpcSmartBrainOverridePhase.CHASING
+        override.nextActionTick = entity.tickCount + if (override.attacksRemaining <= 0) ATTACK_FINISH_HOLD_TICKS else ATTACK_COOLDOWN_TICKS
+        if (override.attacksRemaining > 0) playTemplate(entity, override, NpcAnimationTemplates.RUN_WITH_SWORD)
+        return true
+    }
+
+    private fun attackHit(entity: ChowNpcEntity, player: ServerPlayer) {
+        val distanceSqr = entity.distanceToSqr(player)
+        if (distanceSqr > ATTACK_HIT_DISTANCE_SQR) {
+            entity.debugGoal = "attack_miss_range_${"%.2f".format(kotlin.math.sqrt(distanceSqr))}"
+            return
+        }
         val level = entity.level() as? ServerLevel ?: return
-        entity.startScriptedAttackAnimation()
         entity.swing(InteractionHand.MAIN_HAND, true)
         level.broadcastEntityEvent(entity, ATTACK_ANIMATION_EVENT)
         level.playSound(null, entity.x, entity.y, entity.z, SoundEvents.PLAYER_ATTACK_STRONG, SoundSource.HOSTILE, 1.0f, 0.9f + entity.random.nextFloat() * 0.2f)
-        player.invulnerableTime = 0
-        val damaged = player.hurt(entity.damageSources().mobAttack(entity), ATTACK_DAMAGE)
-        if (!damaged && !player.abilities.invulnerable) player.hurt(player.damageSources().generic(), ATTACK_DAMAGE)
+        applyAttackDamage(entity, player)
         player.knockback(ATTACK_KNOCKBACK, entity.x - player.x, entity.z - player.z)
+        player.hurtMarked = true
+    }
+
+    private fun applyAttackDamage(entity: ChowNpcEntity, player: ServerPlayer) {
+        if (player.abilities.invulnerable) return
+        player.invulnerableTime = 0
+        val before = player.health
+        val source = entity.damageSources().mobAttack(entity)
+        val damaged = player.hurt(source, ATTACK_DAMAGE) || player.hurt(player.damageSources().generic(), ATTACK_DAMAGE)
+        if (!damaged && player.health >= before) forceHealthDamage(player, source)
+    }
+
+    private fun forceHealthDamage(player: ServerPlayer, source: DamageSource) {
+        val newHealth = (player.health - ATTACK_DAMAGE).coerceAtLeast(0.0f)
+        player.setHealth(newHealth)
+        player.hurtDuration = 10
+        player.hurtTime = player.hurtDuration
+        if (newHealth <= 0.0f) player.die(source)
+    }
+
+    private fun playTemplate(entity: ChowNpcEntity, override: ActiveOverride, template: NpcAnimationTemplate, forceRestart: Boolean = false) {
+        if (!forceRestart && override.activeTemplateId == template.id) return
+        NpcCustomAnimationController.play(entity, template)
+        override.activeTemplateId = template.id
+    }
+
+    private fun moveTowardTarget(entity: ChowNpcEntity, player: ServerPlayer) {
+        entity.navigation.moveTo(player.x, player.y, player.z, ATTACK_CHASE_SPEED)
+        if (entity.navigation.isDone) {
+            entity.moveControl.setWantedPosition(player.x, player.y, player.z, ATTACK_CHASE_SPEED)
+        }
     }
 
     private fun tickRunAway(entity: ChowNpcEntity, override: ActiveOverride): Boolean {
@@ -199,8 +268,11 @@ object NpcSmartBrainOverrides {
     }
 
     private fun finish(entity: ChowNpcEntity) {
-        active.remove(entity.uuid)
-        entity.setItemSlot(EquipmentSlot.MAINHAND, ItemStack.EMPTY)
+        val override = active.remove(entity.uuid)
+        entity.navigation.stop()
+        if (override?.type == NpcSmartBrainOverrideType.ATTACK_BACK) {
+            override.animationSnapshot?.let { snapshot -> NpcCustomAnimationController.restore(entity, snapshot) }
+        }
     }
 
     private fun hazardPos(entity: ChowNpcEntity): BlockPos? {
@@ -220,7 +292,17 @@ object NpcSmartBrainOverrides {
         val goal: String = type.id,
         var attacksRemaining: Int = 0,
         var nextActionTick: Int = 0,
+        val animationSnapshot: NpcAnimationSnapshot? = null,
+        var phase: NpcSmartBrainOverridePhase = NpcSmartBrainOverridePhase.CHASING,
+        var phaseStartedTick: Int = 0,
+        var activeTemplateId: String = "",
+        val firedEvents: MutableSet<NpcAnimationEvent> = mutableSetOf(),
     )
+
+    private enum class NpcSmartBrainOverridePhase {
+        CHASING,
+        ATTACKING,
+    }
 
     private enum class NpcSmartBrainOverrideType(val id: String) {
         ATTACK_BACK("attack_back"),
@@ -232,8 +314,9 @@ object NpcSmartBrainOverrides {
     private const val RUN_AWAY_DISTANCE = 7.0
     private const val RUN_AWAY_SPEED = 1.25
     private const val ATTACK_BACK_MAX_TICKS = 160
-    private const val ATTACK_REACH_DISTANCE_SQR = 25.0
-    private const val ATTACK_CHASE_SPEED = 1.05
+    private const val ATTACK_START_DISTANCE_SQR = 4.0
+    private const val ATTACK_HIT_DISTANCE_SQR = 5.0625
+    private const val ATTACK_CHASE_SPEED = 1.25
     private const val ATTACK_DAMAGE = 4.0f
     private const val ATTACK_KNOCKBACK = 0.35
     private const val ATTACK_COOLDOWN_TICKS = 13

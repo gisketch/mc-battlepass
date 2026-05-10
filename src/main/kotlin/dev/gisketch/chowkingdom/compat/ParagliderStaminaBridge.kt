@@ -24,6 +24,19 @@ object ParagliderStaminaBridge {
         }.getOrDefault(false)
     }
 
+    fun give(player: Player, amount: Double): Boolean {
+        if (amount <= 0.0) return true
+        if (!ModList.get().isLoaded("paraglider")) return false
+        val api = api ?: return false
+        return runCatching {
+            val stamina = api.get.invoke(null, player) ?: return false
+            val given = api.give.invoke(stamina, amount, false, true) as Number
+            given.toDouble() > 0.0
+        }.onFailure { exception ->
+            ChowKingdomMod.LOGGER.debug("Failed to give Paraglider stamina", exception)
+        }.getOrDefault(false)
+    }
+
     fun available(player: Player): Double {
         if (!ModList.get().isLoaded("paraglider")) return Double.POSITIVE_INFINITY
         val api = api ?: return 0.0
@@ -121,6 +134,7 @@ object ParagliderStaminaBridge {
         val isDepleted = staminaClass.getMethod("isDepleted")
         val renderStaminaWheel = staminaClass.getMethod("renderStaminaWheel")
         val take = staminaClass.getMethod("takeStamina", java.lang.Double.TYPE, java.lang.Boolean.TYPE, java.lang.Boolean.TYPE)
+        val give = staminaClass.getMethod("giveStamina", java.lang.Double.TYPE, java.lang.Boolean.TYPE, java.lang.Boolean.TYPE)
         val getMovement = movementClass.getMethod("get", Player::class.java)
         val state = movementClass.getMethod("state")
         val recoveryDelay = movementClass.getMethod("recoveryDelay")
