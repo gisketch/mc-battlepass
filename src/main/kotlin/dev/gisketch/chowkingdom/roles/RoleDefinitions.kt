@@ -25,6 +25,17 @@ data class JobScalingDefinition(
     var mountSpeedBonusPercentByRank: MutableList<Double> = mutableListOf(),
 )
 
+data class EquipmentWhitelistDefinition(
+    @SerializedName(value = "weapon_tags", alternate = ["weaponTags"])
+    var weaponTags: MutableList<String> = mutableListOf(),
+    @SerializedName(value = "armor_tags", alternate = ["armorTags"])
+    var armorTags: MutableList<String> = mutableListOf(),
+    @SerializedName(value = "weapon_patterns", alternate = ["weaponPatterns"])
+    var weaponPatterns: MutableList<String> = mutableListOf(),
+    @SerializedName(value = "armor_patterns", alternate = ["armorPatterns"])
+    var armorPatterns: MutableList<String> = mutableListOf(),
+)
+
 data class RolePerkDefinition(
     var type: String = "",
     @SerializedName(value = "pokemon_type", alternate = ["pokemonType"])

@@ -9,6 +9,7 @@ For step-by-step creation and tuning, see [Jobs And Classes Creation Guide](ROLE
 - Job definitions: `config/gisketchs_chowkingdom_mod/roles/jobs/*.toml`
 - Class definitions: `config/gisketchs_chowkingdom_mod/roles/classes/*.toml`
 - Onboarding copy: `config/gisketchs_chowkingdom_mod/roles/onboarding.toml`
+- Global equipment whitelist: `config/gisketchs_chowkingdom_mod/roles/equipment_whitelist.toml`
 - Player state: `<world>/data/gisketchs_chowkingdom_mod/roles/players.json`
 - Class item tags: `src/main/resources/data/gisketchs_chowkingdom_mod/tags/item/class/`
 
@@ -66,7 +67,11 @@ Current values:
 - Warrior weapons: `minecraft:wooden_sword`.
 - Warrior armor: iron armor.
 
-Wrong weapons deal reduced damage, reduce attack speed while held, apply an item cooldown after attacks, spend at least the configured wrong-weapon stamina floor, and show red tooltip notes. Wrong armor disables sprinting while worn and also shows red tooltip notes. Starting items are only inventory grants after class application; allowed weapons and armor come from `equipment_affinity` tags/patterns, not `starting_items`. Missing `starting_items` and job `reward_pool` item ids warn once and skip. Starting items are granted once per class only after at least one configured item id exists, so future optional mod entries do not burn the grant if a dependency is missing.
+Wrong weapons deal reduced damage, reduce attack speed while held, apply an item cooldown after attacks, spend at least the configured wrong-weapon stamina floor, and show compact `Classes:` tooltip compatibility lines. Wrong armor disables sprinting while worn and uses the same class compatibility tooltip. Starting items are only inventory grants after class application; allowed weapons and armor come from `equipment_affinity` tags/patterns, not `starting_items`.
+
+`equipment_whitelist.toml` has `weapon_tags`, `weapon_patterns`, `armor_tags`, and `armor_patterns`. Matching items are globally allowed for every class, keep vanilla behavior, and show no class compatibility tooltip.
+
+Missing `starting_items` and job `reward_pool` item ids warn once and skip. Starting items are granted once per class only after at least one configured item id exists, so future optional mod entries do not burn the grant if a dependency is missing.
 
 To add Simply Swords, RPG Series, or Rogues later, use either tags or wildcard patterns. No Kotlin edit needed.
 

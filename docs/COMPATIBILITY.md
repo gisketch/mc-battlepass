@@ -37,7 +37,7 @@ hideEpicFightStaminaHud = true
 
 Behavior:
 
-- Vanilla and Better Combat player attack attempts spend Paraglider stamina; if the player lacks enough stamina, the attack event is canceled before the hit resolves.
+- Vanilla and Better Combat player attack attempts spend Paraglider stamina; if the player lacks enough stamina, client entity-attack input is canceled before the local swing where possible and the server attack event is canceled before the hit resolves.
 - Blocking incoming damage while actively blocking spends Paraglider stamina.
 - Epic Fight basic attack starts spend Paraglider stamina.
 - Epic Fight jump attack starts spend Paraglider stamina.
@@ -56,9 +56,7 @@ Behavior:
 - ParCool stamina HUD is hidden.
 - Epic Fight internal stamina is refilled so it stops being the limiting pool.
 - Epic Fight stamina bar is moved offscreen because its client config has no discovered hide toggle.
-- Paraglider's native stamina wheel is hidden client-side and replaced with Chow Kingdom's 9-slice stamina GUI in the vanilla right-side survival HUD lane.
-- Air bubbles move upward while the custom stamina GUI is visible, so underwater air and stamina do not overlap.
-- The custom stamina GUI uses the yellow fill texture for both normal and recovery states.
+- Paraglider's native stamina wheel remains the visible stamina HUD. Chow Kingdom no longer registers its custom Paraglider stamina bar.
 - Paragliding players get the raised-arm pose reapplied late in `HumanoidModel`/`PlayerModel` animation setup so player animation resource packs do not erase the Paraglider pose.
 - When Entity Model Features/Fresh Animations player CEM animations are present, CKDM pauses EMF player animation evaluation while Paraglider pose is active, then lets EMF resume after paragliding.
 
@@ -71,7 +69,7 @@ One Paraglider stamina wheel is 1000 stamina. Tune the JSON first before changin
 ## Notes
 
 - This layer is optional and uses reflection. Chow Kingdom still loads without Paragliders, ParCool, Epic Fight, or Epic x ParCool.
-- The custom Paraglider stamina GUI is client-only; stamina values still come from Paraglider's client stamina state.
+- Client-side attack gating uses Paraglider's client stamina state as a prediction layer. Server-side attack cancellation remains authoritative.
 - The Paraglider pose compatibility hooks are client-only and check Paraglider movement/item state through reflection. The EMF hook is optional and still lets CKDM load without Entity Model Features.
 - ParCool/Epic Fight config patching happens on mod startup. Some client HUD settings may require a restart after first patch.
 - Epic Fight reflection hooks attach per player while the player is ticking server-side.

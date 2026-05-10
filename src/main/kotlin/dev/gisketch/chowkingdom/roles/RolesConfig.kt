@@ -15,6 +15,7 @@ object RolesConfig {
     private var classesById: Map<String, RoleDefinition> = emptyMap()
     private var onboardingDefinition = RolesOnboardingDefinition()
     private var jobScalingDefinition = JobScalingDefinition()
+    private var equipmentWhitelistDefinition = EquipmentWhitelistDefinition()
 
     private val root: Path
         get() = FMLPaths.CONFIGDIR.get().resolve(ChowKingdomMod.MOD_ID).resolve("roles")
@@ -24,11 +25,13 @@ object RolesConfig {
         root.resolve("classes").createDirectories()
         writeDefaultIfMissing(root.resolve("onboarding.toml"), defaultOnboarding())
         writeDefaultIfMissing(root.resolve("job_scaling.toml"), defaultJobScaling())
+        writeDefaultIfMissing(root.resolve("equipment_whitelist.toml"), EquipmentWhitelistDefinition())
         defaultJobs().forEach { definition -> writeDefaultIfMissing(root.resolve("jobs").resolve("${definition.id}.toml"), definition) }
         writeDefaultIfMissing(root.resolve("classes").resolve("rogue.toml"), defaultRogue())
         writeDefaultIfMissing(root.resolve("classes").resolve("warrior.toml"), defaultWarrior())
         onboardingDefinition = readOnboarding(root.resolve("onboarding.toml"))
         jobScalingDefinition = readJobScaling(root.resolve("job_scaling.toml"))
+        equipmentWhitelistDefinition = readEquipmentWhitelist(root.resolve("equipment_whitelist.toml"))
         jobsById = loadDefinitions(root.resolve("jobs"))
         classesById = loadDefinitions(root.resolve("classes"))
     }
@@ -51,6 +54,8 @@ object RolesConfig {
     }
 
     fun jobScaling(): JobScalingDefinition = jobScalingDefinition
+
+    fun equipmentWhitelist(): EquipmentWhitelistDefinition = equipmentWhitelistDefinition
 
     private fun loadDefinitions(directory: Path): Map<String, RoleDefinition> = Files.list(directory).use { stream ->
         stream.filter { path -> path.extension.equals("toml", ignoreCase = true) }
@@ -93,6 +98,13 @@ object RolesConfig {
     } catch (exception: Exception) {
         ChowKingdomMod.LOGGER.warn("Failed to load role job scaling config {}", path, exception)
         defaultJobScaling()
+    }
+
+    private fun readEquipmentWhitelist(path: Path): EquipmentWhitelistDefinition = try {
+        TomlConfigIO.read(path, EquipmentWhitelistDefinition::class.java, ::EquipmentWhitelistDefinition)
+    } catch (exception: Exception) {
+        ChowKingdomMod.LOGGER.warn("Failed to load role equipment whitelist config {}", path, exception)
+        EquipmentWhitelistDefinition()
     }
 
     private fun writeDefaultIfMissing(file: Path, definition: Any) {
