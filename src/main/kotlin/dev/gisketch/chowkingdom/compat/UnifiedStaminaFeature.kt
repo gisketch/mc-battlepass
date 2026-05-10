@@ -12,12 +12,14 @@ import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.ai.attributes.Attributes
 import net.minecraft.world.item.ItemStack
+import net.minecraft.world.item.UseAnim
 import net.neoforged.bus.api.EventPriority
 import net.neoforged.neoforge.common.NeoForge
 import net.neoforged.neoforge.event.RegisterCommandsEvent
 import net.neoforged.neoforge.event.entity.living.LivingDamageEvent
 import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent
 import net.neoforged.neoforge.event.entity.player.AttackEntityEvent
+import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent
 import net.neoforged.neoforge.event.entity.player.PlayerEvent
 import net.neoforged.neoforge.event.server.ServerStartedEvent
 import net.neoforged.neoforge.event.tick.PlayerTickEvent
@@ -36,6 +38,7 @@ object UnifiedStaminaFeature {
         NeoForge.EVENT_BUS.addListener(::onRegisterCommands)
         NeoForge.EVENT_BUS.addListener(::onServerStarted)
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, ::onAttackEntity)
+        NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, ::onRightClickItem)
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, ::onLivingDamagePre)
         NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST, ::onLivingDamagePost)
         NeoForge.EVENT_BUS.addListener(::onLivingIncomingDamage)
@@ -91,6 +94,17 @@ object UnifiedStaminaFeature {
         val config = StaminaCompatConfig.values()
         if (!config.enabled) return
         handleShieldNParryAttempt(event, config)
+    }
+
+    private fun onRightClickItem(event: PlayerInteractEvent.RightClickItem) {
+        if (event.isCanceled) return
+        val config = StaminaCompatConfig.values()
+        if (!config.enabled) return
+        val player = event.entity as? ServerPlayer ?: return
+        if (!isRangedWeaponUse(event.itemStack)) return
+        if (spendOncePerTick(player, config.rangedWeaponUseCost, attackSpendTicks)) return
+        event.isCanceled = true
+        event.cancellationResult = net.minecraft.world.InteractionResult.FAIL
     }
 
     private fun onLivingDamagePost(event: LivingDamageEvent.Pre) {
@@ -181,12 +195,15 @@ object UnifiedStaminaFeature {
 
     private fun isWeaponLike(stack: ItemStack): Boolean {
         if (stack.isEmpty) return false
+        if (isRangedWeaponUse(stack)) return true
         var weaponLike = false
         stack.forEachModifier(EquipmentSlot.MAINHAND) { attribute, _ ->
             if (attribute == Attributes.ATTACK_DAMAGE || attribute == Attributes.ATTACK_SPEED) weaponLike = true
         }
         return weaponLike
     }
+
+    private fun isRangedWeaponUse(stack: ItemStack): Boolean = stack.useAnimation == UseAnim.BOW || stack.useAnimation == UseAnim.CROSSBOW
 
     private fun processPendingDrains(player: ServerPlayer, config: StaminaCompatDefinition) {
         val drains = pendingDrains[player.uuid] ?: return

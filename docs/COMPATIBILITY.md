@@ -24,6 +24,7 @@ epicFightParryCost = 260.0
 shieldNParryAttemptCost = 180.0
 shieldNParrySuccessGain = 240.0
 combatRollCost = 320.0
+rangedWeaponUseCost = 55.0
 wrongWeaponAttackMinCostPercent = 0.33
 staminaDrainTicks = 8
 paragliderRecoveryDelayTicksAfterSpend = 80
@@ -38,6 +39,7 @@ hideEpicFightStaminaHud = true
 Behavior:
 
 - Vanilla and Better Combat player attack attempts with weapon-like held items spend Paraglider stamina; if the player lacks enough stamina, client entity-attack input is canceled before the local swing where possible and the server attack event is canceled before the hit resolves. Empty hands and non-weapon items keep vanilla behavior and do not spend Chow Kingdom stamina.
+- Bow and crossbow-style item use spends `rangedWeaponUseCost`; if the player lacks enough stamina, the item use is canceled.
 - Blocking incoming damage while actively blocking spends Paraglider stamina.
 - Epic Fight basic attack starts spend Paraglider stamina.
 - Epic Fight jump attack starts spend Paraglider stamina.
@@ -48,6 +50,7 @@ Behavior:
 - ParCool dodges use Paraglider stamina through ParCool's forced Paraglider backend.
 - Combat Roll rolls spend `combatRollCost` when the optional Combat Roll API is present.
 - Class-mismatched weapons use the larger of the normal attack cost or `wrongWeaponAttackMinCostPercent` of the player's max Paraglider stamina.
+- Class-mismatched weapons cannot be right-click used and render with a grey inventory overlay plus `locked.png`.
 - Chow Kingdom combat costs are reserved up front, then drained across `staminaDrainTicks` ticks so the Paraglider wheel drains like a stamina action instead of one hard cut.
 - Every successful Chow Kingdom stamina spend pushes Paraglider recovery delay to at least `paragliderRecoveryDelayTicksAfterSpend`.
 - Epic Fight battle mode is forced off while a player is paragliding in air, then restored after landing if Chow Kingdom disabled it.

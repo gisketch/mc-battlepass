@@ -13,13 +13,17 @@ import net.minecraft.commands.CommandSourceStack
 import net.minecraft.commands.Commands
 import net.minecraft.commands.SharedSuggestionProvider
 import net.minecraft.commands.arguments.EntityArgument
+import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.core.registries.Registries
 import net.minecraft.network.chat.Component
+import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.MinecraftServer
 import net.minecraft.server.level.ServerPlayer
+import net.minecraft.tags.TagKey
 import net.minecraft.world.InteractionResult
 import net.minecraft.world.effect.MobEffect
 import net.minecraft.world.effect.MobEffectInstance
+import net.minecraft.world.item.Item
 import net.minecraft.world.level.storage.LevelResource
 import net.neoforged.bus.api.EventPriority
 import net.neoforged.bus.api.IEventBus
@@ -56,6 +60,9 @@ object RolesFeature {
     private val CLASS_SUGGESTIONS = SuggestionProvider<CommandSourceStack> { _, builder ->
         SharedSuggestionProvider.suggest(RolesConfig.classes().map { role -> role.id }, builder)
     }
+    private val ITEM_TAG_SUGGESTIONS = SuggestionProvider<CommandSourceStack> { _, builder ->
+        SharedSuggestionProvider.suggest(itemTagSuggestions(), builder)
+    }
 
     fun register(modBus: IEventBus) {
         MOB_EFFECTS.register(modBus)
@@ -70,7 +77,8 @@ object RolesFeature {
         NeoForge.EVENT_BUS.addListener(::onPlayerLoggedIn)
         NeoForge.EVENT_BUS.addListener(::onPlayerRespawned)
         NeoForge.EVENT_BUS.addListener(::onFarmlandTrample)
-        NeoForge.EVENT_BUS.addListener(::onRightClickBlock)
+        NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, ::onRightClickItem)
+        NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, ::onRightClickBlock)
         NeoForge.EVENT_BUS.addListener(::onBlockPlace)
         NeoForge.EVENT_BUS.addListener(::onBlockBreak)
         NeoForge.EVENT_BUS.addListener(::onAnvilUpdate)
@@ -146,6 +154,11 @@ object RolesFeature {
 
     private fun onRegisterCommands(event: RegisterCommandsEvent) {
         event.dispatcher.register(Commands.literal("unconfigured").requires { source -> source.hasPermission(2) }.executes(::unconfiguredWeapons))
+        event.dispatcher.register(
+            Commands.literal("tag")
+                .requires { source -> source.hasPermission(2) }
+                .then(Commands.argument("tag", StringArgumentType.word()).suggests(ITEM_TAG_SUGGESTIONS).executes(::sendItemTag)),
+        )
         event.dispatcher.register(
             Commands.literal("ck")
                 .then(Commands.literal("onboarding").requires { source -> source.hasPermission(2) }.executes(::resetOnboarding))
@@ -263,19 +276,51 @@ object RolesFeature {
         return ids.size.coerceAtLeast(1)
     }
 
-    private fun codeblockChunks(ids: List<String>): List<String> {
-        if (ids.isEmpty()) return listOf("Unconfigured weapons: 0\n```text\nnone\n```")
+    private fun sendItemTag(context: CommandContext<CommandSourceStack>): Int {
+        val rawTag = StringArgumentType.getString(context, "tag")
+        val tagId = parseTagId(rawTag) ?: run {
+            context.source.sendFailure(Component.literal("Invalid item tag: $rawTag"))
+            return 0
+        }
+        val displayTag = "#$tagId"
+        val ids = itemIdsInTag(tagId)
+        val chunks = codeblockChunks("Tag $displayTag (${ids.size} items)", ids.ifEmpty { listOf("none") })
+        context.source.sendSuccess({ Component.literal("Sent $displayTag to Discord (${ids.size} items).") }, true)
+        chunks.forEach { chunk -> context.source.sendSuccess({ Component.literal(chunk) }, false) }
+        chunks.forEach { chunk -> DiscordWebhookClient.send(chunk) }
+        return ids.size.coerceAtLeast(1)
+    }
+
+    private fun codeblockChunks(ids: List<String>): List<String> = codeblockChunks("Unconfigured weapons", ids.ifEmpty { listOf("none") })
+
+    private fun codeblockChunks(title: String, ids: List<String>): List<String> {
         val chunks = mutableListOf<String>()
         val current = StringBuilder()
         ids.forEach { id ->
             if (current.length + id.length + 1 > DISCORD_CODEBLOCK_BODY_LIMIT) {
-                chunks += "Unconfigured weapons\n```text\n$current```"
+                chunks += "$title\n```text\n$current```"
                 current.clear()
             }
             current.append(id).append('\n')
         }
-        if (current.isNotEmpty()) chunks += "Unconfigured weapons\n```text\n$current```"
+        if (current.isNotEmpty()) chunks += "$title\n```text\n$current```"
         return chunks
+    }
+
+    private fun itemTagSuggestions(): List<String> {
+        val ids = mutableListOf<String>()
+        BuiltInRegistries.ITEM.getTagNames().forEach { tag -> ids += "#${tag.location()}" }
+        return ids.sorted()
+    }
+
+    private fun parseTagId(raw: String): ResourceLocation? = runCatching { ResourceLocation.parse(raw.trim().removePrefix("#")) }.getOrNull()
+
+    private fun itemIdsInTag(id: ResourceLocation): List<String> {
+        val tag = TagKey.create(Registries.ITEM, id)
+        return BuiltInRegistries.ITEM.getTagOrEmpty(tag)
+            .map { holder -> BuiltInRegistries.ITEM.getKey(holder.value()).toString() }
+            .sorted()
+            .toList()
     }
 
     private fun writeUnconfiguredTagDatapack(server: MinecraftServer, ids: List<String>) {
@@ -421,8 +466,21 @@ object RolesFeature {
     }
 
     private fun onRightClickBlock(event: PlayerInteractEvent.RightClickBlock) {
+        val player = event.entity as? ServerPlayer
+        if (player != null && RoleClassEquipmentRules.shouldBlockWeaponUse(player, event.itemStack)) {
+            event.isCanceled = true
+            event.cancellationResult = InteractionResult.FAIL
+            return
+        }
         MasonPerks.onRightClickBlock(event)
         DrakeTamerPerks.onRightClickBlock(event)
+    }
+
+    private fun onRightClickItem(event: PlayerInteractEvent.RightClickItem) {
+        val player = event.entity as? ServerPlayer ?: return
+        if (!RoleClassEquipmentRules.shouldBlockWeaponUse(player, event.itemStack)) return
+        event.isCanceled = true
+        event.cancellationResult = InteractionResult.FAIL
     }
 
     private fun onBlockBreak(event: BlockEvent.BreakEvent) {

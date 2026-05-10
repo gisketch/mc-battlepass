@@ -15,6 +15,7 @@ import net.minecraft.world.entity.ai.attributes.Attributes
 import net.minecraft.world.item.ArmorItem
 import net.minecraft.world.item.Item
 import net.minecraft.world.item.ItemStack
+import net.minecraft.world.item.UseAnim
 import net.neoforged.neoforge.event.entity.living.LivingDamageEvent
 import net.neoforged.neoforge.event.entity.player.ItemTooltipEvent
 
@@ -72,6 +73,12 @@ internal object RoleClassEquipmentRules {
         return !held.isEmpty && perks.none { perk -> weaponAllowed(held, perk) }
     }
 
+    fun shouldBlockWeaponUse(player: ServerPlayer, stack: ItemStack): Boolean {
+        if (stack.isEmpty || !isWeaponLike(stack) || isGloballyAllowedWeapon(stack)) return false
+        val perks = equipmentAffinities(player)
+        return perks.isNotEmpty() && perks.none { perk -> weaponAllowed(stack, perk) }
+    }
+
     fun shouldGreyOutForClasses(activeClassIds: Set<String>, stack: ItemStack): Boolean {
         if (activeClassIds.isEmpty() || stack.isEmpty) return false
         return when {
@@ -79,6 +86,11 @@ internal object RoleClassEquipmentRules {
             stack.item is ArmorItem && !RecipeDisablerFeature.isCosmeticized(stack) && !isGloballyAllowedArmor(stack) -> !configuredClassEquipment().filter { entry -> entry.allowsArmor(stack) }.any { entry -> entry.id in activeClassIds }
             else -> false
         }
+    }
+
+    fun shouldBlockWeaponUseForClasses(activeClassIds: Set<String>, stack: ItemStack): Boolean {
+        if (activeClassIds.isEmpty() || stack.isEmpty || !isWeaponLike(stack) || isGloballyAllowedWeapon(stack)) return false
+        return !configuredClassEquipment().filter { entry -> entry.allowsWeapon(stack) }.any { entry -> entry.id in activeClassIds }
     }
 
     fun unconfiguredWeaponIds(): List<String> = BuiltInRegistries.ITEM.asSequence()
@@ -151,6 +163,7 @@ internal object RoleClassEquipmentRules {
     }
 
     private fun isWeaponLike(stack: ItemStack): Boolean {
+        if (stack.useAnimation == UseAnim.BOW || stack.useAnimation == UseAnim.CROSSBOW) return true
         var weaponLike = false
         stack.forEachModifier(EquipmentSlot.MAINHAND) { attribute, _ ->
             if (attribute == Attributes.ATTACK_DAMAGE || attribute == Attributes.ATTACK_SPEED) weaponLike = true

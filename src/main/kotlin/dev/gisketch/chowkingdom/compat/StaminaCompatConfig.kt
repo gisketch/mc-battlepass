@@ -46,6 +46,7 @@ object StaminaCompatConfig {
         if (!json.has("shieldNParryAttemptCost")) shieldNParryAttemptCost = defaults.shieldNParryAttemptCost
         if (!json.has("shieldNParrySuccessGain")) shieldNParrySuccessGain = defaults.shieldNParrySuccessGain
         if (!json.has("combatRollCost")) combatRollCost = defaults.combatRollCost
+        if (!json.has("rangedWeaponUseCost")) rangedWeaponUseCost = defaults.rangedWeaponUseCost
         if (!json.has("wrongWeaponAttackMinCostPercent")) wrongWeaponAttackMinCostPercent = defaults.wrongWeaponAttackMinCostPercent
         if (!json.has("staminaDrainTicks")) staminaDrainTicks = defaults.staminaDrainTicks
         if (!json.has("paragliderRecoveryDelayTicksAfterSpend")) paragliderRecoveryDelayTicksAfterSpend = defaults.paragliderRecoveryDelayTicksAfterSpend
@@ -70,6 +71,7 @@ object StaminaCompatConfig {
         "shieldNParryAttemptCost",
         "shieldNParrySuccessGain",
         "combatRollCost",
+        "rangedWeaponUseCost",
         "wrongWeaponAttackMinCostPercent",
         "staminaDrainTicks",
         "paragliderRecoveryDelayTicksAfterSpend",
@@ -96,6 +98,7 @@ data class StaminaCompatDefinition(
     var shieldNParryAttemptCost: Double = 180.0,
     var shieldNParrySuccessGain: Double = 240.0,
     var combatRollCost: Double = 320.0,
+    var rangedWeaponUseCost: Double = 55.0,
     var wrongWeaponAttackMinCostPercent: Double = 0.33,
     var staminaDrainTicks: Int = 8,
     var paragliderRecoveryDelayTicksAfterSpend: Int = 80,
