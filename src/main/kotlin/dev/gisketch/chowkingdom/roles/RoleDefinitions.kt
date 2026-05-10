@@ -32,8 +32,12 @@ data class EquipmentWhitelistDefinition(
     var armorTags: MutableList<String> = mutableListOf(),
     @SerializedName(value = "weapon_patterns", alternate = ["weaponPatterns"])
     var weaponPatterns: MutableList<String> = mutableListOf(),
+    @SerializedName(value = "weapon_exclude_patterns", alternate = ["weaponExcludePatterns"])
+    var weaponExcludePatterns: MutableList<String> = mutableListOf(),
     @SerializedName(value = "armor_patterns", alternate = ["armorPatterns"])
     var armorPatterns: MutableList<String> = mutableListOf(),
+    @SerializedName(value = "armor_exclude_patterns", alternate = ["armorExcludePatterns"])
+    var armorExcludePatterns: MutableList<String> = mutableListOf(),
 )
 
 data class RolePerkDefinition(
@@ -53,8 +57,12 @@ data class RolePerkDefinition(
     var armorTags: MutableList<String> = mutableListOf(),
     @SerializedName(value = "weapon_patterns", alternate = ["weaponPatterns"])
     var weaponPatterns: MutableList<String> = mutableListOf(),
+    @SerializedName(value = "weapon_exclude_patterns", alternate = ["weaponExcludePatterns"])
+    var weaponExcludePatterns: MutableList<String> = mutableListOf(),
     @SerializedName(value = "armor_patterns", alternate = ["armorPatterns"])
     var armorPatterns: MutableList<String> = mutableListOf(),
+    @SerializedName(value = "armor_exclude_patterns", alternate = ["armorExcludePatterns"])
+    var armorExcludePatterns: MutableList<String> = mutableListOf(),
     @SerializedName(value = "wrong_weapon_damage_multiplier", alternate = ["wrongWeaponDamageMultiplier"])
     var wrongWeaponDamageMultiplier: Double = 1.0,
     @SerializedName(value = "wrong_weapon_cooldown_ticks", alternate = ["wrongWeaponCooldownTicks"])

@@ -42,6 +42,7 @@ object RolesClient {
         NeoForge.EVENT_BUS.addListener(::onRenderNameTag)
         NeoForge.EVENT_BUS.addListener(::onGatherEffectTooltips)
         NeoForge.EVENT_BUS.addListener(::onScreenRenderPost)
+        RoleEquipmentOverlayClient.register()
     }
 
     @JvmStatic
@@ -223,6 +224,8 @@ object RolesClientState {
     }
 
     fun iconsFor(playerId: UUID): RoleNametagIcons = playerIcons[playerId] ?: RoleNametagIcons()
+
+    fun activeClassIdsFor(playerId: UUID): Set<String> = playerRoleIds[playerId]?.classIds?.toSet().orEmpty()
 
     fun profileFor(playerId: UUID): RoleProfile = playerRoleIds[playerId]?.let { ids ->
         RoleProfile(

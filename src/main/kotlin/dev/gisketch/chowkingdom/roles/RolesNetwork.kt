@@ -99,7 +99,9 @@ object RolesNetwork {
         weaponTags = perk.weaponTags.toList(),
         armorTags = perk.armorTags.toList(),
         weaponPatterns = perk.weaponPatterns.toList(),
+        weaponExcludePatterns = perk.weaponExcludePatterns.toList(),
         armorPatterns = perk.armorPatterns.toList(),
+        armorExcludePatterns = perk.armorExcludePatterns.toList(),
         startingItems = perk.startingItems.toList(),
     )
 }
@@ -220,7 +222,9 @@ data class RolePerkUiPayload(
     val weaponTags: List<String>,
     val armorTags: List<String>,
     val weaponPatterns: List<String>,
+    val weaponExcludePatterns: List<String>,
     val armorPatterns: List<String>,
+    val armorExcludePatterns: List<String>,
     val startingItems: List<String>,
 ) {
     fun encode(buffer: RegistryFriendlyByteBuf) {
@@ -233,7 +237,9 @@ data class RolePerkUiPayload(
         writeStringList(buffer, weaponTags, MAX_PERK_VALUES, MAX_ICON_LENGTH)
         writeStringList(buffer, armorTags, MAX_PERK_VALUES, MAX_ICON_LENGTH)
         writeStringList(buffer, weaponPatterns, MAX_PERK_VALUES, MAX_ICON_LENGTH)
+        writeStringList(buffer, weaponExcludePatterns, MAX_PERK_VALUES, MAX_ICON_LENGTH)
         writeStringList(buffer, armorPatterns, MAX_PERK_VALUES, MAX_ICON_LENGTH)
+        writeStringList(buffer, armorExcludePatterns, MAX_PERK_VALUES, MAX_ICON_LENGTH)
         writeStringList(buffer, startingItems, MAX_PERK_VALUES, MAX_ICON_LENGTH)
     }
 
@@ -248,7 +254,9 @@ data class RolePerkUiPayload(
             weaponTags = readStringList(buffer, MAX_PERK_VALUES, MAX_ICON_LENGTH),
             armorTags = readStringList(buffer, MAX_PERK_VALUES, MAX_ICON_LENGTH),
             weaponPatterns = readStringList(buffer, MAX_PERK_VALUES, MAX_ICON_LENGTH),
+            weaponExcludePatterns = readStringList(buffer, MAX_PERK_VALUES, MAX_ICON_LENGTH),
             armorPatterns = readStringList(buffer, MAX_PERK_VALUES, MAX_ICON_LENGTH),
+            armorExcludePatterns = readStringList(buffer, MAX_PERK_VALUES, MAX_ICON_LENGTH),
             startingItems = readStringList(buffer, MAX_PERK_VALUES, MAX_ICON_LENGTH),
         )
     }

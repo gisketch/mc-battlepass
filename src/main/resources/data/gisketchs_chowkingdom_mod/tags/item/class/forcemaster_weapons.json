@@ -1,0 +1,1 @@
+{ "replace": false, "values": [{ "id": "#simplymore:weapon_types/quarterstaffs", "required": false }, { "id": "#simplymore:weapon_types/backhand_blades", "required": false }, { "id": "forcemaster_rpg:spell_book/forcemaster", "required": false }] }

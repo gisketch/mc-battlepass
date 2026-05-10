@@ -69,6 +69,12 @@ Current values:
 
 Wrong weapons deal reduced damage, reduce attack speed while held, apply an item cooldown after attacks, spend at least the configured wrong-weapon stamina floor, and show compact `Classes:` tooltip compatibility lines. Wrong armor disables sprinting while worn and uses the same class compatibility tooltip. Starting items are only inventory grants after class application; allowed weapons and armor come from `equipment_affinity` tags/patterns, not `starting_items`.
 
+Equipment affinity supports deny patterns with `weapon_exclude_patterns` and `armor_exclude_patterns`. Matching is `allowed tag or pattern` and `not excluded`; entries in pattern arrays can also be item tags by using `#namespace:path`.
+
+Inventory slots render a grey overlay on weapon-like items and armor that none of the player's active classes can use. Global whitelist matches keep normal rendering.
+
+Class weapon tag aliases exist for EMI/tag search, such as `#gisketchs_chowkingdom_mod:rogue`, `#gisketchs_chowkingdom_mod:warrior`, `#gisketchs_chowkingdom_mod:archer`, and plural aliases like `#gisketchs_chowkingdom_mod:tundra_archers`. They point at concrete vanilla entries plus optional mod item tags where available; glob-only runtime patterns still need concrete item tags or datapack entries before EMI can list them.
+
 `equipment_whitelist.toml` has `weapon_tags`, `weapon_patterns`, `armor_tags`, and `armor_patterns`. Matching items are globally allowed for every class, keep vanilla behavior, and show no class compatibility tooltip.
 
 Missing `starting_items` and job `reward_pool` item ids warn once and skip. Starting items are granted once per class only after at least one configured item id exists, so future optional mod entries do not burn the grant if a dependency is missing.

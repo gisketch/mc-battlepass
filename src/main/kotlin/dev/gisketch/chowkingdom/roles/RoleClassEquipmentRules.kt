@@ -36,7 +36,7 @@ internal object RoleClassEquipmentRules {
         val perks = equipmentAffinities(player)
         applyWrongWeaponAttackSpeed(player, perks)
         val armorPerks = perks.filter { perk -> perk.wrongArmorDisablesSprint }
-        if (armorPerks.isNotEmpty() && player.armorSlots.any { stack -> !stack.isEmpty && !RecipeDisablerFeature.isCosmeticized(stack) && !isGloballyAllowedArmor(stack) && armorPerks.none { perk -> itemAllowed(stack, tagList(perk.armorTag, perk.armorTags), perk.armorPatterns) } }) {
+        if (armorPerks.isNotEmpty() && player.armorSlots.any { stack -> !stack.isEmpty && !RecipeDisablerFeature.isCosmeticized(stack) && !isGloballyAllowedArmor(stack) && armorPerks.none { perk -> armorAllowed(stack, perk) } }) {
             player.isSprinting = false
         }
     }
@@ -69,7 +69,16 @@ internal object RoleClassEquipmentRules {
         if (perks.isEmpty()) return false
         val held = player.mainHandItem
         if (isGloballyAllowedWeapon(held)) return false
-        return !held.isEmpty && perks.none { perk -> itemAllowed(held, tagList(perk.weaponTag, perk.weaponTags), perk.weaponPatterns) }
+        return !held.isEmpty && perks.none { perk -> weaponAllowed(held, perk) }
+    }
+
+    fun shouldGreyOutForClasses(activeClassIds: Set<String>, stack: ItemStack): Boolean {
+        if (activeClassIds.isEmpty() || stack.isEmpty) return false
+        return when {
+            isWeaponLike(stack) && !isGloballyAllowedWeapon(stack) -> !configuredClassEquipment().filter { entry -> entry.allowsWeapon(stack) }.any { entry -> entry.id in activeClassIds }
+            stack.item is ArmorItem && !RecipeDisablerFeature.isCosmeticized(stack) && !isGloballyAllowedArmor(stack) -> !configuredClassEquipment().filter { entry -> entry.allowsArmor(stack) }.any { entry -> entry.id in activeClassIds }
+            else -> false
+        }
     }
 
     private fun equipmentAffinities(player: ServerPlayer): List<RolePerkDefinition> = RolePerks.classPerks(player, "equipment_affinity")
@@ -94,11 +103,10 @@ internal object RoleClassEquipmentRules {
 
     private fun classTooltipLine(activeClassIds: Set<String>, stack: ItemStack, allows: ActiveClassEquipment.(ItemStack) -> Boolean): Component? {
         val usableClasses = configuredClassEquipment().filter { entry -> entry.allows(stack) }
-        val classes = usableClasses.ifEmpty { activeClassEquipment(activeClassIds) }
-        if (classes.isEmpty()) return null
+        if (usableClasses.isEmpty()) return null
         val playerCanUse = usableClasses.any { entry -> entry.id in activeClassIds }
         val line = Component.literal("Classes: ").withStyle(ChatFormatting.GRAY)
-        classes.forEachIndexed { index, entry ->
+        usableClasses.forEachIndexed { index, entry ->
             if (index > 0) line.append(Component.literal(", ").withStyle(ChatFormatting.GRAY))
             val color = when {
                 !playerCanUse -> ChatFormatting.DARK_RED
@@ -113,7 +121,7 @@ internal object RoleClassEquipmentRules {
     private fun applyWrongWeaponAttackSpeed(player: ServerPlayer, perks: List<RolePerkDefinition>) {
         val attribute = player.getAttribute(Attributes.ATTACK_SPEED) ?: return
         val held = player.mainHandItem
-        if (held.isEmpty || perks.isEmpty() || isGloballyAllowedWeapon(held) || perks.any { perk -> itemAllowed(held, tagList(perk.weaponTag, perk.weaponTags), perk.weaponPatterns) }) {
+        if (held.isEmpty || perks.isEmpty() || isGloballyAllowedWeapon(held) || perks.any { perk -> weaponAllowed(held, perk) }) {
             attribute.removeModifier(WRONG_WEAPON_ATTACK_SPEED_MODIFIER)
             return
         }
@@ -141,22 +149,47 @@ internal object RoleClassEquipmentRules {
 
     private fun isGloballyAllowedWeapon(stack: ItemStack): Boolean {
         val whitelist = RolesConfig.equipmentWhitelist()
-        return itemAllowed(stack, whitelist.weaponTags.map(::itemTag), whitelist.weaponPatterns)
+        return itemAllowed(stack, whitelist.weaponTags.map(::itemTag), whitelist.weaponPatterns, whitelist.weaponExcludePatterns)
     }
 
     private fun isGloballyAllowedArmor(stack: ItemStack): Boolean {
         val whitelist = RolesConfig.equipmentWhitelist()
-        return itemAllowed(stack, whitelist.armorTags.map(::itemTag), whitelist.armorPatterns)
+        return itemAllowed(stack, whitelist.armorTags.map(::itemTag), whitelist.armorPatterns, whitelist.armorExcludePatterns)
     }
 
     private fun itemTag(raw: String): TagKey<Item> = TagKey.create(Registries.ITEM, ResourceLocation.parse(raw.removePrefix("#")))
 
     private fun tagList(single: String?, many: List<String>): List<TagKey<Item>> = (listOfNotNull(single) + many).map(::itemTag)
 
-    private fun itemAllowed(stack: ItemStack, tags: List<TagKey<Item>>, patterns: List<String>): Boolean {
-        if (tags.any { tag -> stack.`is`(tag) }) return true
+    private fun weaponAllowed(stack: ItemStack, perk: RolePerkDefinition): Boolean = itemAllowed(
+        stack,
+        tagList(perk.weaponTag, perk.weaponTags),
+        perk.weaponPatterns,
+        perk.weaponExcludePatterns,
+    )
+
+    private fun armorAllowed(stack: ItemStack, perk: RolePerkDefinition): Boolean = itemAllowed(
+        stack,
+        tagList(perk.armorTag, perk.armorTags),
+        perk.armorPatterns,
+        perk.armorExcludePatterns,
+    )
+
+    private fun itemAllowed(stack: ItemStack, tags: List<TagKey<Item>>, patterns: List<String>, excludePatterns: List<String> = emptyList()): Boolean {
+        val allowed = tags.any { tag -> stack.`is`(tag) } || patternAllowed(stack, patterns)
+        return allowed && !patternAllowed(stack, excludePatterns)
+    }
+
+    private fun patternAllowed(stack: ItemStack, patterns: List<String>): Boolean {
         val itemId = BuiltInRegistries.ITEM.getKey(stack.item).toString()
-        return patterns.any { pattern -> globMatches(pattern, itemId) }
+        return patterns.any { pattern ->
+            val trimmed = pattern.trim()
+            when {
+                trimmed.isBlank() -> false
+                trimmed.startsWith("#") -> stack.`is`(itemTag(trimmed))
+                else -> globMatches(trimmed, itemId)
+            }
+        }
     }
 
     private fun globMatches(pattern: String, value: String): Boolean {
@@ -165,8 +198,8 @@ internal object RoleClassEquipmentRules {
     }
 
     private data class ActiveClassEquipment(val id: String, val name: String, val perks: List<RolePerkDefinition>) {
-        fun allowsWeapon(stack: ItemStack): Boolean = perks.any { perk -> itemAllowed(stack, tagList(perk.weaponTag, perk.weaponTags), perk.weaponPatterns) }
+        fun allowsWeapon(stack: ItemStack): Boolean = perks.any { perk -> weaponAllowed(stack, perk) }
 
-        fun allowsArmor(stack: ItemStack): Boolean = perks.any { perk -> itemAllowed(stack, tagList(perk.armorTag, perk.armorTags), perk.armorPatterns) }
+        fun allowsArmor(stack: ItemStack): Boolean = perks.any { perk -> armorAllowed(stack, perk) }
     }
 }
