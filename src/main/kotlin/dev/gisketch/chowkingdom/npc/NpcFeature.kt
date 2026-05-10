@@ -104,6 +104,7 @@ object NpcFeature {
     private val pendingShopNpcs: MutableMap<UUID, String> = linkedMapOf()
     private val animationDebugTargets: MutableMap<UUID, UUID> = linkedMapOf()
     private val animationWearAliases = listOf("clear", "none", "hat", "helmet", "chestplate", "leggings", "boots", "sword", "left_sword", "offhand_sword", "left sword", "left minecraft:iron_sword", "offhand minecraft:iron_sword")
+    private var workBypassEnabled = false
     private var debugTimeMultiplier: Int = 1
 
     val CAMPING_BLOCK: DeferredHolder<Block, CampingBlock> = BLOCKS.register("camping_block", Supplier { CampingBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.OAK_PLANKS).strength(1.5f).noOcclusion()) })
@@ -303,7 +304,7 @@ object NpcFeature {
 
         val record = RoleStore.role(player)
         val roleName = role.displayName.ifBlank { role.id }
-        if (NpcStore.workplacePos(definition.id) == null) {
+        if (!workBypassEnabled && NpcStore.workplacePos(definition.id) == null) {
             failClassTraining(player, npc, definition, roleName, listOf("${definition.name} needs an assigned workplace before training."), friendship.level, workplaceRequired = true)
             return
         }
@@ -517,7 +518,7 @@ object NpcFeature {
 
     private fun openNpcShop(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition) {
         val currentHour = NpcTime.hour(player.level())
-        if (NpcStore.workplacePos(definition.id) == null) {
+        if (!workBypassEnabled && NpcStore.workplacePos(definition.id) == null) {
             val friendship = NpcStore.friendshipSnapshot(definition.id, player)
             val message = if (NpcStore.workFired(definition.id)) "I do not have a job right now." else "I need a workplace before I can open shop."
             NpcNetwork.openDialog(player, dialogPayload(definition, npc, message, false, friendship.level, closeOnly = true, closeLabel = "OKAY"))
@@ -546,7 +547,7 @@ object NpcFeature {
             return
         }
         val workplace = NpcStore.workplacePos(definition.id)
-        if (workplace != null) {
+        if (!workBypassEnabled && workplace != null) {
             val workBlocks = workBlockStatus(player.level(), workplace, definition)
             if (!workBlocks.ready) {
                 openMissingWorkBlocksDialog(player, npc, definition, workplace, workBlocks, assigning = false)
@@ -893,7 +894,7 @@ object NpcFeature {
 
     fun dialogPayload(definition: NpcDefinition, npc: ChowNpcEntity, message: String, contractGranted: Boolean, friendshipLevel: Int, closeOnly: Boolean = false, closeLabel: String = "BYE", responseToken: Long = 0L, dialogMode: String = "normal", startTalkMode: Boolean = false, friendshipDelta: Int = 0, classChangeAvailable: Boolean = false, classChangeCost: Long = 0L, classChangeOptions: List<NpcClassChangeOption> = emptyList()): NpcDialogPayload = NpcDialogPayload(
         definition.id,
-        definition.name,
+        if (workBypassEnabled) "${definition.name} WORK OFF NPC" else definition.name,
         definition.title,
         message,
         contractGranted,
@@ -1824,6 +1825,11 @@ object NpcFeature {
         .then(animationRoot("animation"))
         .then(animationRoot("animations"))
         .then(
+            Commands.literal("work")
+                .requires { source -> source.hasPermission(2) }
+                .then(Commands.literal("toggle").executes(::workToggleCommand)),
+        )
+        .then(
             Commands.literal("spawn")
                 .requires { source -> source.hasPermission(2) }
                 .then(
@@ -1922,6 +1928,14 @@ object NpcFeature {
                         .executes(::llmSwitchCommand),
                 ),
         )
+
+    private fun workToggleCommand(context: CommandContext<CommandSourceStack>): Int {
+        workBypassEnabled = !workBypassEnabled
+        val state = if (workBypassEnabled) "ON" else "OFF"
+        val marker = if (workBypassEnabled) " Dialogs show WORK OFF NPC while active." else ""
+        context.source.sendSuccess({ Component.literal("NPC work bypass $state.$marker").withStyle(if (workBypassEnabled) ChatFormatting.GOLD else ChatFormatting.GRAY) }, true)
+        return 1
+    }
 
     private fun animationRoot(name: String): LiteralArgumentBuilder<CommandSourceStack> = Commands.literal(name)
         .requires { source -> source.hasPermission(2) }
