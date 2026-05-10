@@ -10,7 +10,15 @@ import dev.gisketch.chowkingdom.ChowClockConfig
 import dev.gisketch.chowkingdom.ChowKingdomMod
 import dev.gisketch.chowkingdom.discord.DiscordRelay
 import dev.gisketch.chowkingdom.relicroulette.RelicRouletteFeature
+import dev.gisketch.chowkingdom.roles.ClassLicenseResult
+import dev.gisketch.chowkingdom.roles.ClassLicenses
+import dev.gisketch.chowkingdom.roles.JobLevels
 import dev.gisketch.chowkingdom.roles.PerformerPerks
+import dev.gisketch.chowkingdom.roles.RoleClassEquipmentRules
+import dev.gisketch.chowkingdom.roles.RoleDefinition
+import dev.gisketch.chowkingdom.roles.RoleStore
+import dev.gisketch.chowkingdom.roles.RolesConfig
+import dev.gisketch.chowkingdom.roles.RolesNetwork
 import dev.gisketch.chowkingdom.shops.StoreShopFeature
 import dev.gisketch.chowkingdom.snackbar.SnackbarIcons
 import dev.gisketch.chowkingdom.snackbar.SnackbarNetwork
@@ -255,6 +263,10 @@ object NpcFeature {
                 NpcLlmService.leaveDialog(player, definition.id)
                 openWorkDialog(player, npc, definition)
             }
+            "training" -> {
+                NpcLlmService.leaveDialog(player, definition.id)
+                trainClass(player, npc, definition)
+            }
             "work_move" -> {
                 NpcLlmService.leaveDialog(player, definition.id)
                 giveWorkApplication(player, npc, definition, moving = true)
@@ -265,6 +277,82 @@ object NpcFeature {
             }
         }
     }
+
+    private fun trainClass(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition) {
+        val friendship = NpcStore.friendshipSnapshot(definition.id, player)
+        val role = trainingRole(definition)
+        val settings = NpcConfig.settings()
+        if (role == null) {
+            val message = trainingText(settings.training.unknownClassMessage, player, definition, "Unknown", emptyList())
+            NpcNetwork.openDialog(player, dialogPayload(definition, npc, message, false, friendship.level, closeOnly = true, closeLabel = "OKAY"))
+            NpcStore.recordConversation(definition.id, player, definition.name, message, "npc_class_training_unknown")
+            return
+        }
+
+        val record = RoleStore.role(player)
+        val roleName = role.displayName.ifBlank { role.id }
+        if (NpcStore.workplacePos(definition.id) == null) {
+            failClassTraining(player, npc, definition, roleName, listOf("${definition.name} needs an assigned workplace before training."), friendship.level, workplaceRequired = true)
+            return
+        }
+
+        val known = role.id in record.unlockedClasses || role.id in record.activeClassIds || role.id == record.classId
+        if (known) {
+            val message = trainingText(settings.training.alreadyKnownMessage, player, definition, roleName, emptyList())
+            NpcNetwork.openDialog(player, dialogPayload(definition, npc, message, false, friendship.level, closeOnly = true, closeLabel = "OKAY"))
+            NpcStore.recordConversation(definition.id, player, definition.name, message, "npc_class_training_known")
+            return
+        }
+
+        when (ClassLicenses.canUnlock(player, role)) {
+            ClassLicenseResult.Allowed -> completeClassTraining(player, npc, definition, role, roleName, friendship.level)
+            is ClassLicenseResult.Denied -> failClassTraining(player, npc, definition, roleName, ClassLicenses.failedConditions(player, role), friendship.level)
+        }
+    }
+
+    private fun completeClassTraining(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, role: RoleDefinition, roleName: String, friendshipLevel: Int) {
+        RoleStore.addClass(player, role.id)
+        RoleClassEquipmentRules.grantStartingItems(player, role.id)
+        RolesNetwork.syncAllPlayers()
+        val settings = NpcConfig.settings()
+        val fallback = trainingText(settings.training.successMessage, player, definition, roleName, emptyList())
+        val llmEnabled = settings.llm.enabled && settings.llmMessageUsage.classTraining
+        val responseToken = if (llmEnabled) NpcDialogTokens.next() else 0L
+        NpcNetwork.openDialog(player, dialogPayload(definition, npc, if (llmEnabled) "..." else fallback, false, friendshipLevel, closeOnly = true, closeLabel = "OKAY", responseToken = responseToken))
+        SnackbarNetwork.send(player, SnackbarNotification.npc(definition.id, "CLASS TRAINING COMPLETE", "Learned $roleName.", SnackbarType.SUCCESS, SnackbarSounds.REWARD))
+        if (llmEnabled) {
+            NpcLlmService.event(player, npc, definition, fallback, trainingText(settings.training.successLlmPrompt, player, definition, roleName, emptyList()), npcRecordType = "npc_class_training_success", responseToken = responseToken)
+        } else {
+            NpcStore.recordConversation(definition.id, player, definition.name, fallback, "npc_class_training_success")
+            relayNpcDialog(player, npc, definition, fallback)
+        }
+    }
+
+    private fun failClassTraining(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, roleName: String, conditions: List<String>, friendshipLevel: Int, workplaceRequired: Boolean = false) {
+        val settings = NpcConfig.settings()
+        val conditionText = conditions.ifEmpty { listOf("Unknown class license condition failed.") }
+        val messageTemplate = if (workplaceRequired) settings.training.workplaceRequiredMessage else settings.training.failedMessage
+        val promptTemplate = if (workplaceRequired) settings.training.workplaceRequiredLlmPrompt else settings.training.failedLlmPrompt
+        val fallback = trainingText(messageTemplate, player, definition, roleName, conditionText) + " " + conditionText.joinToString(" ")
+        val llmEnabled = settings.llm.enabled && settings.llmMessageUsage.classTraining
+        val responseToken = if (llmEnabled) NpcDialogTokens.next() else 0L
+        NpcNetwork.openDialog(player, dialogPayload(definition, npc, if (llmEnabled) "..." else fallback, false, friendshipLevel, closeOnly = true, closeLabel = "OKAY", responseToken = responseToken))
+        if (llmEnabled) {
+            NpcLlmService.event(player, npc, definition, fallback, trainingText(promptTemplate, player, definition, roleName, conditionText), npcRecordType = "npc_class_training_failed", responseToken = responseToken)
+        } else {
+            NpcStore.recordConversation(definition.id, player, definition.name, fallback, "npc_class_training_failed")
+            relayNpcDialog(player, npc, definition, fallback)
+        }
+    }
+
+    private fun trainingRole(definition: NpcDefinition): RoleDefinition? = definition.classId.trim().takeIf(String::isNotBlank)?.let(RolesConfig::roleClass)
+
+    private fun trainingText(template: String, player: ServerPlayer, definition: NpcDefinition, roleName: String, conditions: List<String>): String = template
+        .replace("{player}", player.gameProfile.name)
+        .replace("{npc}", definition.name)
+        .replace("{class}", roleName)
+        .replace("{conditions}", conditions.joinToString("; ").ifBlank { "None" })
+        .replace("{overall_level}", JobLevels.overallLevel(player).toString())
 
     private fun openWorkDialog(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition) {
         val friendship = NpcStore.friendshipSnapshot(definition.id, player)
@@ -715,6 +803,7 @@ object NpcFeature {
         responseToken = responseToken,
         dialogMode = dialogMode,
         startTalkMode = startTalkMode,
+        trainingAvailable = trainingRole(definition) != null,
     )
 
     private fun friendshipMessage(set: NpcFriendshipMessageSet, friendship: NpcFriendshipSnapshot, player: ServerPlayer, definition: NpcDefinition, itemName: String = "", mood: String = "", quantity: Int = 0, totalCost: Long = 0L): String {

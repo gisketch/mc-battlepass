@@ -78,7 +78,7 @@ object NpcNetwork {
     }
 
     private fun registerPayloads(event: RegisterPayloadHandlersEvent) {
-        val registrar = event.registrar("1")
+        val registrar = event.registrar("2")
         registrar.playToClient(NpcDialogPayload.TYPE, NpcDialogPayload.STREAM_CODEC, ::handleDialog)
         registrar.playToClient(NpcBalloonPayload.TYPE, NpcBalloonPayload.STREAM_CODEC, ::handleBalloon)
         registrar.playToClient(NpcTalkResponsePayload.TYPE, NpcTalkResponsePayload.STREAM_CODEC, ::handleTalkResponse)
@@ -190,6 +190,7 @@ data class NpcDialogPayload(
     val responseToken: Long = 0L,
     val dialogMode: String = "normal",
     val startTalkMode: Boolean = false,
+    val trainingAvailable: Boolean = false,
 ) : CustomPacketPayload {
     override fun type(): CustomPacketPayload.Type<NpcDialogPayload> = TYPE
 
@@ -215,6 +216,7 @@ data class NpcDialogPayload(
                 buffer.readLong(),
                 buffer.readUtf(MAX_NPC_DIALOG_MODE_LENGTH),
                 buffer.readBoolean(),
+                buffer.readBoolean(),
             )
 
             override fun encode(buffer: RegistryFriendlyByteBuf, value: NpcDialogPayload) {
@@ -236,6 +238,7 @@ data class NpcDialogPayload(
                 buffer.writeLong(value.responseToken)
                 buffer.writeUtf(value.dialogMode.take(MAX_NPC_DIALOG_MODE_LENGTH), MAX_NPC_DIALOG_MODE_LENGTH)
                 buffer.writeBoolean(value.startTalkMode)
+                buffer.writeBoolean(value.trainingAvailable)
             }
         }
     }

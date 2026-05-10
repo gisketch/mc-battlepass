@@ -12,9 +12,14 @@ object ClassLicenses {
     fun upgradeLicenses(player: ServerPlayer): Int = maxOf(RoleStore.upgradeLicenses(player), levelUpgradeLicenses(JobLevels.overallLevel(player)))
 
     fun canUnlock(player: ServerPlayer, role: RoleDefinition): ClassLicenseResult {
+        val failed = failedConditions(player, role)
+        return if (failed.isEmpty()) ClassLicenseResult.Allowed else ClassLicenseResult.Denied(Component.literal(failed.joinToString(" ")))
+    }
+
+    fun failedConditions(player: ServerPlayer, role: RoleDefinition): List<String> {
         val record = RoleStore.role(player)
-        if (role.id in record.unlockedClasses || role.id in record.activeClassIds) return ClassLicenseResult.Allowed
-        return if (RolesConfig.isStarterClass(role.id)) canUnlockStarter(player, record, role) else canUnlockUpgrade(player, record, role)
+        if (role.id in record.unlockedClasses || role.id in record.activeClassIds) return emptyList()
+        return if (RolesConfig.isStarterClass(role.id)) starterFailedConditions(player, record, role) else upgradeFailedConditions(player, record, role)
     }
 
     fun starterUnlockOverallLevels(): List<Int> = RolesConfig.classLicenses().starterLicenseUnlockOverallLevels
@@ -29,34 +34,39 @@ object ClassLicenses {
         .sorted()
         .ifEmpty { fallbackUpgradeUnlockOverallLevels }
 
-    private fun canUnlockStarter(player: ServerPlayer, record: PlayerRoleRecord, role: RoleDefinition): ClassLicenseResult {
+    private fun starterFailedConditions(player: ServerPlayer, record: PlayerRoleRecord, role: RoleDefinition): List<String> {
         val used = unlockedStarterCount(record)
         val limit = starterLicenses(player)
-        return if (used < limit) {
-            ClassLicenseResult.Allowed
-        } else {
-            ClassLicenseResult.Denied(Component.literal("${player.gameProfile.name} needs another starter class license for ${role.displayName.ifBlank { role.id }} ($used/$limit used)."))
-        }
+        if (used < limit) return emptyList()
+        val nextLevel = nextStarterLicenseLevel(JobLevels.overallLevel(player))
+        val next = if (nextLevel != null) "Next starter license unlocks at overall level $nextLevel." else "No more starter license unlocks are configured."
+        return listOf("Need another starter class license for ${role.displayName.ifBlank { role.id }} ($used/$limit used). $next")
     }
 
-    private fun canUnlockUpgrade(player: ServerPlayer, record: PlayerRoleRecord, role: RoleDefinition): ClassLicenseResult {
+    private fun upgradeFailedConditions(player: ServerPlayer, record: PlayerRoleRecord, role: RoleDefinition): List<String> {
+        val failed = mutableListOf<String>()
         val prerequisites = RolesConfig.starterClassIds(role)
         val knownClasses = record.unlockedClasses + record.activeClassIds + setOf(record.classId).filter(String::isNotBlank)
         if (prerequisites.isNotEmpty() && prerequisites.none { starterId -> starterId in knownClasses }) {
-            return ClassLicenseResult.Denied(Component.literal("${role.displayName.ifBlank { role.id }} needs one of: ${prerequisites.joinToString(", ")}."))
+            failed += "Need one prerequisite starter class for ${role.displayName.ifBlank { role.id }}: ${prerequisites.joinToString(", ")}."
         }
         val used = unlockedUpgradeCount(record)
         val limit = upgradeLicenses(player)
-        return if (used < limit) {
-            ClassLicenseResult.Allowed
-        } else {
-            ClassLicenseResult.Denied(Component.literal("${player.gameProfile.name} needs another upgrade class license for ${role.displayName.ifBlank { role.id }} ($used/$limit used)."))
+        if (used >= limit) {
+            val nextLevel = nextUpgradeLicenseLevel(JobLevels.overallLevel(player))
+            val next = if (nextLevel != null) "Next upgrade license unlocks at overall level $nextLevel." else "No more upgrade license unlocks are configured."
+            failed += "Need another upgrade class license for ${role.displayName.ifBlank { role.id }} ($used/$limit used). $next"
         }
+        return failed
     }
 
     private fun levelStarterLicenses(overallLevel: Int): Int = starterUnlockOverallLevels().count { level -> overallLevel >= level }
 
     private fun levelUpgradeLicenses(overallLevel: Int): Int = upgradeUnlockOverallLevels().count { level -> overallLevel >= level }
+
+    private fun nextStarterLicenseLevel(overallLevel: Int): Int? = starterUnlockOverallLevels().firstOrNull { level -> overallLevel < level }
+
+    private fun nextUpgradeLicenseLevel(overallLevel: Int): Int? = upgradeUnlockOverallLevels().firstOrNull { level -> overallLevel < level }
 
     private fun unlockedStarterCount(record: PlayerRoleRecord): Int = knownClassIds(record).count { classId -> RolesConfig.isStarterClass(classId) }
 

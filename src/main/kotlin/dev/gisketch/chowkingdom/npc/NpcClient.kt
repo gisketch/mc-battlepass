@@ -1012,6 +1012,10 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
                 skipPendingTalkResponse()
                 NpcNetwork.sendAction(payload.npcId, "work")
             }
+            DialogAction.Training -> if (isActionEnabled(action)) {
+                skipPendingTalkResponse()
+                NpcNetwork.sendAction(payload.npcId, "training")
+            }
             DialogAction.Move -> if (isActionEnabled(action)) {
                 skipPendingTalkResponse()
                 NpcNetwork.sendAction(payload.npcId, "work_move")
@@ -1206,7 +1210,7 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         joinMode() -> listOf(DialogAction.Talk, DialogAction.Bye)
         workMode() -> listOf(DialogAction.Move, DialogAction.Fire, DialogAction.Bye)
         payload.closeOnly -> listOf(DialogAction.Bye)
-        else -> listOf(DialogAction.Talk, DialogAction.Buy, DialogAction.Gift, DialogAction.Work, DialogAction.Bye)
+        else -> listOfNotNull(DialogAction.Talk, DialogAction.Buy, DialogAction.Gift, DialogAction.Work, DialogAction.Training.takeIf { payload.trainingAvailable }, DialogAction.Bye)
     }
 
     private fun questMode(): Boolean = payload.dialogMode == "quest"
@@ -1564,6 +1568,7 @@ private enum class DialogAction(val label: String, val icon: ResourceLocation) {
     Buy("BUY", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/shop.png")),
     Gift("GIFT", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/gift.png")),
     Work("WORK", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/shop.png")),
+    Training("TRAINING", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/chat_bubble_white.png")),
     Move("MOVE", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/chat_bubble_white.png")),
     Fire("FIRE", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/chat_bubble_orange.png")),
     Bye("BYE", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/chat_bubble_orange.png")),

@@ -122,6 +122,7 @@ object NpcConfig {
         skin = "gisketchs_chowkingdom_mod:npc/finn",
         bodyType = NpcBodyTypes.NORMAL,
         job = "adventurer",
+        classId = "warrior",
         jobDefinition = NpcJobDefinition(id = "adventurer", store = "cosmetics", scanIntervalTicks = 60, roamRadius = 7, workScanRadius = 9),
         schedule = NpcScheduleDefinition(
             activities = mutableListOf(

@@ -12,6 +12,7 @@ class NpcDefinition(
     @SerializedName("weight") var weight: Double = DEFAULT_NPC_BODY_SCALE,
     @SerializedName("custom_animation") var customAnimation: Boolean = false,
     var job: String = "adventurer",
+    @SerializedName("class") var classId: String = "",
     @SerializedName("job_definition") var jobDefinition: NpcJobDefinition = NpcJobDefinition(),
     var schedule: NpcScheduleDefinition = NpcScheduleDefinition(),
     var store: String = "",
@@ -38,6 +39,7 @@ class NpcDefinition(
         height = normalizeNpcBodyScale(height)
         weight = normalizeNpcBodyScale(weight)
         job = NpcJobs.normalizeId(job)
+        classId = classId.trim()
         jobDefinition = jobDefinition.normalized(job, store)
         schedule = schedule.normalized()
         store = store.trim()
@@ -95,6 +97,7 @@ class NpcSettingsDefinition(
     @SerializedName("llm_message_usage") var llmMessageUsage: NpcLlmMessageUsageDefinition = NpcLlmMessageUsageDefinition(),
     @SerializedName("campers") var campers: NpcCampersSettingsDefinition = NpcCampersSettingsDefinition(),
     var work: NpcWorkSettingsDefinition = NpcWorkSettingsDefinition(),
+    var training: NpcTrainingSettingsDefinition = NpcTrainingSettingsDefinition(),
     @SerializedName("npc_interactions") var npcInteractions: NpcInteractionSettingsDefinition = NpcInteractionSettingsDefinition(),
 ) {
     fun normalized(): NpcSettingsDefinition = apply {
@@ -104,6 +107,7 @@ class NpcSettingsDefinition(
         llmMessageUsage = llmMessageUsage.normalized()
         campers = campers.normalized()
         work = work.normalized()
+        training = training.normalized()
         npcInteractions = npcInteractions.normalized()
     }
 }
@@ -242,9 +246,32 @@ class NpcLlmMessageUsageDefinition(
     @SerializedName("work_fire") var workFire: Boolean = false,
     @SerializedName("assigned_workplace") var assignedWorkplace: Boolean = false,
     @SerializedName("work_missing_blocks") var workMissingBlocks: Boolean = true,
+    @SerializedName("class_training") var classTraining: Boolean = true,
 ) {
     fun normalized(): NpcLlmMessageUsageDefinition = apply {
         if (shopSingle || shopNormal || shopBulk) shop = true
+    }
+}
+
+class NpcTrainingSettingsDefinition(
+    @SerializedName("success_message") var successMessage: String = "Training complete. You learned {class}.",
+    @SerializedName("already_known_message") var alreadyKnownMessage: String = "You already know {class}. Keep training what you have learned.",
+    @SerializedName("workplace_required_message") var workplaceRequiredMessage: String = "Set up my workplace first, then we can train {class}.",
+    @SerializedName("failed_message") var failedMessage: String = "You are not ready for {class} training yet.",
+    @SerializedName("unknown_class_message") var unknownClassMessage: String = "I cannot teach that class right now.",
+    @SerializedName("workplace_required_llm_prompt") var workplaceRequiredLlmPrompt: String = "The player asked {npc} for {class} class training, but {npc} has no assigned workplace yet. Tell the player they need to use Work first and set up the NPC workplace before training can happen.",
+    @SerializedName("failed_llm_prompt") var failedLlmPrompt: String = "The player asked {npc} for {class} class training but cannot train yet. Failed conditions: {conditions}. Player overall level: {overall_level}. Reply as {npc}, in character, and tell the player exactly what they still need.",
+    @SerializedName("success_llm_prompt") var successLlmPrompt: String = "The player completed {class} class training with {npc}. Reply as {npc} with a short in-character congratulations.",
+) {
+    fun normalized(): NpcTrainingSettingsDefinition = apply {
+        successMessage = successMessage.trim().ifBlank { "Training complete. You learned {class}." }
+        alreadyKnownMessage = alreadyKnownMessage.trim().ifBlank { "You already know {class}. Keep training what you have learned." }
+        workplaceRequiredMessage = workplaceRequiredMessage.trim().ifBlank { "Set up my workplace first, then we can train {class}." }
+        failedMessage = failedMessage.trim().ifBlank { "You are not ready for {class} training yet." }
+        unknownClassMessage = unknownClassMessage.trim().ifBlank { "I cannot teach that class right now." }
+        workplaceRequiredLlmPrompt = workplaceRequiredLlmPrompt.trim().ifBlank { "The player asked {npc} for {class} class training, but {npc} has no assigned workplace yet. Tell the player they need to use Work first and set up the NPC workplace before training can happen." }
+        failedLlmPrompt = failedLlmPrompt.trim().ifBlank { "The player asked {npc} for {class} class training but cannot train yet. Failed conditions: {conditions}. Player overall level: {overall_level}. Reply as {npc}, in character, and tell the player exactly what they still need." }
+        successLlmPrompt = successLlmPrompt.trim().ifBlank { "The player completed {class} class training with {npc}. Reply as {npc} with a short in-character congratulations." }
     }
 }
 
