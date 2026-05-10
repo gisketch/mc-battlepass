@@ -47,7 +47,13 @@ object ParagliderAttackInputClient {
 
     private fun shouldBlockUse(stack: ItemStack): Boolean {
         val playerId = BattlepassClientState.selfId() ?: Minecraft.getInstance().player?.uuid ?: return false
-        return RoleClassEquipmentRules.shouldBlockWeaponUseForClasses(RolesClientState.activeClassIdsFor(playerId), stack)
+        val activeClassIds = RolesClientState.activeClassIdsFor(playerId)
+        val syncedClasses = RolesClientState.classDefinitions()
+        return if (syncedClasses.isNotEmpty()) {
+            RoleClassEquipmentRules.shouldBlockWeaponUseForClassDefinitions(activeClassIds, syncedClasses, stack)
+        } else {
+            RoleClassEquipmentRules.shouldBlockWeaponUseForClasses(activeClassIds, stack)
+        }
     }
 
     private fun isWeaponLike(stack: ItemStack): Boolean {

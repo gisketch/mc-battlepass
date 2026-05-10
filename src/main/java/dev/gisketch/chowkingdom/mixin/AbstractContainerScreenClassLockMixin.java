@@ -24,6 +24,6 @@ public abstract class AbstractContainerScreenClassLockMixin<T extends AbstractCo
 
     @Inject(method = "renderSlot", at = @At("TAIL"))
     private void chowkingdom$renderClassLock(GuiGraphics guiGraphics, Slot slot, CallbackInfo callback) {
-        RoleEquipmentOverlayClient.renderContainerSlotOverlay(guiGraphics, slot, leftPos + slot.x, topPos + slot.y);
+        RoleEquipmentOverlayClient.renderContainerSlotOverlay(guiGraphics, slot, slot.x, slot.y);
     }
 }

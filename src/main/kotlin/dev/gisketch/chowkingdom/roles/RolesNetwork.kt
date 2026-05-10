@@ -33,7 +33,7 @@ object RolesNetwork {
     }
 
     private fun registerPayloads(event: RegisterPayloadHandlersEvent) {
-        val registrar = event.registrar("2")
+        val registrar = event.registrar("3")
         registrar.playToClient(RolesSyncPayload.TYPE, RolesSyncPayload.STREAM_CODEC, ::handleSyncClient)
         registrar.playToServer(RolesChoosePayload.TYPE, RolesChoosePayload.STREAM_CODEC, ::handleChoose)
     }
@@ -334,7 +334,7 @@ private const val MAX_ROLES = 128
 private const val MAX_PLAYERS = 256
 private const val MAX_ACTIVE_ROLES = 32
 private const val MAX_PERKS = 32
-private const val MAX_PERK_VALUES = 32
+private const val MAX_PERK_VALUES = 256
 private const val MAX_JOB_RANKS = 16
 private const val MAX_ID_LENGTH = 64
 private const val MAX_DISPLAY_LENGTH = 96

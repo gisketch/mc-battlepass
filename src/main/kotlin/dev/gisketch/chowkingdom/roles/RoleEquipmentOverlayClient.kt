@@ -22,7 +22,7 @@ object RoleEquipmentOverlayClient {
         val activeClassIds = RolesClientState.activeClassIdsFor(playerId)
         if (activeClassIds.isEmpty()) return
         if (!slot.isActive || !slot.hasItem()) return
-        if (!RoleClassEquipmentRules.shouldGreyOutForClasses(activeClassIds, slot.item)) return
+        if (!shouldGreyOut(activeClassIds, slot.item)) return
         renderLockedOverlay(guiGraphics, x, y)
     }
 
@@ -37,9 +37,18 @@ object RoleEquipmentOverlayClient {
         val y = event.guiGraphics.guiHeight() - HOTBAR_ITEM_BOTTOM_OFFSET
         for (slotIndex in 0 until HOTBAR_SLOT_COUNT) {
             val stack = player.inventory.getItem(slotIndex)
-            if (stack.isEmpty || !RoleClassEquipmentRules.shouldGreyOutForClasses(activeClassIds, stack)) continue
+            if (stack.isEmpty || !shouldGreyOut(activeClassIds, stack)) continue
             val x = left + HOTBAR_ITEM_X_OFFSET + slotIndex * HOTBAR_SLOT_SPACING
             renderLockedOverlay(event.guiGraphics, x, y)
+        }
+    }
+
+    private fun shouldGreyOut(activeClassIds: Set<String>, stack: net.minecraft.world.item.ItemStack): Boolean {
+        val syncedClasses = RolesClientState.classDefinitions()
+        return if (syncedClasses.isNotEmpty()) {
+            RoleClassEquipmentRules.shouldGreyOutForClassDefinitions(activeClassIds, syncedClasses, stack)
+        } else {
+            RoleClassEquipmentRules.shouldGreyOutForClasses(activeClassIds, stack)
         }
     }
 

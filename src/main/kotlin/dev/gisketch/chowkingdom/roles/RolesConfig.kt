@@ -42,9 +42,9 @@ object RolesConfig {
 
     fun sortedClassesForOnboarding(): List<RoleDefinition> = classesById.values.sortedWith(compareBy<RoleDefinition> { classSortGroup(it.id) }.thenBy { it.displayName.ifBlank { it.id } })
 
-    fun job(id: String): RoleDefinition? = jobsById[id]
+    fun job(id: String): RoleDefinition? = roleByIdOrName(jobsById, id)
 
-    fun roleClass(id: String): RoleDefinition? = classesById[id]
+    fun roleClass(id: String): RoleDefinition? = roleByIdOrName(classesById, id)
 
     fun classClassification(id: String): String = classClassification(roleClass(id))
 
@@ -78,6 +78,12 @@ object RolesConfig {
     fun jobScaling(): JobScalingDefinition = jobScalingDefinition
 
     fun equipmentWhitelist(): EquipmentWhitelistDefinition = equipmentWhitelistDefinition
+
+    private fun roleByIdOrName(rolesById: Map<String, RoleDefinition>, rawId: String): RoleDefinition? {
+        val id = rawId.trim()
+        return rolesById[id]
+            ?: rolesById.entries.firstOrNull { (key, role) -> key.equals(id, ignoreCase = true) || role.displayName.equals(id, ignoreCase = true) }?.value
+    }
 
     private fun loadDefinitions(directory: Path): Map<String, RoleDefinition> = Files.list(directory).use { stream ->
         stream.filter { path -> path.extension.equals("toml", ignoreCase = true) }

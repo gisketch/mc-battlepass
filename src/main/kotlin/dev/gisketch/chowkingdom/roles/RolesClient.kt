@@ -227,6 +227,8 @@ object RolesClientState {
 
     fun activeClassIdsFor(playerId: UUID): Set<String> = playerRoleIds[playerId]?.classIds?.toSet().orEmpty()
 
+    fun classDefinitions(): Collection<RoleUiDefinitionPayload> = classesById.values
+
     fun profileFor(playerId: UUID): RoleProfile = playerRoleIds[playerId]?.let { ids ->
         RoleProfile(
             jobs = ids.jobIds.mapNotNull(jobsById::get),
