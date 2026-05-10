@@ -35,6 +35,7 @@ import java.util.Optional
 import java.util.Locale
 import java.util.UUID
 import kotlin.math.max
+import kotlin.math.round
 
 object RolesClient {
     fun register() {
@@ -355,7 +356,8 @@ private const val INVENTORY_WIDTH = 176
 private const val INVENTORY_HEIGHT = 166
 
 private class RolesOnboardingScreen(private var payload: RolesSyncPayload) : Screen(Component.literal("Roles Onboarding")) {
-    private enum class Step { WELCOME, JOB, CLASS }
+    private enum class Step { WELCOME, JOB, CLASS, BODY }
+    private enum class BodySlider { HEIGHT, WEIGHT }
 
     private data class Rect(val x: Int, val y: Int, val width: Int, val height: Int) {
         val right: Int get() = x + width
@@ -378,6 +380,9 @@ private class RolesOnboardingScreen(private var payload: RolesSyncPayload) : Scr
     private var step = Step.WELCOME
     private var selectedJobId: String? = payload.activeJobIds.firstOrNull()
     private var selectedClassId: String? = payload.activeClassIds.firstOrNull()
+    private var selectedHeight = payload.height
+    private var selectedWeight = payload.weight
+    private var draggingSlider: BodySlider? = null
     private var hoveredRoleId: String? = null
     private var jobScroll = 0
     private var classScroll = 0
@@ -391,6 +396,10 @@ private class RolesOnboardingScreen(private var payload: RolesSyncPayload) : Scr
 
     fun updatePayload(next: RolesSyncPayload) {
         payload = next
+        if (step != Step.BODY || draggingSlider == null) {
+            selectedHeight = next.height
+            selectedWeight = next.weight
+        }
         if (!next.openOnboarding && Minecraft.getInstance().screen === this) {
             Minecraft.getInstance().setScreen(null)
         }
@@ -407,7 +416,11 @@ private class RolesOnboardingScreen(private var payload: RolesSyncPayload) : Scr
 
     override fun render(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) {
         renderAlpha = 1.0f
-        if (step == Step.WELCOME) renderWelcome(guiGraphics, mouseX, mouseY) else renderRoleStep(guiGraphics, mouseX, mouseY)
+        when (step) {
+            Step.WELCOME -> renderWelcome(guiGraphics, mouseX, mouseY)
+            Step.BODY -> renderBodyStep(guiGraphics, mouseX, mouseY)
+            else -> renderRoleStep(guiGraphics, mouseX, mouseY)
+        }
     }
 
     override fun renderBackground(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) {
@@ -427,6 +440,25 @@ private class RolesOnboardingScreen(private var payload: RolesSyncPayload) : Scr
             return true
         }
 
+        if (step == Step.BODY) {
+            val controls = bodyControlsRect()
+            BodySlider.entries.firstOrNull { slider -> bodySliderRect(controls, slider).contains(x, y) }?.let { slider ->
+                draggingSlider = slider
+                updateBodySlider(slider, x)
+                playClick()
+                return true
+            }
+            if (continueRect().contains(x, y)) {
+                val jobId = selectedJobId ?: return true
+                val classId = selectedClassId ?: return true
+                RolesNetwork.choose(jobId, classId, selectedHeight, selectedWeight)
+                minecraft?.setScreen(null)
+                playClick()
+                return true
+            }
+            return true
+        }
+
         renderedSlots.firstOrNull { slot -> slot.rect.contains(x, y) }?.let { slot ->
             setSelectedRole(slot.role?.id)
             playClick()
@@ -440,10 +472,8 @@ private class RolesOnboardingScreen(private var payload: RolesSyncPayload) : Scr
             if (step == Step.JOB) {
                 goTo(Step.CLASS)
             } else {
-                val jobId = selectedJobId ?: return true
                 val classId = selectedClassId ?: return true
-                RolesNetwork.choose(jobId, classId)
-                minecraft?.setScreen(null)
+                goTo(Step.BODY)
             }
             return true
         }
@@ -451,8 +481,19 @@ private class RolesOnboardingScreen(private var payload: RolesSyncPayload) : Scr
         return true
     }
 
+    override fun mouseDragged(mouseX: Double, mouseY: Double, button: Int, dragX: Double, dragY: Double): Boolean {
+        val slider = draggingSlider ?: return super.mouseDragged(mouseX, mouseY, button, dragX, dragY)
+        updateBodySlider(slider, mouseX.toInt())
+        return true
+    }
+
+    override fun mouseReleased(mouseX: Double, mouseY: Double, button: Int): Boolean {
+        draggingSlider = null
+        return super.mouseReleased(mouseX, mouseY, button)
+    }
+
     override fun mouseScrolled(mouseX: Double, mouseY: Double, scrollX: Double, scrollY: Double): Boolean {
-        if (step == Step.WELCOME) return true
+        if (step == Step.WELCOME || step == Step.BODY) return true
         val grid = selectionLayout().grid
         if (!grid.contains(mouseX, mouseY)) return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY)
         val roles = currentRoles()
@@ -472,6 +513,28 @@ private class RolesOnboardingScreen(private var payload: RolesSyncPayload) : Scr
         }
         withEntrance(guiGraphics, EntranceStyle(90, offsetY = 10, scaleFrom = 0.98f), width / 2, welcomeContinueRect().y + welcomeContinueRect().height / 2) {
             renderButton(guiGraphics, welcomeContinueRect(), "CONTINUE", GREEN_BUTTON_TEXTURE, GREEN_BUTTON_HOVER_TEXTURE, mouseX, mouseY, active = true)
+        }
+    }
+
+    private fun renderBodyStep(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
+        renderParallaxBackground(guiGraphics, mouseX, mouseY)
+        val layout = selectionLayout()
+        withEntrance(guiGraphics, EntranceStyle(0, offsetY = -10, scaleFrom = 0.98f), width / 2, 20) {
+            drawCenteredCkdm(guiGraphics, "SHAPE YOUR BODY", 0, TITLE_Y, width, WHITE, CKDM_LARGE)
+        }
+        val summary = bodySummaryRect()
+        val controls = bodyControlsRect()
+        withEntrance(guiGraphics, EntranceStyle(50, offsetX = -18, scaleFrom = 0.98f), summary.x + summary.width / 2, summary.y + summary.height / 2) {
+            renderBodySummary(guiGraphics, summary)
+        }
+        withEntrance(guiGraphics, EntranceStyle(90, offsetY = 14, scaleFrom = 0.98f), layout.center.x + layout.center.width / 2, layout.center.y + layout.center.height / 2) {
+            renderPaperDoll(guiGraphics, layout.center, mouseX, mouseY)
+        }
+        withEntrance(guiGraphics, EntranceStyle(110, offsetX = 18, scaleFrom = 0.98f), controls.x + controls.width / 2, controls.y + controls.height / 2) {
+            renderBodyControls(guiGraphics, controls, mouseX, mouseY)
+        }
+        withEntrance(guiGraphics, EntranceStyle(170, offsetY = 10, scaleFrom = 0.98f), width / 2, continueRect().y + continueRect().height / 2) {
+            renderButton(guiGraphics, continueRect(), "START", GREEN_BUTTON_TEXTURE, GREEN_BUTTON_HOVER_TEXTURE, mouseX, mouseY, active = true)
         }
     }
 
@@ -615,7 +678,16 @@ private class RolesOnboardingScreen(private var payload: RolesSyncPayload) : Scr
     private fun renderPaperDoll(guiGraphics: GuiGraphics, rect: Rect, mouseX: Int, mouseY: Int) {
         val player = Minecraft.getInstance().player ?: return
         val dollHeight = (rect.height - 16).coerceAtLeast(120)
-        val scale = (dollHeight / 2.25f).toInt().coerceIn(42, 116)
+        val bodyHeight = if (step == Step.BODY) selectedHeight.toFloat() else 1.0f
+        val bodyWeight = if (step == Step.BODY) selectedWeight.toFloat() else 1.0f
+        val scale = (dollHeight / 2.25f / MAX_BODY_SCALE).toInt().coerceIn(42, 116)
+        val pose = guiGraphics.pose()
+        pose.pushPose()
+        val centerX = (rect.x + rect.right) / 2.0f
+        val floorY = rect.bottom - 10.0f
+        pose.translate(centerX, floorY, 0.0f)
+        pose.scale(bodyWeight, bodyHeight, 1.0f)
+        pose.translate(-centerX, -floorY, 0.0f)
         InventoryScreen.renderEntityInInventoryFollowsMouse(
             guiGraphics,
             rect.x + 4,
@@ -628,6 +700,40 @@ private class RolesOnboardingScreen(private var payload: RolesSyncPayload) : Scr
             (rect.y + rect.bottom) / 2.0f,
             player,
         )
+        pose.popPose()
+    }
+
+    private fun renderBodySummary(guiGraphics: GuiGraphics, rect: Rect) {
+        renderNineSlice(guiGraphics, GREY_CONTAINER_TEXTURE, rect, CONTAINER_TEXTURE_WIDTH, CONTAINER_TEXTURE_HEIGHT, CONTAINER_SOURCE_CORNER, CONTAINER_DEST_CORNER, 0.96f)
+        drawCenteredCkdm(guiGraphics, "YOUR PATH", rect.x + PAD, rect.y + 22, rect.width - PAD * 2, WHITE, CKDM_BOLD)
+        var cursorY = rect.y + 58
+        drawCkdmPair(guiGraphics, "Job", selectedJob()?.displayName ?: "None", rect.x + PAD + 2, cursorY, rect.width - PAD * 2 - 4)
+        cursorY += 18
+        drawCkdmPair(guiGraphics, "Class", selectedClass()?.displayName ?: "None", rect.x + PAD + 2, cursorY, rect.width - PAD * 2 - 4)
+        cursorY += 26
+        drawCkdmPair(guiGraphics, "Height", scaleLabel(selectedHeight), rect.x + PAD + 2, cursorY, rect.width - PAD * 2 - 4)
+        cursorY += 18
+        drawCkdmPair(guiGraphics, "Weight", scaleLabel(selectedWeight), rect.x + PAD + 2, cursorY, rect.width - PAD * 2 - 4)
+    }
+
+    private fun renderBodyControls(guiGraphics: GuiGraphics, rect: Rect, mouseX: Int, mouseY: Int) {
+        renderNineSlice(guiGraphics, YELLOW_CONTAINER_TEXTURE, rect, CONTAINER_TEXTURE_WIDTH, CONTAINER_TEXTURE_HEIGHT, CONTAINER_SOURCE_CORNER, CONTAINER_DEST_CORNER, 0.96f)
+        drawCenteredCkdm(guiGraphics, "HEIGHT AND WEIGHT", rect.x + PAD, rect.y + 20, rect.width - PAD * 2, WHITE, CKDM_BOLD)
+        renderBodySlider(guiGraphics, rect, BodySlider.HEIGHT, "Height", selectedHeight, mouseX, mouseY)
+        renderBodySlider(guiGraphics, rect, BodySlider.WEIGHT, "Weight", selectedWeight, mouseX, mouseY)
+    }
+
+    private fun renderBodySlider(guiGraphics: GuiGraphics, controls: Rect, slider: BodySlider, label: String, value: Double, mouseX: Int, mouseY: Int) {
+        val track = bodySliderRect(controls, slider)
+        val hovered = track.contains(mouseX, mouseY) || draggingSlider == slider
+        drawCkdm(guiGraphics, label, track.x, track.y - 16, WHITE, CKDM_SMALL)
+        drawCkdm(guiGraphics, scaleLabel(value), track.right - font.width(ckdmText(scaleLabel(value), CKDM_SMALL)), track.y - 16, GOLD, CKDM_SMALL)
+        renderNineSlice(guiGraphics, GREY_CONTAINER_TEXTURE, track, CONTAINER_TEXTURE_WIDTH, CONTAINER_TEXTURE_HEIGHT, CONTAINER_SOURCE_CORNER, TILE_DEST_CORNER, if (hovered) 1.0f else 0.82f)
+        val fillWidth = ((track.width - 8) * scaleProgress(value)).toInt().coerceIn(0, track.width - 8)
+        guiGraphics.fill(track.x + 4, track.y + 5, track.x + 4 + fillWidth, track.bottom - 5, colorWithRenderAlpha(GOLD))
+        val handleX = track.x + 4 + fillWidth - BODY_SLIDER_HANDLE_WIDTH / 2
+        val handle = Rect(handleX.coerceIn(track.x + 2, track.right - BODY_SLIDER_HANDLE_WIDTH - 2), track.y + 2, BODY_SLIDER_HANDLE_WIDTH, track.height - 4)
+        renderNineSlice(guiGraphics, GOLD_CONTAINER_TEXTURE, handle, CONTAINER_TEXTURE_WIDTH, CONTAINER_TEXTURE_HEIGHT, CONTAINER_SOURCE_CORNER, TILE_DEST_CORNER, if (hovered) 1.0f else 0.92f)
     }
 
     private fun renderRoleIcon(guiGraphics: GuiGraphics, rawIcon: String, rect: Rect) {
@@ -775,6 +881,15 @@ private class RolesOnboardingScreen(private var payload: RolesSyncPayload) : Scr
 
     private fun continueRect(): Rect = Rect((width - 168) / 2, height - 38, 168, 26)
 
+    private fun bodySummaryRect(): Rect = selectionLayout().left
+
+    private fun bodyControlsRect(): Rect = selectionLayout().right
+
+    private fun bodySliderRect(controls: Rect, slider: BodySlider): Rect {
+        val y = controls.y + if (slider == BodySlider.HEIGHT) 78 else 132
+        return Rect(controls.x + PAD, y, controls.width - PAD * 2, 22)
+    }
+
     private fun stepTitle(): String = if (step == Step.JOB) "CHOOSE YOUR JOB" else "CHOOSE YOUR CLASS"
 
     private fun rightHeader(): String = if (step == Step.JOB) "CHOOSE YOUR JOB" else "CHOOSE YOUR CLASS"
@@ -804,6 +919,21 @@ private class RolesOnboardingScreen(private var payload: RolesSyncPayload) : Scr
         val selectedId = selectedRoleId() ?: return null
         return currentRoles().firstOrNull { role -> role.id == selectedId }
     }
+
+    private fun selectedJob(): RoleUiDefinitionPayload? = selectedJobId?.let { id -> payload.jobs.firstOrNull { role -> role.id == id } }
+
+    private fun selectedClass(): RoleUiDefinitionPayload? = selectedClassId?.let { id -> payload.classes.firstOrNull { role -> role.id == id } }
+
+    private fun updateBodySlider(slider: BodySlider, mouseX: Int) {
+        val track = bodySliderRect(bodyControlsRect(), slider)
+        val progress = ((mouseX - (track.x + 4)).toDouble() / (track.width - 8).coerceAtLeast(1)).coerceIn(0.0, 1.0)
+        val value = round((MIN_BODY_SCALE + (MAX_BODY_SCALE - MIN_BODY_SCALE) * progress) * 100.0) / 100.0
+        if (slider == BodySlider.HEIGHT) selectedHeight = value else selectedWeight = value
+    }
+
+    private fun scaleProgress(value: Double): Double = ((value - MIN_BODY_SCALE) / (MAX_BODY_SCALE - MIN_BODY_SCALE)).coerceIn(0.0, 1.0)
+
+    private fun scaleLabel(value: Double): String = String.format(Locale.ROOT, "%.0f%%", value * 100.0)
 
     private fun goTo(next: Step) {
         skipPanelEntrance = step == Step.JOB && next == Step.CLASS
@@ -894,6 +1024,9 @@ private class RolesOnboardingScreen(private var payload: RolesSyncPayload) : Scr
         private const val PERK_SECTION_HEADER_HEIGHT = 12
         private const val PERK_RANK_LINE_HEIGHT = 10
         private const val MIN_TEXT_RENDER_ALPHA = 0.004f
+        private const val MIN_BODY_SCALE = 0.6
+        private const val MAX_BODY_SCALE = 1.4
+        private const val BODY_SLIDER_HANDLE_WIDTH = 10
         private const val CONTAINER_TEXTURE_WIDTH = 1646
         private const val CONTAINER_TEXTURE_HEIGHT = 256
         private const val CONTAINER_SOURCE_CORNER = 75

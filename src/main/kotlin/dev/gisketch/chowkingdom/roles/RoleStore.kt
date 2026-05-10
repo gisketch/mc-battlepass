@@ -102,10 +102,12 @@ object RoleStore {
         save()
     }
 
-    fun setPrimaryRoles(player: ServerPlayer, jobId: String, classId: String) {
+    fun setPrimaryRoles(player: ServerPlayer, jobId: String, classId: String, height: Double = DEFAULT_BODY_SCALE, weight: Double = DEFAULT_BODY_SCALE) {
         val record = ensureRecord(player)
         record.jobId = jobId
         record.classId = classId
+        record.height = normalizeBodyScale(height)
+        record.weight = normalizeBodyScale(weight)
         record.activeJobIds.clear()
         record.activeJobIds.add(jobId)
         record.activeClassIds.clear()
@@ -113,6 +115,11 @@ object RoleStore {
         record.unlockedJobs.add(jobId)
         record.unlockedClasses.add(classId)
         save()
+    }
+
+    fun bodyScale(player: ServerPlayer): BodyScaleChoice {
+        val record = ensureRecord(player)
+        return BodyScaleChoice(record.height, record.weight)
     }
 
     fun resetOnboarding(player: ServerPlayer) {
@@ -124,6 +131,8 @@ object RoleStore {
         record.unlockedJobs.clear()
         record.unlockedClasses.clear()
         record.grantedStartingItems.clear()
+        record.height = DEFAULT_BODY_SCALE
+        record.weight = DEFAULT_BODY_SCALE
         save()
     }
 
@@ -185,12 +194,22 @@ object RoleStore {
 class PlayerRoleRecord(
     var jobId: String = "",
     var classId: String = "",
+    var height: Double = DEFAULT_BODY_SCALE,
+    var weight: Double = DEFAULT_BODY_SCALE,
     var activeJobIds: MutableSet<String> = linkedSetOf(),
     var activeClassIds: MutableSet<String> = linkedSetOf(),
     var unlockedJobs: MutableSet<String> = linkedSetOf(),
     var unlockedClasses: MutableSet<String> = linkedSetOf(),
     var grantedStartingItems: MutableSet<String> = linkedSetOf(),
 )
+
+data class BodyScaleChoice(val height: Double = DEFAULT_BODY_SCALE, val weight: Double = DEFAULT_BODY_SCALE)
+
+fun normalizeBodyScale(value: Double): Double = value.coerceIn(MIN_BODY_SCALE, MAX_BODY_SCALE)
+
+const val MIN_BODY_SCALE = 0.6
+const val MAX_BODY_SCALE = 1.4
+const val DEFAULT_BODY_SCALE = 1.0
 
 private class StoredRoleData(
     var players: MutableMap<String, PlayerRoleRecord> = linkedMapOf(),

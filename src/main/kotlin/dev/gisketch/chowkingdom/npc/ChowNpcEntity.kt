@@ -1,5 +1,6 @@
 package dev.gisketch.chowkingdom.npc
 
+import dev.gisketch.chowkingdom.compat.PehkuiScaleBridge
 import net.minecraft.core.BlockPos
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.network.chat.Component
@@ -141,6 +142,7 @@ class ChowNpcEntity(entityType: EntityType<out PathfinderMob>, level: Level) : P
         customAnimation = definition.customAnimation
         customName = Component.literal(definition.displayName())
         isCustomNameVisible = true
+        PehkuiScaleBridge.apply(this, definition.bodyScale())
         setPersistenceRequired()
     }
 

@@ -4,6 +4,7 @@ import com.mojang.brigadier.arguments.StringArgumentType
 import com.mojang.brigadier.context.CommandContext
 import com.mojang.brigadier.suggestion.SuggestionProvider
 import dev.gisketch.chowkingdom.ChowKingdomMod
+import dev.gisketch.chowkingdom.compat.PehkuiScaleBridge
 import net.minecraft.commands.CommandSourceStack
 import net.minecraft.commands.Commands
 import net.minecraft.commands.SharedSuggestionProvider
@@ -59,6 +60,7 @@ object RolesFeature {
         NeoForge.EVENT_BUS.addListener(::onRegisterCommands)
         NeoForge.EVENT_BUS.addListener(::onServerStarted)
         NeoForge.EVENT_BUS.addListener(::onPlayerLoggedIn)
+        NeoForge.EVENT_BUS.addListener(::onPlayerRespawned)
         NeoForge.EVENT_BUS.addListener(::onFarmlandTrample)
         NeoForge.EVENT_BUS.addListener(::onRightClickBlock)
         NeoForge.EVENT_BUS.addListener(::onBlockPlace)
@@ -91,6 +93,7 @@ object RolesFeature {
         RoleStore.load()
         val onboardingPlayers = event.server.playerList.players.onEach { player ->
             RoleStore.ensureRecord(player)
+            PehkuiScaleBridge.apply(player, RoleStore.bodyScale(player))
             RoleClassEquipmentRules.grantStartingItems(player)
         }.filter(RoleStore::needsOnboarding).map { player -> player.uuid }.toSet()
         RolesNetwork.syncAllPlayers(openOnboardingFor = onboardingPlayers)
@@ -100,15 +103,21 @@ object RolesFeature {
         syncAndMaybeOpenOnboarding(event.entity as? ServerPlayer ?: return)
     }
 
+    private fun onPlayerRespawned(event: PlayerEvent.PlayerRespawnEvent) {
+        val player = event.entity as? ServerPlayer ?: return
+        PehkuiScaleBridge.apply(player, RoleStore.bodyScale(player))
+    }
+
     private fun syncAndMaybeOpenOnboarding(player: ServerPlayer) {
         RoleStore.ensureRecord(player)
+        PehkuiScaleBridge.apply(player, RoleStore.bodyScale(player))
         RoleClassEquipmentRules.grantStartingItems(player)
         applyJobRankEffect(player)
         val onboardingPlayers = if (RoleStore.needsOnboarding(player)) setOf(player.uuid) else emptySet()
         RolesNetwork.syncAllPlayers(openOnboardingFor = onboardingPlayers)
     }
 
-    fun applyOnboardingChoice(player: ServerPlayer, jobId: String, classId: String): Boolean {
+    fun applyOnboardingChoice(player: ServerPlayer, jobId: String, classId: String, height: Double = DEFAULT_BODY_SCALE, weight: Double = DEFAULT_BODY_SCALE): Boolean {
         if (!RoleStore.needsOnboarding(player)) {
             RolesNetwork.syncTo(player, openOnboarding = false)
             return false
@@ -119,7 +128,8 @@ object RolesFeature {
             RolesNetwork.syncTo(player, openOnboarding = true)
             return false
         }
-        RoleStore.setPrimaryRoles(player, job.id, roleClass.id)
+        RoleStore.setPrimaryRoles(player, job.id, roleClass.id, height, weight)
+        PehkuiScaleBridge.apply(player, RoleStore.bodyScale(player))
         RoleClassEquipmentRules.grantStartingItems(player, roleClass.id)
         applyJobRankEffect(player)
         RolesNetwork.syncAllPlayers()

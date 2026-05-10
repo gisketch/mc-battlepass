@@ -7,6 +7,10 @@ import com.mojang.math.Axis
 import dev.gisketch.chowkingdom.ChowKingdomMod
 import dev.gisketch.chowkingdom.discord.DiscordQuickSkinSupport
 import dev.gisketch.chowkingdom.mixin.GuiGraphicsAccessor
+import dev.gisketch.chowkingdom.roles.RoleNametagIcons
+import dev.gisketch.chowkingdom.roles.RolesClientState
+import dev.gisketch.chowkingdom.roles.roleIconStack
+import dev.gisketch.chowkingdom.roles.roleIconTexture
 import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
 import net.minecraft.client.CameraType
@@ -292,6 +296,7 @@ object NpcClient {
             if (entry.targetKind != "thinking") {
                 val targetX = ((CHAT_LEFT_MARGIN + entry.targetHeadX) * scale).roundToInt()
                 renderTargetChatHead(guiGraphics, entry.targetKind, entry.targetId, entry.targetName, targetX, y, headSize, alpha)
+                renderTargetRoleChatIcons(guiGraphics, entry, y, alpha, scale)
             }
         }
         RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f)
@@ -319,6 +324,46 @@ object NpcClient {
             skin != null -> PlayerFaceRenderer.draw(guiGraphics, skin, x, y, size)
             else -> renderFallbackChatHead(guiGraphics, name, x, y, size, alpha)
         }
+    }
+
+    private fun renderTargetRoleChatIcons(guiGraphics: GuiGraphics, entry: NpcWorldChatEntry, y: Int, alpha: Float, chatScale: Double) {
+        val roles = entry.targetId?.let(RolesClientState::iconsFor) ?: return
+        if (roles.jobIcons.isEmpty() && roles.classIcons.isEmpty()) return
+        val font = Minecraft.getInstance().font
+        val targetTextStart = CHAT_LEFT_MARGIN + entry.targetHeadX + font.width(CHAT_HEAD_SPACES)
+        val iconSize = (CHAT_ROLE_ICON_SIZE * chatScale).roundToInt().coerceAtLeast(1)
+        val iconStep = ((CHAT_ROLE_ICON_SIZE + CHAT_ROLE_ICON_GAP) * chatScale).roundToInt().coerceAtLeast(iconSize)
+        var jobX = (targetTextStart * chatScale).roundToInt()
+        roles.jobIcons.forEach { icon ->
+            renderRoleChatIcon(guiGraphics, icon, jobX, y, iconSize, alpha)
+            jobX += iconStep
+        }
+        var classX = ((targetTextStart + font.width(roleChatSpaces(roles.jobIcons.size)) + font.width(entry.targetName)) * chatScale).roundToInt()
+        roles.classIcons.forEach { icon ->
+            renderRoleChatIcon(guiGraphics, icon, classX, y, iconSize, alpha)
+            classX += iconStep
+        }
+    }
+
+    private fun renderRoleChatIcon(guiGraphics: GuiGraphics, rawIcon: String, x: Int, y: Int, size: Int, alpha: Float) {
+        val stack = roleIconStack(rawIcon)
+        if (!stack.isEmpty) {
+            RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, alpha)
+            guiGraphics.pose().pushPose()
+            val scale = size / 16.0f
+            guiGraphics.pose().translate(x.toFloat(), y.toFloat(), 0.0f)
+            guiGraphics.pose().scale(scale, scale, 1.0f)
+            guiGraphics.renderItem(stack, 0, 0)
+            guiGraphics.pose().popPose()
+            RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f)
+            return
+        }
+        val texture = roleIconTexture(rawIcon) ?: return
+        RenderSystem.enableBlend()
+        RenderSystem.defaultBlendFunc()
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, alpha)
+        guiGraphics.blit(texture, x, y, size, size, 0.0f, 0.0f, CHAT_ROLE_ICON_TEXTURE_SIZE, CHAT_ROLE_ICON_TEXTURE_SIZE, CHAT_ROLE_ICON_TEXTURE_SIZE, CHAT_ROLE_ICON_TEXTURE_SIZE)
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f)
     }
 
     private fun renderDiscordChatHead(guiGraphics: GuiGraphics, x: Int, y: Int, size: Int, alpha: Float) {
@@ -357,12 +402,17 @@ object NpcClient {
             if (payload.targetKind == "thinking") {
                 component.append(Component.literal(" ${payload.message}").withStyle(ChatFormatting.GRAY))
             } else {
+                val roles = payload.targetId?.let(RolesClientState::iconsFor) ?: RoleNametagIcons()
                 component.append(Component.literal(" > ").withStyle(ChatFormatting.GRAY))
                     .append(Component.literal(CHAT_HEAD_SPACES))
+                    .append(Component.literal(roleChatSpaces(roles.jobIcons.size)))
                     .append(Component.literal(payload.targetName).withStyle(ChatFormatting.WHITE, ChatFormatting.BOLD))
+                    .append(Component.literal(roleChatSpaces(roles.classIcons.size)))
                     .append(Component.literal(": ${payload.message}").withStyle(ChatFormatting.GRAY))
             }
         }
+
+    private fun roleChatSpaces(count: Int): String = if (count <= 0) "" else CHAT_ROLE_ICON_SPACES.repeat(count)
 
     private fun worldChatTargetPrefix(npcName: String): Component = Component.empty()
         .append(Component.literal(CHAT_HEAD_SPACES))
@@ -539,6 +589,10 @@ private data class NpcBalloonIcon(val marker: String, val texture: ResourceLocat
     private const val FRIENDSHIP_DELTA_WORLD_NEGATIVE = 0xFFFF6F6F.toInt()
     private const val CHAT_HEAD_SPACES = "   "
     private const val CHAT_HEAD_SIZE = 8
+    private const val CHAT_ROLE_ICON_SIZE = 8
+    private const val CHAT_ROLE_ICON_GAP = 1
+    private const val CHAT_ROLE_ICON_TEXTURE_SIZE = 16
+    private const val CHAT_ROLE_ICON_SPACES = "   "
     private const val CHAT_LEFT_MARGIN = 4
     private const val CHAT_BOTTOM_MARGIN = 40
     private const val CHAT_FADE_TICKS = 200

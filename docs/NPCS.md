@@ -56,6 +56,8 @@ Each NPC is one TOML file:
 - `title`: Display subtitle.
 - `skin`: Future skin resource id. Current renderer uses `textures/entity/npc/finn.png` for `finn` and a vanilla fallback for other NPC ids.
 - `body_type`: Player-model shape. Supported values: `normal`, `slim`.
+- `height`: Pehkui height scale. Default `1.0`, clamped from `0.6` to `1.4`.
+- `weight`: Pehkui width scale. Default `1.0`, clamped from `0.6` to `1.4`.
 - `custom_animation`: Uses the GeckoLib playerlike NPC renderer instead of the EMF-compatible renderer path. Default `false`.
 - `job`: Job behavior id. Supported ids: `adventurer`, `warrior`, `fashionista`. Unknown ids normalize to `adventurer`.
 - `job_definition`: Static job behavior knobs loaded from TOML: `store`, `scan_interval_ticks`, `roam_radius`, and `work_scan_radius`. `store` is a store template id, not a shared stock instance.

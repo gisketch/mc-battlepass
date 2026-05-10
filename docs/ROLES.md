@@ -14,7 +14,9 @@ For step-by-step creation and tuning, see [Jobs And Classes Creation Guide](ROLE
 
 ## First Login Onboarding
 
-Players with no active job and no active class keep an empty role record and get a fullscreen onboarding stepper on login. They pick one job, then one class. The server validates the selected ids, persists them, and grants configured class starter items.
+Players with no active job and no active class keep an empty role record and get a fullscreen onboarding stepper on login. They pick one job, one class, then height and weight. The server validates the selected ids, persists the role and body choices, applies Pehkui scale, and grants configured class starter items.
+
+Pehkui is a required runtime dependency. Height maps to Pehkui height scale, weight maps to Pehkui width scale, and both are clamped from `0.6` to `1.4`.
 
 The source defaults create editable job/class TOML, but they no longer auto-assign those roles to brand-new players.
 

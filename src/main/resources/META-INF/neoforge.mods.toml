@@ -50,6 +50,12 @@ ordering="AFTER"
 side="BOTH"
 
 [[dependencies."${mod_id}"]]
+modId="pehkui"
+type="required"
+ordering="AFTER"
+side="BOTH"
+
+[[dependencies."${mod_id}"]]
 modId="owo"
 type="required"
 versionRange="${owo_version_range}"

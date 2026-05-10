@@ -599,7 +599,7 @@ object RolesConfig {
     private fun defaultRogue(): RoleDefinition = RoleDefinition(
         id = "rogue",
         displayName = "Rogue",
-        icon = "minecraft:grass_block",
+        icon = "textures/gui/classes/rogue.png",
         description = "Move light, hit hard, and favor quick gear built for sharp openings.",
         perks = mutableListOf(
             RolePerkDefinition(
@@ -625,7 +625,7 @@ object RolesConfig {
     private fun defaultWarrior(): RoleDefinition = RoleDefinition(
         id = "warrior",
         displayName = "Warrior",
-        icon = "minecraft:grass_block",
+        icon = "textures/gui/classes/warrior.png",
         description = "Stand in the front line with sturdy weapons, heavier armor, and simple force.",
         perks = mutableListOf(
             RolePerkDefinition(

@@ -8,6 +8,8 @@ class NpcDefinition(
     var title: String = "",
     var skin: String = "",
     @SerializedName("body_type") var bodyType: String = NpcBodyTypes.NORMAL,
+    @SerializedName("height") var height: Double = DEFAULT_NPC_BODY_SCALE,
+    @SerializedName("weight") var weight: Double = DEFAULT_NPC_BODY_SCALE,
     @SerializedName("custom_animation") var customAnimation: Boolean = false,
     var job: String = "adventurer",
     @SerializedName("job_definition") var jobDefinition: NpcJobDefinition = NpcJobDefinition(),
@@ -33,6 +35,8 @@ class NpcDefinition(
         title = title.trim()
         skin = skin.trim()
         bodyType = NpcBodyTypes.normalize(bodyType)
+        height = normalizeNpcBodyScale(height)
+        weight = normalizeNpcBodyScale(weight)
         job = NpcJobs.normalizeId(job)
         jobDefinition = jobDefinition.normalized(job, store)
         schedule = schedule.normalized()
@@ -73,6 +77,16 @@ class NpcDefinition(
         "You woke me up, but I'm listening.",
     )
 }
+
+data class NpcBodyScaleDefinition(val height: Double = DEFAULT_NPC_BODY_SCALE, val weight: Double = DEFAULT_NPC_BODY_SCALE)
+
+fun NpcDefinition.bodyScale(): NpcBodyScaleDefinition = NpcBodyScaleDefinition(height, weight)
+
+private fun normalizeNpcBodyScale(value: Double): Double = value.coerceIn(MIN_NPC_BODY_SCALE, MAX_NPC_BODY_SCALE)
+
+private const val MIN_NPC_BODY_SCALE = 0.6
+private const val MAX_NPC_BODY_SCALE = 1.4
+private const val DEFAULT_NPC_BODY_SCALE = 1.0
 
 class NpcSettingsDefinition(
     var greetings: NpcGreetingsDefinition = NpcGreetingsDefinition(),
