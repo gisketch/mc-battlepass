@@ -463,12 +463,13 @@ private class RolesOnboardingScreen(private var payload: RolesSyncPayload) : Scr
         }
 
         renderedSlots.firstOrNull { slot -> slot.rect.contains(x, y) }?.let { slot ->
+            if (isLockedClassSlot(slot)) return true
             setSelectedRole(slot.role?.id)
             playClick()
             return true
         }
 
-        val canContinue = selectedRoleId() != null
+        val canContinue = canContinueRoleStep()
         if (continueRect().contains(x, y)) {
             if (!canContinue) return true
             playClick()
@@ -570,7 +571,7 @@ private class RolesOnboardingScreen(private var payload: RolesSyncPayload) : Scr
             }
         }
         withEntrance(guiGraphics, EntranceStyle(170, offsetY = 10, scaleFrom = 0.98f), width / 2, continueRect().y + continueRect().height / 2) {
-            renderButton(guiGraphics, continueRect(), "CONTINUE", GREEN_BUTTON_TEXTURE, GREEN_BUTTON_HOVER_TEXTURE, mouseX, mouseY, active = selectedRoleId() != null)
+            renderButton(guiGraphics, continueRect(), "CONTINUE", GREEN_BUTTON_TEXTURE, GREEN_BUTTON_HOVER_TEXTURE, mouseX, mouseY, active = canContinueRoleStep())
         }
     }
 
@@ -674,8 +675,19 @@ private class RolesOnboardingScreen(private var payload: RolesSyncPayload) : Scr
             drawCenteredCkdm(guiGraphics, fitText(noSelectionLabel(), slot.rect.width - 10, CKDM_SMALL), slot.rect.x + 5, slot.rect.y + slot.rect.height / 2 - 4, slot.rect.width - 10, if (selected || hovered) WHITE else WHITE_MUTED, CKDM_SMALL)
             return
         }
+        val locked = isLockedUpgradeClass(role)
         renderRoleIcon(guiGraphics, role.icon, Rect(slot.rect.x + (slot.rect.width - ROLE_ICON_SIZE) / 2, slot.rect.y + 9, ROLE_ICON_SIZE, ROLE_ICON_SIZE))
-        drawCenteredCkdm(guiGraphics, fitText(role.displayName, slot.rect.width - 10, CKDM_SMALL), slot.rect.x + 5, slot.rect.bottom - 18, slot.rect.width - 10, WHITE, CKDM_SMALL)
+        drawCenteredCkdm(guiGraphics, fitText(role.displayName, slot.rect.width - 10, CKDM_SMALL), slot.rect.x + 5, slot.rect.bottom - 18, slot.rect.width - 10, if (locked) DISABLED else WHITE, CKDM_SMALL)
+        if (locked) renderLockedClassOverlay(guiGraphics, slot.rect)
+    }
+
+    private fun renderLockedClassOverlay(guiGraphics: GuiGraphics, rect: Rect) {
+        guiGraphics.fill(rect.x + 3, rect.y + 3, rect.right - 3, rect.bottom - 3, colorWithRenderAlpha(0x99000000.toInt()))
+        RenderSystem.enableBlend()
+        RenderSystem.defaultBlendFunc()
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, renderAlpha)
+        guiGraphics.blit(LOCKED_TEXTURE, rect.x + (rect.width - LOCK_ICON_SIZE) / 2, rect.y + (rect.height - LOCK_ICON_SIZE) / 2, LOCK_ICON_SIZE, LOCK_ICON_SIZE, 0.0f, 0.0f, LOCK_TEXTURE_SIZE, LOCK_TEXTURE_SIZE, LOCK_TEXTURE_SIZE, LOCK_TEXTURE_SIZE)
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f)
     }
 
     private fun renderPaperDoll(guiGraphics: GuiGraphics, rect: Rect, mouseX: Int, mouseY: Int) {
@@ -902,12 +914,17 @@ private class RolesOnboardingScreen(private var payload: RolesSyncPayload) : Scr
     private fun noSelectionDescription(): String =
         if (step == Step.JOB) "No job is selected yet." else "No class is selected yet."
 
-    private fun currentRoles(): List<RoleUiDefinitionPayload> = if (step == Step.JOB) payload.jobs else payload.classes
+    private fun currentRoles(): List<RoleUiDefinitionPayload> = if (step == Step.JOB) payload.jobs else sortedOnboardingClasses()
 
     private fun selectedRoleId(): String? = if (step == Step.JOB) selectedJobId else selectedClassId
 
     private fun setSelectedRole(roleId: String?) {
         if (step == Step.JOB) selectedJobId = roleId else selectedClassId = roleId
+    }
+
+    private fun canContinueRoleStep(): Boolean {
+        val selected = selectedRole() ?: return false
+        return step != Step.CLASS || !isLockedUpgradeClass(selected)
     }
 
     private fun currentScroll(): Int = if (step == Step.JOB) jobScroll else classScroll
@@ -926,6 +943,20 @@ private class RolesOnboardingScreen(private var payload: RolesSyncPayload) : Scr
     private fun selectedJob(): RoleUiDefinitionPayload? = selectedJobId?.let { id -> payload.jobs.firstOrNull { role -> role.id == id } }
 
     private fun selectedClass(): RoleUiDefinitionPayload? = selectedClassId?.let { id -> payload.classes.firstOrNull { role -> role.id == id } }
+
+    private fun sortedOnboardingClasses(): List<RoleUiDefinitionPayload> = payload.classes.sortedWith(
+        compareBy<RoleUiDefinitionPayload> { if (isStarterClass(it)) 0 else 1 }
+            .thenBy { starterClassOrder(it.id) }
+            .thenBy { role -> role.displayName.ifBlank { role.id } },
+    )
+
+    private fun isLockedClassSlot(slot: RoleSlot): Boolean = slot.role?.let(::isLockedUpgradeClass) == true
+
+    private fun isLockedUpgradeClass(role: RoleUiDefinitionPayload): Boolean = step == Step.CLASS && !isStarterClass(role)
+
+    private fun isStarterClass(role: RoleUiDefinitionPayload): Boolean = role.classification.equals("starter", ignoreCase = true)
+
+    private fun starterClassOrder(id: String): Int = STARTER_CLASS_ORDER.indexOf(id).takeIf { it >= 0 } ?: Int.MAX_VALUE
 
     private fun updateBodySlider(slider: BodySlider, mouseX: Int) {
         val track = bodySliderRect(bodyControlsRect(), slider)
@@ -1020,7 +1051,9 @@ private class RolesOnboardingScreen(private var payload: RolesSyncPayload) : Scr
         private const val GRID_GAP = 6
         private const val TILE_HEIGHT = 66
         private const val ROLE_ICON_SIZE = 28
+        private const val LOCK_ICON_SIZE = 18
         private const val ICON_TEXTURE_SIZE = 16
+        private const val LOCK_TEXTURE_SIZE = 16
         private const val VANILLA_ITEM_SIZE = 16
         private const val WRAPPED_LINE_HEIGHT = 12
         private const val PERK_PAIR_LINE_HEIGHT = 11
@@ -1052,7 +1085,9 @@ private class RolesOnboardingScreen(private var payload: RolesSyncPayload) : Scr
         private val GREEN_BUTTON_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_btn_green.png")
         private val GREEN_BUTTON_HOVER_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_btn_green_hover.png")
         private val GRAY_BUTTON_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_btn_gray.png")
+        private val LOCKED_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/locked.png")
         private val BACKGROUND_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/bg_onboarding.png")
+        private val STARTER_CLASS_ORDER = listOf("warrior", "rogue", "archer", "wizard", "priest")
         private val CKDM_BOLD = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "ckdm_bold")
         private val CKDM_SMALL = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "ckdm_bold_small")
         private val CKDM_LARGE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "ckdm_bold_large")

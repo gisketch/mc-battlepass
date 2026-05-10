@@ -40,13 +40,35 @@ object RolesConfig {
 
     fun classes(): Collection<RoleDefinition> = classesById.values
 
+    fun sortedClassesForOnboarding(): List<RoleDefinition> = classesById.values.sortedWith(compareBy<RoleDefinition> { classSortGroup(it.id) }.thenBy { it.displayName.ifBlank { it.id } })
+
     fun job(id: String): RoleDefinition? = jobsById[id]
 
     fun roleClass(id: String): RoleDefinition? = classesById[id]
 
+    fun classClassification(id: String): String = classClassification(roleClass(id))
+
+    fun classClassification(role: RoleDefinition?): String {
+        val explicit = role?.classification?.trim()?.lowercase().orEmpty()
+        if (explicit == CLASS_STARTER || explicit == CLASS_UPGRADE) return explicit
+        return if (role?.id in STARTER_CLASS_IDS) CLASS_STARTER else CLASS_UPGRADE
+    }
+
+    fun isStarterClass(id: String): Boolean = classClassification(id) == CLASS_STARTER
+
+    fun starterClassIds(role: RoleDefinition): List<String> {
+        val explicit = role.starterClassIds.map(String::trim).filter(String::isNotBlank)
+        return explicit.ifEmpty { FALLBACK_UPGRADE_STARTERS[role.id].orEmpty() }
+    }
+
+    fun upgradeClassIds(role: RoleDefinition): List<String> {
+        val explicit = role.upgradeClassIds.map(String::trim).filter(String::isNotBlank)
+        return explicit.ifEmpty { FALLBACK_STARTER_UPGRADES[role.id].orEmpty() }
+    }
+
     fun defaultJobId(): String = job("botanist")?.id ?: jobsById.keys.firstOrNull().orEmpty()
 
-    fun defaultClassId(): String = roleClass("rogue")?.id ?: classesById.keys.firstOrNull().orEmpty()
+    fun defaultClassId(): String = roleClass("rogue")?.id ?: classesById.keys.firstOrNull(::isStarterClass) ?: classesById.keys.firstOrNull().orEmpty()
 
     fun welcomeContent(): String {
         val lines = onboardingDefinition.welcomeContent.map(String::trim).filter(String::isNotBlank)
@@ -77,6 +99,11 @@ object RolesConfig {
             .filterNot { defaultPerk -> definition.perks.any { perk -> perk.type == defaultPerk.type && perk.pokemonType == defaultPerk.pokemonType } }
             .forEach { perk -> definition.perks += perk.copy() }
         return definition
+    }
+
+    private fun classSortGroup(id: String): Int = when {
+        isStarterClass(id) -> 0
+        else -> 1
     }
 
     private fun readDefinition(path: Path): RoleDefinition = try {
@@ -613,6 +640,8 @@ object RolesConfig {
         displayName = "Rogue",
         icon = "textures/gui/classes/rogue.png",
         description = "Move light, hit hard, and favor quick gear built for sharp openings.",
+        classification = CLASS_STARTER,
+        upgradeClassIds = mutableListOf("forcemaster", "bounty_hunter", "bard", "witcher"),
         perks = mutableListOf(
             RolePerkDefinition(
                 type = "starting_items",
@@ -639,6 +668,8 @@ object RolesConfig {
         displayName = "Warrior",
         icon = "textures/gui/classes/warrior.png",
         description = "Stand in the front line with sturdy weapons, heavier armor, and simple force.",
+        classification = CLASS_STARTER,
+        upgradeClassIds = mutableListOf("berserker", "paladin", "witcher"),
         perks = mutableListOf(
             RolePerkDefinition(
                 type = "starting_items",
@@ -669,4 +700,17 @@ object RolesConfig {
     )
 
     private const val DEFAULT_WELCOME_CONTENT = "A new chapter begins in Chowkingdom. Choose how you work, then choose how you fight."
+    const val CLASS_STARTER = "starter"
+    const val CLASS_UPGRADE = "upgrade"
+    private val STARTER_CLASS_IDS = setOf("warrior", "rogue", "archer", "wizard", "priest")
+    private val FALLBACK_STARTER_UPGRADES = mapOf(
+        "warrior" to listOf("berserker", "paladin", "witcher"),
+        "rogue" to listOf("forcemaster", "bounty_hunter", "bard", "witcher"),
+        "archer" to listOf("war_archer", "tundra_archer", "bounty_hunter", "bard"),
+        "wizard" to listOf("elemental_wizard", "priest", "witcher"),
+        "priest" to listOf("paladin", "bard", "elemental_wizard"),
+    )
+    private val FALLBACK_UPGRADE_STARTERS = FALLBACK_STARTER_UPGRADES.entries
+        .flatMap { (starterId, upgradeIds) -> upgradeIds.map { upgradeId -> upgradeId to starterId } }
+        .groupBy({ it.first }, { it.second })
 }

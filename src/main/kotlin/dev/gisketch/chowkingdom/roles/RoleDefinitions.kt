@@ -8,6 +8,11 @@ data class RoleDefinition(
     var displayName: String = "",
     var icon: String = "minecraft:grass_block",
     var description: String = "",
+    var classification: String = "",
+    @SerializedName(value = "starter_class_ids", alternate = ["starterClassIds", "starter_class_id", "starterClassId"])
+    var starterClassIds: MutableList<String> = mutableListOf(),
+    @SerializedName(value = "upgrade_class_ids", alternate = ["upgradeClassIds"])
+    var upgradeClassIds: MutableList<String> = mutableListOf(),
     var perks: MutableList<RolePerkDefinition> = mutableListOf(),
 )
 

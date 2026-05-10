@@ -47,6 +47,16 @@ Commands require permission level 2.
 
 Role definitions include `icon` and `description` for onboarding UI. `icon` accepts an item id first, then falls back to a texture resource id. Current job defaults point to `textures/gui/jobs/<job_id>.png`. Missing optional mod item ids warn once in logs and render as empty/fallback icons instead of failing role loading.
 
+Class definitions also support progression metadata:
+
+- `classification = "starter"` or `classification = "upgrade"`.
+- `upgrade_class_ids = ["berserker", "paladin"]` on starter classes.
+- `starter_class_ids = ["warrior", "priest"]` on upgrade classes.
+
+Onboarding only allows starter classes. Upgrade classes still render for visibility, but they are greyed out, locked, and cannot be selected. Existing configs without these keys use the built-in starter order: `warrior`, `rogue`, `archer`, `wizard`, `priest`.
+
+Built-in upgrade paths are: Warrior -> Berserker, Paladin, Witcher; Rogue -> Forcemaster, Bounty Hunter, Bard, Witcher; Archer -> War Archer, Tundra Archer, Bounty Hunter, Bard; Wizard -> Elemental Wizard, Priest, Witcher; Priest -> Paladin, Bard, Elemental Wizard.
+
 Nametags render active job icons before the player name and active class icons after it. Multiple active roles append multiple icons on their side.
 
 ## Class Equipment

@@ -140,7 +140,7 @@ object RolesFeature {
         }
         val job = RolesConfig.job(jobId)
         val roleClass = RolesConfig.roleClass(classId)
-        if (job == null || roleClass == null) {
+        if (job == null || roleClass == null || !RolesConfig.isStarterClass(roleClass.id)) {
             RolesNetwork.syncTo(player, openOnboarding = true)
             return false
         }

@@ -33,7 +33,7 @@ object RolesNetwork {
     }
 
     private fun registerPayloads(event: RegisterPayloadHandlersEvent) {
-        val registrar = event.registrar("1")
+        val registrar = event.registrar("2")
         registrar.playToClient(RolesSyncPayload.TYPE, RolesSyncPayload.STREAM_CODEC, ::handleSyncClient)
         registrar.playToServer(RolesChoosePayload.TYPE, RolesChoosePayload.STREAM_CODEC, ::handleChoose)
     }
@@ -59,7 +59,7 @@ object RolesNetwork {
         val record = RoleStore.role(player)
         return RolesSyncPayload(
             jobs = RolesConfig.jobs().map(::definitionPayload),
-            classes = RolesConfig.classes().map(::definitionPayload),
+            classes = RolesConfig.sortedClassesForOnboarding().map(::definitionPayload),
             activeJobIds = record.activeJobIds.toList(),
             activeClassIds = record.activeClassIds.toList(),
             players = playerStates(player),
@@ -86,6 +86,9 @@ object RolesNetwork {
         displayName = role.displayName.ifBlank { role.id },
         icon = role.icon.ifBlank { DEFAULT_ROLE_ICON },
         description = role.description.ifBlank { "A Chowkingdom role waiting for a proper description." },
+        classification = RolesConfig.classClassification(role),
+        starterClassIds = RolesConfig.starterClassIds(role),
+        upgradeClassIds = RolesConfig.upgradeClassIds(role),
         perks = role.perks.map(::perkPayload),
     )
 
@@ -189,6 +192,9 @@ data class RoleUiDefinitionPayload(
     val displayName: String,
     val icon: String,
     val description: String,
+    val classification: String,
+    val starterClassIds: List<String>,
+    val upgradeClassIds: List<String>,
     val perks: List<RolePerkUiPayload>,
 ) {
     fun encode(buffer: RegistryFriendlyByteBuf) {
@@ -196,6 +202,9 @@ data class RoleUiDefinitionPayload(
         buffer.writeUtf(displayName.take(MAX_DISPLAY_LENGTH), MAX_DISPLAY_LENGTH)
         buffer.writeUtf(icon.take(MAX_ICON_LENGTH), MAX_ICON_LENGTH)
         buffer.writeUtf(description.take(MAX_DESCRIPTION_LENGTH), MAX_DESCRIPTION_LENGTH)
+        buffer.writeUtf(classification.take(MAX_ID_LENGTH), MAX_ID_LENGTH)
+        writeStringList(buffer, starterClassIds, MAX_ACTIVE_ROLES, MAX_ID_LENGTH)
+        writeStringList(buffer, upgradeClassIds, MAX_ACTIVE_ROLES, MAX_ID_LENGTH)
         val perks = perks.take(MAX_PERKS)
         buffer.writeVarInt(perks.size)
         perks.forEach { perk -> perk.encode(buffer) }
@@ -207,6 +216,9 @@ data class RoleUiDefinitionPayload(
             displayName = buffer.readUtf(MAX_DISPLAY_LENGTH),
             icon = buffer.readUtf(MAX_ICON_LENGTH),
             description = buffer.readUtf(MAX_DESCRIPTION_LENGTH),
+            classification = buffer.readUtf(MAX_ID_LENGTH),
+            starterClassIds = readStringList(buffer, MAX_ACTIVE_ROLES, MAX_ID_LENGTH),
+            upgradeClassIds = readStringList(buffer, MAX_ACTIVE_ROLES, MAX_ID_LENGTH),
             perks = List(buffer.readVarInt().coerceIn(0, MAX_PERKS)) { RolePerkUiPayload.decode(buffer) },
         )
     }
