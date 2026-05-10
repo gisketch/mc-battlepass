@@ -64,6 +64,7 @@ Behavior:
 - When Entity Model Features/Fresh Animations player CEM animations are present, CKDM pauses EMF player animation evaluation while Paraglider pose is active, then lets EMF resume after paragliding.
 - When Punchy and Shield n Parry are present, CKDM suppresses Punchy's first-person arm render while Shield n Parry's parry visual is active so Punchy does not duplicate the parry hand/item render.
 - When AzureLib Armor renders an entity that lacks AzureLib's animator accessor, CKDM makes the accessor lookup return null instead of throwing so AzureLib Armor can use its non-animated fallback path.
+- Witcher RPG armor textures are mirrored into the vanilla armor texture path expected by the AzureLib fallback renderer, so armor such as Griffin and Grandmaster Feline boots do not render as missing texture after the crash guard takes effect.
 
 Hot reload:
 
