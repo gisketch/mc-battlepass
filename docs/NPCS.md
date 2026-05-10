@@ -128,6 +128,7 @@ NPC quest behavior:
 
 - NPC quests live in each NPC TOML under `[missions]` / `missions.pool`.
 - Quests are offered only during town-center meetup (`15:00-20:00`) and reset at in-game `15:00`.
+- New quest offers require the NPC to have a valid home bed and an assigned workplace. Active quest rewards can still be claimed if the NPC later loses either assignment.
 - A player can accept at most 4 active NPC quests per reset period.
 - Declining an NPC quest suppresses that NPC's offer for 1 in-game hour; the same daily offer remains until the next 15:00 reset.
 - Task quests progress from existing battlepass mission signals such as `minecraft:monster_killed` or `cobblemon:pokemon_caught`.

@@ -893,6 +893,13 @@ object NpcFeature {
 
     fun smartBrainDefinition(entity: ChowNpcEntity): NpcDefinition? = NpcConfig.get(entity.npcId)
 
+    fun canOfferNpcQuests(npc: ChowNpcEntity, definition: NpcDefinition): Boolean = canOfferNpcQuests(npc.level(), definition)
+
+    fun canOfferNpcQuests(level: Level, definition: NpcDefinition): Boolean {
+        val hasHome = !definition.housing.canMoveIn || validHomePos(level, definition.id) != null
+        return hasHome && NpcStore.workplacePos(definition.id) != null
+    }
+
     fun tickSmartBrainQuestClaim(npc: ChowNpcEntity): Boolean = smartBrainDefinition(npc)?.let { definition -> tryQuestClaimApproach(npc, definition) } ?: false
 
     fun tickSmartBrainRentContractFollow(npc: ChowNpcEntity): Boolean = smartBrainDefinition(npc)?.let { definition -> tryFollowRentContractHolder(npc, definition) } ?: false

@@ -148,7 +148,7 @@ object NpcQuestService {
         val period = currentPeriod(player)
         val periodState = questState(player, period)
         val offer = selectedOffer(player, definition, period)
-        val canOffer = offer != null && definition.id !in periodState.completedNpcIds && definition.id !in periodState.active && periodState.active.size < MAX_ACTIVE && (periodState.declinedUntilTick[definition.id] ?: Long.MIN_VALUE) <= player.level().dayTime
+        val canOffer = offer != null && NpcFeature.canOfferNpcQuests(player.level(), definition) && definition.id !in periodState.completedNpcIds && definition.id !in periodState.active && periodState.active.size < MAX_ACTIVE && (periodState.declinedUntilTick[definition.id] ?: Long.MIN_VALUE) <= player.level().dayTime
         if (offer != null && canOffer) {
             val goal = if (offer.category == "fetch") offer.fetchCount else offer.goal
             return NpcQuestFriendSummary("Quest Available", 0, goal)
@@ -290,6 +290,7 @@ object NpcQuestService {
     }
 
     private fun canOffer(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, state: NpcPlayerQuestState): Boolean {
+        if (!NpcFeature.canOfferNpcQuests(npc, definition)) return false
         if (definition.id in state.completedNpcIds || definition.id in state.active) return false
         if (state.active.size >= MAX_ACTIVE) return false
         if ((state.declinedUntilTick[definition.id] ?: Long.MIN_VALUE) > player.level().dayTime) return false
