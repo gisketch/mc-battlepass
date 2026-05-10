@@ -21,6 +21,7 @@ epicFightInnateSkillCost = 450.0
 epicFightGuardSkillCost = 90.0
 epicFightBlockCost = 150.0
 epicFightParryCost = 260.0
+wrongWeaponAttackMinCostPercent = 0.33
 staminaDrainTicks = 8
 paragliderRecoveryDelayTicksAfterSpend = 80
 disableEpicFightBattleModeWhileParagliding = true
@@ -39,6 +40,7 @@ Behavior:
 - Epic Fight jump attack starts spend Paraglider stamina.
 - Epic Fight weapon innate skills spend Paraglider stamina.
 - Epic Fight guard skills, active blocks, and parries spend Paraglider stamina.
+- Class-mismatched weapons use the larger of the normal attack cost or `wrongWeaponAttackMinCostPercent` of the player's max Paraglider stamina.
 - Chow Kingdom combat costs are reserved up front, then drained across `staminaDrainTicks` ticks so the Paraglider wheel drains like a stamina action instead of one hard cut.
 - Every successful Chow Kingdom stamina spend pushes Paraglider recovery delay to at least `paragliderRecoveryDelayTicksAfterSpend`.
 - Epic Fight battle mode is forced off while a player is paragliding in air, then restored after landing if Chow Kingdom disabled it.

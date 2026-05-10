@@ -35,6 +35,17 @@ object ParagliderStaminaBridge {
         }.getOrDefault(0.0)
     }
 
+    fun maxStamina(player: Player): Double? {
+        if (!ModList.get().isLoaded("paraglider")) return null
+        val api = api ?: return null
+        return runCatching {
+            val stamina = api.get.invoke(null, player) ?: return null
+            val max = api.maxStamina.invoke(stamina) as Number
+            val extra = api.extraStamina.invoke(stamina) as Number
+            (max.toDouble() + extra.toDouble()).coerceAtLeast(1.0)
+        }.getOrNull()
+    }
+
     fun snapshot(player: Player): Snapshot? {
         if (!ModList.get().isLoaded("paraglider")) return null
         val api = api ?: return null

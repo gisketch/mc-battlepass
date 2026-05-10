@@ -64,7 +64,7 @@ Current values:
 - Warrior weapons: `minecraft:wooden_sword`.
 - Warrior armor: iron armor.
 
-Wrong weapons deal reduced damage, reduce attack speed while held, apply an item cooldown after attacks, and show red tooltip notes. Wrong armor disables sprinting while worn and also shows red tooltip notes. Starting items are only inventory grants after class application; allowed weapons and armor come from `equipment_affinity` tags/patterns, not `starting_items`. Missing `starting_items` and job `reward_pool` item ids warn once and skip. Starting items are granted once per class only after at least one configured item id exists, so future optional mod entries do not burn the grant if a dependency is missing.
+Wrong weapons deal reduced damage, reduce attack speed while held, apply an item cooldown after attacks, spend at least the configured wrong-weapon stamina floor, and show red tooltip notes. Wrong armor disables sprinting while worn and also shows red tooltip notes. Starting items are only inventory grants after class application; allowed weapons and armor come from `equipment_affinity` tags/patterns, not `starting_items`. Missing `starting_items` and job `reward_pool` item ids warn once and skip. Starting items are granted once per class only after at least one configured item id exists, so future optional mod entries do not burn the grant if a dependency is missing.
 
 To add Simply Swords, RPG Series, or Rogues later, use either tags or wildcard patterns. No Kotlin edit needed.
 

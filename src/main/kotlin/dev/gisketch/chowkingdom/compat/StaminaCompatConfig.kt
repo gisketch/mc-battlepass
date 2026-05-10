@@ -43,6 +43,7 @@ object StaminaCompatConfig {
         if (!json.has("epicFightGuardSkillCost")) epicFightGuardSkillCost = defaults.epicFightGuardSkillCost
         if (!json.has("epicFightBlockCost")) epicFightBlockCost = defaults.epicFightBlockCost
         if (!json.has("epicFightParryCost")) epicFightParryCost = defaults.epicFightParryCost
+        if (!json.has("wrongWeaponAttackMinCostPercent")) wrongWeaponAttackMinCostPercent = defaults.wrongWeaponAttackMinCostPercent
         if (!json.has("staminaDrainTicks")) staminaDrainTicks = defaults.staminaDrainTicks
         if (!json.has("paragliderRecoveryDelayTicksAfterSpend")) paragliderRecoveryDelayTicksAfterSpend = defaults.paragliderRecoveryDelayTicksAfterSpend
         if (!json.has("disableEpicFightBattleModeWhileParagliding")) disableEpicFightBattleModeWhileParagliding = defaults.disableEpicFightBattleModeWhileParagliding
@@ -63,6 +64,7 @@ object StaminaCompatConfig {
         "epicFightGuardSkillCost",
         "epicFightBlockCost",
         "epicFightParryCost",
+        "wrongWeaponAttackMinCostPercent",
         "staminaDrainTicks",
         "paragliderRecoveryDelayTicksAfterSpend",
         "disableEpicFightBattleModeWhileParagliding",
@@ -85,6 +87,7 @@ data class StaminaCompatDefinition(
     var epicFightGuardSkillCost: Double = 90.0,
     var epicFightBlockCost: Double = 150.0,
     var epicFightParryCost: Double = 260.0,
+    var wrongWeaponAttackMinCostPercent: Double = 0.33,
     var staminaDrainTicks: Int = 8,
     var paragliderRecoveryDelayTicksAfterSpend: Int = 80,
     var disableEpicFightBattleModeWhileParagliding: Boolean = true,

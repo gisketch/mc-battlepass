@@ -1,6 +1,7 @@
 package dev.gisketch.chowkingdom.compat
 
 import com.mojang.brigadier.context.CommandContext
+import dev.gisketch.chowkingdom.roles.RoleClassEquipmentRules
 import net.minecraft.ChatFormatting
 import net.minecraft.commands.CommandSourceStack
 import net.minecraft.commands.Commands
@@ -34,7 +35,7 @@ object UnifiedStaminaFeature {
         NeoForge.EVENT_BUS.addListener(::onPlayerTickPost)
     }
 
-    fun spendEpicFightAttack(player: ServerPlayer, cost: Double): Boolean = spendOncePerTick(player, cost, attackSpendTicks)
+    fun spendEpicFightAttack(player: ServerPlayer, cost: Double): Boolean = spendOncePerTick(player, adjustedAttackCost(player, cost), attackSpendTicks)
 
     fun spendEpicFightSkill(player: ServerPlayer, cost: Double): Boolean = spendOncePerTick(player, cost, epicFightSkillSpendTicks)
 
@@ -119,6 +120,13 @@ object UnifiedStaminaFeature {
             ParagliderStaminaBridge.setRecoveryDelay(player, config.paragliderRecoveryDelayTicksAfterSpend)
         }
         return spent
+    }
+
+    private fun adjustedAttackCost(player: ServerPlayer, cost: Double): Double {
+        if (!RoleClassEquipmentRules.isWrongWeapon(player)) return cost
+        val maxStamina = ParagliderStaminaBridge.maxStamina(player) ?: return cost
+        val minCost = maxStamina * StaminaCompatConfig.values().wrongWeaponAttackMinCostPercent.coerceAtLeast(0.0)
+        return maxOf(cost, minCost)
     }
 
     private fun queueStaminaDrain(player: ServerPlayer, cost: Double, config: StaminaCompatDefinition): Boolean {

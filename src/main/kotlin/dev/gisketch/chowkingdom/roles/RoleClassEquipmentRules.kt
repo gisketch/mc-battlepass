@@ -23,10 +23,9 @@ internal object RoleClassEquipmentRules {
 
     fun onLivingDamagePre(event: LivingDamageEvent.Pre) {
         val attacker = event.source.entity as? ServerPlayer ?: return
+        if (!isWrongWeapon(attacker)) return
         val perks = equipmentAffinities(attacker)
-        if (perks.isEmpty()) return
         val held = attacker.mainHandItem
-        if (held.isEmpty || perks.any { perk -> itemAllowed(held, tagList(perk.weaponTag, perk.weaponTags), perk.weaponPatterns) }) return
         val multiplier = perks.minOf { perk -> perk.wrongWeaponDamageMultiplier.coerceIn(0.0, 1.0) }.toFloat()
         event.newDamage = (event.newDamage * multiplier).coerceAtLeast(0.0f)
         val cooldown = perks.maxOf { perk -> perk.wrongWeaponCooldownTicks.coerceAtLeast(0) }
@@ -53,7 +52,7 @@ internal object RoleClassEquipmentRules {
         when {
             isWeaponLike(stack) && perks.none { perk -> itemAllowed(stack, tagList(perk.weaponTag, perk.weaponTags), perk.weaponPatterns) } -> {
                 event.toolTip.add(Component.literal("$className cannot use this weapon well.").withStyle(ChatFormatting.RED))
-                event.toolTip.add(Component.literal("Damage and attack speed are reduced.").withStyle(ChatFormatting.RED))
+                event.toolTip.add(Component.literal("Damage and attack speed are reduced, and attacks spend extra stamina.").withStyle(ChatFormatting.RED))
             }
             stack.item is ArmorItem && !RecipeDisablerFeature.isCosmeticized(stack) && perks.none { perk -> itemAllowed(stack, tagList(perk.armorTag, perk.armorTags), perk.armorPatterns) } -> {
                 event.toolTip.add(Component.literal("$className cannot wear this armor well.").withStyle(ChatFormatting.RED))
@@ -72,6 +71,13 @@ internal object RoleClassEquipmentRules {
         val stacks = items.mapNotNull { item -> RoleItemStacks.fromId(item, "class $classId starting item") }
         if (stacks.isEmpty() || !RoleStore.markStartingItemsGranted(player.uuid, classId)) return
         stacks.forEach { stack -> if (!player.inventory.add(stack)) player.drop(stack, false) }
+    }
+
+    fun isWrongWeapon(player: ServerPlayer): Boolean {
+        val perks = equipmentAffinities(player)
+        if (perks.isEmpty()) return false
+        val held = player.mainHandItem
+        return !held.isEmpty && perks.none { perk -> itemAllowed(held, tagList(perk.weaponTag, perk.weaponTags), perk.weaponPatterns) }
     }
 
     private fun equipmentAffinities(player: ServerPlayer): List<RolePerkDefinition> = RolePerks.classPerks(player, "equipment_affinity")

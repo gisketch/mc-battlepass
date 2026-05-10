@@ -155,6 +155,7 @@ Penalty fields:
 - `wrong_weapon_damage_multiplier`: `0.2` means wrong weapons deal 20% damage.
 - `wrong_weapon_attack_speed_multiplier`: `0.1` means wrong weapons attack at 10% speed while held.
 - `wrong_weapon_cooldown_ticks`: item cooldown after a wrong-weapon hit.
+- Wrong-weapon attacks also spend at least `wrongWeaponAttackMinCostPercent` from `compat/stamina.toml` of the player's max Paraglider stamina.
 - `wrong_armor_disables_sprint`: wrong armor forces sprint off.
 
 Wrong weapons and armor show red tooltip notes for the current player when their active class setup does not allow the item.
