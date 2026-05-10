@@ -1,0 +1,14 @@
+# CKDM generated class config UPDATED with missing weapons: war_archer.toml
+# Rebalanced around: Starter = normal/base families, Upgrade = cool/specialized families, Legendary/unique = upgrade or future core/mastery gate.
+
+id = "war_archer"
+display_name = "War Archer"
+icon = "textures/gui/classes/war_archer.png"
+description = "Upgrade heavy archer trained with longbows, heavy crossbows, rapid crossbows, burst damage, and medium armor."
+classification = "upgrade"
+starter_class_ids = ["archer"]
+upgrade_class_ids = []
+perks = [
+  { type = "starting_items", multiplier = 1.0, weapon_tags = [], armor_tags = [], weapon_patterns = [], armor_patterns = [], wrong_weapon_damage_multiplier = 1.0, wrong_weapon_cooldown_ticks = 0, wrong_weapon_attack_speed_multiplier = 1.0, wrong_armor_disables_sprint = false, starting_items = ["minecraft:book", "minecraft:crossbow", "minecraft:arrow*32", "minecraft:bread*8"], reward_pool = [] },
+  { type = "equipment_affinity", multiplier = 1.0, weapon_tags = ["rpg_series:weapon_type/long_bow", "rpg_series:weapon_type/heavy_crossbow", "rpg_series:weapon_type/rapid_crossbow"], armor_tags = [], weapon_patterns = ["archers:*longbow", "archers:*heavy_crossbow", "archers:*rapid_crossbow", "archers_expansion:war_archer_spell_book", "minecells:explosive_crossbow", "minecells:heavy_crossbow", "arsenal:unique_heavy_crossbow_*", "arsenal:unique_longbow_*"], weapon_exclude_patterns = ["*spawn_egg"], armor_patterns = ["minecraft:chainmail_*", "minecraft:iron_*", "archers_expansion:*war_archer*", "archers_expansion:*sentinel_archer*", "archers:*archer_armor*", "archers:*ranger_armor*"], armor_exclude_patterns = [], wrong_weapon_damage_multiplier = 0.50, wrong_weapon_cooldown_ticks = 8, wrong_weapon_attack_speed_multiplier = 0.65, wrong_armor_disables_sprint = true, starting_items = [], reward_pool = [] },
+]

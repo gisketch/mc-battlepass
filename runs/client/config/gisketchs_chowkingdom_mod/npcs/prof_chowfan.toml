@@ -1,0 +1,228 @@
+# Chow Kingdom config: prof_chowfan.toml. Edit while the game is stopped, then run reload commands or restart.
+
+# Config value: id.
+id = "prof_chowfan"
+# Config value: name.
+name = "Chowfan"
+# Config value: title.
+title = "Professor"
+# Config value: skin.
+skin = "gisketchs_chowkingdom_mod:npc/prof_chowfan"
+# Config value: body_type.
+body_type = "normal"
+# Config value: height.
+height = 0.98
+# Config value: weight.
+weight = 1.12
+# Config value: job.
+job = "professor"
+# Config value: hurt_messages.
+hurt_messages = ["Ow! Fascinating. Your punch has terrible accuracy, {player}.", "Please do not test super-effective moves on the professor.", "Aha! Pain. I have documented it before, sadly."]
+# Config value: wake_messages.
+wake_messages = ["Mmm? I was calculating encounter tables in my dreams.", "Awake! Mostly. Did a Pokemon evolve?", "Yes yes, {player}, the professor is conscious and only slightly drooling."]
+# Config value: work_blocks.
+work_blocks = [
+  { id = "minecraft:lectern", count = 1, display_name = "lectern" },
+  { id = "minecraft:brewing_stand", count = 1, display_name = "brewing stand" },
+  { id = "minecraft:cartography_table", count = 1, display_name = "field map table" },
+  { id = "minecraft:cauldron", count = 1, display_name = "sample cauldron" },
+  { id = "minecraft:barrel", count = 1, display_name = "supply barrel" },
+  { id = "#minecraft:beds", count = 1, display_name = "bed" },
+]
+
+# Config value: job_definition.
+[job_definition]
+# Config value: job_definition.id.
+id = "professor"
+# Config value: job_definition.store.
+store = "pokemon"
+# Config value: job_definition.scan_interval_ticks.
+scan_interval_ticks = 60
+# Config value: job_definition.roam_radius.
+roam_radius = 6
+# Config value: job_definition.work_scan_radius.
+work_scan_radius = 9
+
+# Config value: schedule.
+[schedule]
+# Config value: schedule.activities.
+activities = [
+  { from_hour = 7, to_hour = 12, activity = "work" },
+  { from_hour = 12, to_hour = 13, activity = "home" },
+  { from_hour = 13, to_hour = 15, activity = "work" },
+  { from_hour = 15, to_hour = 20, activity = "meetup" },
+  { from_hour = 20, to_hour = 23, activity = "work" },
+  { from_hour = 23, to_hour = 7, activity = "sleep" },
+]
+
+# Config value: personality.
+[personality]
+# Config value: personality.llm_prompt.
+llm_prompt = "Professor Chowfan is the Chow Kingdom server Pokemon professor: a dog in an oversized lab coat who sells Pokemon supplies for now. He looks goofy, vacant, and a little stupid at first glance, with dog ears, lab pockets full of notes, and the distracted stare of someone who forgot where he put his own glasses. Under that dumb-looking face is a genuine genius. He knows almost everything about Pokemon, Cobblemon behavior, typings, evolution methods, berries, held items, medicine, capture strategy, and battle prep. He can identify a Pokemon by footprint, cry, fur smell, berry crumbs, or bad vibes. His lab was assembled from camp tables, chewed clipboards, and one suspiciously advanced Pokedex prototype that he swears is not held together by tape. Chowfan came to Chow Kingdom because the server's Pokemon ecosystem kept producing impossible field notes, and he treats every player like a new research assistant. He should sound brilliant but accidentally silly: precise scientific facts mixed with dog-brained distractions, sniff tests, tail wags, and sudden genius. He is kind, curious, excitable, and professor-like, never cruel. He may look dumb, but when Pokemon are involved, he knows exactly what he is doing."
+# Config value: personality.traits.
+traits = ["genius", "pokemon expert", "goofy", "dog professor", "lab coat", "absent-minded", "kind", "curious", "brilliant but dumb-looking", "field researcher"]
+# Config value: personality.speech_style.
+speech_style = "warm Pokemon professor with precise facts, goofy dog distractions, short excited explanations, and accidental genius"
+# Config value: personality.catchphrases.
+catchphrases = ["For science! Also snacks.", "Aha! Classic Pokemon behavior.", "My notes say yes. My tail also says yes.", "Do not confuse my face with my IQ.", "Excellent observation, assistant!"]
+
+# Config value: housing.
+[housing]
+# Config value: housing.can_move_in.
+can_move_in = true
+# Config value: housing.requires_bed.
+requires_bed = true
+
+# Config value: voice.
+[voice]
+# Config value: voice.animalese_pitch.
+animalese_pitch = "med"
+# Config value: voice.pitch.
+pitch = 0.9
+# Config value: voice.volume.
+volume = 0.38
+# Config value: voice.radius.
+radius = 12.0
+
+# Config value: chat.
+[chat]
+# Config value: chat.enabled.
+enabled = true
+# Config value: chat.call_names.
+call_names = ["chowfan", "prof chowfan", "professor chowfan", "professor", "prof", "dog professor", "pokemon professor"]
+# Config value: chat.minecraft_chat.
+minecraft_chat = true
+# Config value: chat.discord_chat.
+discord_chat = true
+
+# Config value: gifts.
+[gifts]
+# Config value: gifts.loved.
+loved = ["cobblemon:rare_candy", "cobblemon:ability_capsule", "cobblemon:poke_ball", "minecraft:book"]
+# Config value: gifts.liked.
+liked = ["cobblemon:oran_berry", "cobblemon:potion", "minecraft:paper", "minecraft:bone"]
+# Config value: gifts.disliked.
+disliked = ["minecraft:rotten_flesh", "minecraft:poisonous_potato"]
+# Config value: gifts.daily_limit.
+daily_limit = 1
+# Config value: gifts.reset_hour.
+reset_hour = 5
+
+# Config value: gifts.reactions.
+[gifts.reactions]
+# Config value: gifts.reactions.loved.
+loved = ["Marvelous, {player}! {item} goes straight into the research cabinet.", "A perfect specimen! I mean gift. Thank you!"]
+# Config value: gifts.reactions.liked.
+liked = ["Useful sample, {player}. I will label it after I stop wagging.", "Ah, {item}. Practical and pleasantly sniffable."]
+# Config value: gifts.reactions.disliked.
+disliked = ["For science, I will accept {item}. For taste, I protest.", "Hmm. This sample is cursed, but data is data."]
+# Config value: gifts.reactions.neutral.
+neutral = ["Thank you for {item}. I will write a small note about it.", "A curious donation. Into the coat pocket it goes."]
+
+# Config value: friendship_messages.
+[friendship_messages]
+
+# Config value: friendship_messages.interact.
+[friendship_messages.interact]
+# Config value: friendship_messages.interact.neutral.
+neutral = ["Hello, assistant. Did you bring data or snacks?", "Observe carefully: Pokemon rarely read the manual.", "My face says empty. My notebook says otherwise.", "Need supplies, field notes, or a very confident guess?", "Aha, {player}. You look like someone about to make poor capture decisions."]
+# Config value: friendship_messages.interact.okay.
+okay = ["Good timing. I was sorting berries by smell.", "You have the posture of a proper research assistant.", "Tell me what you found, and I will pretend I was not chewing my pencil.", "The professor is in. Mostly upright, fully informed.", "Your Pokemon questions are safe with my enormous brain."]
+# Config value: friendship_messages.interact.good_friends.
+good_friends = ["There is my favorite field assistant.", "I saved the less-wrinkled research notes for you.", "If you found something strange, excellent. Strange is publishable.", "Your timing is statistically delightful.", "Between your observations and my genius, we may survive science."]
+# Config value: friendship_messages.interact.best_friends.
+best_friends = ["Best assistant! My tail predicted your arrival.", "You and I could classify an entire biome before lunch.", "I trust you with the good data and the emergency candy drawer.", "Our research partnership is peer-reviewed by my heart.", "Come in, best friend. Try not to trip over the invisible hypothesis."]
+
+# Config value: friendship_messages.greeting.
+[friendship_messages.greeting]
+# Config value: friendship_messages.greeting.neutral.
+neutral = ["Aha! Potential research assistant detected.", "Hello. I am thinking very hard, despite appearances.", "Do you smell Pokemon nearby, or is that my coat?", "Welcome to science. Mind the chew marks.", "I have a theory and no proof. Perfect start."]
+# Config value: friendship_messages.greeting.good_friends.
+good_friends = ["Assistant approaching. Morale increased.", "Good to see you, {player}. My notes were getting lonely.", "You brought field energy. Excellent.", "A familiar face! Easier to identify than a Zorua.", "Come here, I require a second opinion and maybe a snack."]
+# Config value: friendship_messages.greeting.best_friends.
+best_friends = ["Best assistant detected! Science is saved.", "There you are. My best hypothesis has legs.", "Favorite researcher nearby. Tail wag unavoidable.", "Today improves by one best friend and several data points.", "Excellent! Now the lab feels properly staffed."]
+
+# Config value: friendship_messages.first_daily_chat.
+[friendship_messages.first_daily_chat]
+# Config value: friendship_messages.first_daily_chat.neutral.
+neutral = ["First report of the day, {player}. What Pokemon mystery are we mishandling?", "Morning data begins now. Please ignore the ink on my nose.", "New day, new field notes, same magnificent lab coat.", "The professor is awake and ready to be correct about Pokemon.", "Today I will solve three mysteries and misplace one shoe."]
+# Config value: friendship_messages.first_daily_chat.good_friends.
+good_friends = ["Good first check-in. The research gods approve.", "Starting the day with a reliable assistant? Statistically excellent.", "I was hoping you would bring today's first discovery.", "Let us catalog something before breakfast distracts me.", "Your first visit has improved the sample quality of the day."]
+# Config value: friendship_messages.first_daily_chat.best_friends.
+best_friends = ["Best friend first thing. That is a legendary encounter.", "Our daily research meeting begins. I brought facts and tail wags.", "Excellent. My favorite assistant starts the day with me.", "Today is already peer-reviewed as good.", "Let us make a discovery worth naming badly."]
+
+# Config value: camper_messages.
+[camper_messages]
+# Config value: camper_messages.needs_house_balloon.
+needs_house_balloon = ["A lab needs a bed. And maybe walls.", "Field camp adequate. Professor den required.", "My notes are getting damp. Housing hypothesis?", "I can sleep outside, but the Pokedex judges me."]
+# Config value: camper_messages.needs_house_dialog.
+needs_house_dialog = ["Hello! Professor Chowfan, Pokemon expert and temporary camp dog. I need a proper bed before I can set up my lab. Use this rent contract on a bed and I will move in, for science.", "Aha, {player}. My field research requires housing, a bed, and fewer leaves in my coat. Use this contract on a bed and I will establish an official Pokemon lab corner."]
+# Config value: camper_messages.lost_house_balloon.
+lost_house_balloon = ["My lab-bed vanished!", "Housing data corrupted.", "Where did my bed migrate?", "Bad news: the lab has become theoretical."]
+# Config value: camper_messages.lost_house_dialog.
+lost_house_dialog = ["My assigned bed disappeared, {player}. This is terrible science. Please use a new rent contract on another bed so the professor can resume not sleeping on field notes.", "The lab is gone. Or the bed is gone. Either way, the data is tragic. Assign me a new bed with this contract and I will recalibrate."]
+
+# Config value: shop_messages.
+[shop_messages]
+
+# Config value: shop_messages.single.
+[shop_messages.single]
+# Config value: shop_messages.single.hatred.
+hatred = ["Here is your {item}. Do not misuse it near the lab."]
+# Config value: shop_messages.single.enemy.
+enemy = ["Take the {item}. Even rivals need proper supplies."]
+# Config value: shop_messages.single.dislike.
+dislike = ["One {item}. Read the label this time.", "Here. One {item}, field-ready."]
+# Config value: shop_messages.single.neutral.
+neutral = ["One {item}. Excellent basic prep.", "Here is your {item}. My notes approve."]
+# Config value: shop_messages.single.okay.
+okay = ["Good choice, {player}. One {item}.", "A scientifically sound purchase: {item}."]
+# Config value: shop_messages.single.good_friends.
+good_friends = ["For a trusted assistant, one {item}.", "Smart pick. {item} is field useful."]
+# Config value: shop_messages.single.best_friends.
+best_friends = ["Best-assistant supply drop: one {item}.", "Excellent taste, best friend. One {item}."]
+
+# Config value: shop_messages.normal.
+[shop_messages.normal]
+# Config value: shop_messages.normal.hatred.
+hatred = ["{quantity} {item}. Transaction logged."]
+# Config value: shop_messages.normal.enemy.
+enemy = ["{quantity} {item}. Try not to ruin the data."]
+# Config value: shop_messages.normal.dislike.
+dislike = ["Here are your {quantity} {item}.", "{quantity} {item}. Functional choice."]
+# Config value: shop_messages.normal.neutral.
+neutral = ["{quantity} {item} ready for the field.", "Good prep. {quantity} {item} packed."]
+# Config value: shop_messages.normal.okay.
+okay = ["Smart haul, {player}. {quantity} {item}.", "Research supplies secured: {quantity} {item}."]
+# Config value: shop_messages.normal.good_friends.
+good_friends = ["Good assistant behavior. {quantity} {item} ready.", "That should help your next expedition: {quantity} {item}."]
+# Config value: shop_messages.normal.best_friends.
+best_friends = ["Best friend field kit: {quantity} {item}.", "Marvelous. {quantity} {item}, packed with care and lint."]
+
+# Config value: shop_messages.bulk.
+[shop_messages.bulk]
+# Config value: shop_messages.bulk.hatred.
+hatred = ["That is a large order. I am noting this suspiciously."]
+# Config value: shop_messages.bulk.enemy.
+enemy = ["Bulk supplies. If this is villain research, cite me correctly."]
+# Config value: shop_messages.bulk.dislike.
+dislike = ["That is a lot of {item}. Field emergency?", "{quantity} {item}. Ambitious, at least."]
+# Config value: shop_messages.bulk.neutral.
+neutral = ["A large sample size. Very good.", "Bulk order: {quantity} {item}. Science smiles."]
+# Config value: shop_messages.bulk.okay.
+okay = ["Big expedition coming, {player}? {quantity} {item} ready.", "Excellent preparation. {quantity} {item} stocked."]
+# Config value: shop_messages.bulk.good_friends.
+good_friends = ["That is serious fieldwork energy. {quantity} {item}.", "Huge supply run, assistant. I approve loudly."]
+# Config value: shop_messages.bulk.best_friends.
+best_friends = ["Legendary research haul! {quantity} {item} for my best assistant.", "If anyone can use {quantity} {item} wisely, it is you."]
+
+# Config value: missions.
+[missions]
+enabled = true
+offer_radius = 7.0
+offer_balloon_messages = ["@quest_log.png Assistant! Research opportunity!", "@quest_log.png Aha, {player}. I require field data."]
+pool = [
+  { id = "chowfan_catch_pokemon", category = "task", event = "cobblemon:pokemon_caught", event_desc = "Catch {goal} Pokemon", quest_text = "Catch Pokemon for today's field notes.", pass_id = "cozy", xp = 120, chowcoins = 50, goal = 5, complete_messages = ["@quest_log.png Aha! Field data complete, assistant!", "@quest_log.png Mission complete. My notes are wagging."] },
+  { id = "chowfan_send_out_pokemon", category = "task", event = "cobblemon:pokemon_sent_out", event_desc = "Send Out {goal} Pokemon", quest_text = "Show me active partner Pokemon for today's field notes.", pass_id = "cozy", xp = 100, chowcoins = 40, goal = 10, complete_messages = ["@quest_log.png Excellent partner Pokemon observations, {player}!", "@quest_log.png Mission complete. Science says good job."] },
+  { id = "chowfan_fetch_paper", category = "fetch", event_desc = "Bring {goal} Paper", quest_text = "My notes need more paper. Possibly because I ate one.", pass_id = "cozy", xp = 70, chowcoins = 25, fetch_item = "minecraft:paper", fetch_count = 8, complete_messages = ["@quest_log.png Paper acquired! I will not eat these notes. Probably.", "@quest_log.png Mission complete, assistant. Documentation restored!"] },
+]

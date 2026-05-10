@@ -1,0 +1,19 @@
+# Chow Kingdom config: falconer.toml. Edit while the game is stopped, then run reload commands or restart.
+
+# Config value: id.
+id = "falconer"
+# Config value: display_name.
+display_name = "Falconer"
+# Config value: icon.
+icon = "textures/gui/jobs/falconer.png"
+# Config value: description.
+description = "Reads wind lanes and high nests to work with Flying Pokemon."
+# Config value: perks.
+perks = [
+  { type = "cobblemon_catch_rate", pokemon_type = "flying", multiplier = 1.05, bonus_percent_by_level = [0.05, 0.10, 0.18, 0.28, 0.40], weapon_tags = [], armor_tags = [], weapon_patterns = [], armor_patterns = [], wrong_weapon_damage_multiplier = 1.0, wrong_weapon_cooldown_ticks = 0, wrong_weapon_attack_speed_multiplier = 1.0, wrong_armor_disables_sprint = false, starting_items = [], reward_pool = [] },
+  { type = "mount_speed", pokemon_type = "flying", multiplier = 1.0, bonus_percent_by_level = [0.03, 0.05, 0.09, 0.14, 0.20], weapon_tags = [], armor_tags = [], weapon_patterns = [], armor_patterns = [], wrong_weapon_damage_multiplier = 1.0, wrong_weapon_cooldown_ticks = 0, wrong_weapon_attack_speed_multiplier = 1.0, wrong_armor_disables_sprint = false, starting_items = [], reward_pool = [] },
+  { type = "fall_damage_reduction", multiplier = 1.0, bonus_percent_by_level = [0.10, 0.20, 0.30, 0.40, 0.50], weapon_tags = [], armor_tags = [], weapon_patterns = [], armor_patterns = [], wrong_weapon_damage_multiplier = 1.0, wrong_weapon_cooldown_ticks = 0, wrong_weapon_attack_speed_multiplier = 1.0, wrong_armor_disables_sprint = false, starting_items = [], reward_pool = [] },
+  { type = "slow_fall_lite", multiplier = 1.0, bonus_percent_by_level = [1.0, 2.0, 3.0, 4.0, 5.0], weapon_tags = [], armor_tags = [], weapon_patterns = [], armor_patterns = [], wrong_weapon_damage_multiplier = 1.0, wrong_weapon_cooldown_ticks = 0, wrong_weapon_attack_speed_multiplier = 1.0, wrong_armor_disables_sprint = false, starting_items = [], reward_pool = [] },
+  { type = "high_ground_speed", multiplier = 1.0, bonus_percent_by_level = [0.05], weapon_tags = [], armor_tags = [], weapon_patterns = [], armor_patterns = [], wrong_weapon_damage_multiplier = 1.0, wrong_weapon_cooldown_ticks = 0, wrong_weapon_attack_speed_multiplier = 1.0, wrong_armor_disables_sprint = false, starting_items = [], reward_pool = [] },
+  { type = "scouts_leap", multiplier = 1.0, bonus_percent_by_level = [0.25], weapon_tags = [], armor_tags = [], weapon_patterns = [], armor_patterns = [], wrong_weapon_damage_multiplier = 1.0, wrong_weapon_cooldown_ticks = 0, wrong_weapon_attack_speed_multiplier = 1.0, wrong_armor_disables_sprint = false, starting_items = [], reward_pool = [] },
+]

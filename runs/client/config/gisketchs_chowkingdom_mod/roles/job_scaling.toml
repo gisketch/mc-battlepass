@@ -1,0 +1,10 @@
+# Chow Kingdom config: job_scaling.toml. Edit while the game is stopped, then run reload commands or restart.
+
+# Overall battlepass levels that unlock job ranks 1-5.
+job_rank_unlock_overall_levels = [1, 26, 76, 151, 300]
+
+# Default rank scaling used by cobblemon_catch_rate perks without bonus_percent_by_level.
+catch_rate_bonus_percent_by_rank = [0.05, 0.10, 0.15, 0.25, 0.50]
+
+# Default rank scaling used by mount_speed perks without bonus_percent_by_level.
+mount_speed_bonus_percent_by_rank = [0.03, 0.05, 0.09, 0.14, 0.20]

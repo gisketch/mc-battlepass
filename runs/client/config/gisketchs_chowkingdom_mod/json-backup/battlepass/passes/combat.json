@@ -1,0 +1,122 @@
+{
+  "id": "combat",
+  "displayName": "Combat Pass",
+  "description": "Progress from normal Minecraft combat and gathering events.",
+  "titleTexture": "gisketchs_chowkingdom_mod:textures/gui/combat_pass.png",
+  "titleTextureWidth": 1024,
+  "titleTextureHeight": 215,
+  "categories": ["combat", "gathering"],
+  "xpEvents": [
+    {
+      "event": "minecraft:monster_killed",
+      "xp": 5
+    },
+    {
+      "event": "minecraft:block_harvested",
+      "xp": 1,
+      "filters": {
+        "blockTag": "minecraft:mineable/pickaxe"
+      }
+    }
+  ],
+  "progression": [
+{
+  "xp": 100,
+  "rewards": [
+    {
+      "type": "chowcoin",
+      "quantity": 250
+    }
+  ]
+},    {
+      "xp": 200,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:arrow",
+          "quantity": 32
+        }
+      ]
+    },
+    {
+      "xp": 300,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:shield",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "xp": 400,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:bow",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "xp": 500,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:diamond",
+          "quantity": 2
+        }
+      ]
+    },
+    {
+      "xp": 600,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:enchanted_book",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "xp": 700,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:golden_apple",
+          "quantity": 2
+        }
+      ]
+    },
+    {
+      "xp": 800,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:diamond_sword",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "xp": 900,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:totem_of_undying",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "xp": 1000,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:netherite_ingot",
+          "quantity": 1
+        }
+      ]
+    }
+  ]
+}

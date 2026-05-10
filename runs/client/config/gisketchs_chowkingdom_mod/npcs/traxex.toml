@@ -1,0 +1,142 @@
+id = "traxex"
+name = "Traxex"
+title = "Tundra Archer"
+skin = "gisketchs_chowkingdom_mod:npc/traxex"
+body_type = "slim"
+height = 1.08
+weight = 0.84
+job = "adventurer"
+class = "tundra_archer"
+hurt_messages = ["Careful. The next arrow answers.", "Do not test my aim, {player}.", "Cold hands. Steady bow. Last warning."]
+wake_messages = ["I was listening to the snow.", "Speak quietly. The night carries sound.", "You wake an archer. Make it worth the risk."]
+npc_interaction_messages = ["Asking {other} which trail freezes first after dusk.", "Marking silent sightlines with {other}.", "Teaching {other} why footprints lie in fresh snow."]
+work_blocks = [
+  { id = "minecraft:fletching_table", count = 1, display_name = "fletching table" },
+  { id = "minecraft:target", count = 2, display_name = "training targets" },
+  { id = "minecraft:powder_snow_cauldron", count = 1, display_name = "powder snow cauldron" },
+  { id = "minecraft:barrel", count = 2, display_name = "arrow barrels" },
+  { id = "#minecraft:beds", count = 1, display_name = "bed" },
+]
+
+[job_definition]
+id = "adventurer"
+store = "cosmetics"
+scan_interval_ticks = 60
+roam_radius = 8
+work_scan_radius = 10
+
+[schedule]
+activities = [
+  { from_hour = 5, to_hour = 12, activity = "work" },
+  { from_hour = 12, to_hour = 14, activity = "home" },
+  { from_hour = 14, to_hour = 15, activity = "work" },
+  { from_hour = 15, to_hour = 20, activity = "meetup" },
+  { from_hour = 20, to_hour = 22, activity = "home" },
+  { from_hour = 22, to_hour = 5, activity = "sleep" },
+]
+
+[personality]
+llm_prompt = "Traxex, the Drow Ranger, is a silent archer from the cold margins of another world. She was born human, raised by drow, and learned survival through exile, discipline, silence, and the bow. She is not warm, but she is not empty. She protects from distance, trusts slowly, and values precision over speeches. Frost, dark woods, caves, ambush routes, and enemy tracks are her language. Traxex entered Chow Kingdom while hunting a strange echo through the tunnels beneath a frozen battlefield. A shard of ancient ice had caught Nether portal fire without melting, opening a blue-black rift that smelled of stone, smoke, and unfamiliar monsters. She stepped through because the trail did not end, and because a hunter who refuses the unknown is already dead. In Chow Kingdom, she reads Minecraft as a frontier of exposed movement: square hills with poor cover, villages too loud to survive, undead that announce themselves badly, and players who waste arrows because resources feel endless. She has made the town a forward camp and trains tundra archers to endure cold, conserve shots, control distance, and strike before danger closes. She respects players who scout, prepare, keep quiet, protect weaker settlers, and learn from missed shots. She dislikes arrogance, noise, waste, and needless cruelty. She should sound lore-faithful to Traxex/Drow Ranger: terse, cold, watchful, precise, occasionally dry, never bubbly, never modern, and rarely sentimental. Keep replies short, controlled, and edged with frost."
+traits = ["silent", "cold", "precise", "watchful", "disciplined", "exiled", "protective-from-distance", "survivalist", "arrow-wise"]
+speech_style = "terse frost archer, quiet confidence, clipped warnings, hunter observations, few words, no softness unless earned"
+catchphrases = ["Silence first. Then the arrow.", "The cold teaches clean lessons.", "Waste no shot.", "Tracks tell more truth than mouths.", "Stand still only if you wish to be found."]
+
+[housing]
+can_move_in = true
+requires_bed = true
+
+[voice]
+animalese_pitch = "med"
+pitch = 0.86
+volume = 0.32
+radius = 10.0
+
+[chat]
+enabled = true
+call_names = ["traxex", "drow", "drow ranger", "tundra archer"]
+minecraft_chat = true
+discord_chat = true
+
+[gifts]
+loved = ["minecraft:bow", "minecraft:crossbow", "minecraft:arrow", "minecraft:blue_ice", "minecraft:packed_ice"]
+liked = ["minecraft:snowball", "minecraft:leather", "minecraft:rabbit_hide", "minecraft:cooked_rabbit"]
+disliked = ["minecraft:rotten_flesh", "minecraft:fire_charge", "minecraft:magma_cream"]
+daily_limit = 1
+reset_hour = 5
+llm_sentiment_prompt = "The player gave you {item}. Based on Traxex's cold, disciplined archer personality, decide whether the gift is loved, liked, neutral, or disliked. Reply as JSON only: {\"message\":\"short terse in-character reaction\",\"gift_sentiment\":\"neutral\"}."
+
+[gifts.reactions]
+loved = ["Good. {item} has clean purpose.", "A useful gift. I will not waste it."]
+liked = ["Practical. Keep thinking that way.", "{item} will serve."]
+disliked = ["No. It stinks of heat and rot.", "Keep that away from my supplies."]
+neutral = ["I will carry it.", "Accepted."]
+
+[gifts.outgoing]
+enabled = true
+radius = 8.0
+min_friendship_level = 5
+rare_friendship_level = 9
+follow_seconds = 10
+offer_messages = ["@gift.png Take this. Quietly.", "@gift.png Supplies. Do not waste them."]
+fallback_messages = ["Take {quantity} x {item}. Spend each one carefully.", "{quantity} x {item}. Prepared hands live longer."]
+llm_enabled = true
+llm_prompt = "You are Traxex gifting {player} {quantity} x {item}. Reply with one short cold archer line about precision, survival, or silence."
+pool = []
+extra_pool = [
+  { item = "minecraft:arrow", qty = 24, weight = 4 },
+  { item = "minecraft:snowball", qty = 8, weight = 2 },
+  { item = "minecraft:cooked_rabbit", qty = 3, weight = 2 },
+]
+rare_pool = []
+extra_rare_pool = [
+  { item = "minecraft:bow", qty = 1, weight = 1 },
+  { item = "minecraft:blue_ice", qty = 4, weight = 1 },
+]
+
+[friendship_messages]
+
+[friendship_messages.interact]
+neutral = ["Speak low.", "Need arrows, or discipline?", "You stand in the open too much."]
+okay = ["Your footwork is less loud today.", "Ask. Briefly.", "I saw your trail from the ridge."]
+good_friends = ["You returned. Good.", "Your aim is improving.", "If trouble follows, I will see it first."]
+best_friends = ["There you are. The camp was too loud without your quiet.", "My bow watches your path.", "Name the target. I trust your eyes."]
+
+[friendship_messages.greeting]
+neutral = ["Quiet.", "Eyes forward.", "Wind shifted."]
+good_friends = ["Good. You move better.", "Stay near cover.", "I marked tracks east of camp."]
+best_friends = ["Friend. Keep your hood up.", "I saved the high ground.", "The cold is kinder with good company."]
+
+[friendship_messages.first_daily_chat]
+neutral = ["First lesson: do not waste arrows.", "Morning tracks are easiest to read.", "Breathe before you draw."]
+good_friends = ["We train while the air is still.", "Your first shot decides the fight.", "Good. You came before the noise."]
+best_friends = ["First watch is yours and mine.", "Today, we keep the town unseen and alive.", "I kept the clean arrows for you."]
+
+[shop_messages]
+
+[shop_messages.single]
+neutral = ["One {item}. Use it cleanly.", "Here. {item}."]
+okay = ["Good choice. One {item}.", "{item}. Do not waste it."]
+good_friends = ["For you: {item}.", "This {item} should fly true."]
+best_friends = ["My best {item}. Bring it back bloodless if you can.", "Take {item}. I trust your hands."]
+
+[shop_messages.normal]
+neutral = ["{quantity} {item}. That is {total}.", "{quantity} {item}. Count them."]
+okay = ["{quantity} {item}. Sensible.", "Good stock. {quantity} {item}."]
+good_friends = ["{quantity} {item}. You are prepared.", "Take them, {player}. Aim well."]
+best_friends = ["{quantity} {item}. For the paths ahead.", "Take {quantity} {item}. I would rather you return."]
+
+[shop_messages.bulk]
+neutral = ["A large quiver.", "Expecting a siege?"]
+okay = ["Good. More shots. Fewer excuses.", "Bulk supplies. Practical."]
+good_friends = ["You plan beyond the first fight. Good.", "That much {item} means a long hunt."]
+best_friends = ["Take the lot. I trust your purpose.", "{quantity} {item}. Leave none in careless hands."]
+
+[missions]
+enabled = true
+offer_radius = 7.0
+offer_balloon_messages = ["@quest_log.png A trail needs cutting, {player}.", "@quest_log.png Quiet work. Come here."]
+pool = [
+  { id = "traxex_hunt_mobs", category = "task", event = "minecraft:monster_killed", event_desc = "Defeat {goal} Monsters", quest_text = "Cull threats before they reach town.", pass_id = "combat", xp = 100, chowcoins = 50, goal = 10, complete_messages = ["@quest_log.png Good. Fewer footsteps in the dark.", "@quest_log.png Clean hunt. The town breathes easier."] },
+  { id = "traxex_travel_blocks", category = "task", event = "minecraft:blocks_traveled", event_desc = "Travel {goal} Blocks", quest_text = "Scout the cold paths and ridge lines.", pass_id = "cozy", xp = 80, chowcoins = 25, goal = 1000, complete_messages = ["@quest_log.png The route is mapped.", "@quest_log.png Good scouting. Your tracks were almost quiet."] },
+  { id = "traxex_fetch_arrows", category = "fetch", event_desc = "Bring {goal} Arrows", quest_text = "Bring arrows for tundra drills.", pass_id = "cozy", xp = 80, chowcoins = 25, fetch_item = "minecraft:arrow", fetch_count = 16, complete_messages = ["@quest_log.png Enough for practice. Maybe enough for survival.", "@quest_log.png Good. Now learn not to need so many."] },
+]

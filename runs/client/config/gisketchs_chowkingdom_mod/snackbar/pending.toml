@@ -1,0 +1,7 @@
+# Chow Kingdom config: pending.toml. Edit while the game is stopped, then run reload commands or restart.
+
+# Config value: known_players.
+known_players = ["380df991-f603-344c-a090-369bad2a924a"]
+
+# Config value: pending.
+[pending]

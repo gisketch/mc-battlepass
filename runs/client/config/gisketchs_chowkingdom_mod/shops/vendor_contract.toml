@@ -1,0 +1,4 @@
+# Chow Kingdom config: vendor_contract.toml. Edit while the game is stopped, then run reload commands or restart.
+
+# Config value: max_linked_shops.
+max_linked_shops = 100

@@ -1,0 +1,14 @@
+# CKDM generated class config UPDATED with missing weapons: bard.toml
+# Rebalanced around: Starter = normal/base families, Upgrade = cool/specialized families, Legendary/unique = upgrade or future core/mastery gate.
+
+id = "bard"
+display_name = "Bard"
+icon = "textures/gui/classes/bard.png"
+description = "Upgrade party support class trained with songs, lutes, lyres, rapiers, and harp crossbows."
+classification = "upgrade"
+starter_class_ids = ["rogue", "archer", "priest"]
+upgrade_class_ids = []
+perks = [
+  { type = "starting_items", multiplier = 1.0, weapon_tags = [], armor_tags = [], weapon_patterns = [], armor_patterns = [], wrong_weapon_damage_multiplier = 1.0, wrong_weapon_cooldown_ticks = 0, wrong_weapon_attack_speed_multiplier = 1.0, wrong_armor_disables_sprint = false, starting_items = ["minecraft:book", "bards_rpg:wooden_lute", "minecraft:bread*8"], reward_pool = [] },
+  { type = "equipment_affinity", multiplier = 1.0, weapon_tags = [], armor_tags = [], weapon_patterns = ["bards_rpg:*lute", "bards_rpg:*lyre", "bards_rpg:*rapier", "bards_rpg:*harp_crossbow", "bards_rpg:spell_book/bard", "bards_rpg:unique_lute_*", "bards_rpg:unique_lyre_*", "bards_rpg:unique_rapier_*", "bards_rpg:unique_harp_crossbow_*", "simplyswords:*rapier", "simplymore:jester_penetrate", "simplymore:the_pan"], weapon_exclude_patterns = ["*spawn_egg", "#simplyswords:uniques", "#simplyswords:runic_weapons", "#simplyswords:lootable_uniques", "#simplyswords:conditional_uniques_type_1", "#simplyswords:conditional_uniques_type_2"], armor_patterns = ["minecraft:leather_*", "bards_rpg:*entertainer_garb*", "bards_rpg:*storyteller_garb*", "bards_rpg:*troubadour_garb*"], armor_exclude_patterns = [], wrong_weapon_damage_multiplier = 0.50, wrong_weapon_cooldown_ticks = 8, wrong_weapon_attack_speed_multiplier = 0.65, wrong_armor_disables_sprint = true, starting_items = [], reward_pool = [] },
+]

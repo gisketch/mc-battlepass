@@ -1,0 +1,8 @@
+{
+  "tracked": [
+    "combat|permanent:minecraft:monster_killed",
+    "cozy|daily:daily_cook_gold_quality_food",
+    "cozy|daily:daily_eat_diamond_quality_food",
+    "cozy|daily:daily_max_friendship_fairy"
+  ]
+}

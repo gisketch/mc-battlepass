@@ -1,0 +1,19 @@
+# Chow Kingdom config: martial_artist.toml. Edit while the game is stopped, then run reload commands or restart.
+
+# Config value: id.
+id = "martial_artist"
+# Config value: display_name.
+display_name = "Martial Artist"
+# Config value: icon.
+icon = "textures/gui/jobs/martial_artist.png"
+# Config value: description.
+description = "Studies training grounds and hard roads for Fighting Pokemon."
+# Config value: perks.
+perks = [
+  { type = "cobblemon_catch_rate", pokemon_type = "fighting", multiplier = 1.05, bonus_percent_by_level = [0.05, 0.10, 0.18, 0.28, 0.40], weapon_tags = [], armor_tags = [], weapon_patterns = [], armor_patterns = [], wrong_weapon_damage_multiplier = 1.0, wrong_weapon_cooldown_ticks = 0, wrong_weapon_attack_speed_multiplier = 1.0, wrong_armor_disables_sprint = false, starting_items = [] },
+  { type = "mount_speed", pokemon_type = "fighting", multiplier = 1.0, bonus_percent_by_level = [0.03, 0.05, 0.09, 0.14, 0.20], weapon_tags = [], armor_tags = [], weapon_patterns = [], armor_patterns = [], wrong_weapon_damage_multiplier = 1.0, wrong_weapon_cooldown_ticks = 0, wrong_weapon_attack_speed_multiplier = 1.0, wrong_armor_disables_sprint = false, starting_items = [] },
+  { type = "knockback_lite", pokemon_type = "", multiplier = 1.0, bonus_percent_by_level = [0.03, 0.06, 0.09, 0.12, 0.15], weapon_tags = [], armor_tags = [], weapon_patterns = [], armor_patterns = [], wrong_weapon_damage_multiplier = 1.0, wrong_weapon_cooldown_ticks = 0, wrong_weapon_attack_speed_multiplier = 1.0, wrong_armor_disables_sprint = false, starting_items = [] },
+  { type = "agility_lite", pokemon_type = "", multiplier = 1.0, bonus_percent_by_level = [0.02, 0.04, 0.06, 0.08, 0.10], weapon_tags = [], armor_tags = [], weapon_patterns = [], armor_patterns = [], wrong_weapon_damage_multiplier = 1.0, wrong_weapon_cooldown_ticks = 0, wrong_weapon_attack_speed_multiplier = 1.0, wrong_armor_disables_sprint = false, starting_items = [] },
+  { type = "combo_flow", pokemon_type = "", multiplier = 1.0, weapon_tags = [], armor_tags = [], weapon_patterns = [], armor_patterns = [], wrong_weapon_damage_multiplier = 1.0, wrong_weapon_cooldown_ticks = 0, wrong_weapon_attack_speed_multiplier = 1.0, wrong_armor_disables_sprint = false, starting_items = [] },
+  { type = "second_wind", pokemon_type = "", multiplier = 1.0, weapon_tags = [], armor_tags = [], weapon_patterns = [], armor_patterns = [], wrong_weapon_damage_multiplier = 1.0, wrong_weapon_cooldown_ticks = 0, wrong_weapon_attack_speed_multiplier = 1.0, wrong_armor_disables_sprint = false, starting_items = [] },
+]

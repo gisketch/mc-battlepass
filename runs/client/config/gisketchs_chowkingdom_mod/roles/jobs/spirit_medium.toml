@@ -1,0 +1,19 @@
+# Chow Kingdom config: spirit_medium.toml. Edit while the game is stopped, then run reload commands or restart.
+
+# Config value: id.
+id = "spirit_medium"
+# Config value: display_name.
+display_name = "Spirit Medium"
+# Config value: icon.
+icon = "textures/gui/jobs/spirit_medium.png"
+# Config value: description.
+description = "Listens at old paths and quiet places for Ghost Pokemon."
+# Config value: perks.
+perks = [
+  { type = "cobblemon_catch_rate", pokemon_type = "ghost", multiplier = 1.05, bonus_percent_by_level = [0.05, 0.10, 0.18, 0.28, 0.40], weapon_tags = [], armor_tags = [], weapon_patterns = [], armor_patterns = [], wrong_weapon_damage_multiplier = 1.0, wrong_weapon_cooldown_ticks = 0, wrong_weapon_attack_speed_multiplier = 1.0, wrong_armor_disables_sprint = false, starting_items = [] },
+  { type = "mount_speed", pokemon_type = "ghost", multiplier = 1.0, bonus_percent_by_level = [0.03, 0.05, 0.09, 0.14, 0.20], weapon_tags = [], armor_tags = [], weapon_patterns = [], armor_patterns = [], wrong_weapon_damage_multiplier = 1.0, wrong_weapon_cooldown_ticks = 0, wrong_weapon_attack_speed_multiplier = 1.0, wrong_armor_disables_sprint = false, starting_items = [] },
+  { type = "soul_speed_lite", pokemon_type = "", multiplier = 1.0, bonus_percent_by_level = [0.10, 0.20, 0.30, 0.40, 0.50], weapon_tags = [], armor_tags = [], weapon_patterns = [], armor_patterns = [], wrong_weapon_damage_multiplier = 1.0, wrong_weapon_cooldown_ticks = 0, wrong_weapon_attack_speed_multiplier = 1.0, wrong_armor_disables_sprint = false, starting_items = [] },
+  { type = "ethereal_step_lite", pokemon_type = "", multiplier = 1.0, weapon_tags = [], armor_tags = [], weapon_patterns = [], armor_patterns = [], wrong_weapon_damage_multiplier = 1.0, wrong_weapon_cooldown_ticks = 0, wrong_weapon_attack_speed_multiplier = 1.0, wrong_armor_disables_sprint = false, starting_items = [] },
+  { type = "spirit_sight", pokemon_type = "", multiplier = 1.0, weapon_tags = [], armor_tags = [], weapon_patterns = [], armor_patterns = [], wrong_weapon_damage_multiplier = 1.0, wrong_weapon_cooldown_ticks = 0, wrong_weapon_attack_speed_multiplier = 1.0, wrong_armor_disables_sprint = false, starting_items = [] },
+  { type = "grave_whisper", pokemon_type = "", multiplier = 1.0, bonus_percent_by_level = [0.05], weapon_tags = [], armor_tags = [], weapon_patterns = [], armor_patterns = [], wrong_weapon_damage_multiplier = 1.0, wrong_weapon_cooldown_ticks = 0, wrong_weapon_attack_speed_multiplier = 1.0, wrong_armor_disables_sprint = false, starting_items = [] },
+]

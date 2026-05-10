@@ -1,0 +1,19 @@
+# Chow Kingdom config: mountaineer.toml. Edit while the game is stopped, then run reload commands or restart.
+
+# Config value: id.
+id = "mountaineer"
+# Config value: display_name.
+display_name = "Mountaineer"
+# Config value: icon.
+icon = "textures/gui/jobs/mountaineer.png"
+# Config value: description.
+description = "Crosses frost lines and high passes to find Ice Pokemon."
+# Config value: perks.
+perks = [
+  { type = "cobblemon_catch_rate", pokemon_type = "ice", multiplier = 1.05, bonus_percent_by_level = [0.05, 0.10, 0.18, 0.28, 0.40], weapon_tags = [], armor_tags = [], weapon_patterns = [], armor_patterns = [], wrong_weapon_damage_multiplier = 1.0, wrong_weapon_cooldown_ticks = 0, wrong_weapon_attack_speed_multiplier = 1.0, wrong_armor_disables_sprint = false, starting_items = [] },
+  { type = "mount_speed", pokemon_type = "ice", multiplier = 1.0, bonus_percent_by_level = [0.03, 0.05, 0.09, 0.14, 0.20], weapon_tags = [], armor_tags = [], weapon_patterns = [], armor_patterns = [], wrong_weapon_damage_multiplier = 1.0, wrong_weapon_cooldown_ticks = 0, wrong_weapon_attack_speed_multiplier = 1.0, wrong_armor_disables_sprint = false, starting_items = [] },
+  { type = "freeze_damage_reduction", pokemon_type = "", multiplier = 1.0, bonus_percent_by_level = [0.15, 0.30, 0.45, 0.60, 0.75], weapon_tags = [], armor_tags = [], weapon_patterns = [], armor_patterns = [], wrong_weapon_damage_multiplier = 1.0, wrong_weapon_cooldown_ticks = 0, wrong_weapon_attack_speed_multiplier = 1.0, wrong_armor_disables_sprint = false, starting_items = [] },
+  { type = "step_assist_lite", pokemon_type = "", multiplier = 1.0, bonus_percent_by_level = [0.10, 0.20, 0.30, 0.40, 0.50], weapon_tags = [], armor_tags = [], weapon_patterns = [], armor_patterns = [], wrong_weapon_damage_multiplier = 1.0, wrong_weapon_cooldown_ticks = 0, wrong_weapon_attack_speed_multiplier = 1.0, wrong_armor_disables_sprint = false, starting_items = [] },
+  { type = "coldproof", pokemon_type = "", multiplier = 1.0, weapon_tags = [], armor_tags = [], weapon_patterns = [], armor_patterns = [], wrong_weapon_damage_multiplier = 1.0, wrong_weapon_cooldown_ticks = 0, wrong_weapon_attack_speed_multiplier = 1.0, wrong_armor_disables_sprint = false, starting_items = [] },
+  { type = "climber", pokemon_type = "", multiplier = 1.0, weapon_tags = [], armor_tags = [], weapon_patterns = [], armor_patterns = [], wrong_weapon_damage_multiplier = 1.0, wrong_weapon_cooldown_ticks = 0, wrong_weapon_attack_speed_multiplier = 1.0, wrong_armor_disables_sprint = false, starting_items = [] },
+]

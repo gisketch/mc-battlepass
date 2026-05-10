@@ -1,0 +1,14 @@
+# CKDM generated class config UPDATED with missing weapons: priest.toml
+# Rebalanced around: Starter = normal/base families, Upgrade = cool/specialized families, Legendary/unique = upgrade or future core/mastery gate.
+
+id = "priest"
+display_name = "Priest"
+icon = "textures/gui/classes/priest.png"
+description = "Starter holy support caster trained with basic holy staffs, holy wands, and priest robes."
+classification = "starter"
+starter_class_ids = []
+upgrade_class_ids = ["paladin", "bard", "elemental_wizard"]
+perks = [
+  { type = "starting_items", multiplier = 1.0, weapon_tags = [], armor_tags = [], weapon_patterns = [], armor_patterns = [], wrong_weapon_damage_multiplier = 1.0, wrong_weapon_cooldown_ticks = 0, wrong_weapon_attack_speed_multiplier = 1.0, wrong_armor_disables_sprint = false, starting_items = ["minecraft:book", "paladins:acolyte_wand", "minecraft:bread*8"], reward_pool = [] },
+  { type = "equipment_affinity", multiplier = 1.0, weapon_tags = [], armor_tags = [], weapon_patterns = ["paladins:acolyte_wand", "paladins:holy_staff", "paladins:holy_wand", "paladins:*holy_staff", "paladins:*holy_wand", "paladins:spell_book/priest", "arsenal:unique_staff_heal_1", "arsenal:unique_staff_heal_2", "arsenal:unique_staff_heal_sw"], weapon_exclude_patterns = ["#simplyswords:uniques", "#simplyswords:lootable_uniques", "#simplyswords:conditional_uniques_type_1", "#simplyswords:conditional_uniques_type_2", "#simplyswords:runic_weapons", "simplyswords:gobber_compat", "simplyswords:mythicmetals_compat", "simplyswords:awakened_*", "simplyswords:waking_*", "simplyswords:emberblade", "simplyswords:toxic_longsword", "simplyswords:twisted_blade", "simplyswords:watching_warglaive", "simplyswords:magiblade", "simplyswords:magicythe", "simplyswords:magiscythe", "simplyswords:magispear", "simplyswords:uniquesworditem", "#simplymore:uniques", "#simplymore:runic_gear", "simplymore:legendary_*", "simplymore:mimicry*", "simplymore:hallowed_*", "simplymore:star_platinum_*", "simplymore:tidesinger_*", "simplymore:blade_of_the_grotesque", "#simplycataclysm:ancient_metal_gear", "#simplycataclysm:black_steel_gear", "#simplycataclysm:cursium_gear", "#simplycataclysm:ignitium_gear", "#simplycataclysm:witherite_gear", "cataclysm:*", "minecells:*", "artifacts:*", "relics:*", "oritech:*", "*spawn_egg", "paladins:*mace", "paladins:*great_hammer", "paladins:*kite_shield"], armor_patterns = ["minecraft:leather_*", "minecraft:chainmail_*", "paladins:*priest*", "paladins:*robe*", "armory_rpgs:*robe*"], armor_exclude_patterns = ["#rpg_series:loot_tier/tier_10_armors", "cataclysm:*", "artifacts:*", "relics:*"], wrong_weapon_damage_multiplier = 0.35, wrong_weapon_cooldown_ticks = 12, wrong_weapon_attack_speed_multiplier = 0.55, wrong_armor_disables_sprint = true, starting_items = [], reward_pool = [] },
+]

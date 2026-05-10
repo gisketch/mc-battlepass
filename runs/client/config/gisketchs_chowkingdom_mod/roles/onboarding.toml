@@ -1,0 +1,4 @@
+# Chow Kingdom config: onboarding.toml. Edit while the game is stopped, then run reload commands or restart.
+
+# Config value: welcome_content.
+welcome_content = ["A new chapter begins in Chowkingdom. Choose how you work, then choose how you fight.", "Pick your place in the kingdom before the road opens.", "Every story starts with work to do and a way to fight."]

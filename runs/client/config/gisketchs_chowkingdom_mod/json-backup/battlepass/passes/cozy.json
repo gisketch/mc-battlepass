@@ -1,0 +1,1790 @@
+{
+  "id": "cozy",
+  "displayName": "Cozy Pass",
+  "description": "Progress from cozy tasks and peaceful rewards.",
+  "titleTexture": "gisketchs_chowkingdom_mod:textures/gui/cozy_pass.png",
+  "titleTextureWidth": 1024,
+  "titleTextureHeight": 230,
+  "categories": [
+    "cozy",
+    "season_1"
+  ],
+  "permanent_events": [
+    {
+      "id": "permanent_scan_pokedex",
+      "event": "cobblemon:pokedex_scanned",
+      "type": "progressive",
+      "event_desc": "Scan {goal} Pokedex Entries",
+      "progress": 0,
+      "progress_goals": [
+        25,
+        50,
+        100,
+        150
+      ],
+      "progress_xp": [
+        300,
+        400,
+        800,
+        1000
+      ]
+    },
+    {
+      "id": "permanent_monster_slayer",
+      "event": "minecraft:monster_killed",
+      "type": "progressive",
+      "event_desc": "Defeat {goal} Monsters",
+      "progress": 0,
+      "progress_goals": [
+        100,
+        250,
+        500
+      ],
+      "progress_xp": [
+        300,
+        600,
+        1000
+      ]
+    },
+    {
+      "id": "permanent_crop_keeper",
+      "event": "minecraft:crop_harvested",
+      "type": "progressive",
+      "event_desc": "Harvest {goal} Crops",
+      "progress": 0,
+      "progress_goals": [
+        128,
+        512,
+        1024
+      ],
+      "progress_xp": [
+        250,
+        500,
+        900
+      ]
+    },
+    {
+      "id": "permanent_animal_keeper",
+      "event": "minecraft:animal_bred",
+      "type": "progressive",
+      "event_desc": "Breed {goal} Animals",
+      "progress": 0,
+      "progress_goals": [
+        25,
+        75,
+        150
+      ],
+      "progress_xp": [
+        250,
+        450,
+        850
+      ]
+    },
+    {
+      "id": "permanent_traveler",
+      "event": "minecraft:blocks_traveled",
+      "type": "progressive",
+      "event_desc": "Travel {goal} Blocks",
+      "progress": 0,
+      "progress_goals": [
+        1000,
+        5000,
+        10000
+      ],
+      "progress_xp": [
+        250,
+        600,
+        1200
+      ]
+    }
+  ],
+  "daily_events": {
+    "count": 3,
+    "time_zone": "GMT+8",
+    "reset_hour": 5,
+    "reset_minute": 0,
+    "events": [
+      {
+        "id": "daily_hunt_mobs",
+        "event": "minecraft:monster_killed",
+        "type": "repeating",
+        "event_desc": "Hunt Monsters",
+        "xp": 8,
+        "xp_cap": 50
+      },
+      {
+        "id": "daily_catch_fire_type",
+        "event": "cobblemon:catch_fire_type",
+        "type": "repeating",
+        "event_desc": "Catch Fire Pokemon",
+        "xp": 5,
+        "xp_cap": 50
+      },
+      {
+        "id": "daily_harvest_crops",
+        "event": "minecraft:crop_harvested",
+        "type": "repeating",
+        "event_desc": "Harvest Crops",
+        "xp": 3,
+        "xp_cap": 50
+      },
+      { "id": "daily_harvest_iron_quality_crops", "event": "quality_food:iron_quality_crop_harvested", "type": "progressive", "event_desc": "Harvest {goal} Iron Quality Crops", "progress": 0, "progress_goals": [10], "progress_xp": [80] },
+      { "id": "daily_harvest_gold_quality_crops", "event": "quality_food:gold_quality_crop_harvested", "type": "progressive", "event_desc": "Harvest {goal} Gold Quality Crops", "progress": 0, "progress_goals": [8], "progress_xp": [100] },
+      { "id": "daily_harvest_diamond_quality_crops", "event": "quality_food:diamond_quality_crop_harvested", "type": "progressive", "event_desc": "Harvest {goal} Diamond Quality Crops", "progress": 0, "progress_goals": [4], "progress_xp": [120] },
+      { "id": "daily_cook_iron_quality_food", "event": "quality_food:iron_quality_food_cooked", "type": "progressive", "event_desc": "Cook {goal} Iron Quality Foods", "progress": 0, "progress_goals": [10], "progress_xp": [80] },
+      { "id": "daily_cook_gold_quality_food", "event": "quality_food:gold_quality_food_cooked", "type": "progressive", "event_desc": "Cook {goal} Gold Quality Foods", "progress": 0, "progress_goals": [8], "progress_xp": [100] },
+      { "id": "daily_cook_diamond_quality_food", "event": "quality_food:diamond_quality_food_cooked", "type": "progressive", "event_desc": "Cook {goal} Diamond Quality Foods", "progress": 0, "progress_goals": [4], "progress_xp": [120] },
+      { "id": "daily_eat_iron_quality_food", "event": "quality_food:iron_quality_food_eaten", "type": "progressive", "event_desc": "Eat {goal} Iron Quality Foods", "progress": 0, "progress_goals": [8], "progress_xp": [80] },
+      { "id": "daily_eat_gold_quality_food", "event": "quality_food:gold_quality_food_eaten", "type": "progressive", "event_desc": "Eat {goal} Gold Quality Foods", "progress": 0, "progress_goals": [6], "progress_xp": [100] },
+      { "id": "daily_eat_diamond_quality_food", "event": "quality_food:diamond_quality_food_eaten", "type": "progressive", "event_desc": "Eat {goal} Diamond Quality Foods", "progress": 0, "progress_goals": [3], "progress_xp": [120] },
+      {
+        "id": "daily_walk_blocks",
+        "event": "minecraft:blocks_traveled",
+        "type": "repeating",
+        "event_desc": "Travel Blocks",
+        "xp": 1,
+        "xp_cap": 50
+      },
+      {
+        "id": "daily_breed_animals",
+        "event": "minecraft:animal_bred",
+        "type": "repeating",
+        "event_desc": "Breed Animals",
+        "xp": 12,
+        "xp_cap": 50
+      },
+      {
+        "id": "daily_trade_villagers",
+        "event": "minecraft:villager_traded",
+        "type": "repeating",
+        "event_desc": "Trade with Villagers",
+        "xp": 10,
+        "xp_cap": 50
+      },
+      {
+        "id": "daily_go_fishing",
+        "event": "minecraft:fish_caught",
+        "type": "repeating",
+        "event_desc": "Catch Fish",
+        "xp": 10,
+        "xp_cap": 50
+      },
+      {
+        "id": "daily_send_out_starter",
+        "event": "cobblemon:send_out_starter_pokemon",
+        "type": "repeating",
+        "event_desc": "Send Out Starters",
+        "xp": 12,
+        "xp_cap": 50
+      },
+      {
+        "id": "daily_catch_legendary",
+        "event": "cobblemon:catch_legendary_pokemon",
+        "type": "repeating",
+        "event_desc": "Catch Legendary Pokemon",
+        "xp": 50,
+        "xp_cap": 50
+      },
+      {
+        "id": "daily_max_friendship_fairy",
+        "event": "cobblemon:max_friendship_fairy_type",
+        "type": "repeating",
+        "event_desc": "Max Fairy Friendship",
+        "xp": 30,
+        "xp_cap": 50
+      }
+    ]
+  },
+  "weekly_events": {
+    "count": 5,
+    "time_zone": "GMT+8",
+    "reset_hour": 5,
+    "reset_minute": 0,
+    "reset_on_day": "Sunday",
+    "events": [
+      { "id": "weekly_harvest_iron_quality_crops", "event": "quality_food:iron_quality_crop_harvested", "type": "progressive", "event_desc": "Harvest {goal} Iron Quality Crops", "progress": 0, "progress_goals": [64], "progress_xp": [250] },
+      { "id": "weekly_harvest_gold_quality_crops", "event": "quality_food:gold_quality_crop_harvested", "type": "progressive", "event_desc": "Harvest {goal} Gold Quality Crops", "progress": 0, "progress_goals": [48], "progress_xp": [300] },
+      { "id": "weekly_harvest_diamond_quality_crops", "event": "quality_food:diamond_quality_crop_harvested", "type": "progressive", "event_desc": "Harvest {goal} Diamond Quality Crops", "progress": 0, "progress_goals": [24], "progress_xp": [350] },
+      { "id": "weekly_cook_iron_quality_food", "event": "quality_food:iron_quality_food_cooked", "type": "progressive", "event_desc": "Cook {goal} Iron Quality Foods", "progress": 0, "progress_goals": [64], "progress_xp": [250] },
+      { "id": "weekly_cook_gold_quality_food", "event": "quality_food:gold_quality_food_cooked", "type": "progressive", "event_desc": "Cook {goal} Gold Quality Foods", "progress": 0, "progress_goals": [48], "progress_xp": [300] },
+      { "id": "weekly_cook_diamond_quality_food", "event": "quality_food:diamond_quality_food_cooked", "type": "progressive", "event_desc": "Cook {goal} Diamond Quality Foods", "progress": 0, "progress_goals": [24], "progress_xp": [350] },
+      { "id": "weekly_ship_iron_quality_food", "event": "gisketchs_chowkingdom_mod:shipping_bin_iron_quality_food_sold", "type": "progressive", "event_desc": "Ship {goal} Iron Quality Foods", "progress": 0, "progress_goals": [32], "progress_xp": [250] },
+      { "id": "weekly_ship_gold_quality_food", "event": "gisketchs_chowkingdom_mod:shipping_bin_gold_quality_food_sold", "type": "progressive", "event_desc": "Ship {goal} Gold Quality Foods", "progress": 0, "progress_goals": [32], "progress_xp": [300] },
+      { "id": "weekly_ship_diamond_quality_food", "event": "gisketchs_chowkingdom_mod:shipping_bin_diamond_quality_food_sold", "type": "progressive", "event_desc": "Ship {goal} Diamond Quality Foods", "progress": 0, "progress_goals": [16], "progress_xp": [350] },
+      { "id": "weekly_ship_value", "event": "gisketchs_chowkingdom_mod:shipping_bin_value_sold", "type": "progressive", "event_desc": "Ship {goal} Chowcoins Worth", "progress": 0, "progress_goals": [50000], "progress_xp": [350] },
+      { "id": "weekly_eat_iron_quality_food", "event": "quality_food:iron_quality_food_eaten", "type": "progressive", "event_desc": "Eat {goal} Iron Quality Foods", "progress": 0, "progress_goals": [32], "progress_xp": [250] },
+      { "id": "weekly_eat_gold_quality_food", "event": "quality_food:gold_quality_food_eaten", "type": "progressive", "event_desc": "Eat {goal} Gold Quality Foods", "progress": 0, "progress_goals": [24], "progress_xp": [300] },
+      { "id": "weekly_eat_diamond_quality_food", "event": "quality_food:diamond_quality_food_eaten", "type": "progressive", "event_desc": "Eat {goal} Diamond Quality Foods", "progress": 0, "progress_goals": [12], "progress_xp": [350] },
+      { "id": "weekly_hunt_mobs", "event": "minecraft:monster_killed", "type": "progressive", "event_desc": "Defeat {goal} Monsters", "progress": 0, "progress_goals": [100], "progress_xp": [250] },
+      { "id": "weekly_harvest_crops", "event": "minecraft:crop_harvested", "type": "progressive", "event_desc": "Harvest {goal} Crops", "progress": 0, "progress_goals": [512], "progress_xp": [250] },
+      { "id": "weekly_travel_blocks", "event": "minecraft:blocks_traveled", "type": "progressive", "event_desc": "Travel {goal} Blocks", "progress": 0, "progress_goals": [10000], "progress_xp": [250] },
+      { "id": "weekly_breed_animals", "event": "minecraft:animal_bred", "type": "progressive", "event_desc": "Breed {goal} Animals", "progress": 0, "progress_goals": [25], "progress_xp": [250] },
+      { "id": "weekly_trade_villagers", "event": "minecraft:villager_traded", "type": "progressive", "event_desc": "Trade with Villagers {goal} Times", "progress": 0, "progress_goals": [30], "progress_xp": [250] },
+      { "id": "weekly_go_fishing", "event": "minecraft:fish_caught", "type": "progressive", "event_desc": "Catch {goal} Fish", "progress": 0, "progress_goals": [25], "progress_xp": [250] },
+      { "id": "weekly_cutting_board", "event": "farmersdelight:cutting_board_used", "type": "progressive", "event_desc": "Use a Cutting Board {goal} Times", "progress": 0, "progress_goals": [25], "progress_xp": [250] },
+      { "id": "weekly_cooking_pot_meals", "event": "farmersdelight:cooking_pot_meal_cooked", "type": "progressive", "event_desc": "Cook {goal} Cooking Pot Meals", "progress": 0, "progress_goals": [25], "progress_xp": [250] },
+      {
+        "id": "weekly_catch_normal_type",
+        "event": "cobblemon:catch_normal_type",
+        "type": "progressive",
+        "event_desc": "Catch {goal} Normal Pokemon",
+        "progress": 0,
+        "progress_goals": [
+          10
+        ],
+        "progress_xp": [
+          250
+        ]
+      },
+      {
+        "id": "weekly_catch_fire_type",
+        "event": "cobblemon:catch_fire_type",
+        "type": "progressive",
+        "event_desc": "Catch {goal} Fire Pokemon",
+        "progress": 0,
+        "progress_goals": [
+          10
+        ],
+        "progress_xp": [
+          250
+        ]
+      },
+      {
+        "id": "weekly_catch_water_type",
+        "event": "cobblemon:catch_water_type",
+        "type": "progressive",
+        "event_desc": "Catch {goal} Water Pokemon",
+        "progress": 0,
+        "progress_goals": [
+          10
+        ],
+        "progress_xp": [
+          250
+        ]
+      },
+      {
+        "id": "weekly_catch_grass_type",
+        "event": "cobblemon:catch_grass_type",
+        "type": "progressive",
+        "event_desc": "Catch {goal} Grass Pokemon",
+        "progress": 0,
+        "progress_goals": [
+          10
+        ],
+        "progress_xp": [
+          250
+        ]
+      },
+      {
+        "id": "weekly_catch_electric_type",
+        "event": "cobblemon:catch_electric_type",
+        "type": "progressive",
+        "event_desc": "Catch {goal} Electric Pokemon",
+        "progress": 0,
+        "progress_goals": [
+          10
+        ],
+        "progress_xp": [
+          250
+        ]
+      },
+      {
+        "id": "weekly_catch_ice_type",
+        "event": "cobblemon:catch_ice_type",
+        "type": "progressive",
+        "event_desc": "Catch {goal} Ice Pokemon",
+        "progress": 0,
+        "progress_goals": [
+          10
+        ],
+        "progress_xp": [
+          250
+        ]
+      },
+      {
+        "id": "weekly_catch_fighting_type",
+        "event": "cobblemon:catch_fighting_type",
+        "type": "progressive",
+        "event_desc": "Catch {goal} Fighting Pokemon",
+        "progress": 0,
+        "progress_goals": [
+          10
+        ],
+        "progress_xp": [
+          250
+        ]
+      },
+      {
+        "id": "weekly_catch_poison_type",
+        "event": "cobblemon:catch_poison_type",
+        "type": "progressive",
+        "event_desc": "Catch {goal} Poison Pokemon",
+        "progress": 0,
+        "progress_goals": [
+          10
+        ],
+        "progress_xp": [
+          250
+        ]
+      },
+      {
+        "id": "weekly_catch_ground_type",
+        "event": "cobblemon:catch_ground_type",
+        "type": "progressive",
+        "event_desc": "Catch {goal} Ground Pokemon",
+        "progress": 0,
+        "progress_goals": [
+          10
+        ],
+        "progress_xp": [
+          250
+        ]
+      },
+      {
+        "id": "weekly_catch_flying_type",
+        "event": "cobblemon:catch_flying_type",
+        "type": "progressive",
+        "event_desc": "Catch {goal} Flying Pokemon",
+        "progress": 0,
+        "progress_goals": [
+          10
+        ],
+        "progress_xp": [
+          250
+        ]
+      },
+      {
+        "id": "weekly_catch_psychic_type",
+        "event": "cobblemon:catch_psychic_type",
+        "type": "progressive",
+        "event_desc": "Catch {goal} Psychic Pokemon",
+        "progress": 0,
+        "progress_goals": [
+          10
+        ],
+        "progress_xp": [
+          250
+        ]
+      },
+      {
+        "id": "weekly_catch_bug_type",
+        "event": "cobblemon:catch_bug_type",
+        "type": "progressive",
+        "event_desc": "Catch {goal} Bug Pokemon",
+        "progress": 0,
+        "progress_goals": [
+          10
+        ],
+        "progress_xp": [
+          250
+        ]
+      },
+      {
+        "id": "weekly_catch_rock_type",
+        "event": "cobblemon:catch_rock_type",
+        "type": "progressive",
+        "event_desc": "Catch {goal} Rock Pokemon",
+        "progress": 0,
+        "progress_goals": [
+          10
+        ],
+        "progress_xp": [
+          250
+        ]
+      },
+      {
+        "id": "weekly_catch_ghost_type",
+        "event": "cobblemon:catch_ghost_type",
+        "type": "progressive",
+        "event_desc": "Catch {goal} Ghost Pokemon",
+        "progress": 0,
+        "progress_goals": [
+          10
+        ],
+        "progress_xp": [
+          250
+        ]
+      },
+      {
+        "id": "weekly_catch_dragon_type",
+        "event": "cobblemon:catch_dragon_type",
+        "type": "progressive",
+        "event_desc": "Catch {goal} Dragon Pokemon",
+        "progress": 0,
+        "progress_goals": [
+          10
+        ],
+        "progress_xp": [
+          250
+        ]
+      },
+      {
+        "id": "weekly_catch_dark_type",
+        "event": "cobblemon:catch_dark_type",
+        "type": "progressive",
+        "event_desc": "Catch {goal} Dark Pokemon",
+        "progress": 0,
+        "progress_goals": [
+          10
+        ],
+        "progress_xp": [
+          250
+        ]
+      },
+      {
+        "id": "weekly_catch_steel_type",
+        "event": "cobblemon:catch_steel_type",
+        "type": "progressive",
+        "event_desc": "Catch {goal} Steel Pokemon",
+        "progress": 0,
+        "progress_goals": [
+          10
+        ],
+        "progress_xp": [
+          250
+        ]
+      },
+      {
+        "id": "weekly_catch_fairy_type",
+        "event": "cobblemon:catch_fairy_type",
+        "type": "progressive",
+        "event_desc": "Catch {goal} Fairy Pokemon",
+        "progress": 0,
+        "progress_goals": [
+          10
+        ],
+        "progress_xp": [
+          250
+        ]
+      },
+      {
+        "id": "weekly_catch_legendary",
+        "event": "cobblemon:catch_legendary_pokemon",
+        "type": "progressive",
+        "event_desc": "Catch {goal} Legendary Pokemon",
+        "progress": 0,
+        "progress_goals": [
+          10,
+          20,
+          30
+        ],
+        "progress_xp": [
+          900,
+          1900,
+          3000
+        ]
+      },
+      {
+        "id": "weekly_catch_mythical",
+        "event": "cobblemon:catch_mythical_pokemon",
+        "type": "progressive",
+        "event_desc": "Catch {goal} Mythical Pokemon",
+        "progress": 0,
+        "progress_goals": [
+          1
+        ],
+        "progress_xp": [
+          900
+        ]
+      },
+      {
+        "id": "weekly_catch_starter",
+        "event": "cobblemon:catch_starter_pokemon",
+        "type": "progressive",
+        "event_desc": "Catch {goal} Starter Pokemon",
+        "progress": 0,
+        "progress_goals": [
+          1
+        ],
+        "progress_xp": [
+          600
+        ]
+      },
+      {
+        "id": "weekly_friendship_normal_type",
+        "event": "cobblemon:max_friendship_normal_type",
+        "type": "progressive",
+        "event_desc": "Max Friendship with {goal} Normal Pokemon",
+        "progress": 0,
+        "progress_goals": [
+          10
+        ],
+        "progress_xp": [
+          300
+        ]
+      },
+      {
+        "id": "weekly_friendship_fire_type",
+        "event": "cobblemon:max_friendship_fire_type",
+        "type": "progressive",
+        "event_desc": "Max Friendship with {goal} Fire Pokemon",
+        "progress": 0,
+        "progress_goals": [
+          10
+        ],
+        "progress_xp": [
+          300
+        ]
+      },
+      {
+        "id": "weekly_friendship_water_type",
+        "event": "cobblemon:max_friendship_water_type",
+        "type": "progressive",
+        "event_desc": "Max Friendship with {goal} Water Pokemon",
+        "progress": 0,
+        "progress_goals": [
+          10
+        ],
+        "progress_xp": [
+          300
+        ]
+      },
+      {
+        "id": "weekly_friendship_grass_type",
+        "event": "cobblemon:max_friendship_grass_type",
+        "type": "progressive",
+        "event_desc": "Max Friendship with {goal} Grass Pokemon",
+        "progress": 0,
+        "progress_goals": [
+          10
+        ],
+        "progress_xp": [
+          300
+        ]
+      },
+      {
+        "id": "weekly_friendship_electric_type",
+        "event": "cobblemon:max_friendship_electric_type",
+        "type": "progressive",
+        "event_desc": "Max Friendship with {goal} Electric Pokemon",
+        "progress": 0,
+        "progress_goals": [
+          10
+        ],
+        "progress_xp": [
+          300
+        ]
+      },
+      {
+        "id": "weekly_friendship_ice_type",
+        "event": "cobblemon:max_friendship_ice_type",
+        "type": "progressive",
+        "event_desc": "Max Friendship with {goal} Ice Pokemon",
+        "progress": 0,
+        "progress_goals": [
+          10
+        ],
+        "progress_xp": [
+          300
+        ]
+      },
+      {
+        "id": "weekly_friendship_fighting_type",
+        "event": "cobblemon:max_friendship_fighting_type",
+        "type": "progressive",
+        "event_desc": "Max Friendship with {goal} Fighting Pokemon",
+        "progress": 0,
+        "progress_goals": [
+          10
+        ],
+        "progress_xp": [
+          300
+        ]
+      },
+      {
+        "id": "weekly_friendship_poison_type",
+        "event": "cobblemon:max_friendship_poison_type",
+        "type": "progressive",
+        "event_desc": "Max Friendship with {goal} Poison Pokemon",
+        "progress": 0,
+        "progress_goals": [
+          10
+        ],
+        "progress_xp": [
+          300
+        ]
+      },
+      {
+        "id": "weekly_friendship_ground_type",
+        "event": "cobblemon:max_friendship_ground_type",
+        "type": "progressive",
+        "event_desc": "Max Friendship with {goal} Ground Pokemon",
+        "progress": 0,
+        "progress_goals": [
+          10
+        ],
+        "progress_xp": [
+          300
+        ]
+      },
+      {
+        "id": "weekly_friendship_flying_type",
+        "event": "cobblemon:max_friendship_flying_type",
+        "type": "progressive",
+        "event_desc": "Max Friendship with {goal} Flying Pokemon",
+        "progress": 0,
+        "progress_goals": [
+          10
+        ],
+        "progress_xp": [
+          300
+        ]
+      },
+      {
+        "id": "weekly_friendship_psychic_type",
+        "event": "cobblemon:max_friendship_psychic_type",
+        "type": "progressive",
+        "event_desc": "Max Friendship with {goal} Psychic Pokemon",
+        "progress": 0,
+        "progress_goals": [
+          10
+        ],
+        "progress_xp": [
+          300
+        ]
+      },
+      {
+        "id": "weekly_friendship_bug_type",
+        "event": "cobblemon:max_friendship_bug_type",
+        "type": "progressive",
+        "event_desc": "Max Friendship with {goal} Bug Pokemon",
+        "progress": 0,
+        "progress_goals": [
+          10
+        ],
+        "progress_xp": [
+          300
+        ]
+      },
+      {
+        "id": "weekly_friendship_rock_type",
+        "event": "cobblemon:max_friendship_rock_type",
+        "type": "progressive",
+        "event_desc": "Max Friendship with {goal} Rock Pokemon",
+        "progress": 0,
+        "progress_goals": [
+          10
+        ],
+        "progress_xp": [
+          300
+        ]
+      },
+      {
+        "id": "weekly_friendship_ghost_type",
+        "event": "cobblemon:max_friendship_ghost_type",
+        "type": "progressive",
+        "event_desc": "Max Friendship with {goal} Ghost Pokemon",
+        "progress": 0,
+        "progress_goals": [
+          10
+        ],
+        "progress_xp": [
+          300
+        ]
+      },
+      {
+        "id": "weekly_friendship_dragon_type",
+        "event": "cobblemon:max_friendship_dragon_type",
+        "type": "progressive",
+        "event_desc": "Max Friendship with {goal} Dragon Pokemon",
+        "progress": 0,
+        "progress_goals": [
+          10
+        ],
+        "progress_xp": [
+          300
+        ]
+      },
+      {
+        "id": "weekly_friendship_dark_type",
+        "event": "cobblemon:max_friendship_dark_type",
+        "type": "progressive",
+        "event_desc": "Max Friendship with {goal} Dark Pokemon",
+        "progress": 0,
+        "progress_goals": [
+          10
+        ],
+        "progress_xp": [
+          300
+        ]
+      },
+      {
+        "id": "weekly_friendship_steel_type",
+        "event": "cobblemon:max_friendship_steel_type",
+        "type": "progressive",
+        "event_desc": "Max Friendship with {goal} Steel Pokemon",
+        "progress": 0,
+        "progress_goals": [
+          10
+        ],
+        "progress_xp": [
+          300
+        ]
+      },
+      {
+        "id": "weekly_friendship_fairy_type",
+        "event": "cobblemon:max_friendship_fairy_type",
+        "type": "progressive",
+        "event_desc": "Max Friendship with {goal} Fairy Pokemon",
+        "progress": 0,
+        "progress_goals": [
+          10
+        ],
+        "progress_xp": [
+          300
+        ]
+      },
+      {
+        "id": "weekly_friendship_legendary",
+        "event": "cobblemon:max_friendship_legendary_pokemon",
+        "type": "progressive",
+        "event_desc": "Max Friendship with {goal} Legendary Pokemon",
+        "progress": 0,
+        "progress_goals": [
+          1
+        ],
+        "progress_xp": [
+          900
+        ]
+      },
+      {
+        "id": "weekly_friendship_mythical",
+        "event": "cobblemon:max_friendship_mythical_pokemon",
+        "type": "progressive",
+        "event_desc": "Max Friendship with {goal} Mythical Pokemon",
+        "progress": 0,
+        "progress_goals": [
+          1
+        ],
+        "progress_xp": [
+          900
+        ]
+      },
+      {
+        "id": "weekly_friendship_starter",
+        "event": "cobblemon:max_friendship_starter_pokemon",
+        "type": "progressive",
+        "event_desc": "Max Friendship with {goal} Starter Pokemon",
+        "progress": 0,
+        "progress_goals": [
+          1
+        ],
+        "progress_xp": [
+          600
+        ]
+      }
+    ]
+  },
+  "progression": [
+    {
+      "xp": 100,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:oak_sapling",
+          "quantity": 4
+        }
+      ]
+    },
+    {
+      "xp": 200,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:wheat_seeds",
+          "quantity": 16
+        }
+      ]
+    },
+    {
+      "xp": 300,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:sweet_berries",
+          "quantity": 8
+        }
+      ]
+    },
+    {
+      "xp": 400,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:white_wool",
+          "quantity": 4
+        }
+      ]
+    },
+    {
+      "xp": 500,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:apple",
+          "quantity": 5
+        }
+      ]
+    },
+    {
+      "xp": 600,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:coal",
+          "quantity": 8
+        }
+      ]
+    },
+    {
+      "xp": 700,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:dandelion",
+          "quantity": 3
+        }
+      ]
+    },
+    {
+      "xp": 800,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:poppy",
+          "quantity": 3
+        }
+      ]
+    },
+    {
+      "xp": 900,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:sugar_cane",
+          "quantity": 4
+        }
+      ]
+    },
+    {
+      "xp": 1000,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:iron_ingot",
+          "quantity": 3,
+          "is_prominent": true
+        }
+      ]
+    },
+    {
+      "xp": 1100,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:egg",
+          "quantity": 16
+        }
+      ]
+    },
+    {
+      "xp": 1200,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:pumpkin_seeds",
+          "quantity": 4
+        }
+      ]
+    },
+    {
+      "xp": 1300,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:melon_seeds",
+          "quantity": 4
+        }
+      ]
+    },
+    {
+      "xp": 1400,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:torch",
+          "quantity": 32
+        }
+      ]
+    },
+    {
+      "xp": 1500,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:baked_potato",
+          "quantity": 8
+        }
+      ]
+    },
+    {
+      "xp": 1600,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:glass_bottle",
+          "quantity": 3
+        }
+      ]
+    },
+    {
+      "xp": 1700,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:honeycomb",
+          "quantity": 2
+        }
+      ]
+    },
+    {
+      "xp": 1800,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:feather",
+          "quantity": 12
+        }
+      ]
+    },
+    {
+      "xp": 1900,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:leather",
+          "quantity": 4
+        }
+      ]
+    },
+    {
+      "xp": 2000,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:gold_ingot",
+          "quantity": 4,
+          "is_prominent": true
+        }
+      ]
+    },
+    {
+      "xp": 2100,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:moss_block",
+          "quantity": 8
+        }
+      ]
+    },
+    {
+      "xp": 2200,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:azalea",
+          "quantity": 2
+        }
+      ]
+    },
+    {
+      "xp": 2300,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:flowering_azalea",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "xp": 2400,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:big_dripleaf",
+          "quantity": 2
+        }
+      ]
+    },
+    {
+      "xp": 2500,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:glow_berries",
+          "quantity": 12
+        }
+      ]
+    },
+    {
+      "xp": 2600,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:suspicious_stew",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "xp": 2700,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:cookie",
+          "quantity": 12
+        }
+      ]
+    },
+    {
+      "xp": 2800,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:bamboo",
+          "quantity": 8
+        }
+      ]
+    },
+    {
+      "xp": 2900,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:cocoa_beans",
+          "quantity": 6
+        }
+      ]
+    },
+    {
+      "xp": 3000,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:diamond",
+          "quantity": 1,
+          "is_prominent": true
+        }
+      ]
+    },
+    {
+      "xp": 3100,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:lantern",
+          "quantity": 4
+        }
+      ]
+    },
+    {
+      "xp": 3200,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:soul_lantern",
+          "quantity": 2
+        }
+      ]
+    },
+    {
+      "xp": 3300,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:campfire",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "xp": 3400,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:lead",
+          "quantity": 2
+        }
+      ]
+    },
+    {
+      "xp": 3500,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:bucket",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "xp": 3600,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:painting",
+          "quantity": 4
+        }
+      ]
+    },
+    {
+      "xp": 3700,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:item_frame",
+          "quantity": 8
+        }
+      ]
+    },
+    {
+      "xp": 3800,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:flower_pot",
+          "quantity": 4
+        }
+      ]
+    },
+    {
+      "xp": 3900,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:candle",
+          "quantity": 10
+        }
+      ]
+    },
+    {
+      "xp": 4000,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:emerald",
+          "quantity": 5,
+          "is_prominent": true
+        }
+      ]
+    },
+    {
+      "xp": 4100,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:copper_ingot",
+          "quantity": 12
+        }
+      ]
+    },
+    {
+      "xp": 4200,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:spyglass",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "xp": 4300,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:sea_pickle",
+          "quantity": 4
+        }
+      ]
+    },
+    {
+      "xp": 4400,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:sea_lantern",
+          "quantity": 2
+        }
+      ]
+    },
+    {
+      "xp": 4500,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:kelp",
+          "quantity": 16
+        }
+      ]
+    },
+    {
+      "xp": 4600,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:dried_kelp_block",
+          "quantity": 4
+        }
+      ]
+    },
+    {
+      "xp": 4700,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:name_tag",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "xp": 4800,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:saddle",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "xp": 4900,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:rabbit_hide",
+          "quantity": 6
+        }
+      ]
+    },
+    {
+      "xp": 5000,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:amethyst_shard",
+          "quantity": 12,
+          "is_prominent": true
+        }
+      ]
+    },
+    {
+      "xp": 5100,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:budding_amethyst",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "xp": 5200,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:calcite",
+          "quantity": 32
+        }
+      ]
+    },
+    {
+      "xp": 5300,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:tinted_glass",
+          "quantity": 4
+        }
+      ]
+    },
+    {
+      "xp": 5400,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:pink_petals",
+          "quantity": 8
+        }
+      ]
+    },
+    {
+      "xp": 5500,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:cherry_sapling",
+          "quantity": 2
+        }
+      ]
+    },
+    {
+      "xp": 5600,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:mangrove_propagule",
+          "quantity": 2
+        }
+      ]
+    },
+    {
+      "xp": 5700,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:bamboo_sapling",
+          "quantity": 4
+        }
+      ]
+    },
+    {
+      "xp": 5800,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:spore_blossom",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "xp": 5900,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:lily_pad",
+          "quantity": 8
+        }
+      ]
+    },
+    {
+      "xp": 6000,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:experience_bottle",
+          "quantity": 15,
+          "is_prominent": true
+        }
+      ]
+    },
+    {
+      "xp": 6100,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:golden_carrot",
+          "quantity": 16
+        }
+      ]
+    },
+    {
+      "xp": 6200,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:glistering_melon_slice",
+          "quantity": 8
+        }
+      ]
+    },
+    {
+      "xp": 6300,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:rabbit_stew",
+          "quantity": 2
+        }
+      ]
+    },
+    {
+      "xp": 6400,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:cake",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "xp": 6500,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:pumpkin_pie",
+          "quantity": 4
+        }
+      ]
+    },
+    {
+      "xp": 6600,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:mushroom_stew",
+          "quantity": 4
+        }
+      ]
+    },
+    {
+      "xp": 6700,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:honey_bottle",
+          "quantity": 8
+        }
+      ]
+    },
+    {
+      "xp": 6800,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:axolotl_bucket",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "xp": 6900,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:tropical_fish_bucket",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "xp": 7000,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:diamond_horse_armor",
+          "quantity": 1,
+          "is_prominent": true
+        }
+      ]
+    },
+    {
+      "xp": 7100,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:music_disc_cat",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "xp": 7200,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:music_disc_blocks",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "xp": 7300,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:music_disc_chirp",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "xp": 7400,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:music_disc_far",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "xp": 7500,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:music_disc_mall",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "xp": 7600,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:music_disc_mellohi",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "xp": 7700,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:music_disc_stal",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "xp": 7800,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:music_disc_strad",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "xp": 7900,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:music_disc_ward",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "xp": 8000,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:ender_pearl",
+          "quantity": 12,
+          "is_prominent": true
+        }
+      ]
+    },
+    {
+      "xp": 8100,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:blaze_rod",
+          "quantity": 4
+        }
+      ]
+    },
+    {
+      "xp": 8200,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:ghast_tear",
+          "quantity": 2
+        }
+      ]
+    },
+    {
+      "xp": 8300,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:magma_cream",
+          "quantity": 4
+        }
+      ]
+    },
+    {
+      "xp": 8400,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:phantom_membrane",
+          "quantity": 4
+        }
+      ]
+    },
+    {
+      "xp": 8500,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:scute",
+          "quantity": 5
+        }
+      ]
+    },
+    {
+      "xp": 8600,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:nautilus_shell",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "xp": 8700,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:heart_of_the_sea",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "xp": 8800,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:slime_ball",
+          "quantity": 16
+        }
+      ]
+    },
+    {
+      "xp": 8900,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:rabbit_foot",
+          "quantity": 2
+        }
+      ]
+    },
+    {
+      "xp": 9000,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:netherite_scrap",
+          "quantity": 2,
+          "is_prominent": true
+        }
+      ]
+    },
+    {
+      "xp": 9100,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:echo_shard",
+          "quantity": 2
+        }
+      ]
+    },
+    {
+      "xp": 9200,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:disc_fragment_5",
+          "quantity": 3
+        }
+      ]
+    },
+    {
+      "xp": 9300,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:recovery_compass",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "xp": 9400,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:totem_of_undying",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "xp": 9500,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:enchanted_golden_apple",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "xp": 9600,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:shulker_shell",
+          "quantity": 2
+        }
+      ]
+    },
+    {
+      "xp": 9700,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:elytra",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "xp": 9800,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:dragon_breath",
+          "quantity": 4
+        }
+      ]
+    },
+    {
+      "xp": 9900,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:netherite_ingot",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "xp": 10000,
+      "rewards": [
+        {
+          "type": "item",
+          "item": "minecraft:nether_star",
+          "quantity": 1,
+          "is_prominent": true
+        }
+      ]
+    }
+  ]
+}

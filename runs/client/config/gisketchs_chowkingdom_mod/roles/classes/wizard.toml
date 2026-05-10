@@ -1,0 +1,14 @@
+# CKDM generated class config UPDATED with missing weapons: wizard.toml
+# Rebalanced around: Starter = normal/base families, Upgrade = cool/specialized families, Legendary/unique = upgrade or future core/mastery gate.
+
+id = "wizard"
+display_name = "Wizard"
+icon = "textures/gui/classes/wizard.png"
+description = "Starter arcane caster trained with basic staves, wands, spell books, and robes."
+classification = "starter"
+starter_class_ids = []
+upgrade_class_ids = ["elemental_wizard", "witcher"]
+perks = [
+  { type = "starting_items", multiplier = 1.0, weapon_tags = [], armor_tags = [], weapon_patterns = [], armor_patterns = [], wrong_weapon_damage_multiplier = 1.0, wrong_weapon_cooldown_ticks = 0, wrong_weapon_attack_speed_multiplier = 1.0, wrong_armor_disables_sprint = false, starting_items = ["minecraft:book", "wizards:wand_novice", "minecraft:bread*8"], reward_pool = [] },
+  { type = "equipment_affinity", multiplier = 1.0, weapon_tags = ["wizards:staves", "wizards:wands", "accessories:spell_book", "runes:runes", "runes:pouches"], armor_tags = [], weapon_patterns = ["wizards:spell_book/*"], weapon_exclude_patterns = ["#simplyswords:uniques", "#simplyswords:lootable_uniques", "#simplyswords:conditional_uniques_type_1", "#simplyswords:conditional_uniques_type_2", "#simplyswords:runic_weapons", "simplyswords:gobber_compat", "simplyswords:mythicmetals_compat", "simplyswords:awakened_*", "simplyswords:waking_*", "simplyswords:emberblade", "simplyswords:toxic_longsword", "simplyswords:twisted_blade", "simplyswords:watching_warglaive", "simplyswords:magiblade", "simplyswords:magicythe", "simplyswords:magiscythe", "simplyswords:magispear", "simplyswords:uniquesworditem", "#simplymore:uniques", "#simplymore:runic_gear", "simplymore:legendary_*", "simplymore:mimicry*", "simplymore:hallowed_*", "simplymore:star_platinum_*", "simplymore:tidesinger_*", "simplymore:blade_of_the_grotesque", "#simplycataclysm:ancient_metal_gear", "#simplycataclysm:black_steel_gear", "#simplycataclysm:cursium_gear", "#simplycataclysm:ignitium_gear", "#simplycataclysm:witherite_gear", "arsenal:unique_*", "cataclysm:*", "minecells:*", "artifacts:*", "relics:*", "oritech:*", "*spawn_egg", "arsenal:unique_staff_damage_*", "arsenal:unique_staff_heal_*"], armor_patterns = ["minecraft:leather_*", "wizards:*wizard*", "wizards:*robe*", "wizards:*arcane*", "wizards:*fire*", "wizards:*frost*", "armory_rpgs:*robe*"], armor_exclude_patterns = ["#rpg_series:loot_tier/tier_10_armors", "cataclysm:*", "artifacts:*", "relics:*"], wrong_weapon_damage_multiplier = 0.35, wrong_weapon_cooldown_ticks = 12, wrong_weapon_attack_speed_multiplier = 0.55, wrong_armor_disables_sprint = true, starting_items = [], reward_pool = [] },
+]

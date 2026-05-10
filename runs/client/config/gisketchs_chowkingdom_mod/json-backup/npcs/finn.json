@@ -1,0 +1,130 @@
+{
+  "id": "finn",
+  "name": "Finn",
+  "title": "The Adventurer",
+  "skin": "gisketchs_chowkingdom_mod:npc/finn",
+  "body_type": "normal",
+  "job": "adventurer",
+  "job_definition": {
+    "id": "adventurer",
+    "store": "cosmetics",
+    "scan_interval_ticks": 60,
+    "roam_radius": 7,
+    "work_scan_radius": 9
+  },
+  "schedule": {
+    "activities": [
+      { "from_hour": 6, "to_hour": 20, "activity": "work" },
+      { "from_hour": 20, "to_hour": 22, "activity": "home" },
+      { "from_hour": 22, "to_hour": 6, "activity": "sleep" }
+    ]
+  },
+  "personality": {
+    "llm_prompt": "Finn is brave, friendly, direct, and hungry for adventure. This is an older Finn from the Fionna and Cake timeline, long after many of his greatest adventures. Jake is gone, and Finn still carries that grief quietly beneath his heroic energy. He is dating Huntress Wizard, whose strange forest magic and calm wildness helped him survive the years after Jake's death. Finn does not like talking about his pain directly, but it leaks out when he sees loyal friends, dogs, forests, old swords, or players risking themselves for each other. He came into the Minecraft universe after chasing a fractured portal-beast through a ruined Enchiridion gateway. Huntress tried to anchor him with root magic, but the portal split across worlds and dropped Finn into Chow Kingdom with only scraps of his gear, half a map, and the feeling that this blocky world still needed heroes. He believes Minecraft is not just another dimension, but a strange living dungeon where every player is slowly becoming a legend. Finn wants a home near players because he misses having a party, a treehouse, and people to come back to after dangerous quests. He acts energetic and fearless, but he is secretly afraid of losing another family. He treats the town like a new adventuring guild and sees the players as his new crew. He should sound like a battle-tested hero who still tries to keep things light.",
+    "traits": [
+      "brave",
+      "friendly",
+      "reckless",
+      "battle-tested",
+      "secretly grieving",
+      "loyal",
+      "protective",
+      "emotionally avoidant",
+      "adventure-hungry"
+    ],
+    "speech_style": "energetic older hero with playful confidence, short direct lines, occasional emotional depth when talking about loss, loyalty, homes, dogs, forests, or old adventures",
+    "catchphrases": [
+      "Mathematical!",
+      "Adventure time!",
+      "That smells like a quest.",
+      "Don't make me get emotionally heroic about this.",
+      "Jake would've loved this place.",
+      "Huntress would call this a bad idea, which means it's probably important."
+    ]
+  },
+  "housing": {
+    "can_move_in": true,
+    "requires_bed": true
+  },
+  "voice": {
+    "animalese_pitch": "low",
+    "pitch": 0.95,
+    "volume": 0.38,
+    "radius": 12.0
+  },
+  "gifts": {
+    "loved": ["minecraft:diamond_sword", "#minecraft:swords"],
+    "liked": ["minecraft:cooked_beef", "minecraft:iron_sword"],
+    "disliked": ["minecraft:rotten_flesh"],
+    "daily_limit": 1,
+    "reset_hour": 5,
+    "reactions": {
+      "loved": ["Whoa, {player}! {item} is amazing. Thank you!", "This is perfect. I love {item}!"],
+      "liked": ["Thanks, {player}. I like {item}.", "Nice gift. {item} will come in handy."],
+      "disliked": ["Oh. {item}. Thanks, I guess.", "I don't really like {item}, but I appreciate the thought."],
+      "neutral": ["Thanks for {item}.", "I'll keep {item} safe."]
+    }
+  },
+  "friendship_messages": {
+    "interact": {
+      "neutral": ["Hey, {player}. Adventure calls.", "What is the plan today?", "Got a quest, a snack, or both?", "I am ready if you are.", "Mathematical timing. What is up?", "You look like someone with a quest marker over their head.", "If this is about danger, I brought enthusiasm.", "Tell me there is a map involved.", "I was just thinking this day needed a quest.", "Do we need swords, snacks, or both?", "I can smell adventure from here.", "You came to the right hero.", "Let us make today legendary-ish.", "I am packed, mostly. What are we doing?", "If trouble is nearby, I volunteer dramatically."],
+      "okay": ["Good to see you, {player}.", "You have been pretty solid lately.", "I trust your instincts more these days.", "What adventure are we chasing?", "I am glad you stopped by.", "You bring good quest energy.", "If you have a plan, I want in.", "I sharpened my sword and my optimism.", "You make camp feel less boring.", "Let us do something brave and only mildly reckless.", "I was hoping you would check in.", "Hero meeting officially started.", "Tell me the mission and I will try not to sprint first.", "You and me could solve something weird today.", "I am listening with maximum adventure posture."],
+      "good_friends": ["There is my adventure partner.", "I knew you would show up, {player}.", "Together, we can handle anything weird.", "Tell me the plan and I am in.", "You make this camp feel like home.", "I saved the good heroic energy for you.", "No quest feels too strange when you are around.", "I would follow your map scribbles anywhere.", "We should probably do something brave before lunch.", "The camp is better when you pass through.", "I trust you with the plan and most of the snacks.", "Our adventure rhythm is getting really good.", "Say the word and I am moving.", "You always find the interesting trouble.", "Friendship status: ready for action."],
+      "best_friends": ["Best friend alert! What are we doing first?", "With you here, this day is already legendary.", "Name the quest. I am beside you.", "You and me, {player}. Totally mathematical.", "I trust you with my sword, my snacks, and my story.", "If the world gets weird, I want you beside me.", "Best friend council is now in session.", "I already packed imaginary victory confetti.", "Whatever quest you found, it is ours now.", "You make even chores feel like side quests.", "I would charge into a suspicious cave for you. Carefully. Mostly.", "The story gets better every time you arrive.", "You are my favorite kind of trouble detector.", "I saved my bravest face for our next plan.", "Today is mathematically better because you are here."]
+    },
+    "greeting": {
+      "neutral": ["Adventure time, {player}?", "Hey, quest-looking person!", "You smell like plans.", "Hero at standby!", "Need a sword guy?", "I was just practicing a heroic nod.", "If this is a quest, blink twice.", "Come say hi before danger finds us.", "I have snack confidence today.", "Mathematical visitor detected.", "Hey! The day just got less boring.", "Is that adventure in your pockets?", "I am ready for something weird.", "You look responsibly heroic.", "Finn greeting protocol: enthusiastic."],
+      "good_friends": ["There is my adventure buddy!", "Friend incoming!", "I hoped you would swing by.", "The quest meter just filled up.", "There is the person I trust with maps.", "Hey, partner!", "Camp is better now.", "I saved a heroic wave for you.", "Good timing, as usual.", "Adventure buddy spotted.", "You brought the good energy.", "I am glad you are nearby.", "This feels like the start of a quest.", "Friendship radar confirmed.", "Ready when you are."],
+      "best_friends": ["Best friend spotted. Today is already legendary!", "Best friend! Immediate day upgrade!", "There is my favorite hero.", "The story got better because you arrived.", "Mathematical best-friend sighting!", "I was waiting for you, obviously.", "Quest partner supreme!", "You made it. Good. Now the day can start.", "Best friend nearby. Morale maxed.", "If adventure appears, we are ready.", "I trust that look on your face.", "This is officially a good day.", "My favorite person with my favorite timing.", "Hero duo proximity achieved.", "You and me, world. Watch out."]
+    },
+    "first_daily_chat": {
+      "neutral": ["First quest check-in today. What are we doing, {player}?", "New day, new possible quest.", "I have morning hero energy. Please aim it somewhere useful.", "First talk of the day! That means it counts extra.", "I was hoping today had a plan.", "Morning, {player}. Do we need courage or snacks first?", "Fresh day. Fresh sword arm.", "Tell me the first mission before I invent one.", "I am awake and approximately ready.", "Today feels like it has a hidden objective.", "Good first check-in. Very heroic.", "If you need help, I am your guy.", "Let us start the day mathematically.", "I brought optimism to this conversation.", "First plan of the day gets priority."],
+      "good_friends": ["I saved my first adventure idea of the day for you.", "Starting the day with my partner? Great sign.", "I was hoping you would be my first check-in.", "Tell me what we are doing and I will try to look brave.", "You make mornings feel less like loading screens.", "I kept the good quest thoughts warm.", "Friendship breakfast: plans and courage.", "I trust whatever direction you point me.", "Today is already more interesting.", "If we do something risky, let us do it smart-ish.", "You are my favorite start-of-day surprise.", "What weird thing are we fixing today?", "I am ready to follow your lead.", "Our daily adventure meeting begins now.", "Good friend, good timing, good omen."],
+      "best_friends": ["Best friend daily check-in. Name the quest and I am in.", "Best first conversation possible.", "I was hoping the day would start with you.", "Whatever today throws at us, we handle it together.", "This is already a top-tier day.", "I trust you before breakfast, which is serious.", "Our story gets a new page today.", "Say the word and I am beside you.", "You bring the legendary part of the morning.", "Best friend briefing: I am ready.", "I saved my bravest hello for you.", "Let us make today something worth retelling.", "If there is danger, we face it with snacks.", "You and me first thing? Mathematical.", "My day starts better when it starts with you."]
+    }
+  },
+  "shop_messages": {
+    "single": {
+      "hatred": ["Here's your {item}."],
+      "enemy": ["Take your {item} and go."],
+      "dislike": ["Here's your {item}.", "One {item}, just like you asked."],
+      "neutral": ["Thanks! Here's your {item}.", "One {item}, ready to go."],
+      "okay": ["Thanks, {player}! Here's your {item}.", "Good choice. One {item} for you."],
+      "good_friends": ["Nice pick, {player}. Here's your {item}!", "Adventure supply delivery: one {item}."],
+      "best_friends": ["For my best customer, one {item}!", "Mathematical choice, {player}. Here's your {item}!"]
+    },
+    "normal": {
+      "hatred": ["You bought {quantity} {item}. Done."],
+      "enemy": ["{quantity} {item}. Don't waste them."],
+      "dislike": ["Here's your {quantity} {item}.", "That'll be {total} chowcoins."],
+      "neutral": ["Thanks for shopping. Enjoy the {quantity} {item}.", "Here you go: {quantity} {item}."],
+      "okay": ["Good haul, {player}. {quantity} {item} for the road.", "Thanks! That is {quantity} {item} packed up."],
+      "good_friends": ["That gear suits you, {player}. {quantity} {item} ready.", "Solid buy. {quantity} {item} coming right up!"],
+      "best_friends": ["Big adventure energy. {quantity} {item} for you!", "Mathematical shopping, {player}. {quantity} {item} secured!"]
+    },
+    "bulk": {
+      "hatred": ["Whoa, that's a lot."],
+      "enemy": ["That's a lot. Planning something?"],
+      "dislike": ["Whoa, that's a lot of {item}.", "You really need {quantity} {item}? Fine."],
+      "neutral": ["Whoa, that's a lot of {item}.", "Stocking up with {quantity} {item}, huh?"],
+      "okay": ["Whoa, that's a lot, {player}!", "Big haul: {quantity} {item}. Nice."],
+      "good_friends": ["Whoa, that's a lot! Adventure prep mode!", "Huge haul, {player}. {quantity} {item} ready."],
+      "best_friends": ["Legendary haul! {quantity} {item} for my favorite adventurer.", "Whoa, that's a lot. Best-friend discount vibes, even if the price is still {total}."]
+    }
+  },
+  "hurt_messages": [
+    "Hey, watch it, {player}!",
+    "Ouch. That's not very heroic.",
+    "Careful! I'm on your side."
+  ],
+  "wake_messages": [
+    "Mmph... {player}? I was sleeping.",
+    "I'm awake. Is everything okay?",
+    "You woke me up, but I'm listening."
+  ],
+  "work_blocks": [
+    { "id": "minecraft:barrel", "count": 3, "display_name": "barrels" },
+    { "id": "minecraft:item_frame", "count": 2, "display_name": "item frames" },
+    { "id": "#minecraft:beds", "count": 1, "display_name": "bed" }
+  ]
+}

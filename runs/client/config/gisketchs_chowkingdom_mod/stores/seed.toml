@@ -1,0 +1,419 @@
+# CKDM Seed Merchant
+# Balanced crop/seed/sapling shop.
+#
+# Design:
+# - Common crop seeds appear daily and are affordable.
+# - Uncommon/biome seeds rotate daily/weekly with moderate stock.
+# - Cobblemon apricorn sprouts move here from the Pokémon shop.
+# - Apricorn saplings are weekly and expensive because they establish long-term production.
+# - Mint seeds are weekly, very expensive, and stock 1 because they are renewable rare economy/progression items.
+# - Minecells putrid saplings are end-game weekly prestige/collection stock.
+#
+# Prices are intentionally much higher than shipping prices because seeds create future production.
+# Do not price seed merchant items based on the sell value of one crop; price them based on unlock value.
+
+id = "seed"
+display_name = "Seed Merchant"
+time_zone = "GMT+8"
+reset_hour = 5
+reset_minute = 0
+
+
+[[categories]]
+id = "common"
+item_types_to_sell = 5
+daily_item_types_to_sell = 6
+weekly_item_types_to_sell = 0
+
+[[categories.daily_items]]
+id = "common_seed_daily_beachparty_palm_sprout"
+item = "beachparty:palm_sprout"
+price_amount = 260
+stock_count = 4
+weight = 3
+
+[[categories.daily_items]]
+id = "common_seed_daily_cluttered_poplar_sapling"
+item = "cluttered:poplar_sapling"
+price_amount = 320
+stock_count = 4
+weight = 3
+
+[[categories.daily_items]]
+id = "common_seed_daily_cluttered_willow_sapling"
+item = "cluttered:willow_sapling"
+price_amount = 320
+stock_count = 4
+weight = 3
+
+[[categories.daily_items]]
+id = "common_seed_daily_farmersdelight_cabbage_seeds"
+item = "farmersdelight:cabbage_seeds"
+price_amount = 120
+stock_count = 12
+weight = 5
+
+[[categories.daily_items]]
+id = "common_seed_daily_farmersdelight_rice"
+item = "farmersdelight:rice"
+price_amount = 100
+stock_count = 16
+weight = 5
+
+[[categories.daily_items]]
+id = "common_seed_daily_farmersdelight_tomato_seeds"
+item = "farmersdelight:tomato_seeds"
+price_amount = 120
+stock_count = 12
+weight = 5
+
+[[categories.daily_items]]
+id = "common_seed_daily_supplementaries_flax_seeds"
+item = "supplementaries:flax_seeds"
+price_amount = 140
+stock_count = 12
+weight = 4
+
+[[categories.daily_items]]
+id = "common_seed_daily_vinery_apple_tree_sapling"
+item = "vinery:apple_tree_sapling"
+price_amount = 420
+stock_count = 3
+weight = 2
+
+[[categories.daily_items]]
+id = "common_seed_daily_vinery_dark_cherry_sapling"
+item = "vinery:dark_cherry_sapling"
+price_amount = 480
+stock_count = 3
+weight = 2
+
+[[categories]]
+id = "uncommon"
+item_types_to_sell = 4
+daily_item_types_to_sell = 4
+weekly_item_types_to_sell = 1
+
+[[categories.daily_items]]
+id = "uncommon_seed_daily_expandeddelight_asparagus_seeds"
+item = "expandeddelight:asparagus_seeds"
+price_amount = 380
+stock_count = 6
+weight = 4
+
+[[categories.daily_items]]
+id = "uncommon_seed_daily_expandeddelight_chili_pepper_seeds"
+item = "expandeddelight:chili_pepper_seeds"
+price_amount = 420
+stock_count = 6
+weight = 4
+
+[[categories.daily_items]]
+id = "uncommon_seed_daily_ubesdelight_lemongrass_seeds"
+item = "ubesdelight:lemongrass_seeds"
+price_amount = 420
+stock_count = 6
+weight = 4
+
+[[categories.daily_items]]
+id = "uncommon_seed_daily_vinery_red_grape_seeds"
+item = "vinery:red_grape_seeds"
+price_amount = 520
+stock_count = 8
+weight = 4
+
+[[categories.daily_items]]
+id = "uncommon_seed_daily_vinery_white_grape_seeds"
+item = "vinery:white_grape_seeds"
+price_amount = 520
+stock_count = 8
+weight = 4
+
+[[categories.daily_items]]
+id = "uncommon_seed_daily_vinery_jungle_grape_seeds_red"
+item = "vinery:jungle_grape_seeds_red"
+price_amount = 750
+stock_count = 4
+weight = 2
+
+[[categories.daily_items]]
+id = "uncommon_seed_daily_vinery_jungle_grape_seeds_white"
+item = "vinery:jungle_grape_seeds_white"
+price_amount = 750
+stock_count = 4
+weight = 2
+
+[[categories.daily_items]]
+id = "uncommon_seed_daily_vinery_savanna_grape_seeds_red"
+item = "vinery:savanna_grape_seeds_red"
+price_amount = 750
+stock_count = 4
+weight = 2
+
+[[categories.daily_items]]
+id = "uncommon_seed_daily_vinery_savanna_grape_seeds_white"
+item = "vinery:savanna_grape_seeds_white"
+price_amount = 750
+stock_count = 4
+weight = 2
+
+[[categories.daily_items]]
+id = "uncommon_seed_daily_vinery_taiga_grape_seeds_red"
+item = "vinery:taiga_grape_seeds_red"
+price_amount = 750
+stock_count = 4
+weight = 2
+
+[[categories.daily_items]]
+id = "uncommon_seed_daily_vinery_taiga_grape_seeds_white"
+item = "vinery:taiga_grape_seeds_white"
+price_amount = 750
+stock_count = 4
+weight = 2
+
+[[categories.weekly_items]]
+id = "uncommon_seed_weekly_expandeddelight_cinnamon_sapling"
+item = "expandeddelight:cinnamon_sapling"
+price_amount = 1200
+stock_count = 1
+weight = 1
+
+[[categories.weekly_items]]
+id = "uncommon_seed_weekly_cluttered_crabapple_sapling"
+item = "cluttered:crabapple_sapling"
+price_amount = 700
+stock_count = 2
+weight = 2
+
+[[categories.weekly_items]]
+id = "uncommon_seed_weekly_cluttered_fluorescent_maple_sapling"
+item = "cluttered:fluorescent_maple_sapling"
+price_amount = 900
+stock_count = 1
+weight = 1
+
+[[categories.weekly_items]]
+id = "uncommon_seed_weekly_cluttered_sycamore_sapling"
+item = "cluttered:sycamore_sapling"
+price_amount = 700
+stock_count = 2
+weight = 2
+
+[[categories]]
+id = "apricorns"
+item_types_to_sell = 2
+daily_item_types_to_sell = 3
+weekly_item_types_to_sell = 1
+
+# Cobblemon apricorn sprout: daily but limited, because it unlocks future ball crafting.
+[[categories.daily_items]]
+id = "apricorn_sprout_daily_black"
+item = "cobblemon:black_apricorn_seed"
+price_amount = 950
+stock_count = 3
+weight = 2
+
+# Cobblemon apricorn sprout: daily but limited, because it unlocks future ball crafting.
+[[categories.daily_items]]
+id = "apricorn_sprout_daily_blue"
+item = "cobblemon:blue_apricorn_seed"
+price_amount = 950
+stock_count = 3
+weight = 3
+
+# Cobblemon apricorn sprout: daily but limited, because it unlocks future ball crafting.
+[[categories.daily_items]]
+id = "apricorn_sprout_daily_green"
+item = "cobblemon:green_apricorn_seed"
+price_amount = 950
+stock_count = 3
+weight = 3
+
+# Cobblemon apricorn sprout: daily but limited, because it unlocks future ball crafting.
+[[categories.daily_items]]
+id = "apricorn_sprout_daily_pink"
+item = "cobblemon:pink_apricorn_seed"
+price_amount = 950
+stock_count = 3
+weight = 2
+
+# Cobblemon apricorn sprout: daily but limited, because it unlocks future ball crafting.
+[[categories.daily_items]]
+id = "apricorn_sprout_daily_red"
+item = "cobblemon:red_apricorn_seed"
+price_amount = 950
+stock_count = 3
+weight = 3
+
+# Cobblemon apricorn sprout: daily but limited, because it unlocks future ball crafting.
+[[categories.daily_items]]
+id = "apricorn_sprout_daily_white"
+item = "cobblemon:white_apricorn_seed"
+price_amount = 950
+stock_count = 3
+weight = 2
+
+# Cobblemon apricorn sprout: daily but limited, because it unlocks future ball crafting.
+[[categories.daily_items]]
+id = "apricorn_sprout_daily_yellow"
+item = "cobblemon:yellow_apricorn_seed"
+price_amount = 950
+stock_count = 3
+weight = 3
+
+# Apricorn sapling: weekly production unlock.
+[[categories.weekly_items]]
+id = "apricorn_sapling_weekly_black"
+item = "cobblemon:black_apricorn_sapling"
+price_amount = 4500
+stock_count = 1
+weight = 1
+
+# Apricorn sapling: weekly production unlock.
+[[categories.weekly_items]]
+id = "apricorn_sapling_weekly_blue"
+item = "cobblemon:blue_apricorn_sapling"
+price_amount = 4500
+stock_count = 1
+weight = 1
+
+# Apricorn sapling: weekly production unlock.
+[[categories.weekly_items]]
+id = "apricorn_sapling_weekly_green"
+item = "cobblemon:green_apricorn_sapling"
+price_amount = 4500
+stock_count = 1
+weight = 1
+
+# Apricorn sapling: weekly production unlock.
+[[categories.weekly_items]]
+id = "apricorn_sapling_weekly_pink"
+item = "cobblemon:pink_apricorn_sapling"
+price_amount = 4500
+stock_count = 1
+weight = 1
+
+# Apricorn sapling: weekly production unlock.
+[[categories.weekly_items]]
+id = "apricorn_sapling_weekly_red"
+item = "cobblemon:red_apricorn_sapling"
+price_amount = 4500
+stock_count = 1
+weight = 1
+
+# Apricorn sapling: weekly production unlock.
+[[categories.weekly_items]]
+id = "apricorn_sapling_weekly_white"
+item = "cobblemon:white_apricorn_sapling"
+price_amount = 4500
+stock_count = 1
+weight = 1
+
+# Apricorn sapling: weekly production unlock.
+[[categories.weekly_items]]
+id = "apricorn_sapling_weekly_yellow"
+item = "cobblemon:yellow_apricorn_sapling"
+price_amount = 4500
+stock_count = 1
+weight = 1
+
+[[categories]]
+id = "special"
+item_types_to_sell = 2
+daily_item_types_to_sell = 1
+weekly_item_types_to_sell = 2
+
+[[categories.daily_items]]
+id = "cobblemon_daily_vivichoke_seeds"
+item = "cobblemon:vivichoke_seeds"
+price_amount = 650
+stock_count = 4
+weight = 3
+
+[[categories.weekly_items]]
+id = "cobblemon_weekly_saccharine_sapling"
+item = "cobblemon:saccharine_sapling"
+price_amount = 8500
+stock_count = 1
+weight = 1
+
+[[categories]]
+id = "mints"
+item_types_to_sell = 1
+daily_item_types_to_sell = 0
+weekly_item_types_to_sell = 2
+
+# Mint seed: rare renewable source. Weekly only, stock 1.
+[[categories.weekly_items]]
+id = "mint_seed_weekly_red"
+item = "cobblemon:red_mint"
+price_amount = 75000
+stock_count = 1
+weight = 2
+
+# Mint seed: rare renewable source. Weekly only, stock 1.
+[[categories.weekly_items]]
+id = "mint_seed_weekly_blue"
+item = "cobblemon:blue_mint"
+price_amount = 75000
+stock_count = 1
+weight = 2
+
+# Mint seed: rare renewable source. Weekly only, stock 1.
+[[categories.weekly_items]]
+id = "mint_seed_weekly_green"
+item = "cobblemon:green_mint"
+price_amount = 75000
+stock_count = 1
+weight = 2
+
+# Mint seed: rare renewable source. Weekly only, stock 1.
+[[categories.weekly_items]]
+id = "mint_seed_weekly_pink"
+item = "cobblemon:pink_mint"
+price_amount = 75000
+stock_count = 1
+weight = 2
+
+# Mint seed: rare renewable source. Weekly only, stock 1.
+[[categories.weekly_items]]
+id = "mint_seed_weekly_cyan"
+item = "cobblemon:cyan_mint"
+price_amount = 90000
+stock_count = 1
+weight = 1
+
+# Mint seed: rare renewable source. Weekly only, stock 1.
+[[categories.weekly_items]]
+id = "mint_seed_weekly_white"
+item = "cobblemon:white_mint"
+price_amount = 90000
+stock_count = 1
+weight = 1
+
+[[categories]]
+id = "rare"
+item_types_to_sell = 1
+daily_item_types_to_sell = 0
+weekly_item_types_to_sell = 1
+
+[[categories.weekly_items]]
+id = "very_rare_weekly_minecells_putrid_sapling"
+item = "minecells:putrid_sapling"
+price_amount = 26000
+stock_count = 1
+weight = 2
+
+[[categories.weekly_items]]
+id = "very_rare_weekly_minecells_red_putrid_sapling"
+item = "minecells:red_putrid_sapling"
+price_amount = 32000
+stock_count = 1
+weight = 1
+
+[[categories.weekly_items]]
+id = "very_rare_weekly_minecells_orange_putrid_sapling"
+item = "minecells:orange_putrid_sapling"
+price_amount = 32000
+stock_count = 1
+weight = 1

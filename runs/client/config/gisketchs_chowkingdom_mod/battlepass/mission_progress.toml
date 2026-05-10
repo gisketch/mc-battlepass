@@ -1,0 +1,19 @@
+# Chow Kingdom config: mission_progress.toml. Edit while the game is stopped, then run reload commands or restart.
+
+
+# Config value: players.
+[players]
+
+# Config value: players.380df991-f603-344c-a090-369bad2a924a.
+[players.380df991-f603-344c-a090-369bad2a924a]
+
+# Config value: players.380df991-f603-344c-a090-369bad2a924a.cozy.
+[players.380df991-f603-344c-a090-369bad2a924a.cozy]
+# Config value: players.380df991-f603-344c-a090-369bad2a924a.cozy.cobblemon:pokedex_scanned.
+"cobblemon:pokedex_scanned" = 3
+
+# Config value: completed.
+[completed]
+
+# Config value: rotations.
+[rotations]
