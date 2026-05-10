@@ -20,7 +20,8 @@ private const val MAX_NPC_NAME_LENGTH = 96
 private const val MAX_NPC_TITLE_LENGTH = 96
 private const val MAX_NPC_DIALOG_LENGTH = 512
 private const val MAX_NPC_BALLOON_LENGTH = 256
-private const val MAX_NPC_ACTION_LENGTH = 16
+private const val MAX_NPC_ACTION_LENGTH = 96
+private const val MAX_NPC_CLASS_CHANGE_OPTIONS = 12
 private const val MAX_NPC_TALK_MESSAGE_LENGTH = 280
 private const val MAX_NPC_CLOSE_LABEL_LENGTH = 24
 private const val MAX_NPC_VOICE_PITCH_LENGTH = 16
@@ -78,7 +79,7 @@ object NpcNetwork {
     }
 
     private fun registerPayloads(event: RegisterPayloadHandlersEvent) {
-        val registrar = event.registrar("2")
+        val registrar = event.registrar("3")
         registrar.playToClient(NpcDialogPayload.TYPE, NpcDialogPayload.STREAM_CODEC, ::handleDialog)
         registrar.playToClient(NpcBalloonPayload.TYPE, NpcBalloonPayload.STREAM_CODEC, ::handleBalloon)
         registrar.playToClient(NpcTalkResponsePayload.TYPE, NpcTalkResponsePayload.STREAM_CODEC, ::handleTalkResponse)
@@ -191,6 +192,9 @@ data class NpcDialogPayload(
     val dialogMode: String = "normal",
     val startTalkMode: Boolean = false,
     val trainingAvailable: Boolean = false,
+    val classChangeAvailable: Boolean = false,
+    val classChangeCost: Long = 0L,
+    val classChangeOptions: List<NpcClassChangeOption> = emptyList(),
 ) : CustomPacketPayload {
     override fun type(): CustomPacketPayload.Type<NpcDialogPayload> = TYPE
 
@@ -217,6 +221,11 @@ data class NpcDialogPayload(
                 buffer.readUtf(MAX_NPC_DIALOG_MODE_LENGTH),
                 buffer.readBoolean(),
                 buffer.readBoolean(),
+                buffer.readBoolean(),
+                buffer.readVarLong(),
+                List(buffer.readVarInt().coerceIn(0, MAX_NPC_CLASS_CHANGE_OPTIONS)) {
+                    NpcClassChangeOption(buffer.readUtf(MAX_NPC_ID_LENGTH), buffer.readUtf(MAX_NPC_NAME_LENGTH))
+                },
             )
 
             override fun encode(buffer: RegistryFriendlyByteBuf, value: NpcDialogPayload) {
@@ -239,10 +248,20 @@ data class NpcDialogPayload(
                 buffer.writeUtf(value.dialogMode.take(MAX_NPC_DIALOG_MODE_LENGTH), MAX_NPC_DIALOG_MODE_LENGTH)
                 buffer.writeBoolean(value.startTalkMode)
                 buffer.writeBoolean(value.trainingAvailable)
+                buffer.writeBoolean(value.classChangeAvailable)
+                buffer.writeVarLong(value.classChangeCost.coerceAtLeast(0L))
+                val options = value.classChangeOptions.take(MAX_NPC_CLASS_CHANGE_OPTIONS)
+                buffer.writeVarInt(options.size)
+                options.forEach { option ->
+                    buffer.writeUtf(option.classId.take(MAX_NPC_ID_LENGTH), MAX_NPC_ID_LENGTH)
+                    buffer.writeUtf(option.displayName.take(MAX_NPC_NAME_LENGTH), MAX_NPC_NAME_LENGTH)
+                }
             }
         }
     }
 }
+
+data class NpcClassChangeOption(val classId: String, val displayName: String)
 
 data class NpcBalloonPayload(
     val npcEntityId: Int,

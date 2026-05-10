@@ -44,7 +44,7 @@ Class unlocks use two license pools: starter and upgrade. Stored player license 
 
 Default starter license unlock levels are `1, 100, 300, 500, 1000`. Default upgrade license unlock levels are `75, 150, 250, 350, 450, 550, 650, 800, 1000`.
 
-Adding a starter class spends starter capacity. Adding an upgrade class spends upgrade capacity and requires at least one configured starter prerequisite from `starter_class_ids` or the built-in fallback upgrade path. Admin `/ck roles set class` force-sets a class; `/ck roles add class` enforces licenses. NPC Training uses the same license rules and reports missing prerequisite/license conditions in the dialog reply.
+Adding a starter class spends starter capacity. Adding an upgrade class spends upgrade capacity and requires at least one configured starter prerequisite from `starter_class_ids` or the built-in fallback upgrade path. Admin `/ck roles set class` force-sets a class; `/ck roles add class` enforces licenses. NPC Training uses the same license rules and reports missing prerequisite/license conditions in the dialog reply. If an NPC can teach a class but the matching starter/upgrade license pool is full, Training can offer paid class change instead: 50,000 chowcoins for starter classes and 100,000 chowcoins for upgrade classes. The player selects one owned same-type class to replace.
 
 ## Current Defaults
 

@@ -170,6 +170,22 @@ object RoleStore {
         return changed
     }
 
+    fun replaceClass(player: ServerPlayer, oldClassId: String, newClassId: String): Boolean {
+        val record = ensureRecord(player)
+        val oldId = oldClassId.trim()
+        val newId = newClassId.trim()
+        if (oldId.isBlank() || newId.isBlank() || oldId == newId) return false
+        val owned = oldId == record.classId || oldId in record.activeClassIds || oldId in record.unlockedClasses
+        if (!owned) return false
+        record.activeClassIds.remove(oldId)
+        record.unlockedClasses.remove(oldId)
+        record.classId = newId
+        record.activeClassIds.add(newId)
+        record.unlockedClasses.add(newId)
+        save()
+        return true
+    }
+
     fun removeJob(player: ServerPlayer, jobId: String): Boolean {
         val record = ensureRecord(player)
         if (!record.activeJobIds.remove(jobId)) return false

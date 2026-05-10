@@ -258,7 +258,12 @@ class NpcTrainingSettingsDefinition(
     @SerializedName("already_known_message") var alreadyKnownMessage: String = "You already know {class}. Keep training what you have learned.",
     @SerializedName("workplace_required_message") var workplaceRequiredMessage: String = "Set up my workplace first, then we can train {class}.",
     @SerializedName("failed_message") var failedMessage: String = "You are not ready for {class} training yet.",
-    @SerializedName("unknown_class_message") var unknownClassMessage: String = "I cannot teach that class right now.",
+    @SerializedName("unknown_class_message") var unknownClassMessage: String = "I do not know what class to teach yet.",
+    @SerializedName("change_offer_message") var changeOfferMessage: String = "You do not have a free {classification} license for {class}. You can pay {cost} chowcoins to replace one instead.",
+    @SerializedName("change_select_message") var changeSelectMessage: String = "Choose which {classification} class to replace with {class}.",
+    @SerializedName("change_success_message") var changeSuccessMessage: String = "Job change complete. You are now {class}.",
+    @SerializedName("change_failed_funds_message") var changeFailedFundsMessage: String = "You need {cost} chowcoins to change into {class}.",
+    @SerializedName("change_invalid_message") var changeInvalidMessage: String = "That job change is no longer available.",
     @SerializedName("workplace_required_llm_prompt") var workplaceRequiredLlmPrompt: String = "The player asked {npc} for {class} class training, but {npc} has no assigned workplace yet. Tell the player they need to use Work first and set up the NPC workplace before training can happen.",
     @SerializedName("failed_llm_prompt") var failedLlmPrompt: String = "The player asked {npc} for {class} class training but cannot train yet. Failed conditions: {conditions}. Player overall level: {overall_level}. Reply as {npc}, in character, and tell the player exactly what they still need.",
     @SerializedName("success_llm_prompt") var successLlmPrompt: String = "The player completed {class} class training with {npc}. Reply as {npc} with a short in-character congratulations.",
@@ -268,7 +273,12 @@ class NpcTrainingSettingsDefinition(
         alreadyKnownMessage = alreadyKnownMessage.trim().ifBlank { "You already know {class}. Keep training what you have learned." }
         workplaceRequiredMessage = workplaceRequiredMessage.trim().ifBlank { "Set up my workplace first, then we can train {class}." }
         failedMessage = failedMessage.trim().ifBlank { "You are not ready for {class} training yet." }
-        unknownClassMessage = unknownClassMessage.trim().ifBlank { "I cannot teach that class right now." }
+        changeOfferMessage = changeOfferMessage.trim().ifBlank { "You do not have a free {classification} license for {class}. You can pay {cost} chowcoins to replace one instead." }
+        changeSelectMessage = changeSelectMessage.trim().ifBlank { "Choose which {classification} class to replace with {class}." }
+        changeSuccessMessage = changeSuccessMessage.trim().ifBlank { "Job change complete. You are now {class}." }
+        changeFailedFundsMessage = changeFailedFundsMessage.trim().ifBlank { "You need {cost} chowcoins to change into {class}." }
+        changeInvalidMessage = changeInvalidMessage.trim().ifBlank { "That job change is no longer available." }
+        unknownClassMessage = unknownClassMessage.trim().ifBlank { "I do not know what class to teach yet." }
         workplaceRequiredLlmPrompt = workplaceRequiredLlmPrompt.trim().ifBlank { "The player asked {npc} for {class} class training, but {npc} has no assigned workplace yet. Tell the player they need to use Work first and set up the NPC workplace before training can happen." }
         failedLlmPrompt = failedLlmPrompt.trim().ifBlank { "The player asked {npc} for {class} class training but cannot train yet. Failed conditions: {conditions}. Player overall level: {overall_level}. Reply as {npc}, in character, and tell the player exactly what they still need." }
         successLlmPrompt = successLlmPrompt.trim().ifBlank { "The player completed {class} class training with {npc}. Reply as {npc} with a short in-character congratulations." }

@@ -888,6 +888,7 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
     private var keepaliveTicks = 0
     private var closingSent = false
     private var previousCameraType: CameraType? = null
+    private var classChangePage = 0
 
     override fun isPauseScreen(): Boolean = false
 
@@ -980,9 +981,12 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         }
         if (talkMode) talkInput?.render(guiGraphics, localMouse.first, localMouse.second, partialTick)
         val hoveredAction = actionAt(localMouse.first, localMouse.second)
+        val hoveredClassChange = if (classChangeMode()) classChangeOptionAt(localMouse.first, localMouse.second) else null
+        if (classChangeMode()) renderClassChangeOptions(guiGraphics, localMouse.first, localMouse.second, layout)
         renderActionButtons(guiGraphics, localMouse.first, localMouse.second, buttonX, y + buttonTop)
         pose.popPose()
         renderActionTooltip(guiGraphics, mouseX, mouseY, hoveredAction)
+        renderClassChangeTooltip(guiGraphics, mouseX, mouseY, hoveredClassChange)
     }
 
     override fun mouseClicked(mouseX: Double, mouseY: Double, button: Int): Boolean {
@@ -998,6 +1002,19 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         val slideY = 18.0f * (1.0f - progress)
         val localMouse = localMouse(mouseX.toInt(), mouseY.toInt(), x + panelWidth / 2.0f, y + panelHeight.toFloat(), slideY, scale)
         if (talkMode && talkInput?.mouseClicked(localMouse.first.toDouble(), localMouse.second.toDouble(), button) == true) return true
+        if (classChangeMode()) {
+            val pager = classChangePagerAt(localMouse.first, localMouse.second)
+            if (pager != 0) {
+                classChangePage = (classChangePage + pager).coerceIn(0, classChangePageCount() - 1)
+                return true
+            }
+            val option = classChangeOptionAt(localMouse.first, localMouse.second)
+            if (option != null) {
+                skipPendingTalkResponse()
+                NpcNetwork.sendAction(payload.npcId, "class_change:${option.classId}")
+                return true
+            }
+        }
         val action = actionAt(localMouse.first, localMouse.second) ?: return true
         when (action) {
             DialogAction.Buy -> if (isActionEnabled(action)) {
@@ -1015,6 +1032,10 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
             DialogAction.Training -> if (isActionEnabled(action)) {
                 skipPendingTalkResponse()
                 NpcNetwork.sendAction(payload.npcId, "training")
+            }
+            DialogAction.Change -> if (isActionEnabled(action)) {
+                skipPendingTalkResponse()
+                NpcNetwork.sendAction(payload.npcId, "class_change_offer")
             }
             DialogAction.Move -> if (isActionEnabled(action)) {
                 skipPendingTalkResponse()
@@ -1039,6 +1060,14 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
             }
         }
         return true
+    }
+
+    override fun mouseScrolled(mouseX: Double, mouseY: Double, scrollX: Double, scrollY: Double): Boolean {
+        if (classChangeMode() && classChangePageCount() > 1) {
+            classChangePage = (classChangePage - scrollY.toInt()).coerceIn(0, classChangePageCount() - 1)
+            return true
+        }
+        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY)
     }
 
     override fun onClose() {
@@ -1100,6 +1129,37 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         }
     }
 
+    private fun renderClassChangeOptions(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, layout: DialogLayout) {
+        val options = classChangePageOptions()
+        if (options.isEmpty()) return
+        val area = classChangeArea(layout)
+        options.forEachIndexed { index, option ->
+            val optionY = area.y + index * CLASS_CHANGE_OPTION_STEP
+            val hovered = mouseX in area.x until area.x + area.width && mouseY in optionY until optionY + CLASS_CHANGE_OPTION_HEIGHT
+            val texture = if (hovered) BUTTON_HOVER_TEXTURE else BUTTON_TEXTURE
+            val sourceSize = if (hovered) BUTTON_HOVER_TEXTURE_SIZE else BUTTON_TEXTURE_SIZE
+            val sourceCorner = if (hovered) BUTTON_HOVER_SOURCE_CORNER else BUTTON_SOURCE_CORNER
+            renderNineSlice(guiGraphics, texture, area.x, optionY, area.width, CLASS_CHANGE_OPTION_HEIGHT, sourceSize, sourceSize, sourceCorner, BUTTON_DEST_CORNER)
+            guiGraphics.blit(classIconTexture(option.classId), area.x + 5, optionY + 2, ICON_SIZE, ICON_SIZE, 0.0f, 0.0f, ICON_SOURCE_SIZE, ICON_SOURCE_SIZE, ICON_SOURCE_SIZE, ICON_SOURCE_SIZE)
+            guiGraphics.drawString(font, ckdmSmallText(option.displayName.uppercase(Locale.ROOT)), area.x + 24, optionY + 5, NAME_COLOR, false)
+        }
+        if (classChangePageCount() <= 1) return
+        val pagerY = area.y + CLASS_CHANGE_VISIBLE_OPTIONS * CLASS_CHANGE_OPTION_STEP + 2
+        renderPagerButton(guiGraphics, area.x, pagerY, "PREV", mouseX, mouseY, enabled = classChangePage > 0)
+        renderPagerButton(guiGraphics, area.x + area.width - CLASS_CHANGE_PAGER_WIDTH, pagerY, "NEXT", mouseX, mouseY, enabled = classChangePage < classChangePageCount() - 1)
+        val page = "${classChangePage + 1}/${classChangePageCount()}"
+        guiGraphics.drawString(font, ckdmSmallText(page), area.x + (area.width - font.width(page)) / 2, pagerY + 5, DISABLED_COLOR, false)
+    }
+
+    private fun renderPagerButton(guiGraphics: GuiGraphics, x: Int, y: Int, label: String, mouseX: Int, mouseY: Int, enabled: Boolean) {
+        val hovered = enabled && mouseX in x until x + CLASS_CHANGE_PAGER_WIDTH && mouseY in y until y + CLASS_CHANGE_OPTION_HEIGHT
+        val texture = if (hovered) BUTTON_HOVER_TEXTURE else BUTTON_TEXTURE
+        val sourceSize = if (hovered) BUTTON_HOVER_TEXTURE_SIZE else BUTTON_TEXTURE_SIZE
+        val sourceCorner = if (hovered) BUTTON_HOVER_SOURCE_CORNER else BUTTON_SOURCE_CORNER
+        renderNineSlice(guiGraphics, texture, x, y, CLASS_CHANGE_PAGER_WIDTH, CLASS_CHANGE_OPTION_HEIGHT, sourceSize, sourceSize, sourceCorner, BUTTON_DEST_CORNER)
+        guiGraphics.drawString(font, ckdmSmallText(label), x + 8, y + 5, if (enabled) NAME_COLOR else DISABLED_COLOR, false)
+    }
+
     private fun renderFriendship(guiGraphics: GuiGraphics, x: Int, y: Int, level: Int) {
         val clamped = level.coerceIn(-10, 10)
         repeat(FRIENDSHIP_ICON_COUNT) { index ->
@@ -1147,10 +1207,15 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         questMode() && action == DialogAction.Bye -> "DECLINE"
         joinMode() && action == DialogAction.Talk -> "JOIN CONVERSATION"
         action == DialogAction.Bye && payload.closeOnly -> payload.closeLabel
+        action == DialogAction.Bye && (payload.classChangeAvailable || classChangeMode()) -> payload.closeLabel
         else -> action.label
     }
 
     private fun renderActionTooltip(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, action: DialogAction?) {
+        if (!talkMode && action == DialogAction.Change) {
+            guiGraphics.renderTooltip(font, Component.literal("Job change: ${payload.classChangeCost} chowcoins"), mouseX, mouseY)
+            return
+        }
         if (talkMode || action != DialogAction.Gift) return
         if (waitingForTalk) return
         if (payload.talkEnabled) return
@@ -1160,6 +1225,11 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         } else {
             guiGraphics.renderTooltip(font, Component.literal("Gift ${giftStack.hoverName.string}"), mouseX, mouseY)
         }
+    }
+
+    private fun renderClassChangeTooltip(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, option: NpcClassChangeOption?) {
+        if (option == null) return
+        guiGraphics.renderTooltip(font, Component.literal("Replace ${option.displayName} for ${payload.classChangeCost} chowcoins"), mouseX, mouseY)
     }
 
     private fun giftStack(): ItemStack {
@@ -1209,6 +1279,8 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         questMode() -> listOf(DialogAction.Talk, DialogAction.Bye)
         joinMode() -> listOf(DialogAction.Talk, DialogAction.Bye)
         workMode() -> listOf(DialogAction.Move, DialogAction.Fire, DialogAction.Bye)
+        classChangeMode() -> listOf(DialogAction.Bye)
+        payload.classChangeAvailable -> listOf(DialogAction.Change, DialogAction.Bye)
         payload.closeOnly -> listOf(DialogAction.Bye)
         else -> listOfNotNull(DialogAction.Talk, DialogAction.Buy, DialogAction.Gift, DialogAction.Work, DialogAction.Training.takeIf { payload.trainingAvailable }, DialogAction.Bye)
     }
@@ -1218,6 +1290,42 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
     private fun joinMode(): Boolean = payload.dialogMode == "join"
 
     private fun workMode(): Boolean = payload.dialogMode == "work"
+
+    private fun classChangeMode(): Boolean = payload.dialogMode == "class_change"
+
+    private fun classChangeOptionAt(mouseX: Int, mouseY: Int): NpcClassChangeOption? {
+        val area = classChangeArea(layout())
+        return classChangePageOptions().firstOrNull { option ->
+            val index = classChangePageOptions().indexOf(option)
+            val top = area.y + index * CLASS_CHANGE_OPTION_STEP
+            mouseX in area.x until area.x + area.width && mouseY in top until top + CLASS_CHANGE_OPTION_HEIGHT
+        }
+    }
+
+    private fun classChangePagerAt(mouseX: Int, mouseY: Int): Int {
+        if (classChangePageCount() <= 1) return 0
+        val area = classChangeArea(layout())
+        val pagerY = area.y + CLASS_CHANGE_VISIBLE_OPTIONS * CLASS_CHANGE_OPTION_STEP + 2
+        if (mouseY !in pagerY until pagerY + CLASS_CHANGE_OPTION_HEIGHT) return 0
+        if (classChangePage > 0 && mouseX in area.x until area.x + CLASS_CHANGE_PAGER_WIDTH) return -1
+        if (classChangePage < classChangePageCount() - 1 && mouseX in area.x + area.width - CLASS_CHANGE_PAGER_WIDTH until area.x + area.width) return 1
+        return 0
+    }
+
+    private fun classChangePageOptions(): List<NpcClassChangeOption> {
+        val pageCount = classChangePageCount()
+        classChangePage = classChangePage.coerceIn(0, pageCount - 1)
+        return payload.classChangeOptions.drop(classChangePage * CLASS_CHANGE_VISIBLE_OPTIONS).take(CLASS_CHANGE_VISIBLE_OPTIONS)
+    }
+
+    private fun classChangePageCount(): Int = ((payload.classChangeOptions.size - 1) / CLASS_CHANGE_VISIBLE_OPTIONS + 1).coerceAtLeast(1)
+
+    private fun classChangeArea(layout: DialogLayout): ClassChangeArea {
+        val width = layout.panelWidth - PAD * 2 - BUTTON_WIDTH - TEXT_GAP
+        return ClassChangeArea(layout.x + PAD, layout.y + PAD + AVATAR_SIZE + 36, width)
+    }
+
+    private fun classIconTexture(classId: String): ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/classes/${classId.lowercase(Locale.ROOT)}.png")
 
     private fun isActionEnabled(action: DialogAction, giftStack: ItemStack = giftStack()): Boolean = when {
         waitingForTalk -> action != DialogAction.Talk
@@ -1234,9 +1342,10 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         val dialogWidth = panelWidth - PAD * 2 - BUTTON_WIDTH - TEXT_GAP
         val fullLineCount = dialogLineCount(dialogWidth).coerceIn(1, BASE_DIALOG_LINES + MAX_EXTRA_DIALOG_LINES)
         val extraLines = (fullLineCount - BASE_DIALOG_LINES).coerceAtLeast(0)
+        val classChangeReserve = if (classChangeMode()) CLASS_CHANGE_PANEL_RESERVE else 0
         val talkReserve = ((INPUT_HEIGHT + INPUT_GAP) * talkProgress()).toInt()
         val maxPanelHeight = (height - 24 - talkReserve).coerceAtLeast(BASE_PANEL_HEIGHT)
-        val targetPanelHeight = (BASE_PANEL_HEIGHT + extraLines * LINE_HEIGHT + if (extraLines > 0) DYNAMIC_BOTTOM_PAD else 0).coerceAtMost(maxPanelHeight)
+        val targetPanelHeight = (BASE_PANEL_HEIGHT + extraLines * LINE_HEIGHT + if (extraLines > 0) DYNAMIC_BOTTOM_PAD else 0 + classChangeReserve).coerceAtMost(maxPanelHeight)
         val panelHeight = animatedPanelHeight(targetPanelHeight)
         val x = (width - panelWidth) / 2
         val y = height - panelHeight - 34 - talkReserve
@@ -1516,6 +1625,11 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         private const val BUTTON_HEIGHT = 20
         private const val BUTTON_TOP = 14
         private const val BUTTON_STEP = 23
+        private const val CLASS_CHANGE_PANEL_RESERVE = 110
+        private const val CLASS_CHANGE_VISIBLE_OPTIONS = 4
+        private const val CLASS_CHANGE_OPTION_HEIGHT = 20
+        private const val CLASS_CHANGE_OPTION_STEP = 23
+        private const val CLASS_CHANGE_PAGER_WIDTH = 52
         private const val BUTTON_TEXTURE_SIZE = 8
         private const val BUTTON_HOVER_TEXTURE_SIZE = 10
         private const val BUTTON_SOURCE_CORNER = 2
@@ -1563,12 +1677,19 @@ private data class DialogLayout(
     val dialogLineLimit: Int,
 )
 
+private data class ClassChangeArea(
+    val x: Int,
+    val y: Int,
+    val width: Int,
+)
+
 private enum class DialogAction(val label: String, val icon: ResourceLocation) {
     Talk("TALK", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/chat_bubble_white.png")),
     Buy("BUY", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/shop.png")),
     Gift("GIFT", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/gift.png")),
     Work("WORK", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/shop.png")),
     Training("TRAINING", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/chat_bubble_white.png")),
+    Change("CHANGE", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/coins.png")),
     Move("MOVE", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/chat_bubble_white.png")),
     Fire("FIRE", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/chat_bubble_orange.png")),
     Bye("BYE", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/chat_bubble_orange.png")),

@@ -25,6 +25,8 @@ import dev.gisketch.chowkingdom.snackbar.SnackbarNetwork
 import dev.gisketch.chowkingdom.snackbar.SnackbarNotification
 import dev.gisketch.chowkingdom.snackbar.SnackbarSounds
 import dev.gisketch.chowkingdom.snackbar.SnackbarType
+import dev.gisketch.chowkingdom.wallets.ChowcoinNetwork
+import dev.gisketch.chowkingdom.wallets.ChowcoinStore
 import net.minecraft.ChatFormatting
 import net.minecraft.commands.CommandSourceStack
 import net.minecraft.commands.Commands
@@ -248,7 +250,13 @@ object NpcFeature {
             }
         }
         if (NpcQuestService.handleAction(player, npc, definition, action)) return
-        when (action.lowercase()) {
+        val normalizedAction = action.lowercase()
+        if (normalizedAction.startsWith("class_change:")) {
+            NpcLlmService.leaveDialog(player, definition.id)
+            completeClassChange(player, npc, definition, action.substringAfter(':'))
+            return
+        }
+        when (normalizedAction) {
             "cancel_llm", "leave_llm_dialog" -> NpcLlmService.leaveDialog(player, definition.id)
             "join_talk" -> NpcLlmService.joinConversation(player, definition.id)
             "buy" -> {
@@ -266,6 +274,10 @@ object NpcFeature {
             "training" -> {
                 NpcLlmService.leaveDialog(player, definition.id)
                 trainClass(player, npc, definition)
+            }
+            "class_change_offer" -> {
+                NpcLlmService.leaveDialog(player, definition.id)
+                openClassChangeSelection(player, npc, definition)
             }
             "work_move" -> {
                 NpcLlmService.leaveDialog(player, definition.id)
@@ -306,7 +318,7 @@ object NpcFeature {
 
         when (ClassLicenses.canUnlock(player, role)) {
             ClassLicenseResult.Allowed -> completeClassTraining(player, npc, definition, role, roleName, friendship.level)
-            is ClassLicenseResult.Denied -> failClassTraining(player, npc, definition, roleName, ClassLicenses.failedConditions(player, role), friendship.level)
+            is ClassLicenseResult.Denied -> failClassTraining(player, npc, definition, role, roleName, ClassLicenses.failedConditions(player, role), friendship.level, changeOffer = ClassLicenses.changeOffer(player, role))
         }
     }
 
@@ -329,30 +341,113 @@ object NpcFeature {
     }
 
     private fun failClassTraining(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, roleName: String, conditions: List<String>, friendshipLevel: Int, workplaceRequired: Boolean = false) {
+        failClassTraining(player, npc, definition, null, roleName, conditions, friendshipLevel, workplaceRequired)
+    }
+
+    private fun failClassTraining(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, role: RoleDefinition?, roleName: String, conditions: List<String>, friendshipLevel: Int, workplaceRequired: Boolean = false, changeOffer: dev.gisketch.chowkingdom.roles.ClassChangeOffer? = null) {
         val settings = NpcConfig.settings()
         val conditionText = conditions.ifEmpty { listOf("Unknown class license condition failed.") }
         val messageTemplate = if (workplaceRequired) settings.training.workplaceRequiredMessage else settings.training.failedMessage
         val promptTemplate = if (workplaceRequired) settings.training.workplaceRequiredLlmPrompt else settings.training.failedLlmPrompt
-        val fallback = trainingText(messageTemplate, player, definition, roleName, conditionText) + " " + conditionText.joinToString(" ")
+        val offerText = if (role != null && changeOffer != null) {
+            " " + trainingText(settings.training.changeOfferMessage, player, definition, roleName, conditionText, changeOffer.cost, classClassificationLabel(role))
+        } else ""
+        val fallback = trainingText(messageTemplate, player, definition, roleName, conditionText) + " " + conditionText.joinToString(" ") + offerText
         val llmEnabled = settings.llm.enabled && settings.llmMessageUsage.classTraining
         val responseToken = if (llmEnabled) NpcDialogTokens.next() else 0L
-        NpcNetwork.openDialog(player, dialogPayload(definition, npc, if (llmEnabled) "..." else fallback, false, friendshipLevel, closeOnly = true, closeLabel = "OKAY", responseToken = responseToken))
+        NpcNetwork.openDialog(
+            player,
+            dialogPayload(
+                definition,
+                npc,
+                if (llmEnabled) "..." else fallback,
+                false,
+                friendshipLevel,
+                closeOnly = changeOffer == null,
+                closeLabel = "OKAY",
+                responseToken = responseToken,
+                classChangeAvailable = changeOffer != null,
+                classChangeCost = changeOffer?.cost ?: 0L,
+            ),
+        )
         if (llmEnabled) {
-            NpcLlmService.event(player, npc, definition, fallback, trainingText(promptTemplate, player, definition, roleName, conditionText), npcRecordType = "npc_class_training_failed", responseToken = responseToken)
+            val prompt = trainingText(promptTemplate, player, definition, roleName, conditionText, changeOffer?.cost ?: 0L, role?.let(::classClassificationLabel).orEmpty()) +
+                if (role != null && changeOffer != null) " A paid class-change offer is available: the player may press CHANGE, choose an existing ${classClassificationLabel(role)} class to replace, and pay ${changeOffer.cost} chowcoins." else ""
+            NpcLlmService.event(player, npc, definition, fallback, prompt, npcRecordType = "npc_class_training_failed", responseToken = responseToken)
         } else {
             NpcStore.recordConversation(definition.id, player, definition.name, fallback, "npc_class_training_failed")
             relayNpcDialog(player, npc, definition, fallback)
         }
     }
 
+    private fun openClassChangeSelection(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition) {
+        val role = trainingRole(definition) ?: return invalidClassChange(player, npc, definition)
+        val offer = ClassLicenses.changeOffer(player, role) ?: return invalidClassChange(player, npc, definition)
+        val friendship = NpcStore.friendshipSnapshot(definition.id, player)
+        val roleName = role.displayName.ifBlank { role.id }
+        val message = trainingText(NpcConfig.settings().training.changeSelectMessage, player, definition, roleName, emptyList(), offer.cost, classClassificationLabel(role))
+        NpcNetwork.openDialog(
+            player,
+            dialogPayload(
+                definition,
+                npc,
+                message,
+                false,
+                friendship.level,
+                closeLabel = "CANCEL",
+                dialogMode = "class_change",
+                classChangeCost = offer.cost,
+                classChangeOptions = offer.candidates.map { candidate -> NpcClassChangeOption(candidate.classId, candidate.displayName) },
+            ),
+        )
+    }
+
+    private fun completeClassChange(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, oldClassId: String) {
+        val role = trainingRole(definition) ?: return invalidClassChange(player, npc, definition)
+        val offer = ClassLicenses.changeOffer(player, role) ?: return invalidClassChange(player, npc, definition)
+        val candidate = offer.candidates.firstOrNull { candidate -> candidate.classId == oldClassId } ?: return invalidClassChange(player, npc, definition)
+        val friendship = NpcStore.friendshipSnapshot(definition.id, player)
+        val settings = NpcConfig.settings()
+        val roleName = role.displayName.ifBlank { role.id }
+        val balance = ChowcoinStore.get(player)
+        if (balance < offer.cost) {
+            val message = trainingText(settings.training.changeFailedFundsMessage, player, definition, roleName, emptyList(), offer.cost, classClassificationLabel(role))
+            NpcNetwork.openDialog(player, dialogPayload(definition, npc, message, false, friendship.level, closeOnly = true, closeLabel = "OKAY"))
+            ChowcoinNetwork.syncTo(player)
+            SnackbarNetwork.send(player, SnackbarNotification.texture(SnackbarIcons.CHOWCOIN_TEXTURE, "JOB CHANGE FAILED", "Need ${offer.cost} chowcoins.", SnackbarType.ERROR, SnackbarSounds.ERROR))
+            return
+        }
+        if (!RoleStore.replaceClass(player, candidate.classId, role.id)) return invalidClassChange(player, npc, definition)
+        ChowcoinStore.set(player, balance - offer.cost)
+        RoleClassEquipmentRules.grantStartingItems(player, role.id)
+        RolesNetwork.syncAllPlayers()
+        ChowcoinNetwork.syncTo(player)
+        val message = trainingText(settings.training.changeSuccessMessage, player, definition, roleName, emptyList(), offer.cost, classClassificationLabel(role))
+        NpcNetwork.openDialog(player, dialogPayload(definition, npc, message, false, friendship.level, closeOnly = true, closeLabel = "OKAY"))
+        SnackbarNetwork.send(player, SnackbarNotification.texture(SnackbarIcons.CHOWCOIN_TEXTURE, "JOB CHANGE COMPLETE", "Replaced ${candidate.displayName} with $roleName for ${offer.cost} chowcoins.", SnackbarType.SUCCESS, SnackbarSounds.REWARD))
+        NpcStore.recordConversation(definition.id, player, definition.name, message, "npc_class_change_success")
+        relayNpcDialog(player, npc, definition, message)
+    }
+
+    private fun invalidClassChange(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition) {
+        val friendship = NpcStore.friendshipSnapshot(definition.id, player)
+        val roleName = trainingRole(definition)?.displayName?.ifBlank { trainingRole(definition)?.id.orEmpty() } ?: "Unknown"
+        val message = trainingText(NpcConfig.settings().training.changeInvalidMessage, player, definition, roleName, emptyList())
+        NpcNetwork.openDialog(player, dialogPayload(definition, npc, message, false, friendship.level, closeOnly = true, closeLabel = "OKAY"))
+    }
+
     private fun trainingRole(definition: NpcDefinition): RoleDefinition? = definition.classId.trim().takeIf(String::isNotBlank)?.let(RolesConfig::roleClass)
 
-    private fun trainingText(template: String, player: ServerPlayer, definition: NpcDefinition, roleName: String, conditions: List<String>): String = template
+    private fun trainingText(template: String, player: ServerPlayer, definition: NpcDefinition, roleName: String, conditions: List<String>, cost: Long = 0L, classification: String = ""): String = template
         .replace("{player}", player.gameProfile.name)
         .replace("{npc}", definition.name)
         .replace("{class}", roleName)
         .replace("{conditions}", conditions.joinToString("; ").ifBlank { "None" })
         .replace("{overall_level}", JobLevels.overallLevel(player).toString())
+        .replace("{cost}", cost.toString())
+        .replace("{classification}", classification)
+
+    private fun classClassificationLabel(role: RoleDefinition): String = if (RolesConfig.isStarterClass(role.id)) "starter" else "upgrade"
 
     private fun openWorkDialog(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition) {
         val friendship = NpcStore.friendshipSnapshot(definition.id, player)
@@ -784,7 +879,7 @@ object NpcFeature {
         SnackbarNetwork.send(player, SnackbarNotification.item(SnackbarIcons.ERROR, title, content, type, SnackbarSounds.forType(type)))
     }
 
-    fun dialogPayload(definition: NpcDefinition, npc: ChowNpcEntity, message: String, contractGranted: Boolean, friendshipLevel: Int, closeOnly: Boolean = false, closeLabel: String = "BYE", responseToken: Long = 0L, dialogMode: String = "normal", startTalkMode: Boolean = false, friendshipDelta: Int = 0): NpcDialogPayload = NpcDialogPayload(
+    fun dialogPayload(definition: NpcDefinition, npc: ChowNpcEntity, message: String, contractGranted: Boolean, friendshipLevel: Int, closeOnly: Boolean = false, closeLabel: String = "BYE", responseToken: Long = 0L, dialogMode: String = "normal", startTalkMode: Boolean = false, friendshipDelta: Int = 0, classChangeAvailable: Boolean = false, classChangeCost: Long = 0L, classChangeOptions: List<NpcClassChangeOption> = emptyList()): NpcDialogPayload = NpcDialogPayload(
         definition.id,
         definition.name,
         definition.title,
@@ -804,6 +899,9 @@ object NpcFeature {
         dialogMode = dialogMode,
         startTalkMode = startTalkMode,
         trainingAvailable = trainingRole(definition) != null,
+        classChangeAvailable = classChangeAvailable,
+        classChangeCost = classChangeCost,
+        classChangeOptions = classChangeOptions,
     )
 
     private fun friendshipMessage(set: NpcFriendshipMessageSet, friendship: NpcFriendshipSnapshot, player: ServerPlayer, definition: NpcDefinition, itemName: String = "", mood: String = "", quantity: Int = 0, totalCost: Long = 0L): String {
