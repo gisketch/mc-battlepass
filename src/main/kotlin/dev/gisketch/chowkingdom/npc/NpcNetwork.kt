@@ -28,6 +28,7 @@ private const val MAX_NPC_VOICE_PITCH_LENGTH = 16
 private const val MAX_NPC_DIALOG_MODE_LENGTH = 16
 private const val MAX_NPC_WORLD_CHAT_TARGET_KIND_LENGTH = 16
 private const val MAX_NPC_WORLD_CHAT_MESSAGE_LENGTH = 512
+private const val MAX_NPC_CLASS_CHANGE_WARNING_LENGTH = 160
 private const val MAX_NPC_QUEST_DESCRIPTION_LENGTH = 160
 private const val MAX_NPC_QUEST_PASS_LENGTH = 32
 private const val MAX_NPC_FRIENDS = 128
@@ -224,7 +225,7 @@ data class NpcDialogPayload(
                 buffer.readBoolean(),
                 buffer.readVarLong(),
                 List(buffer.readVarInt().coerceIn(0, MAX_NPC_CLASS_CHANGE_OPTIONS)) {
-                    NpcClassChangeOption(buffer.readUtf(MAX_NPC_ID_LENGTH), buffer.readUtf(MAX_NPC_NAME_LENGTH))
+                    NpcClassChangeOption(buffer.readUtf(MAX_NPC_ID_LENGTH), buffer.readUtf(MAX_NPC_NAME_LENGTH), buffer.readUtf(MAX_NPC_CLASS_CHANGE_WARNING_LENGTH))
                 },
             )
 
@@ -255,13 +256,14 @@ data class NpcDialogPayload(
                 options.forEach { option ->
                     buffer.writeUtf(option.classId.take(MAX_NPC_ID_LENGTH), MAX_NPC_ID_LENGTH)
                     buffer.writeUtf(option.displayName.take(MAX_NPC_NAME_LENGTH), MAX_NPC_NAME_LENGTH)
+                    buffer.writeUtf(option.warning.take(MAX_NPC_CLASS_CHANGE_WARNING_LENGTH), MAX_NPC_CLASS_CHANGE_WARNING_LENGTH)
                 }
             }
         }
     }
 }
 
-data class NpcClassChangeOption(val classId: String, val displayName: String)
+data class NpcClassChangeOption(val classId: String, val displayName: String, val warning: String = "")
 
 data class NpcBalloonPayload(
     val npcEntityId: Int,

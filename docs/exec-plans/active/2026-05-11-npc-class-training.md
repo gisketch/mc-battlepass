@@ -43,3 +43,5 @@ NPCs can advertise a class with `class = "rogue"` and offer a Training dialog ac
 - Added assigned-workplace precondition and LLM prompt for Training.
 - Added NPC nameplate class icon prefix for NPCs with a valid configured class.
 - Added paid class-change Training flow with CHANGE offer, owned-class selection UI, chowcoin debit, and starter/upgrade costs.
+- Added option-aware paid-change LLM prompt for more immersive class rivalry banter.
+- Added warning/removal for upgrade classes invalidated by starter class change.

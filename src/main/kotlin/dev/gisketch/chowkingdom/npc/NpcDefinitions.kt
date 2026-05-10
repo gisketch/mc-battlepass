@@ -264,8 +264,10 @@ class NpcTrainingSettingsDefinition(
     @SerializedName("change_success_message") var changeSuccessMessage: String = "Job change complete. You are now {class}.",
     @SerializedName("change_failed_funds_message") var changeFailedFundsMessage: String = "You need {cost} chowcoins to change into {class}.",
     @SerializedName("change_invalid_message") var changeInvalidMessage: String = "That job change is no longer available.",
+    @SerializedName("change_lost_upgrades_warning") var changeLostUpgradesWarning: String = "Warning: replacing this class will remove {lost_classes}.",
     @SerializedName("workplace_required_llm_prompt") var workplaceRequiredLlmPrompt: String = "The player asked {npc} for {class} class training, but {npc} has no assigned workplace yet. Tell the player they need to use Work first and set up the NPC workplace before training can happen.",
     @SerializedName("failed_llm_prompt") var failedLlmPrompt: String = "The player asked {npc} for {class} class training but cannot train yet. Failed conditions: {conditions}. Player overall level: {overall_level}. Reply as {npc}, in character, and tell the player exactly what they still need.",
+    @SerializedName("change_offer_llm_prompt") var changeOfferLlmPrompt: String = "A paid class-change offer is available. The player can press CHANGE, choose one owned {classification} class to replace from: {change_options}, and pay {cost} chowcoins. Reply as {npc}: make {class} sound exciting and worth it, lightly tease the replaceable classes with playful rivalry, but do not insult the player or sound mean.",
     @SerializedName("success_llm_prompt") var successLlmPrompt: String = "The player completed {class} class training with {npc}. Reply as {npc} with a short in-character congratulations.",
 ) {
     fun normalized(): NpcTrainingSettingsDefinition = apply {
@@ -278,9 +280,11 @@ class NpcTrainingSettingsDefinition(
         changeSuccessMessage = changeSuccessMessage.trim().ifBlank { "Job change complete. You are now {class}." }
         changeFailedFundsMessage = changeFailedFundsMessage.trim().ifBlank { "You need {cost} chowcoins to change into {class}." }
         changeInvalidMessage = changeInvalidMessage.trim().ifBlank { "That job change is no longer available." }
+        changeLostUpgradesWarning = changeLostUpgradesWarning.trim().ifBlank { "Warning: replacing this class will remove {lost_classes}." }
         unknownClassMessage = unknownClassMessage.trim().ifBlank { "I do not know what class to teach yet." }
         workplaceRequiredLlmPrompt = workplaceRequiredLlmPrompt.trim().ifBlank { "The player asked {npc} for {class} class training, but {npc} has no assigned workplace yet. Tell the player they need to use Work first and set up the NPC workplace before training can happen." }
         failedLlmPrompt = failedLlmPrompt.trim().ifBlank { "The player asked {npc} for {class} class training but cannot train yet. Failed conditions: {conditions}. Player overall level: {overall_level}. Reply as {npc}, in character, and tell the player exactly what they still need." }
+        changeOfferLlmPrompt = changeOfferLlmPrompt.trim().ifBlank { "A paid class-change offer is available. The player can press CHANGE, choose one owned {classification} class to replace from: {change_options}, and pay {cost} chowcoins. Reply as {npc}: make {class} sound exciting and worth it, lightly tease the replaceable classes with playful rivalry, but do not insult the player or sound mean." }
         successLlmPrompt = successLlmPrompt.trim().ifBlank { "The player completed {class} class training with {npc}. Reply as {npc} with a short in-character congratulations." }
     }
 }

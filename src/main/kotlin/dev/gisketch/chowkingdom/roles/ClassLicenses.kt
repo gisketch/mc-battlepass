@@ -43,6 +43,18 @@ object ClassLicenses {
         return ClassChangeOffer(cost, candidates)
     }
 
+    fun invalidatedUpgradeClassesAfterChange(player: ServerPlayer, oldClassId: String, newClassId: String): List<ClassChangeCandidate> {
+        val record = RoleStore.role(player)
+        if (!RolesConfig.isStarterClass(oldClassId) || !RolesConfig.isStarterClass(newClassId)) return emptyList()
+        val knownAfter = (knownClassIds(record) - oldClassId + newClassId).filter(String::isNotBlank).toSet()
+        return knownAfter
+            .filterNot(RolesConfig::isStarterClass)
+            .mapNotNull(RolesConfig::roleClass)
+            .filter { role -> upgradePrerequisitesFailed(knownAfter, role) }
+            .sortedBy { role -> role.displayName.ifBlank { role.id } }
+            .map { role -> ClassChangeCandidate(role.id, role.displayName.ifBlank { role.id }) }
+    }
+
     fun starterUnlockOverallLevels(): List<Int> = RolesConfig.classLicenses().starterLicenseUnlockOverallLevels
         .filter { level -> level > 0 }
         .distinct()
@@ -67,7 +79,7 @@ object ClassLicenses {
     private fun upgradeFailedConditions(player: ServerPlayer, record: PlayerRoleRecord, role: RoleDefinition): List<String> {
         val failed = mutableListOf<String>()
         val prerequisites = RolesConfig.starterClassIds(role)
-        if (upgradePrerequisitesFailed(record, role)) {
+        if (upgradePrerequisitesFailed(knownClassIds(record), role)) {
             failed += "Need one prerequisite starter class for ${role.displayName.ifBlank { role.id }}: ${prerequisites.joinToString(", ")}."
         }
         val used = unlockedUpgradeCount(record)
@@ -94,10 +106,11 @@ object ClassLicenses {
 
     private fun knownClassIds(record: PlayerRoleRecord): Set<String> = (record.unlockedClasses + record.activeClassIds + setOf(record.classId)).filter(String::isNotBlank).toSet()
 
-    private fun upgradePrerequisitesFailed(record: PlayerRoleRecord, role: RoleDefinition): Boolean {
+    private fun upgradePrerequisitesFailed(record: PlayerRoleRecord, role: RoleDefinition): Boolean = upgradePrerequisitesFailed(knownClassIds(record), role)
+
+    private fun upgradePrerequisitesFailed(knownClasses: Set<String>, role: RoleDefinition): Boolean {
         val prerequisites = RolesConfig.starterClassIds(role)
         if (prerequisites.isEmpty()) return false
-        val knownClasses = knownClassIds(record)
         return prerequisites.none { starterId -> starterId in knownClasses }
     }
 }

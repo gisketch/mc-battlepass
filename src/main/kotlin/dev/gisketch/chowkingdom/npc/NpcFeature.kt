@@ -372,7 +372,7 @@ object NpcFeature {
         )
         if (llmEnabled) {
             val prompt = trainingText(promptTemplate, player, definition, roleName, conditionText, changeOffer?.cost ?: 0L, role?.let(::classClassificationLabel).orEmpty()) +
-                if (role != null && changeOffer != null) " A paid class-change offer is available: the player may press CHANGE, choose an existing ${classClassificationLabel(role)} class to replace, and pay ${changeOffer.cost} chowcoins." else ""
+                if (role != null && changeOffer != null) " " + trainingText(settings.training.changeOfferLlmPrompt, player, definition, roleName, conditionText, changeOffer.cost, classClassificationLabel(role), changeOffer.candidates.joinToString(", ") { candidate -> candidate.displayName }) else ""
             NpcLlmService.event(player, npc, definition, fallback, prompt, npcRecordType = "npc_class_training_failed", responseToken = responseToken)
         } else {
             NpcStore.recordConversation(definition.id, player, definition.name, fallback, "npc_class_training_failed")
@@ -385,6 +385,7 @@ object NpcFeature {
         val offer = ClassLicenses.changeOffer(player, role) ?: return invalidClassChange(player, npc, definition)
         val friendship = NpcStore.friendshipSnapshot(definition.id, player)
         val roleName = role.displayName.ifBlank { role.id }
+        val settings = NpcConfig.settings()
         val message = trainingText(NpcConfig.settings().training.changeSelectMessage, player, definition, roleName, emptyList(), offer.cost, classClassificationLabel(role))
         NpcNetwork.openDialog(
             player,
@@ -397,7 +398,13 @@ object NpcFeature {
                 closeLabel = "CANCEL",
                 dialogMode = "class_change",
                 classChangeCost = offer.cost,
-                classChangeOptions = offer.candidates.map { candidate -> NpcClassChangeOption(candidate.classId, candidate.displayName) },
+                classChangeOptions = offer.candidates.map { candidate ->
+                    val lostUpgrades = ClassLicenses.invalidatedUpgradeClassesAfterChange(player, candidate.classId, role.id)
+                    val warning = lostUpgrades.takeIf { it.isNotEmpty() }?.joinToString(", ") { lost -> lost.displayName }?.let { lostNames ->
+                        trainingText(settings.training.changeLostUpgradesWarning, player, definition, roleName, emptyList(), offer.cost, classClassificationLabel(role), lostClasses = lostNames)
+                    }.orEmpty()
+                    NpcClassChangeOption(candidate.classId, candidate.displayName, warning)
+                },
             ),
         )
     }
@@ -417,14 +424,17 @@ object NpcFeature {
             SnackbarNetwork.send(player, SnackbarNotification.texture(SnackbarIcons.CHOWCOIN_TEXTURE, "JOB CHANGE FAILED", "Need ${offer.cost} chowcoins.", SnackbarType.ERROR, SnackbarSounds.ERROR))
             return
         }
-        if (!RoleStore.replaceClass(player, candidate.classId, role.id)) return invalidClassChange(player, npc, definition)
+        val lostUpgrades = ClassLicenses.invalidatedUpgradeClassesAfterChange(player, candidate.classId, role.id)
+        if (!RoleStore.replaceClass(player, candidate.classId, role.id, lostUpgrades.map { lost -> lost.classId }.toSet())) return invalidClassChange(player, npc, definition)
         ChowcoinStore.set(player, balance - offer.cost)
         RoleClassEquipmentRules.grantStartingItems(player, role.id)
         RolesNetwork.syncAllPlayers()
         ChowcoinNetwork.syncTo(player)
-        val message = trainingText(settings.training.changeSuccessMessage, player, definition, roleName, emptyList(), offer.cost, classClassificationLabel(role))
+        val lostText = lostUpgrades.joinToString(", ") { lost -> lost.displayName }
+        val warningText = lostText.takeIf(String::isNotBlank)?.let { lost -> " Removed $lost." }.orEmpty()
+        val message = trainingText(settings.training.changeSuccessMessage, player, definition, roleName, emptyList(), offer.cost, classClassificationLabel(role), lostClasses = lostText) + warningText
         NpcNetwork.openDialog(player, dialogPayload(definition, npc, message, false, friendship.level, closeOnly = true, closeLabel = "OKAY"))
-        SnackbarNetwork.send(player, SnackbarNotification.texture(SnackbarIcons.CHOWCOIN_TEXTURE, "JOB CHANGE COMPLETE", "Replaced ${candidate.displayName} with $roleName for ${offer.cost} chowcoins.", SnackbarType.SUCCESS, SnackbarSounds.REWARD))
+        SnackbarNetwork.send(player, SnackbarNotification.texture(SnackbarIcons.CHOWCOIN_TEXTURE, "JOB CHANGE COMPLETE", "Replaced ${candidate.displayName} with $roleName for ${offer.cost} chowcoins.$warningText", SnackbarType.SUCCESS, SnackbarSounds.REWARD))
         NpcStore.recordConversation(definition.id, player, definition.name, message, "npc_class_change_success")
         relayNpcDialog(player, npc, definition, message)
     }
@@ -438,7 +448,7 @@ object NpcFeature {
 
     private fun trainingRole(definition: NpcDefinition): RoleDefinition? = definition.classId.trim().takeIf(String::isNotBlank)?.let(RolesConfig::roleClass)
 
-    private fun trainingText(template: String, player: ServerPlayer, definition: NpcDefinition, roleName: String, conditions: List<String>, cost: Long = 0L, classification: String = ""): String = template
+    private fun trainingText(template: String, player: ServerPlayer, definition: NpcDefinition, roleName: String, conditions: List<String>, cost: Long = 0L, classification: String = "", changeOptions: String = "", lostClasses: String = ""): String = template
         .replace("{player}", player.gameProfile.name)
         .replace("{npc}", definition.name)
         .replace("{class}", roleName)
@@ -446,6 +456,8 @@ object NpcFeature {
         .replace("{overall_level}", JobLevels.overallLevel(player).toString())
         .replace("{cost}", cost.toString())
         .replace("{classification}", classification)
+        .replace("{change_options}", changeOptions.ifBlank { "None" })
+        .replace("{lost_classes}", lostClasses.ifBlank { "None" })
 
     private fun classClassificationLabel(role: RoleDefinition): String = if (RolesConfig.isStarterClass(role.id)) "starter" else "upgrade"
 

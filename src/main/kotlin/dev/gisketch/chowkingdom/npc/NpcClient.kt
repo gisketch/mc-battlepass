@@ -1142,6 +1142,7 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
             renderNineSlice(guiGraphics, texture, area.x, optionY, area.width, CLASS_CHANGE_OPTION_HEIGHT, sourceSize, sourceSize, sourceCorner, BUTTON_DEST_CORNER)
             guiGraphics.blit(classIconTexture(option.classId), area.x + 5, optionY + 2, ICON_SIZE, ICON_SIZE, 0.0f, 0.0f, ICON_SOURCE_SIZE, ICON_SOURCE_SIZE, ICON_SOURCE_SIZE, ICON_SOURCE_SIZE)
             guiGraphics.drawString(font, ckdmSmallText(option.displayName.uppercase(Locale.ROOT)), area.x + 24, optionY + 5, NAME_COLOR, false)
+            if (option.warning.isNotBlank()) guiGraphics.drawString(font, ckdmSmallText("!"), area.x + area.width - 12, optionY + 5, DIALOG_GOLD, false)
         }
         if (classChangePageCount() <= 1) return
         val pagerY = area.y + CLASS_CHANGE_VISIBLE_OPTIONS * CLASS_CHANGE_OPTION_STEP + 2
@@ -1229,7 +1230,12 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
 
     private fun renderClassChangeTooltip(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, option: NpcClassChangeOption?) {
         if (option == null) return
-        guiGraphics.renderTooltip(font, Component.literal("Replace ${option.displayName} for ${payload.classChangeCost} chowcoins"), mouseX, mouseY)
+        val text = if (option.warning.isBlank()) {
+            "Replace ${option.displayName} for ${payload.classChangeCost} chowcoins"
+        } else {
+            "Replace ${option.displayName} for ${payload.classChangeCost} chowcoins. ${option.warning}"
+        }
+        guiGraphics.renderTooltip(font, Component.literal(text), mouseX, mouseY)
     }
 
     private fun giftStack(): ItemStack {
