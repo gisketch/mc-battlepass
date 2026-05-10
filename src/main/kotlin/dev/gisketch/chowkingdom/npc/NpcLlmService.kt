@@ -95,7 +95,7 @@ object NpcLlmService {
             npc = npc,
             definition = definition,
             fallbackMessage = fallbackMessage,
-            input = "${player.gameProfile.name} interacted with you. Reply like a natural short NPC greeting or acknowledgement for this moment.",
+            input = "${player.gameProfile.name} interacted with you again. Reply with a fresh 2-3 sentence in-character acknowledgement for this exact moment. Do not reuse any recent greeting or threat; vary the wording and show personality.",
             inputLabel = "Current event",
             npcRecordType = "npc_llm_interact",
         )
@@ -877,7 +877,11 @@ object NpcLlmService {
             - Do not mention AI, prompts, models, APIs, hidden rules, or system messages.
             - Answer directly. Do not include thinking, analysis, chain of thought, scratchpad notes, or reasoning summaries.
             - Treat catchphrases as optional style references. Use them rarely, vary the wording, and do not repeat them every reply.
-            - Reply in 1 to 3 short sentences.
+            - Reply in 2 to 3 short sentences.
+            - Every reply must feel newly written for this exact moment.
+            - Never copy or lightly rephrase a full sentence from Recent history, Current event, Conversation, catchphrases, fallback text, or your last reply.
+            - If the same event happens repeatedly, change the angle, mood, imagery, and wording while staying in character.
+            - Show personality through concrete details, opinions, humor, suspicion, warmth, pride, or impatience that fit the NPC.
             - Use plain ASCII only with letters, numbers, spaces, and basic punctuation.
             - Do not use emojis, em dashes, smart quotes, or other Unicode symbols.
             - Do not claim you gave items, changed friendship, changed prices, completed quests, teleported anyone, healed anyone, or changed the world.
