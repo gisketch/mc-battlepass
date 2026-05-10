@@ -4,6 +4,8 @@ import com.mojang.blaze3d.systems.RenderSystem
 import com.mojang.blaze3d.vertex.PoseStack
 import dev.gisketch.chowkingdom.ChowKingdomMod
 import dev.gisketch.chowkingdom.battlepass.BattlepassClientState
+import dev.gisketch.chowkingdom.npc.ChowNpcEntity
+import dev.gisketch.chowkingdom.npc.NpcConfig
 import net.minecraft.Util
 import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
@@ -57,11 +59,21 @@ object RolesClient {
     }
 
     private fun onRenderNameTag(event: RenderNameTagEvent) {
-        val player = event.entity as? Player ?: return
-        val icons = RolesClientState.iconsFor(player.uuid)
+        val icons = when (val entity = event.entity) {
+            is Player -> RolesClientState.iconsFor(entity.uuid)
+            is ChowNpcEntity -> npcClassIcons(entity)
+            else -> return
+        }
         if (icons.jobIcons.isEmpty() && icons.classIcons.isEmpty()) return
         event.setCanRender(TriState.FALSE)
         renderRoleNameTag(event, icons)
+    }
+
+    private fun npcClassIcons(entity: ChowNpcEntity): RoleNametagIcons {
+        val classId = NpcConfig.get(entity.npcId)?.classId?.trim().orEmpty()
+        if (classId.isBlank()) return RoleNametagIcons()
+        val icon = RolesClientState.classIconFor(classId) ?: "textures/gui/classes/${classId.lowercase(Locale.ROOT)}.png"
+        return RoleNametagIcons(jobIcons = listOf(icon))
     }
 
     private fun onGatherEffectTooltips(event: GatherEffectScreenTooltipsEvent) {
@@ -224,6 +236,12 @@ object RolesClientState {
     }
 
     fun iconsFor(playerId: UUID): RoleNametagIcons = playerIcons[playerId] ?: RoleNametagIcons()
+
+    fun classIconFor(classId: String): String? {
+        val id = classId.trim()
+        return classesById[id]?.icon
+            ?: classesById.entries.firstOrNull { (key, role) -> key.equals(id, ignoreCase = true) || role.displayName.equals(id, ignoreCase = true) }?.value?.icon
+    }
 
     fun activeClassIdsFor(playerId: UUID): Set<String> = playerRoleIds[playerId]?.classIds?.toSet().orEmpty()
 

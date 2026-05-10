@@ -41,3 +41,4 @@ NPCs can advertise a class with `class = "rogue"` and offer a Training dialog ac
 - Updated NPC/roles docs and local run configs.
 - Added local Geralt NPC config with `class = "witcher"`, and set Finn/Huntress class markers.
 - Added assigned-workplace precondition and LLM prompt for Training.
+- Added NPC nameplate class icon prefix for NPCs with a valid configured class.
