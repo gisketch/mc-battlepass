@@ -18,6 +18,24 @@ work_blocks = [
   { id = "#minecraft:beds", count = 1, display_name = "bed" },
 ]
 
+[boss]
+enabled = true
+health = 110.0
+damage = 5.5
+template = "sword_user"
+
+[boss.balloons]
+chase = ["Rise and run, {player}. Grace watches.", "The trial pursues thee.", "Flee with purpose, Tarnished.", "Thy flight is measured.", "Grace lights the path. Follow.", "Run. The Erdtree sees all.", "Thy steps are known.", "No shame in retreat. Only in giving up.", "The Lands Between taught chasing.", "Keep thy feet. Grace endures."]
+attack = ["Steel, guided by duty.", "Hold fast.", "A blow sworn to purpose.", "Strike with conviction.", "The Golden Order strikes.", "Thy steel is tested.", "Face the blade with courage.", "A knight's conviction.", "Duty swings true.", "Grace guides this steel."]
+recovery = ["There lies thine opening.", "Strike now, if thy courage holds.", "A gap. Willed by grace.", "Thy moment is brief. Seize it.", "The window opens. Enter.", "Now. With faith and steel.", "An opportunity from the Greater Will.", "Thou art granted a turn.", "The breach appears. Be bold.", "Strike. Let grace judge."]
+taunt = ["Impatience is a hollow crown.", "Come then. Let grace judge the blow.", "Thy haste dishonors the blade.", "A maidenless swing.", "Thou flailest like a hollow.", "Put thy ambition in the strike.", "Recklessness is not courage.", "Think, Tarnished. Then act.", "Thy form is wanting.", "Grace waits. Why dost thou not?"]
+guard_react = ["Thy haste is answered.", "A vowless swing breaks easily.", "Thou swung without purpose.", "I read thy intent as scripture.", "Thy approach was folly.", "Reckless. As expected.", "A blow without a prayer.", "Thy steel told me thy plan.", "Thou art too eager, brave soul.", "Grace saw. I saw."]
+parry = ["Turned by shield and grace.", "Thy blow found no throne here.", "Deflected by faith.", "Thy strike is denied.", "The shield holds. Grace endures.", "Parried. Kneel not. Learn.", "Thy ambition met a wall.", "The Erdtree shields the faithful.", "Redirected. Rise again.", "No passage for thy blade."]
+hit_player = ["Endure. Rise yet again.", "Let pain temper thee.", "A wound. A lesson. A scar.", "Feel it. Then forget it.", "Pain is the teacher of knights.", "Thou hast taken the blow. Now stand.", "Grace heals. Time mends.", "This too shall pass, Tarnished.", "Steel has kissed thee. Grow.", "Thou art bloodied but unbowed."]
+took_damage = ["Well struck, brave soul.", "Thy blade carries resolve.", "A worthy blow. Grace smiles.", "Thou hast the fire.", "A true strike. Well aimed.", "Thy purpose found flesh.", "Bold. Resolute. Good.", "The Greater Will acknowledges.", "A wound earned by skill.", "Thou strikest like a lord."]
+victory = ["This trial is mine. I have restored thee.", "Rise, healed by grace. Let defeat instruct thee.", "Victory to the faithful. Thy wounds are gone.", "I win. Grace has mended thee.", "The bout is mine. Thou art whole.", "I claim this duel. Thy health is returned.", "Grace favors this knight. Thou art healed.", "I have won. Rise, mended and wiser.", "My victory. Thy body is restored.", "The trial concludes. Thou art healed."]
+defeat = ["I yield. Grace has favored thee.", "Enough. Thy courage endured.", "Thou hast bested me. Well fought.", "Victory is thine. Grace blesses thee.", "I concede. Thy blade was true.", "Thou art worthy. I yield.", "A noble win. Accept it.", "I yield. The Erdtree smiles on thee.", "Well fought, brave Tarnished.", "Thou hast earned the crown. I yield."]
+
 [job_definition]
 id = "adventurer"
 store = "cosmetics"

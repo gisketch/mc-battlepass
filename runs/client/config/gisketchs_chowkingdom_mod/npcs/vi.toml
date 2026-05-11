@@ -18,6 +18,24 @@ work_blocks = [
   { id = "#minecraft:beds", count = 1, display_name = "bed" },
 ]
 
+[boss]
+enabled = true
+health = 100.0
+damage = 5.5
+template = "sword_user"
+
+[boss.balloons]
+chase = ["No running, {player}. Not from me.", "Come on. Move like you mean it.", "You think you can outrun these fists?", "Keep running. It makes the catch better.", "I chase criminals. You are cardio.", "Faster. I am barely jogging.", "You are not escaping. You are warming up.", "That pace is an insult to running.", "Run all you want. I like catching.", "You are just tiring yourself out."]
+attack = ["Coming through!", "Guard up!", "Eat gauntlet!", "Face-check this!", "Smash and learn!", "Heavy hit incoming!", "Right where it hurts!", "Boom. Lesson one.", "Knuckles of wisdom!", "Denting things is my hobby!"]
+recovery = ["There. Hit back.", "Your window. Take it.", "Opening. Do not think. Swing.", "I left you a gap. Use it.", "Strike now or lose the chance.", "Your turn, brawler.", "The door is open. Walk in.", "Now. Before I get bored.", "Gap. Small. Real. Go.", "Hit me. I asked for it."]
+taunt = ["You gonna swing or think about it all day?", "Come on. I left that open for you.", "That all you got? Piltover hits harder.", "My grandmother punches better.", "You hit like a council meeting.", "Put your back into it. Or do not.", "Is that your fight face or nap face?", "Waiting for an invitation? Here it is.", "Zuan alleys taught me better brawls.", "You call that a punch? Cute."]
+guard_react = ["Saw that coming a mile away.", "Too obvious.", "You telegraphed that from last week.", "I dodged that in my sleep.", "That was your big move? Really?", "Read. React. Repeat.", "Nice try. Terrible execution.", "You swung at a ghost, friend.", "Too much tell. Not enough punch.", "I have seen street fights with more class."]
+parry = ["Denied. My turn.", "Bad swing. Good lesson.", "Blocked. Try harder.", "Gauntlets say no.", "Parried. Now you are open.", "You hit the shield. The shield wins.", "Deflected. You are welcome.", "That was never landing.", "Nice angle. Wrong timeline.", "Strike denied. Appeal later."]
+hit_player = ["That one connected.", "Stay up. We are not done.", "You felt that. Good.", "Still standing? Nice.", "Contact. Walk it off.", "That had some weight.", "You are tougher than you look.", "Rattled? Good. Get mad.", "I pulled that one. A little.", "Oof. You okay? No? Good."]
+took_damage = ["Nice shot. Do it again.", "Yeah, that had weight.", "There you go! Real punch!", "About time you hit back.", "Good one. I felt that.", "That is how you throw!", "Respect. You have hands.", "Better! Now keep that energy.", "Now we are fighting!", "Solid hit. Earned."]
+victory = ["I win. You are healed. Keep your guard up.", "Duel over. I patched you up; now learn from it.", "Mine. You are mended. Hit the gym.", "I won. Health restored. No hard feelings.", "Knockout to me. You are healed. Train harder.", "I take this one. You are whole. Get tougher.", "Victory mine. Patched and ready.", "I win. Wounds fixed. Pride damaged.", "Duel ends. You are healed. Come back stronger.", "My win. You are fine. Mostly your ego."]
+defeat = ["I yield. You hit hard.", "Alright. You earned that win.", "Good fight. You throw real punches.", "You got me. Respect.", "I lose. That means you are tough.", "Victory yours. Do not let it get to your head.", "I yield. You brawl well.", "You won. Now buy me a drink.", "Fine. You earned it.", "Alright, you win. Rematch later."]
+
 [job_definition]
 id = "adventurer"
 store = "cosmetics"

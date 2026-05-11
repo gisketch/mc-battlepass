@@ -32,6 +32,24 @@ work_blocks = [
   { id = "#minecraft:beds", count = 1, display_name = "bed" },
 ]
 
+[boss]
+enabled = true
+health = 80.0
+damage = 4.5
+template = "sword_user"
+
+[boss.balloons]
+chase = ["Try to keep up, {player}.", "Cute footwork. I have seen better.", "Running already? The show just started.", "Slow down. I want to see you sweat.", "Keep running. It is good for your calves.", "You move like a villager.", "Faster. I am not even trying.", "Your pace is honestly insulting.", "This chase is barely cardio.", "Run, darling. Run."]
+attack = ["Ice-cold lesson incoming.", "Blink and regret it.", "Frostbite. Compliments of me.", "Consider this a critique.", "My turn. Try not to cry.", "Sharp and stunning. Like me.", "A strike with presentation.", "Elegant. Deadly. Iconic.", "Winter sends its regards.", "That one had a stylist."]
+recovery = ["There. Even I give openings.", "Your turn. Do not make it embarrassing.", "Gap delivered. Gratitude accepted.", "A window. Do not fumble it.", "I left that for you. Impress me.", "Your moment, darling. Use it.", "Opportunity. Rare. Limited. Go.", "Do not waste the gift.", "Strike before I change my mind.", "A charity gap. Do not embarrass us."]
+taunt = ["Come on. I am literally baiting you.", "Cute. You thinking or buffering?", "That stance is not doing you favors.", "I have seen slimes with more grace.", "Is that your sword face? Tragic.", "You swing like you are asking permission.", "My turn to yawn.", "Are you fighting or posing for a statue?", "That was almost adorable.", "Try again. With effort this time."]
+guard_react = ["Too obvious.", "I saw that with one eye.", "One working eye. Still better than you.", "Predictable. Like morning frost.", "You might as well have sent a letter.", "That swing had a three-day warning.", "Boring. Try something new.", "I counted the frames. Too slow.", "Even my eye patch saw that.", "Your tell is practically a banner."]
+parry = ["Parried. Try not to pout.", "Denied. Elegantly.", "Redirected. With style.", "Your steel met my standards. And failed.", "Parry. Flawless. Naturally.", "That was never going to land.", "Denied with prejudice.", "Ice deflects. You do not.", "A clean parry. You are welcome.", "Polite rejection."]
+hit_player = ["That landed. Try walking it off.", "Oops. Did the ice queen hit too hard?", "Contact. You earned that. Mostly.", "A touch of frost. Literally.", "That one had personality.", "Hope that did not ruin your outfit.", "Strike delivered. Applause optional.", "You walked right into that.", "A souvenir from yours truly.", "Marked. Authentically."]
+took_damage = ["Okay, that was not terrible.", "Hm. You found the seam. Lucky.", "A lucky strike counts.", "Surprisingly competent.", "I will allow it.", "Not bad. For you.", "That had some quality.", "You earned a nod.", "I felt that. Rare.", "Good hit. Do not expect another."]
+victory = ["I win. Relax, I healed you. Cute attempt.", "Duel over. Full health restored. Try not to make that face.", "Victory is mine. You are patched and powdered.", "I won. Health restored. Ego pending.", "The ice queen prevails. You are healed.", "Mine. You are whole again. Try to look grateful.", "I win. Wounds mended. Try again when you are ready.", "Duel complete. Healed. I expect improvement.", "My win. Health back. Styling fee waived.", "I won. You are restored. Cute effort."]
+defeat = ["Fine. You win. Do not get used to it.", "I yield. That was almost impressive.", "You earned it. Once.", "I concede. This time.", "Victory yours. Do not let it inflate you.", "Fine. Good fight. Mostly.", "I yield. You surprised me.", "Alright. You win. I will recover.", "A rare outcome. Savor it.", "You won. I expect a rematch."]
+
 # Config value: job_definition.
 [job_definition]
 # Config value: job_definition.id.

@@ -18,6 +18,24 @@ work_blocks = [
   { id = "#minecraft:beds", count = 1, display_name = "bed" },
 ]
 
+[boss]
+enabled = true
+health = 85.0
+damage = 4.5
+template = "sword_user"
+
+[boss.balloons]
+chase = ["Tracks are fresh, {player}. Move.", "I have your path.", "Step where I step.", "You are not losing me.", "Keep your breathing steady.", "I have tracked bigger things.", "Watch the terrain. Not me.", "Your trail reads loud.", "Pick up the pace.", "Movement is data."]
+attack = ["Weak point found.", "Now. Commit.", "Right there. Strike.", "Hit the gap.", "Focus fire.", "Precision, not power.", "Plant your shot.", "Scan then act.", "The opening is real.", "Trust the read."]
+recovery = ["There. You have an opening.", "Make the next strike count.", "Window. Small but real.", "Strike before it closes.", "That gap belongs to you.", "Breathe and press.", "Now or never.", "Your chance. Take it.", "You earned that opening.", "Momentum is yours."]
+taunt = ["Come on. Prove you can read terrain.", "Too slow. I can hear every step.", "You are broadcasting.", "Quieter feet. Sharper eyes.", "That stance needs work.", "Hesitation is a target.", "I have seen better footwork.", "Stop thinking. Start moving.", "Your noise told me everything.", "Focus scanner broken?"]
+guard_react = ["Predictable swing.", "That angle was marked already.", "Seen that pattern.", "You telegraph hard.", "Read and countered.", "Focus flagged that.", "Old track. Same mistake.", "Waste of motion.", "Too eager.", "That swing had a warning label."]
+parry = ["Countered. Learn from it.", "Blocked clean. Reset.", "Deflected. Adjust.", "Your rhythm is off.", "That did not land.", "Parried. Try smarter.", "Clean block. Reset stance.", "No damage. Less ego.", "Redirected. Breathe.", "Nice try. Bad timing."]
+hit_player = ["That landed. Stay focused.", "You overextended.", "Gap in your guard.", "You left that open.", "Pay attention.", "Recover fast.", "That one counts.", "Footing was off.", "Good connect. Now reset.", "You felt that. Learn."]
+took_damage = ["Good hit. You saw the gap.", "Better. That one mattered.", "Clean. You read that right.", "There it is. Good eyes.", "That is how you hunt.", "Solid. Aim was true.", "You found the weak point.", "Now you are tracking.", "That had purpose.", "Respect. Good shot."]
+victory = ["You were down. I patched you up. Learn from it.", "I win. You are healed; check your footing.", "I win. You are healed. Study the tracks.", "Hunt over. You are mended. Scout better.", "I took it. Healed and lesson logged.", "Victory mine. Health restored. Observe.", "Down but not out. Patched and standing.", "My win. You are healed. Read sign better.", "You fell. I fixed it. Grow sharper.", "Match point mine. You are whole. Learn."]
+defeat = ["Enough. You earned the win.", "I yield. Strong work.", "You tracked me. Good hunt.", "I yield. Respect.", "You read the terrain better.", "Victory yours. Well earned.", "You found every weakness.", "I concede. Nice work.", "Strong finish. You win.", "You hunted well. I yield."]
+
 [job_definition]
 id = "adventurer"
 store = "cosmetics"

@@ -30,6 +30,24 @@ work_blocks = [
   { id = "#minecraft:beds", count = 1, display_name = "bed" },
 ]
 
+[boss]
+enabled = true
+health = 72.0
+damage = 3.5
+template = "sword_user"
+
+[boss.balloons]
+chase = ["Field exam has begun, {player}.", "Observe the applied combat theorem.", "Run. I am collecting pursuit data.", "Your velocity is being logged.", "Hypothesis: you cannot outrun science.", "Field notes: subject is fleeing.", "Keep moving. The sample size grows.", "This is valuable locomotion data.", "Chase protocol initiated.", "Your speed is statistically interesting."]
+attack = ["Practical demonstration.", "Please note the angle of impact.", "Hypothesis tested. Result: ouch.", "That is super effective. Probably.", "Peer-reviewed strike incoming.", "Data point: delivered.", "Observe the offensive variable.", "A lesson in applied physics.", "Strike logged for posterity.", "Combat theorem in motion."]
+recovery = ["Now, present your counterexample.", "Your response window is open.", "Opportunity variable detected.", "The gap in my data. Exploit it.", "Quickly. Before I publish.", "A statistical anomaly you must use.", "Your chance to revise the theory.", "The experiment grants you a turn.", "Strike now. For science.", "An opening! Remarkable."]
+taunt = ["A reckless answer will be marked down.", "Think before submitting your swing.", "Your technique needs peer review.", "That hypothesis is flawed.", "I expected a stronger thesis.", "Are you swinging or brainstorming?", "Your form is not statistically significant.", "A child could falsify that approach.", "This is why we have control groups.", "Sloppy methodology."]
+guard_react = ["Incorrect. Try a better hypothesis.", "Predictable data, poor conclusion.", "Your approach has been falsified.", "Rejected by the scientific method.", "I saw that variable coming.", "Your swing failed peer review.", "Experiment: failed. Try again.", "That attack was methodologically unsound.", "A rejected thesis.", "Data does not support your angle."]
+parry = ["Parry recorded. Lesson continues.", "Momentum redirected. Elegant, yes?", "Your force has been successfully nullified.", "Parry protocol: success.", "Science deflects. Science teaches.", "Your swing has been peer-reviewed and denied.", "Fascinating deflection mechanics.", "Redirect complete. Notes taken.", "Your attack has been factored out.", "Null hypothesis: your strike lands. Result: no."]
+hit_player = ["That was your reminder to study footwork.", "A controlled impact. Mostly.", "Ouch. I mean, data collected.", "Contact registered for your records.", "An educational strike.", "You will cite this pain in future work.", "Impact study: subject you.", "A teachable moment. Literally.", "Please rate your pain on a scale.", "Field results: contact achieved."]
+took_damage = ["Ah, useful data.", "Good correction. I will update the rubric.", "Your thesis gains evidence.", "A statistically significant hit.", "Fascinating. I will document this.", "The experiment favors you momentarily.", "Data trend: you are improving.", "An interesting counterpoint.", "Your methodology yields results.", "I must revise my assumptions."]
+victory = ["Exam result: I win. Health restored for retesting.", "You fainted in the data, but I healed you.", "The experiment concludes. Subject healed.", "Victory logged. Vitals restored.", "I win. Please complete the post-duel survey.", "Trial complete. You are healed and graded.", "My hypothesis was correct. You are mended.", "Results: professor wins. Subject: restored.", "Duel complete. Health returned. Office hours later.", "I win. Data archived. Wounds erased."]
+defeat = ["You pass the practical exam.", "I yield. Excellent fieldwork.", "Your thesis is accepted. I yield.", "Remarkable. You have exceeded the rubric.", "I concede. Please write this up.", "Your hypothesis was superior. Victory yours.", "Field results: you. I yield.", "A passing grade. With distinction.", "The data supports your victory.", "I yield. Your research is sound."]
+
 # Config value: job_definition.
 [job_definition]
 # Config value: job_definition.id.

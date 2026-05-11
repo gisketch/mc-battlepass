@@ -31,6 +31,24 @@ work_blocks = [
   { id = "#minecraft:beds", count = 1, display_name = "bed" },
 ]
 
+[boss]
+enabled = true
+health = 95.0
+damage = 5.0
+template = "sword_user"
+
+[boss.balloons]
+chase = ["Adventure feet, {player}! Move!", "I am coming in hero-fast!", "Run like there is loot ahead!", "Leg day, hero style!", "You cannot outrun my enthusiasm!", "Quest sprint engaged!", "Faster! The dungeon waits!", "Hero speed! Very mathematical!", "Chase music is totally playing!", "Keep those adventure calves pumping!"]
+attack = ["Hero swing incoming!", "Sword lesson time!", "Blade of justice!", "This sword has opinions!", "Mathematical strike!", "Hero chop! Very direct!", "Sword says hello!", "Adventure slash!", "No bad guys allowed!", "Righteous steel incoming!"]
+recovery = ["Okay, opening! Make it mathematical!", "Your turn. Make it count!", "Hero opening detected!", "Strike zone activated!", "Quest opportunity right there!", "Hit it like you mean it!", "Window of awesome open!", "That gap is begging for it!", "Your moment, hero!", "Chance for bonus points!"]
+taunt = ["Come on, show me brave!", "Do not freeze up now!", "Where is the heroic energy?", "Swing like you want to win!", "I have seen slimes with more fight!", "You call that a battle stance?", "Adventure requires enthusiasm!", "Do not leave me hanging!", "This is not nap time!", "Bring the brave already!"]
+guard_react = ["Whoa, I saw that one!", "Too hungry for the hit!", "Swing detected! Dodged!", "Nice try! Bad timing!", "Reflexes are mathematical!", "Danger sense says nope!", "Hero dodge! Very crisp!", "Almost got me! Almost!", "Your tell is showing!", "Predictable, but exciting!"]
+parry = ["Parry math checks out!", "Boom. Hero counter!", "Blocked with style!", "Sword math says no!", "Hero defense protocol!", "Clang! That was cool!", "Nice swing. Denied!", "Counter ready! Parry successful!", "Shield of friendship!", "Mathematical block!"]
+hit_player = ["Tag! You still good?", "That one had quest energy!", "Oop. Hope that did not hurt.", "Sword touched you. Politely.", "Hero tag! Are we cool?", "That connected. Friendly reminder!", "Oops. Adventure hit!", "Sword found its mark!", "Still friends? Cool.", "Bonk of justice!"]
+took_damage = ["Ow! Nice hit, {player}!", "Mathematical bonk. Respect.", "Good one! That stung!", "Hero approves this hit!", "Nice swing, buddy!", "That had real quest energy!", "Ow ow ow. Good job!", "Painfully impressive!", "That was a hero-grade hit!", "Respect. Solid contact!"]
+victory = ["I win! Do not worry, I healed you back up.", "Hero duel over. You are healed and still awesome.", "Victory is mine! Health fully restored!", "I win. Healing potions for everyone!", "Good fight. I patched you up real good.", "Hero wins. You are totally fine now.", "My win. Full heals. No hard feelings!", "Victory for Finn! You are mended, friend.", "I got this one. You are back to full health.", "Duel done. Healed. Hugs optional."]
+defeat = ["Okay, you win. That was awesome.", "I yield! Hero points to you.", "You earned it. Hero trophy time!", "Nice win! That was mathematical.", "You got me. Respect.", "Victory yours! Very heroic.", "I am down but impressed!", "You won clean. Good quest energy.", "That was a legendary win.", "I yield. You are sword hero now."]
+
 # Config value: job_definition.
 [job_definition]
 # Config value: job_definition.id.

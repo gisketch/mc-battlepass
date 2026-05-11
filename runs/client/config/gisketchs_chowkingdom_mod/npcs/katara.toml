@@ -18,6 +18,24 @@ work_blocks = [
   { id = "#minecraft:beds", count = 1, display_name = "bed" },
 ]
 
+[boss]
+enabled = true
+health = 85.0
+damage = 4.5
+template = "sword_user"
+
+[boss.balloons]
+chase = ["Flow with it, {player}.", "Do not fight the current. Move with it.", "The tide pulls. Resist or ride.", "Every step ripples.", "Water remembers your path.", "You cannot outrun the river.", "Flow faster. I am right behind.", "The current shapes all movement.", "Your wake tells a story.", "Adapt. The water already has."]
+attack = ["The tide turns now.", "Brace yourself.", "Wave meets shore.", "Current crashes.", "Ice forms. Steel falls.", "Healing hands can also strike.", "Push and pull.", "The moon guides this strike.", "Water whip.", "Steady as the deep."]
+recovery = ["There is your opening. Breathe.", "Now. Clean and controlled.", "A still pool. Strike true.", "The waves part for you.", "Your moment crystallizes.", "Like calm after the storm.", "Breathe in. Strike out.", "Gap like a break in the ice.", "Your turn to shape the water.", "Now. Center and commit."]
+taunt = ["Patience. Water waits before it breaks stone.", "Are you striking, or only splashing?", "Your form is losing shape.", "Even ice yields to time.", "You are splashing. I am flowing.", "The moon does not rush. Neither should you.", "A rushing river is easy to read.", "Stand still. Like the deep.", "Your impatience is a leak.", "Water does not flail. It flows."]
+guard_react = ["Too much force, not enough control.", "I felt that coming like a wave.", "Too loud. Too early.", "Your intentions ripple outward.", "Overextended. Like a flood.", "I read the current before the crest.", "Reckless waters make easy targets.", "That swing was all splash.", "You pushed when you should have flowed.", "The stream warned me."]
+parry = ["Redirected. Find your balance.", "The current turned you aside.", "Flow denied.", "Ice deflects. Water redirects.", "Your strike slid off like rain.", "Parried. The river bends.", "Water does not break. It bends.", "Deflected by the tide.", "Your blade met the deep.", "Current says no."]
+hit_player = ["You lost your footing.", "Center yourself and keep going.", "The current caught you.", "That one reached the shore.", "A wave you did not see.", "Steady. Breathe. Recover.", "You stumbled into the flow.", "The tide took your balance.", "Even masters lose footing.", "Feel the sting. Let it pass."]
+took_damage = ["Good. That had focus.", "There you are. Better form.", "You found the still point.", "Clean strike. Gentle force.", "The water approves.", "That hit had a center.", "Well aimed. Like ice to snow.", "You pushed through the current.", "Good. Your flow sharpens.", "That one mattered. Well done."]
+victory = ["I win this round. You are healed; breathe.", "The fight is over. I restored your health. Find your balance.", "Victory is mine. You are mended and centered.", "I won. Your health returned like rain.", "The tide favored me. You are healed.", "I took this one. Wounds washed away.", "My win. Breathe deep. You are whole.", "The water heals what it touches. You are restored.", "I prevailed. Your body is mended.", "Duel done. Healed. Flow forward."]
+defeat = ["I yield. You found your rhythm.", "Enough. That was a good fight.", "You flowed better. I concede.", "I yield. Your current was stronger.", "Victory is yours. Well shaped.", "Good fight. The tide respects you.", "You moved like water. I yield.", "Your form was true. You win.", "I concede. You earned the calm.", "Well fought. The river bows."]
+
 [job_definition]
 id = "adventurer"
 store = "cosmetics"

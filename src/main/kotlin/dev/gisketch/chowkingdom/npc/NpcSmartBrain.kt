@@ -94,7 +94,7 @@ private object NpcRoutineTask : NpcSmartBrainTask {
 private object NpcCriticalOverrideTask : NpcSmartBrainTask {
     override val id: String = "critical_override"
 
-    override fun run(entity: ChowNpcEntity): Boolean = NpcSmartBrainOverrides.tick(entity)
+    override fun run(entity: ChowNpcEntity): Boolean = NpcBossFights.tick(entity) || NpcSmartBrainOverrides.tick(entity)
 }
 
 object NpcSmartBrainOverrides {

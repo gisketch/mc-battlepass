@@ -18,6 +18,24 @@ work_blocks = [
   { id = "#minecraft:beds", count = 1, display_name = "bed" },
 ]
 
+[boss]
+enabled = true
+health = 95.0
+damage = 6.0
+template = "sword_user"
+
+[boss.balloons]
+chase = ["Courage, {player}. Do not flee from the lesson.", "The road closes behind you.", "Run, but do not run from wisdom.", "The path darkens behind.", "Do not mistake retreat for escape.", "Even in flight, temper your fear.", "I follow, but not in anger.", "Your steps echo with haste.", "Slow and steady outruns panic.", "There is no shame in swift retreat."]
+attack = ["Stand and be tested.", "A sharp reminder.", "Steel is a teacher.", "Let the staff speak.", "A lesson in motion.", "Glamdring tests your steel.", "Face the moment.", "Wisdom strikes true.", "Not anger. Purpose.", "A test of resolve."]
+recovery = ["Now, if wisdom guides your hand.", "There is a moment. Spend it well.", "A gap. Earn it with patience.", "Your opportunity flickers.", "Strike not in anger. In truth.", "The door opens briefly.", "This moment will not wait.", "Wisdom sees the opening.", "Now. With measured force.", "A gift of timing. Accept."]
+taunt = ["Haste has ruined greater warriors.", "Do not be too eager to strike.", "Fool of a fighter.", "Patience outlasts steel.", "Your temper betrays you.", "Slow your heart. Then move.", "Anger clouds the blade.", "A wizard is never baited.", "Calm is the truest weapon.", "Do not rush toward regret."]
+guard_react = ["Foolish haste.", "I warned you against eagerness.", "You swing like a goblin.", "Too obvious, my friend.", "Impatience wrote that strike.", "Your intent precedes you loudly.", "A clumsy thesis.", "I saw the thought before the blade.", "Do not let anger swing for you.", "That was readable from the Shire."]
+parry = ["Your blow has passed into shadow.", "Courage needs patience beside it.", "Turned aside like wind.", "A near miss. And now a lesson.", "Shadow swallowed your steel.", "Parried by patience.", "Your blade found only air.", "Redirected. Try wisdom.", "The staff does not yield.", "Not this time. Not this blade."]
+hit_player = ["Remember this, and rise wiser.", "A hard lesson, but not a cruel one.", "Endure. You are stronger for it.", "Pain passes. Wisdom stays.", "Thus you learn urgency.", "A gentle sting. A lasting word.", "This is guidance, not cruelty.", "You will remember this touch.", "Lesson delivered. Stand firm.", "Do not let the hurt become anger."]
+took_damage = ["Well struck. There is fire in you.", "Good. Your courage wakes.", "Ah. The hidden flame.", "You have learned to watch.", "A worthy strike. I am pleased.", "There is hope in that blow.", "Well aimed. Good heart.", "Your spirit sharpens.", "The fire burns bright.", "Boldly done. Continue."]
+victory = ["The duel is mine. I have mended what I struck.", "Rise now. You are healed, and wiser for it.", "Victory is mine. You are mended and taught.", "I win. Health restored. Wisdom gained.", "The bout ends. Rise, healed.", "I claim this lesson. You are whole.", "My win. Patched and prepared anew.", "The staff prevails. Your wounds are gone.", "Victory with mercy. You are restored.", "I have won and healed you. Learn."]
+defeat = ["I yield. You have chosen well in the moment.", "Enough. The lesson is yours.", "Wisdom concedes to skill.", "You have earned it. Well fought.", "The moment was yours. I yield.", "A worthy victory. Accept it.", "You passed the test. I yield.", "Courage won the day.", "Well chosen. Well struck.", "I concede. You have grown."]
+
 [job_definition]
 id = "adventurer"
 store = "cosmetics"

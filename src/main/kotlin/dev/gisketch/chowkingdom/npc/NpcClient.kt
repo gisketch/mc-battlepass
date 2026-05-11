@@ -685,6 +685,11 @@ private class ChowNpcGeoRenderer(context: EntityRendererProvider.Context) : GeoE
         addRenderLayer(NpcGeoHeldItemLayer(this))
     }
 
+    override fun render(entity: ChowNpcEntity, entityYaw: Float, partialTick: Float, poseStack: PoseStack, bufferSource: MultiBufferSource, packedLight: Int) {
+        super.render(entity, entityYaw, partialTick, poseStack, bufferSource, packedLight)
+        NpcClient.renderBalloon(entity, poseStack, bufferSource, Minecraft.getInstance().font, packedLight)
+    }
+
     override fun getTextureLocation(entity: ChowNpcEntity): ResourceLocation = npcTexture(entity.npcId)
 }
 

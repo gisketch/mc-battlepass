@@ -189,4 +189,16 @@ The first implementation is intentionally narrow:
 - Previous custom animation state and held items are restored when the override ends.
 - Old damage and knockback behavior values are preserved.
 
-Do not add config files until the Kotlin template registry proves the contract.
+## Bossfight First Pass
+
+`/npc fight` reuses the same SmartBrainLib/custom-animation boundary for a temporary OP-only boss duel. The current `sword_user` boss loop is intentionally small:
+
+- `running_sword` while chasing and while side-stepping with slower playback/movement speed during recovery/guard bait.
+- `attack` as the only committed strike.
+- `hurt` when the player lands the 1 allowed recovery hit.
+- `guard` as the immediate block reaction when the player bites during guard bait.
+- `parry` as the knockback response after guard bait succeeds.
+
+Boss health is virtual, so player hits reduce bossfight state instead of killing the NPC entity. V1 only accepts 1 player damage hit during recovery; hits during chase/attack are ignored, extra recovery swings are converted into guard/parry, and hits during guard bait are blocked and converted into a guard/parry response. Boss duels are isolated as 1v1s: third-party entity damage into the duelist or boss is blocked, and fight participants cannot damage outside targets while active. Defeat restores the prior animation/held-item snapshot and opens a non-lethal NPC dialog. Future boss templates should extend the same data shape rather than putting item transforms or per-animation offsets into AI code.
+
+Bossfight chat balloons are not tied to animation JSON. They live in `[boss.balloons]` per NPC and are fired by the boss controller on phase changes and combat events. Each bark rolls a 30% chance so animation-heavy combat does not spam balloons.

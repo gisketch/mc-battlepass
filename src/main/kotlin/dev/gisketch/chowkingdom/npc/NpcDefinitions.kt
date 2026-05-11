@@ -17,6 +17,7 @@ class NpcDefinition(
     var schedule: NpcScheduleDefinition = NpcScheduleDefinition(),
     var store: String = "",
     var personality: NpcPersonalityDefinition = NpcPersonalityDefinition(),
+    var boss: NpcBossDefinition = NpcBossDefinition(),
     var housing: NpcHousingDefinition = NpcHousingDefinition(),
     var gifts: NpcGiftsDefinition = NpcGiftsDefinition(),
     var missions: NpcMissionsDefinition = NpcMissionsDefinition(),
@@ -45,6 +46,7 @@ class NpcDefinition(
         schedule = schedule.normalized()
         store = store.trim()
         personality = personality.normalized()
+        boss = boss.normalized()
         housing = housing.normalized()
         gifts = gifts.normalized()
         missions = missions.normalized()
@@ -85,6 +87,63 @@ class NpcDefinition(
 data class NpcBodyScaleDefinition(val height: Double = DEFAULT_NPC_BODY_SCALE, val weight: Double = DEFAULT_NPC_BODY_SCALE)
 
 fun NpcDefinition.bodyScale(): NpcBodyScaleDefinition = NpcBodyScaleDefinition(height, weight)
+
+class NpcBossDefinition(
+    var enabled: Boolean = true,
+    var health: Double = DEFAULT_BOSS_HEALTH,
+    var damage: Double = DEFAULT_BOSS_DAMAGE,
+    var template: String = DEFAULT_BOSS_TEMPLATE,
+    var balloons: NpcBossBalloonDefinition = NpcBossBalloonDefinition(),
+) {
+    fun normalized(): NpcBossDefinition = apply {
+        health = health.coerceIn(MIN_BOSS_HEALTH, MAX_BOSS_HEALTH)
+        damage = damage.coerceIn(MIN_BOSS_DAMAGE, MAX_BOSS_DAMAGE)
+        template = template.trim().lowercase().replace(Regex("[^a-z0-9_.:-]+"), "_").trim('_').ifBlank { DEFAULT_BOSS_TEMPLATE }
+        balloons = balloons.normalized()
+    }
+
+    companion object {
+        const val DEFAULT_BOSS_TEMPLATE = "sword_user"
+        private const val DEFAULT_BOSS_HEALTH = 80.0
+        private const val DEFAULT_BOSS_DAMAGE = 4.0
+        private const val MIN_BOSS_HEALTH = 1.0
+        private const val MAX_BOSS_HEALTH = 10000.0
+        private const val MIN_BOSS_DAMAGE = 0.0
+        private const val MAX_BOSS_DAMAGE = 1000.0
+    }
+}
+
+class NpcBossBalloonDefinition(
+    var chase: MutableList<String> = mutableListOf(),
+    var attack: MutableList<String> = mutableListOf(),
+    var recovery: MutableList<String> = mutableListOf(),
+    var taunt: MutableList<String> = mutableListOf(),
+    @SerializedName("guard_react") var guardReact: MutableList<String> = mutableListOf(),
+    var parry: MutableList<String> = mutableListOf(),
+    @SerializedName("hit_player") var hitPlayer: MutableList<String> = mutableListOf(),
+    @SerializedName("took_damage") var tookDamage: MutableList<String> = mutableListOf(),
+    var victory: MutableList<String> = mutableListOf(),
+    var defeat: MutableList<String> = mutableListOf(),
+) {
+    fun normalized(): NpcBossBalloonDefinition = apply {
+        chase = clean(chase, listOf("Keep moving, {player}."))
+        attack = clean(attack, listOf("Here it comes."))
+        recovery = clean(recovery, listOf("Your turn. Make it count."))
+        taunt = clean(taunt, listOf("Take the bait, {player}."))
+        guardReact = clean(guardReact, listOf("Too eager."))
+        parry = clean(parry, listOf("Parried."))
+        hitPlayer = clean(hitPlayer, listOf("Solid hit."))
+        tookDamage = clean(tookDamage, listOf("Good hit."))
+        victory = clean(victory, listOf("I win this round. You are healed."))
+        defeat = clean(defeat, listOf("I yield. Good fight."))
+    }
+
+    private fun clean(values: List<String>, fallback: List<String>): MutableList<String> = values
+        .map(String::trim)
+        .filter(String::isNotBlank)
+        .ifEmpty { fallback }
+        .toMutableList()
+}
 
 private fun normalizeNpcBodyScale(value: Double): Double = value.coerceIn(MIN_NPC_BODY_SCALE, MAX_NPC_BODY_SCALE)
 

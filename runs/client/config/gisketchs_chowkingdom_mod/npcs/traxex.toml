@@ -18,6 +18,24 @@ work_blocks = [
   { id = "#minecraft:beds", count = 1, display_name = "bed" },
 ]
 
+[boss]
+enabled = true
+health = 78.0
+damage = 4.5
+template = "sword_user"
+
+[boss.balloons]
+chase = ["You are loud, {player}.", "The cold follows tracks.", "Every step cracks the frost.", "Snow does not forget footprints.", "Your breath gives you away.", "The tundra knows your path.", "Flee quietly. I hear everything.", "Warm blood on cold ground. Easy.", "You run like summer. Sloppy.", "The north wind carries your scent."]
+attack = ["Too near.", "Clean cut.", "Cold steel answers.", "One shot. One lesson.", "The frost strikes.", "Silent. Sudden. Sharp.", "Winter's greeting.", "A quick end.", "Snow hides the blade.", "Bitter. Brief. Brisk."]
+recovery = ["Opening. Take it or lose it.", "Now. One clean shot.", "A crack in the ice.", "Gap. Fleeting like snowmelt.", "Your window. Shrink it not.", "The breath between gusts.", "Now. Before the frost heals.", "A still moment. Use it.", "Your turn. Make it cold.", "The tundra grants a chance."]
+taunt = ["Noise before motion. Amateur.", "Swing if you must. I am ready.", "Your stance is thawing.", "A wolf pup shows more patience.", "You breathe too loud to surprise.", "The winter does not flinch.", "Are you hunting, or fumbling?", "Your silence is louder than your blade.", "A fawn in the snow. Cute.", "Stillness is a weapon. You have none."]
+guard_react = ["I heard that before it moved.", "Wasteful strike.", "The snow heard. So did I.", "Thrashing. Not striking.", "Your approach crunched.", "Clumsy in the drifts.", "Even a blizzard is quieter.", "Your footfall was a confession.", "Too much noise. Too little aim.", "The north heard you coming."]
+parry = ["Deflected.", "Cold lesson.", "Ice catches all.", "Your blade lost its way.", "Turned aside. Like wind on stone.", "The freeze denies.", "Parried. Without warmth.", "Redirected into the snow.", "Your strike was heard and denied.", "Frostbite for your ambition."]
+hit_player = ["You stepped into it.", "That will slow you.", "A touch of winter.", "Cold seeps where steel struck.", "You are bleeding warmth.", "The tundra claims a piece.", "That one froze the air.", "A wound. Small. Teaching.", "You gave the north an opening.", "Feel the cold. Learn."]
+took_damage = ["Good aim.", "Better. Less noise.", "You found the seam.", "A strike worth tracking.", "The tundra notices.", "Quiet. Precise. Good.", "That one spoke clean.", "A hunter's hit.", "You learned silence.", "The cold respects that."]
+victory = ["I win. You are healed. Waste less motion.", "Downed, then mended. Learn the cold lesson.", "Victory is mine. Wounds closed.", "I won. The north restores you.", "Mine. Healed. Listen better next time.", "Duel done. Health returned like spring.", "I claim this. You are whole again.", "The cold takes. The cold mends.", "I win. Patched and preserved.", "Victory. Stand. Healed. Silent."]
+defeat = ["I yield. Your shot was true.", "Enough. You tracked well.", "Good hunt. I concede.", "You earned the silence. I yield.", "Victory yours. The north watches.", "Clean win. Well tracked.", "I yield. You have a hunter's eye.", "The tundra bows. I yield.", "A worthy hunt. You win.", "Well fought. The cold salutes."]
+
 [job_definition]
 id = "adventurer"
 store = "cosmetics"

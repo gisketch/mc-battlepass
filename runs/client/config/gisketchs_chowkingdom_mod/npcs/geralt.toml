@@ -18,6 +18,24 @@ work_blocks = [
   { id = "#minecraft:beds", count = 1, display_name = "bed" },
 ]
 
+[boss]
+enabled = true
+health = 100.0
+damage = 5.5
+template = "sword_user"
+
+[boss.balloons]
+chase = ["Keep moving. I can still smell fear.", "Footwork, {player}. Use it.", "Run smarter, not faster.", "I have tracked worse.", "Your trail is messy.", "Pace yourself. Long chase.", "You are winded already.", "The wolf always catches up.", "Keep those legs moving.", "Every step counts now."]
+attack = ["Too close.", "Should have dodged.", "Silver or steel. You pick.", "Quick and decisive.", "No wasted movement.", "Precision over power.", "One clean strike.", "That is how you end it.", "Minimal effort. Maximum result.", "A witcher does not showboat."]
+recovery = ["Opening. Do not waste it.", "Now. Quick.", "There. Your window.", "Hit it before it closes.", "Gap in my guard. Rare.", "Strike fast. Thinking is later.", "That moment is yours.", "I left a door. Walk through.", "Window detected. Exploit.", "Your turn. Make it count."]
+taunt = ["You are staring. Bad habit.", "Swing wild and you lose teeth.", "Thinking too much. Too slow.", "I have seen drowners with better form.", "You telegraph like a notice board.", "That stance offends me.", "Drop the shield. Fight.", "Come on. I am getting bored.", "Is that your sword arm or a noodle?", "You fight like a novigrad merchant."]
+guard_react = ["Predictable.", "Read you already.", "Saw that from Kaer Morhen.", "Old trick. Bad execution.", "Your plan was written on your face.", "I have dodged worse. Much worse.", "Amateur hour.", "Too slow. Too obvious.", "That pattern is ancient.", "You might as well announce it."]
+parry = ["Parried. Try thinking first.", "Bad angle. Worse timing.", "Deflected. Do better.", "Steel says no.", "Quen was not needed.", "Turned aside. Boring.", "Your angle was wrong.", "Redirected. Disappointing.", "That did not even test me.", "Parry. Yawn."]
+hit_player = ["That one landed.", "Hm. You felt that.", "Pain teaches faster than words.", "You opened wide.", "Told you to dodge.", "That one had weight.", "Your ribs will remind you.", "Connected. Learn from it.", "You left your flank open.", "Good contact. Bad news for you."]
+took_damage = ["Good. You noticed.", "Not bad. Still breathing.", "Hm. Decent form.", "First blood to you.", "You got through. Rare.", "Respect. That was clean.", "A witcher admits a good hit.", "You earned that touch.", "Better. Much better.", "That one stung. Well done."]
+victory = ["I win. Patched you up. Try again smarter.", "You were done. I healed you. Learn.", "Mine. You are healed. Study the loss.", "Victory. Wounds mended. Ego optional.", "I won. Health restored. Come back sharper.", "Duel ends. You are whole. Think harder.", "I took it. Patched and wiser now.", "Witcher wins. You are healed. Train.", "Down you went. Up you get. Healed.", "My win. Swallow applied. Lessons pending."]
+defeat = ["Enough. You win.", "I yield. Decent work.", "Good fight. Earned.", "You got me. Clean win.", "I yield. Better than expected.", "Coin well earned. Victory yours.", "You won. Now go celebrate.", "Fine. That was solid work.", "I concede. Respect.", "You fought like a witcher."]
+
 [job_definition]
 id = "adventurer"
 store = "cosmetics"

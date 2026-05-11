@@ -5,6 +5,7 @@ Revive turns lethal player damage into an incapacitated state.
 ## Runtime Flow
 
 - Lethal damage cancels normal death and marks the player incapacitated.
+- NPC bossfight lethal hits are an exception: the boss duel intercepts the would-be lethal hit first, ends as an NPC victory, restores the player to full health, and opens the NPC victory dialog instead of entering revive.
 - Incapacitated players glow red for other players, crawl with very slow movement, and stay at minimum health/food.
 - Incapacitated players render lying down with a limp pose, including when resource-pack player animations would otherwise leave them standing.
 - Incapacitated players cannot be damaged and are ignored as AI attack targets; only revive interactions should matter while downed.

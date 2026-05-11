@@ -18,6 +18,24 @@ work_blocks = [
   { id = "#minecraft:beds", count = 1, display_name = "bed" },
 ]
 
+[boss]
+enabled = true
+health = 78.0
+damage = 4.5
+template = "sword_user"
+
+[boss.balloons]
+chase = ["Run, little root. I follow.", "The forest already heard you.", "Soft feet. The soil listens.", "Every leaf knows your path.", "Keep running. Roots are patient.", "The canopy sees all.", "Your trail sings to the moss.", "Flee, seedling. I grow closer.", "The woods do not lose track.", "Breathe. The trees already know."]
+attack = ["Branches bite.", "Too near the thorn.", "Vine strikes true.", "Root and steel.", "Nettle kiss.", "Sap and scar.", "Bramble reaches.", "Thorn finds the gap.", "The grove swings.", "Forest fury."]
+recovery = ["A gap grew there. Harvest it.", "Strike before it wilts.", "Opening. Like morning light.", "The breach is ripe.", "Now. The thicket parts.", "Your turn, little sprout.", "Space opens. Bloom into it.", "Moment like new growth.", "Strike into the clearing.", "The gap heals fast. Go."]
+taunt = ["Bait on the vine. Careful.", "Some seeds bite back.", "That swing smelled like fear.", "Your roots are showing.", "Come closer. The nectar is sweet.", "Hesitation is compost.", "I left a petal. Step on it.", "Curiosity kills more than cats.", "The lure is real. Doubt is wiser.", "Swing at the shadow, lose the stem."]
+guard_react = ["Snapped twig. Loud mistake.", "You stepped where the roots waited.", "Every branch a warning.", "The forest told me first.", "Your footfall betrayed you.", "You broke the wrong stem.", "Nature heard that.", "Clumsy in the grove.", "That noise cost you.", "Dry leaves. Loud failure."]
+parry = ["Thorn caught you.", "The forest keeps receipts.", "Bark deflects.", "Roots intercept.", "Vine redirects.", "Nature parries back.", "The grove denies.", "Sap catches steel.", "Bramble block.", "Forest defense."]
+hit_player = ["That should teach your feet.", "You rushed the bramble.", "Thorn found tender ground.", "A cut. A lesson. A seed.", "Pain grows wisdom.", "The sharp part of nature.", "You wandered into teeth.", "Sap and sting.", "That one rooted deep.", "Your soil tasted steel."]
+took_damage = ["Good cut. Clean growth.", "Hm. Sharp little sprout.", "You bit the bramble back.", "A wound that teaches.", "The grove approves.", "Well struck, thornling.", "You have teeth after all.", "That hit had nectar.", "Good. The wild responds.", "Sharp and true. Like flint."]
+victory = ["I win. I put the sap back in you.", "Duel over. You are healed. Grow teeth slower next time.", "Victory mine. You are mended, little root.", "I took it. Your sap is restored.", "The grove wins. You are healed.", "Bloom from this defeat. You are whole.", "My win. The forest mends you.", "I won. Healed. Root deeper.", "Duel done. Health returned like spring.", "You fell. I grew you back."]
+defeat = ["Fine. You grew teeth.", "I yield. Plant that lesson deep.", "You outgrew the bramble.", "I yield. The forest respects.", "You earned the clearing.", "Good. The grove watches.", "You bloomed well. I concede.", "The wild bows to you.", "Victory yours. Well rooted.", "I yield. The forest is yours."]
+
 [job_definition]
 id = "seed_merchant"
 store = "seed"

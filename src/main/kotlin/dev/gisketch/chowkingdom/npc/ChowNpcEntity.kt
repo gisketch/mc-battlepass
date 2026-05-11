@@ -50,12 +50,18 @@ class ChowNpcEntity(entityType: EntityType<out PathfinderMob>, level: Level) : P
     var customAnimationKey: String
         get() = entityData.get(CUSTOM_ANIMATION_KEY_DATA)
         private set(value) = entityData.set(CUSTOM_ANIMATION_KEY_DATA, value.trim().lowercase())
+    var customAnimationSpeed: Float
+        get() = entityData.get(CUSTOM_ANIMATION_SPEED_DATA)
+        private set(value) = entityData.set(CUSTOM_ANIMATION_SPEED_DATA, value.coerceIn(0.1f, 4.0f))
     private var customAnimationPlayId: Int
         get() = entityData.get(CUSTOM_ANIMATION_PLAY_ID_DATA)
         set(value) = entityData.set(CUSTOM_ANIMATION_PLAY_ID_DATA, value)
     var scriptedAttackTicks: Int
         get() = entityData.get(SCRIPTED_ATTACK_TICKS_DATA)
         private set(value) = entityData.set(SCRIPTED_ATTACK_TICKS_DATA, value.coerceAtLeast(0))
+    var passThroughInteractions: Boolean
+        get() = entityData.get(PASS_THROUGH_INTERACTIONS_DATA)
+        private set(value) = entityData.set(PASS_THROUGH_INTERACTIONS_DATA, value)
     var heldItemDebugRotX: Float
         get() = entityData.get(HELD_ITEM_DEBUG_ROT_X_DATA)
         private set(value) = entityData.set(HELD_ITEM_DEBUG_ROT_X_DATA, value)
@@ -107,8 +113,10 @@ class ChowNpcEntity(entityType: EntityType<out PathfinderMob>, level: Level) : P
         builder.define(BODY_TYPE_DATA, NpcBodyTypes.NORMAL)
         builder.define(CUSTOM_ANIMATION_DATA, false)
         builder.define(CUSTOM_ANIMATION_KEY_DATA, "")
+        builder.define(CUSTOM_ANIMATION_SPEED_DATA, 1.0f)
         builder.define(CUSTOM_ANIMATION_PLAY_ID_DATA, 0)
         builder.define(SCRIPTED_ATTACK_TICKS_DATA, 0)
+        builder.define(PASS_THROUGH_INTERACTIONS_DATA, false)
         builder.define(HELD_ITEM_DEBUG_ROT_X_DATA, 0.0f)
         builder.define(HELD_ITEM_DEBUG_ROT_Y_DATA, 0.0f)
         builder.define(HELD_ITEM_DEBUG_ROT_Z_DATA, 0.0f)
@@ -128,6 +136,7 @@ class ChowNpcEntity(entityType: EntityType<out PathfinderMob>, level: Level) : P
                 observedCustomAnimationPlayId = playId
                 state.controller.forceAnimationReset()
             }
+            state.controller.setAnimationSpeed(customAnimationSpeed.toDouble())
             if (customAnimationKey.isBlank()) PlayState.STOP else state.setAndContinue(customRawAnimation())
         })
     }
@@ -160,6 +169,7 @@ class ChowNpcEntity(entityType: EntityType<out PathfinderMob>, level: Level) : P
         customAnimation = enabled
         if (!enabled) {
             customAnimationKey = ""
+            customAnimationSpeed = 1.0f
             customAnimationEndsAtTick = 0
             customAnimationPlayId = customAnimationPlayId + 1
         }
@@ -177,18 +187,20 @@ class ChowNpcEntity(entityType: EntityType<out PathfinderMob>, level: Level) : P
         playCustomAnimation(CUSTOM_ANIMATION_ATTACK)
     }
 
-    fun playCustomAnimation(animationId: String): Boolean {
+    fun playCustomAnimation(animationId: String, speed: Float = 1.0f): Boolean {
         val animation = NpcAnimationRegistry.resolve(animationId) ?: return false
         customAnimation = true
         customAnimationKey = animation.id
+        customAnimationSpeed = speed
         customAnimationEndsAtTick = if (animation.loop) 0 else tickCount + animation.durationTicks()
         customAnimationPlayId = customAnimationPlayId + 1
         return true
     }
 
-    fun restoreCustomAnimation(enabled: Boolean, animationKey: String) {
+    fun restoreCustomAnimation(enabled: Boolean, animationKey: String, speed: Float = 1.0f) {
         customAnimation = enabled
         customAnimationKey = if (enabled) animationKey else ""
+        customAnimationSpeed = if (enabled) speed else 1.0f
         customAnimationEndsAtTick = 0
         customAnimationPlayId = customAnimationPlayId + 1
     }
@@ -213,6 +225,10 @@ class ChowNpcEntity(entityType: EntityType<out PathfinderMob>, level: Level) : P
         setHeldItemDebugRotation(0.0f, 0.0f, 0.0f)
         setHeldItemDebugPosition(0.0f, 0.0f, 0.0f)
         updateHeldItemDebugScale(1.0f)
+    }
+
+    fun updatePassThroughInteractions(enabled: Boolean) {
+        passThroughInteractions = enabled
     }
 
     fun setHeldItemDebugRotationOrder(order: String): Boolean {
@@ -242,6 +258,7 @@ class ChowNpcEntity(entityType: EntityType<out PathfinderMob>, level: Level) : P
 
     override fun mobInteract(player: Player, hand: InteractionHand): InteractionResult {
         if (hand != InteractionHand.MAIN_HAND) return InteractionResult.PASS
+        if (passThroughInteractions) return InteractionResult.PASS
         if (!level().isClientSide && player is ServerPlayer) NpcFeature.interact(player, this)
         return InteractionResult.sidedSuccess(level().isClientSide)
     }
@@ -283,6 +300,7 @@ class ChowNpcEntity(entityType: EntityType<out PathfinderMob>, level: Level) : P
     override fun aiStep() {
         super.aiStep()
         if (scriptedAttackTicks > 0) scriptedAttackTicks = scriptedAttackTicks - 1
+        if (!level().isClientSide) NpcBossFights.tickResultProtection(this)
         if (!level().isClientSide) tickTalking()
         if (!level().isClientSide) tickCustomAnimationReturn()
     }
@@ -344,8 +362,10 @@ class ChowNpcEntity(entityType: EntityType<out PathfinderMob>, level: Level) : P
         private val BODY_TYPE_DATA: EntityDataAccessor<String> = SynchedEntityData.defineId(ChowNpcEntity::class.java, EntityDataSerializers.STRING)
         private val CUSTOM_ANIMATION_DATA: EntityDataAccessor<Boolean> = SynchedEntityData.defineId(ChowNpcEntity::class.java, EntityDataSerializers.BOOLEAN)
         private val CUSTOM_ANIMATION_KEY_DATA: EntityDataAccessor<String> = SynchedEntityData.defineId(ChowNpcEntity::class.java, EntityDataSerializers.STRING)
+        private val CUSTOM_ANIMATION_SPEED_DATA: EntityDataAccessor<Float> = SynchedEntityData.defineId(ChowNpcEntity::class.java, EntityDataSerializers.FLOAT)
         private val CUSTOM_ANIMATION_PLAY_ID_DATA: EntityDataAccessor<Int> = SynchedEntityData.defineId(ChowNpcEntity::class.java, EntityDataSerializers.INT)
         private val SCRIPTED_ATTACK_TICKS_DATA: EntityDataAccessor<Int> = SynchedEntityData.defineId(ChowNpcEntity::class.java, EntityDataSerializers.INT)
+        private val PASS_THROUGH_INTERACTIONS_DATA: EntityDataAccessor<Boolean> = SynchedEntityData.defineId(ChowNpcEntity::class.java, EntityDataSerializers.BOOLEAN)
         private val HELD_ITEM_DEBUG_ROT_X_DATA: EntityDataAccessor<Float> = SynchedEntityData.defineId(ChowNpcEntity::class.java, EntityDataSerializers.FLOAT)
         private val HELD_ITEM_DEBUG_ROT_Y_DATA: EntityDataAccessor<Float> = SynchedEntityData.defineId(ChowNpcEntity::class.java, EntityDataSerializers.FLOAT)
         private val HELD_ITEM_DEBUG_ROT_Z_DATA: EntityDataAccessor<Float> = SynchedEntityData.defineId(ChowNpcEntity::class.java, EntityDataSerializers.FLOAT)

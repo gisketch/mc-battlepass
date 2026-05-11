@@ -18,6 +18,24 @@ work_blocks = [
   { id = "#minecraft:beds", count = 1, display_name = "bed" },
 ]
 
+[boss]
+enabled = true
+health = 76.0
+damage = 4.0
+template = "sword_user"
+
+[boss.balloons]
+chase = ["The wind is faster, {player}!", "Run with the song, not against it!", "Catch me if you can! Ehe!", "My feet have a lovely tempo!", "This chase needs a lute solo!", "You are chasing the breeze, friend!", "Faster! The melody quickens!", "I am but a leaf on the wind!", "Your sprint could use a rhythm section!", "Keep up! The chorus is coming!"]
+attack = ["A sharp little chorus!", "Here comes the downbeat!", "Verse two: pain!", "Staccato strike!", "Allegro assault!", "This chord bites!", "Fortissimo incoming!", "A quick little refrain!", "Bridge into battle!", "Modulate into mayhem!"]
+recovery = ["Your solo, traveler!", "Now play your part!", "A rest in the score. Go!", "Your verse begins!", "The wind leaves a gap!", "Strike on beat two!", "This measure is yours!", "Improv moment!", "Your cue, bard-in-training!", "Now! Crescendo!"]
+taunt = ["Careful. The breeze is baiting you.", "Will you swing, or listen first?", "Your tempo is all wrong!", "Even slimes keep better rhythm!", "That stance is out of tune!", "You fight like a broken lute string!", "A hilichurl dances better!", "Tone-deaf to danger, are we?", "Your sword arm needs a metronome!", "I have heard lovelier battle cries!"]
+guard_react = ["Oops. Wrong note.", "The wind heard that coming.", "Your swing was beautifully telegraphed!", "Too loud! Even Mondstadt heard!", "That attack had no melody!", "I danced right past that!", "Missed the beat entirely!", "Your form lacks harmony!", "A breeze dodged that. Literally.", "You announced that like a trumpet!"]
+parry = ["Parried on the beat!", "A lovely little turnaround!", "Counterpoint achieved!", "Your blade met my rhythm!", "Deflected in D major!", "A minor parry. Get it?", "The wind redirects all!", "Harmonious denial!", "Your strike added nothing to the song!", "Parried. Take a bow!"]
+hit_player = ["That note landed!", "Ehe, watch the rhythm!", "A percussive lesson!", "That chord connected!", "Oops. Did that sting, friend?", "A little sharp. Like a G-sharp!", "Your tempo faltered there!", "Contact! Applause for me!", "The melody found its mark!", "That was a forte moment!"]
+took_damage = ["Ah, a bold verse!", "Good! The song needed percussion.", "A striking composition!", "You have musical talent!", "That hit had rhythm!", "A lovely countermelody!", "The wind approves this verse!", "Your blade sings well!", "Encore-worthy strike!", "Now the song gets interesting!"]
+victory = ["My verse wins! I healed you, so no gloomy ending.", "The song is mine. You are healed for the next refrain.", "Ballad complete! You are mended, friend.", "I win! Health restored. Ehe!", "The wind carries victory. And healing!", "My melody prevails. You are whole.", "Song over! You are healed. Encore later!", "I took the final chorus. Wounds gone.", "Victory hymn! You are restored!", "The bard wins. Health and harmony!"]
+defeat = ["I yield. What a splendid finale!", "You win. That deserves a song.", "A beautiful ending! I yield!", "You earned the ovation! Victory yours!", "The wind bows to you! I concede.", "A standing ovation for the winner!", "Bravo! Encore! I yield!", "Your song was sweeter. I yield.", "What a performance! You win!", "The crowd goes wild! I concede!"]
+
 [job_definition]
 id = "adventurer"
 store = "cosmetics"

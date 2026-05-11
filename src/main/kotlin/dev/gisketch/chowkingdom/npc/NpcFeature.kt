@@ -72,8 +72,11 @@ import net.neoforged.neoforge.common.NeoForge
 import net.neoforged.neoforge.event.RegisterCommandsEvent
 import net.neoforged.neoforge.event.ServerChatEvent
 import net.neoforged.neoforge.event.entity.EntityAttributeCreationEvent
+import net.neoforged.neoforge.event.entity.living.LivingChangeTargetEvent
 import net.neoforged.neoforge.event.entity.living.LivingDamageEvent
 import net.neoforged.neoforge.event.entity.living.LivingDeathEvent
+import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent
+import net.neoforged.neoforge.event.entity.player.AttackEntityEvent
 import net.neoforged.neoforge.event.entity.player.PlayerEvent
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent
 import net.neoforged.neoforge.event.level.BlockEvent
@@ -138,10 +141,14 @@ object NpcFeature {
         modBus.addListener(::registerAttributes)
         NeoForge.EVENT_BUS.addListener(::onServerStarted)
         NeoForge.EVENT_BUS.addListener(::onServerTick)
+        NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, ::onAttackEntity)
+        NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, ::onIncomingDamage)
         NeoForge.EVENT_BUS.addListener(::onLivingDamagePre)
+        NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, ::onLivingChangeTarget)
         NeoForge.EVENT_BUS.addListener(::onLivingDeath)
         NeoForge.EVENT_BUS.addListener(::onPlayerLoggedIn)
         NeoForge.EVENT_BUS.addListener(::onPlayerLoggedOut)
+        NeoForge.EVENT_BUS.addListener(::onPlayerChangedDimension)
         NeoForge.EVENT_BUS.addListener(::onServerChat)
         NeoForge.EVENT_BUS.addListener(::onBlockBreak)
         NeoForge.EVENT_BUS.addListener(::onRegisterCommands)
@@ -167,6 +174,12 @@ object NpcFeature {
 
     fun interact(player: ServerPlayer, npc: ChowNpcEntity) {
         val definition = NpcConfig.get(npc.npcId) ?: return
+        if (NpcBossFights.isActive(npc)) {
+            if (!NpcBossFights.isDuelist(npc, player)) {
+                SnackbarNetwork.send(player, SnackbarNotification.npc(definition.id, "NPC IN BATTLE", "${definition.displayName()} is locked in battle.", SnackbarType.ERROR, SnackbarSounds.ERROR))
+            }
+            return
+        }
         val validHome = validHomePos(npc.level(), definition.id)
         npc.homePos = validHome
         val hasHome = validHome != null
@@ -1660,7 +1673,21 @@ object NpcFeature {
     }
 
     private fun onLivingDamagePre(event: LivingDamageEvent.Pre) {
+        val targetPlayer = event.entity as? ServerPlayer
+        if (targetPlayer != null && NpcBossFights.handlePlayerDamagePre(targetPlayer, event.source.entity, event.source.directEntity, event.newDamage)) {
+            event.newDamage = 0.0f
+            return
+        }
+        if (NpcBossFights.shouldBlockDamage(event.entity, event.source.entity, event.source.directEntity)) {
+            event.newDamage = 0.0f
+            return
+        }
         val npc = event.entity as? ChowNpcEntity ?: return
+        if (NpcBossFights.isActive(npc)) {
+            NpcBossFights.handleNpcDamage(npc, event.source.entity as? ServerPlayer, event.newDamage)
+            event.newDamage = 0.0f
+            return
+        }
         val player = event.source.entity as? ServerPlayer ?: return
         val definition = NpcConfig.get(npc.npcId) ?: return
         val hitCount = NpcStore.recordHurt(definition.id, player, System.currentTimeMillis())
@@ -1673,6 +1700,30 @@ object NpcFeature {
         }
     }
 
+    private fun onAttackEntity(event: AttackEntityEvent) {
+        val player = event.entity as? ServerPlayer ?: return
+        val npc = event.target as? ChowNpcEntity ?: return
+        if (!NpcBossFights.handleNpcAttackAttempt(npc, player)) return
+        event.isCanceled = true
+    }
+
+    private fun onIncomingDamage(event: LivingIncomingDamageEvent) {
+        val npc = event.entity as? ChowNpcEntity
+        if (npc != null && NpcBossFights.handleNpcAttackAttempt(npc, event.source.entity as? ServerPlayer)) {
+            event.isCanceled = true
+            event.amount = 0.0f
+            return
+        }
+        if (!NpcBossFights.shouldBlockDamage(event.entity, event.source.entity, event.source.directEntity)) return
+        event.isCanceled = true
+        event.amount = 0.0f
+    }
+
+    private fun onLivingChangeTarget(event: LivingChangeTargetEvent) {
+        val target = event.newAboutToBeSetTarget ?: return
+        if (NpcBossFights.shouldBlockDamage(target, event.entity, event.entity)) event.newAboutToBeSetTarget = null
+    }
+
     private fun onPlayerLoggedIn(event: PlayerEvent.PlayerLoggedInEvent) {
         val player = event.entity as? ServerPlayer ?: return
         NpcStore.recordGlobalEvent("player_join", "${player.gameProfile.name} joined the server")
@@ -1681,9 +1732,15 @@ object NpcFeature {
 
     private fun onPlayerLoggedOut(event: PlayerEvent.PlayerLoggedOutEvent) {
         val player = event.entity as? ServerPlayer ?: return
+        NpcBossFights.cancelForPlayer(player, "Opponent left.")
         NpcStore.recordGlobalEvent("player_leave", "${player.gameProfile.name} left the server")
         NpcConfig.all().forEach { definition -> NpcLlmService.cancel(player, definition.id) }
         removeAnimationDebugEntity(player)
+    }
+
+    private fun onPlayerChangedDimension(event: PlayerEvent.PlayerChangedDimensionEvent) {
+        val player = event.entity as? ServerPlayer ?: return
+        NpcBossFights.cancelForPlayer(player, "Opponent left the arena.")
     }
 
     private fun onServerChat(event: ServerChatEvent) {
@@ -1693,6 +1750,7 @@ object NpcFeature {
     private fun onLivingDeath(event: LivingDeathEvent) {
         val npc = event.entity as? ChowNpcEntity
         if (npc != null) {
+            NpcBossFights.clear(npc)
             NpcSmartBrainOverrides.clear(npc)
             val definition = NpcConfig.get(npc.npcId) ?: return
             val killer = event.source.entity as? ServerPlayer
@@ -1715,6 +1773,7 @@ object NpcFeature {
         }
         val player = event.entity as? ServerPlayer
         if (player != null) {
+            NpcBossFights.cancelForPlayer(player, "Opponent fell.")
             val deathMessage = event.source.getLocalizedDeathMessage(player).string
             NpcStore.recordGlobalEvent("player_death", deathMessage)
             NpcStore.recordGlobalMemory("player_death", deathMessage)
@@ -1822,17 +1881,16 @@ object NpcFeature {
     private fun sleepingBedPos(level: Level, pos: BlockPos): BlockPos {
         val state = level.getBlockState(pos)
         if (!state.`is`(BlockTags.BEDS)) return pos
-        return if (state.getValue(BedBlock.PART) == BedPart.HEAD) pos.relative(state.getValue(BedBlock.FACING).opposite) else pos
+        return if (state.getValue(BedBlock.PART) == BedPart.FOOT) pos.relative(state.getValue(BedBlock.FACING)) else pos
     }
 
     private fun alignSleepingNpc(entity: ChowNpcEntity, bedPos: BlockPos) {
         val state = entity.level().getBlockState(bedPos)
         if (!state.`is`(BlockTags.BEDS)) return
-        val pillowDirection = if (state.getValue(BedBlock.PART) == BedPart.FOOT) state.getValue(BedBlock.FACING) else state.getValue(BedBlock.FACING).opposite
         entity.setPos(
-            entity.x + pillowDirection.stepX * SLEEP_PILLOW_OFFSET,
-            entity.y,
-            entity.z + pillowDirection.stepZ * SLEEP_PILLOW_OFFSET,
+            bedPos.x + 0.5,
+            bedPos.y + SLEEP_BED_Y_OFFSET,
+            bedPos.z + 0.5,
         )
     }
 
@@ -1875,6 +1933,7 @@ object NpcFeature {
                         ),
                 ),
         )
+        .then(Commands.literal("fight").requires { source -> source.hasPermission(2) }.executes(::fightCommand))
         .then(animationRoot("animation"))
         .then(animationRoot("animations"))
         .then(
@@ -2115,6 +2174,22 @@ object NpcFeature {
         return radius
     }
 
+    private fun fightCommand(context: CommandContext<CommandSourceStack>): Int {
+        NpcConfig.load()
+        val player = context.source.playerOrException
+        val npc = lookedAtNpc(player) ?: run {
+            context.source.sendFailure(Component.literal("No Chow Kingdom NPC under crosshair."))
+            return 0
+        }
+        val definition = NpcConfig.get(npc.npcId) ?: run {
+            context.source.sendFailure(Component.literal("Unknown NPC '${npc.npcId}'."))
+            return 0
+        }
+        val result = NpcBossFights.start(player, npc, definition)
+        if (result.success) context.source.sendSuccess({ Component.literal(result.message).withStyle(ChatFormatting.RED) }, true) else context.source.sendFailure(Component.literal(result.message))
+        return if (result.success) 1 else 0
+    }
+
     private fun debugCommand(context: CommandContext<CommandSourceStack>): Int {
         NpcConfig.load()
         val player = context.source.playerOrException
@@ -2286,6 +2361,7 @@ object NpcFeature {
         var removed = 0
         server.allLevels.forEach { level ->
             level.getEntities(NPC_ENTITY.get()) { npc -> npcId == null || npc.npcId == npcId }.forEach { entity ->
+                NpcBossFights.clear(entity)
                 NpcSmartBrainOverrides.clear(entity)
                 entity.discard()
                 removed++
@@ -2939,7 +3015,7 @@ object NpcFeature {
     private const val DEBUG_AIM_RADIUS = 1.5
     private const val REALTIME_DEBUG_INTERVAL_TICKS = 10
     private const val SLEEP_REACH_DISTANCE_SQR = 4.0
-    private const val SLEEP_PILLOW_OFFSET = 0.5
+    private const val SLEEP_BED_Y_OFFSET = 0.75
     private const val NPC_DIALOG_HEAR_RADIUS = 30.0
     private const val NPC_BALLOON_CLOSE_RADIUS_SQR = 8.0 * 8.0
     private const val NPC_DIALOG_ACTION_DISTANCE_SQR = 64.0

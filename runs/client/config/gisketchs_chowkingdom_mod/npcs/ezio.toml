@@ -18,6 +18,24 @@ work_blocks = [
   { id = "#minecraft:beds", count = 1, display_name = "bed" },
 ]
 
+[boss]
+enabled = true
+health = 75.0
+damage = 5.0
+template = "sword_user"
+
+[boss.balloons]
+chase = ["Move with purpose, {player}.", "The rooftops would not save you now.", "Swift feet. Disciplined path.", "Every shadow watches.", "Run, but do not panic.", "The Creed moves faster.", "You are not invisible, amico.", "Pace yourself. Then escape.", "Quiet steps. Quick turns.", "I know this alley better."]
+attack = ["A clean lesson.", "Steel asks its question.", "The blade does not lie.", "Purpose in every strike.", "Quick and true.", "Let the steel speak.", "No wasted motion.", "A question of discipline.", "Strike with conviction.", "The Creed teaches precision."]
+recovery = ["There is your chance. Use it wisely.", "Strike, if your cause is certain.", "An opening. Earn it.", "Your moment. Do not hesitate.", "Now. Prove your training.", "The gap is honest.", "Strike while purpose guides.", "That window closes fast.", "A gift of timing. Use it.", "Your move. Make it matter."]
+taunt = ["Patience is the sharper blade.", "Do not let pride swing for you.", "Eagerness is the enemy.", "Stillness is a weapon.", "You rush like a novice.", "Breathe. Then act.", "Your temper shows.", "The Creed waits. So should you.", "Pride leaves openings.", "Calm hands win duels."]
+guard_react = ["Too eager, amico.", "I read that before you moved.", "Your intent precedes you.", "Telegraphed. Again.", "I saw the decision.", "Reckless strike.", "Your body confessed.", "Poor approach.", "I knew before you swung.", "Impatience is readable."]
+parry = ["Disarmed by discipline.", "The Creed favors control.", "Redirected with grace.", "Your steel met patience.", "Turned aside. Learn.", "No anger. Just timing.", "Parried. Reset your mind.", "Discipline disarms.", "A clean deflection.", "Control over chaos."]
+hit_player = ["You opened the door for that.", "A lesson, not a wound.", "Your guard betrayed you.", "I found the gap.", "A careful touch.", "That was earned.", "You left that path open.", "Gentle. But true.", "A reminder to watch.", "Stay focused, amico."]
+took_damage = ["Bene. You learn quickly.", "A fair touch. Continue.", "Well placed.", "You found the seam.", "Good. You watched.", "That blade had purpose.", "A worthy strike.", "Your patience pays.", "Clean. Well done.", "You honor the spar."]
+victory = ["I win this round. I have tended the wound.", "Rise, amico. You are healed, and the lesson remains.", "Victory is mine. You are mended.", "The bout ends. Health restored.", "I claim this duel. Healed and taught.", "Rise. The Creed heals as it teaches.", "My win. Restored and wiser.", "You fell with honor. I healed you.", "The lesson is mine. Your health is returned.", "I win. Patched and prepared."]
+defeat = ["I yield with respect.", "You have earned this victory.", "You fought with purpose.", "Bene. A true victory.", "I concede. Well done.", "You proved the lesson.", "Respect to the victor.", "Earned. I yield.", "A worthy win.", "The Creed acknowledges skill."]
+
 [job_definition]
 id = "adventurer"
 store = "cosmetics"
