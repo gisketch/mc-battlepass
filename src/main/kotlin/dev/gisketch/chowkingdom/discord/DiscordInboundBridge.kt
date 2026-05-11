@@ -6,12 +6,12 @@ import com.google.gson.JsonParser
 import dev.gisketch.chowkingdom.ChowKingdomMod
 import dev.gisketch.chowkingdom.npc.NpcWorldChatService
 import dev.gisketch.chowkingdom.profiles.NicknameStore
+import dev.gisketch.chowkingdom.roles.SereneSeasonSupport
 import net.minecraft.network.chat.ClickEvent
 import net.minecraft.network.chat.Component
 import net.minecraft.network.chat.MutableComponent
 import net.minecraft.server.MinecraftServer
 import net.minecraft.server.level.ServerPlayer
-import net.neoforged.fml.ModList
 import java.math.BigInteger
 import java.net.URI
 import java.net.http.HttpClient
@@ -499,28 +499,5 @@ object DiscordInboundBridge {
 }
 
 private object DiscordSeasonStatus {
-    fun current(server: MinecraftServer): String? {
-        if (!ModList.get().isLoaded("sereneseasons")) return null
-        val level = server.overworld()
-        val state = runCatching {
-            val helper = Class.forName("sereneseasons.api.season.SeasonHelper")
-            val method = helper.methods.firstOrNull { method ->
-                method.name == "getSeasonState" && method.parameterCount == 1 && method.parameterTypes[0].isAssignableFrom(level.javaClass)
-            } ?: return null
-            method.invoke(null, level)
-        }.getOrNull() ?: return null
-
-        val season = invokeNoArg(state, "getSeason", "getSubSeason")?.let(::formatEnumName) ?: return null
-        val day = invokeNoArg(state, "getDay", "getDayOfSeason", "getSeasonDay")?.toString()?.toIntOrNull()?.let { it + 1 }
-        return if (day == null) season else "$season, Day $day"
-    }
-
-    private fun invokeNoArg(target: Any, vararg names: String): Any? = names.firstNotNullOfOrNull { name ->
-        runCatching { target.javaClass.methods.firstOrNull { method -> method.name == name && method.parameterCount == 0 }?.invoke(target) }.getOrNull()
-    }
-
-    private fun formatEnumName(value: Any): String = value.toString()
-        .lowercase(Locale.ROOT)
-        .split('_')
-        .joinToString(" ") { part -> part.replaceFirstChar { char -> char.titlecase(Locale.ROOT) } }
+    fun current(server: MinecraftServer): String? = SereneSeasonSupport.currentSeasonStatus(server.overworld())?.display
 }

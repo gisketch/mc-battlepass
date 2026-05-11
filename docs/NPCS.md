@@ -14,6 +14,7 @@ Custom Gecko animation AI planning lives in [NPC Custom Animation AI](NPC_CUSTOM
 - Runtime config folder: `<game config>/gisketchs_chowkingdom_mod/npcs`; in local `runClient`, this is `runs/client/config/gisketchs_chowkingdom_mod/npcs`.
 - Default file: `finn.toml`, written if missing.
 - Global NPC settings: `settings.toml`, written if missing.
+- Shared generic NPC quests: `generic_quests.toml`, written if missing and merged into every NPC with `missions.enabled=true`.
 - Rendering experiment: `settings.toml` `[rendering].playerlike_renderer` switches NPCs to an RCT-style vanilla `PlayerModel`/`HumanoidMobRenderer` path for EMF/ETF animation pack testing. Restart the client after changing it. FA/Fresh may apply automatically if it hooks custom player-shaped mobs; otherwise a compat resource pack or deeper renderer adapter is needed.
 - Custom animation experiment: per-NPC `custom_animation = true` routes that entity to the GeckoLib playerlike model and bypasses the EMF-oriented playerlike renderer so CKDM owns the pose.
 - Custom animation IDs are read from `assets/gisketchs_chowkingdom_mod/animations/npc/playerlike.animation.json`; `/npc animations reload` refreshes command suggestions and asks the caller's client to reload resources.
@@ -71,7 +72,8 @@ Each NPC is one TOML file:
 - `voice`: Animalese dialog voice settings: `animalese_pitch` (`high`, `med`, `low`, `lowest`), `pitch`, `volume`, and `radius`.
 - `chat`: World chat settings. `call_names` are names/nicknames that can address the NPC from Minecraft or Discord chat; `minecraft_chat` and `discord_chat` toggle those channels.
 - `gifts`: Gift ids/tags grouped by `loved`, `liked`, `disliked`, plus `daily_limit`, `reset_hour`, `llm_sentiment_prompt`, and reaction message pools for `loved`, `liked`, `disliked`, and `neutral`. Configured gift ids/tags decide friendship deterministically. If a player gives an unlisted item and gift LLM is enabled, the NPC asks the LLM for JSON `{ "message": "...", "gift_sentiment": "loved|liked|neutral|disliked" }`; invalid or failed sentiment falls back to `neutral`. `gifts.outgoing` configures NPC-to-player daily gifts with `enabled`, `radius`, `min_friendship_level`, `rare_friendship_level`, `follow_seconds`, `offer_messages`, `fallback_messages`, `llm_enabled`, `llm_prompt`, weighted `pool`, weighted `rare_pool`, and additive `extra_pool` / `extra_rare_pool` lists. Each pool entry has `item`, `qty`, and `weight`.
-- `missions`: NPC quest settings. `enabled`, `offer_radius`, `offer_balloon_messages`, and weighted-like `pool` entries. Each mission has `id`, `category` (`task` or `fetch`), `event`, `event_desc`, `quest_text`, `pass_id`, `xp`, optional `chowcoins`, `goal`, `fetch_item`, `fetch_count`, and optional message pools.
+- `missions`: NPC quest settings. `enabled`, `offer_radius`, `offer_balloon_messages`, and legacy/custom `pool` entries. Each mission has `id`, `category` (`task`, `fetch`, `quiz`, or `food_chain`), `event`, `event_desc`, `quest_text`, `pass_id`, `xp`, optional `chowcoins`, `goal`, `fetch_item`, `fetch_count`, optional `filters`, `weight`, and optional message pools.
+- `unique_quests`: Per-NPC quest template pools with the same shape as `generic_quests.toml`. These compile into `missions.pool` at reload time. Supported pools are `fetch`, `kill`, `travel`, `craft`, `smelt`, `eat`, `quiz`, `catch_pokemon`, `quality_food_fetch`, `quality_crop_fetch`, and `food_chain_quest`.
 - `friendship_messages`: Optional per-NPC category message additions for `interact`, `gift`, `hurt`, `wake`, `greeting`, and `first_daily_chat`. Categories are `hatred`, `enemy`, `dislike`, `neutral`, `okay`, `good_friends`, and `best_friends`. Message pools resolve in order: built-in defaults, shared `friendship_messages.toml`, then NPC-specific `friendship_messages`. Each configured layer joins the inherited pool and is inserted twice, so local additions have roughly 2:1 weight against inherited generic lines.
 - `shop_messages`: Optional post-purchase message overrides with `single`, `normal`, and `bulk` buckets. Each bucket has the same friendship categories as `friendship_messages`. Supports `{player}`, `{npc}`, `{item}`, `{quantity}`, `{total}`, `{friendship_level}`, and `{friendship_points}`.
 - `camper_messages`: Optional uncategorized camp message pools: `needs_house_balloon`, `needs_house_dialog`, `lost_house_balloon`, and `lost_house_dialog`. Supports `{player}` and `{npc}`.
@@ -101,7 +103,7 @@ dayStart = 23500.0
 nightStart = 12500.0
 ```
 
-If Better Days is not present, Chow Kingdom falls back to vanilla `0..24000` timing. NPC schedules, first daily chats, gift reset periods, respawn hour checks, camper cooldown hours, shipping bin payout, and LLM time context all use this clock. Store stock resets intentionally still use real-life time from store config.
+If Better Days is not present, Chow Kingdom falls back to vanilla `0..24000` timing. NPC schedules, first daily chats, gift reset periods, respawn hour checks, camper cooldown hours, shipping bin payout, and LLM time context all use this clock. NPC LLM world context also includes Serene Seasons season and season day when that mod is loaded. Store stock resets intentionally still use real-life time from store config.
 
 Camper rotation settings also live in NPC `settings.toml`:
 
@@ -134,13 +136,35 @@ work_blocks = [
 NPC quest behavior:
 
 - NPC quests live in each NPC TOML under `[missions]` / `missions.pool`.
+- Shared generic quests live in `generic_quests.toml`. These are auto-added to every NPC with questing enabled.
+- Per-NPC template quests live under `[unique_quests]` in that NPC's TOML and are added on top of generic and legacy `missions.pool` entries.
 - Quests are offered only while that NPC's schedule activity is `meetup`. Quest reset uses the earliest configured `meetup` start hour, so keep all NPCs on the same meetup window when they should gather together.
 - New quest offers require the NPC to have a valid home bed and an assigned workplace. Active quest rewards can still be claimed if the NPC later loses either assignment.
 - A player can accept at most 4 active NPC quests per reset period.
 - Declining an NPC quest suppresses that NPC's offer for 1 in-game hour; the same daily offer remains until the next meetup reset.
 - Task quests progress from existing battlepass mission signals such as `minecraft:monster_killed` or `cobblemon:pokemon_caught`.
 - Fetch quests complete when the player returns to the NPC with the configured item; the required item count is consumed on reward claim.
+- Food-chain quests require the player to create the configured Farmer's Delight food after accepting the quest, then return that marked created stack to the NPC. Premade food in inventory does not satisfy the creation step and is not consumed for the hand-in.
 - Rewards grant configured battlepass XP to `pass_id` and optional `chowcoins` immediately. Unclaimed completed NPC quests expire at the next meetup reset.
+- Quest offer selection is deterministic per NPC/player/reset period and honors `weight`; higher weight means more likely.
+
+NPC quest debug tester:
+
+- `/quests debug` prints command usage. Requires permission level 2.
+- Debug quests are inserted into the executing player's tracked NPC quest list under `Quest Debug`. They use the same NPC quest state, HUD sync, fetch inventory counting, and battlepass signal matching as real NPC quests.
+- Debug quests have `0` XP and `0` chowcoins. They are for progress testing, not rewards.
+- `/quests debug clear` removes only debug quests. Real NPC quests are left alone.
+- `/quests debug fetch <item> <qty>` tracks an exact-item fetch, for example `/quests debug fetch minecraft:apple 8`.
+- `/quests debug kill <entity> <qty> [dimension]` tracks entity kills, for example `/quests debug kill minecraft:skeleton 30 minecraft:overworld`.
+- `/quests debug travel on_foot <blocks>` tracks foot-only travel, for example `/quests debug travel on_foot 500`.
+- `/quests debug travel pokemon_land <blocks>` and `/quests debug travel pokemon_flying <blocks>` track Cobblemon mount travel.
+- `/quests debug craft <item> <qty>`, `/quests debug smelt <item> <qty>`, and `/quests debug eat <item> <qty>` track item task signals.
+- `/quests debug catch any <qty>`, `/quests debug catch type <type> <qty>`, `/quests debug catch species <species> <qty>`, and `/quests debug catch category <legendary|mythical|starter> <qty>` track Cobblemon catch quests.
+- `/quests debug quiz [xp chowcoins topic]` starts an LLM quiz from the NPC under crosshair, for example `/quests debug quiz 100 50 town lore and recent events`.
+- `/quests debug quality_food <tier> <qty>` and `/quests debug quality_crop <tier> <qty>` track Quality Food fetches. Tiers are `iron`, `gold`, and `diamond`.
+- `/quests debug food_chain <farmersdelight:item> <qty> [cook|craft|smelt|any]` tracks Farmer's Delight food created after accepting, for example `/quests debug food_chain farmersdelight:beef_stew 1 cook`.
+- `/quests debug custom <event> <qty> [key=value key=value]` tracks any task event/filter pair the mission event bank understands, for example `/quests debug custom minecraft:entity_killed 5 entity=minecraft:zombie dimension=minecraft:overworld`.
+- Quiz quests are single-attempt. A correct answer completes the quest and grants rewards; a wrong answer fails and removes the quest with no reward.
 
 Example NPC quest config:
 
@@ -154,6 +178,112 @@ pool = [
   { id = "fetch_beef", category = "fetch", event_desc = "Bring {goal} Cooked Beef", quest_text = "Bring food for patrol.", pass_id = "cozy", xp = 80, chowcoins = 25, fetch_item = "minecraft:cooked_beef", fetch_count = 4 },
 ]
 ```
+
+Example shared `generic_quests.toml`:
+
+```toml
+enabled = true
+
+[fetch]
+pool = [
+  { item = "minecraft:apple", qty = 8, xp = 70, chowcoins = 25, weight = 10, quest_text = "Bring fresh apples for town supplies." },
+]
+
+[kill.easy_mobs]
+pool = [
+  { entity = "minecraft:zombie", qty = 20, dimension = "minecraft:overworld", xp = 100, chowcoins = 50, weight = 10, quest_text = "Thin out zombies before they wander into town." },
+]
+
+[travel]
+pool = [
+  { mode = "on_foot", qty = 1000, xp = 80, chowcoins = 25, weight = 10, quest_text = "Scout the roads on foot. No mounts, no flying." },
+  { mode = "pokemon_land", qty = 1500, xp = 90, chowcoins = 35, weight = 7, quest_text = "Ride a land Pokemon along the routes and check the roads." },
+  { mode = "pokemon_flying", qty = 2000, xp = 110, chowcoins = 50, weight = 5, quest_text = "Fly on a Pokemon and survey the town from above." },
+]
+
+[craft]
+pool = [
+  { item = "minecraft:torch", qty = 32, xp = 80, chowcoins = 25, weight = 8, quest_text = "Craft torches for safer routes." },
+]
+
+[smelt]
+pool = [
+  { item = "minecraft:iron_ingot", qty = 8, xp = 90, chowcoins = 40, weight = 8, quest_text = "Smelt iron for town maintenance." },
+]
+
+[eat]
+pool = [
+  { item = "minecraft:bread", qty = 3, xp = 60, chowcoins = 20, weight = 8, quest_text = "Eat proper food before more work stacks up." },
+]
+
+[quiz]
+pool = [
+  { quiz_topic = "town lore", xp = 80, chowcoins = 25, weight = 4, quest_text = "Answer a quick town lore question." },
+  { quiz_topic = "recent events", quiz_prompt = "Ask about one concrete recent global event, if any exists.", xp = 90, chowcoins = 35, weight = 4, quest_text = "Answer a question about what has been happening lately." },
+]
+
+[catch_pokemon]
+pool = [
+  { pokemon_type = "water", qty = 3, xp = 110, chowcoins = 50, weight = 6, quest_text = "Catch Water Pokemon for field support." },
+  { category = "starter", qty = 1, xp = 140, chowcoins = 75, weight = 2, quest_text = "Catch a starter Pokemon for special records." },
+]
+
+[quality_food_fetch]
+pool = [
+  { quality_tier = "iron", qty = 4, xp = 100, chowcoins = 50, weight = 6, quest_text = "Bring iron quality food for town meals." },
+  { quality_tier = "gold", qty = 3, xp = 130, chowcoins = 75, weight = 4, quest_text = "Bring gold quality food for a special request." },
+]
+
+[quality_crop_fetch]
+pool = [
+  { quality_tier = "iron", qty = 6, xp = 100, chowcoins = 50, weight = 6, quest_text = "Bring iron quality crops for town stores." },
+  { quality_tier = "diamond", qty = 2, xp = 170, chowcoins = 110, weight = 2, quest_text = "Bring diamond quality crops for a rare order." },
+]
+
+[food_chain_quest]
+pool = [
+  { item = "farmersdelight:beef_stew", process = "cook", qty = 1, xp = 130, chowcoins = 70, weight = 5, quest_text = "Cook beef stew after accepting this order, then bring it back." },
+  { item = "farmersdelight:mixed_salad", process = "craft", qty = 1, xp = 100, chowcoins = 45, weight = 5, quest_text = "Prepare a fresh mixed salad after accepting this order, then bring it back." },
+]
+```
+
+Example per-NPC unique quest template:
+
+```toml
+[unique_quests.kill.easy_mobs]
+pool = [
+  { entity = "minecraft:skeleton", qty = 30, dimension = "minecraft:overworld", xp = 130, chowcoins = 70, weight = 8, quest_text = "The archers are testing the walls. Break their line." },
+]
+
+[unique_quests.fetch]
+pool = [
+  { item = "minecraft:arrow", qty = 16, xp = 80, chowcoins = 25, weight = 10, quest_text = "Bring arrows for training drills." },
+]
+
+[unique_quests.food_chain_quest]
+pool = [
+  { item = "farmersdelight:vegetable_soup", process = "cook", qty = 1, xp = 120, chowcoins = 60, weight = 6, quest_text = "Cook vegetable soup after I ask, then bring the fresh bowl back." },
+]
+```
+
+Template quest fields:
+
+- `item`: Exact item id for `fetch`, `craft`, `smelt`, and `eat`.
+- `entity`: Exact entity id for `kill`.
+- `mode`: Travel mode. Supported values are `on_foot`, `pokemon_land`, and `pokemon_flying`.
+- `quiz_topic`: Quiz topic for `quiz` pools. The LLM uses this with NPC lore, world context, recent events, and player memories.
+- `quiz_prompt`: Optional extra quiz instruction for `quiz` pools. The generated JSON must contain `message`, `choices`, and `answer`.
+- `pokemon_type`: Pokemon type for `catch_pokemon`, such as `water`, `fire`, or `grass`.
+- `species`: Exact Cobblemon species id for `catch_pokemon`, such as `cobblemon:pikachu`.
+- `category`: Pokemon category for `catch_pokemon`; supported values are `legendary`, `mythical`, and `starter`.
+- `label`: Cobblemon label/form filter for advanced catch quests.
+- `quality_tier`: Quality Food tier for `quality_food_fetch` and `quality_crop_fetch`; supported values are `iron`, `gold`, and `diamond`.
+- `quality_level`: Numeric Quality Food level for quality fetch pools; `1` iron, `2` gold, `3` diamond.
+- `process`: Creation process for `food_chain_quest`. Supported values are `cook`, `craft`, `smelt`, and `any`. Cooking pot outputs are treated as `cook` when NeoForge reports them through the crafted item event.
+- `qty`: Required amount.
+- `dimension`: Optional dimension filter, such as `minecraft:overworld` or `minecraft:the_nether`.
+- `pass_id`, `xp`, `chowcoins`, `weight`, `quest_text`, `event_desc`, and message pools work like legacy `missions.pool`.
+- `filters`: Optional extra event filters for advanced signals.
 
 NPC-to-NPC micro interaction settings live in NPC `settings.toml`:
 
@@ -237,7 +367,7 @@ NPC memory records the current player-specific conversation and a small global e
 - NPC gives a pending gift item to a player.
 - NPCs pause to chat with each other in-world.
 
-Future LLM prompt building should read `NpcStore.llmContext(npcId, player)` and inject global events before player-specific conversation records. The context can also carry the current 24-hour schedule hour.
+Future LLM prompt building should read `NpcStore.llmContext(npcId, player)` and inject global events before player-specific conversation records. The context can also carry the current 24-hour schedule hour plus Serene Seasons season/day when available.
 
 The LLM context includes the current friendship snapshot: points, level, and category. Gift history is two-way: player-to-NPC gifts and NPC-to-player gifts are both saved into conversation history, and a short player memory is recorded for each gift direction. Treat this as high-priority tone context for future generated NPC replies.
 

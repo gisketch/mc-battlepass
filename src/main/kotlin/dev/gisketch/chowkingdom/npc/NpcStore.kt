@@ -555,6 +555,10 @@ class NpcAcceptedQuestState(
     var progress: Int = 0,
     var fetchItem: String = "",
     var fetchCount: Int = 0,
+    var filters: MutableMap<String, String> = mutableMapOf(),
+    var quizMessage: String = "",
+    var quizChoices: MutableList<String> = mutableListOf(),
+    var quizAnswerIndex: Int = -1,
     var acceptedAtTick: Long = 0L,
     var expiresAtTick: Long = 0L,
 )

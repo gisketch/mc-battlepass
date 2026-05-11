@@ -8,6 +8,7 @@ import dev.gisketch.chowkingdom.ChowKingdomMod
 import dev.gisketch.chowkingdom.discord.DiscordRelay
 import dev.gisketch.chowkingdom.roles.RoleStore
 import dev.gisketch.chowkingdom.roles.RolesConfig
+import dev.gisketch.chowkingdom.roles.SereneSeasonSupport
 import dev.gisketch.chowkingdom.shops.StoreShopFeature
 import net.minecraft.ChatFormatting
 import net.minecraft.network.chat.Component
@@ -142,6 +143,21 @@ object NpcLlmService {
                 if (throwable != null) ChowKingdomMod.LOGGER.warn("NPC LLM gift sentiment request failed npc={} player={}", definition.id, player.gameProfile.name, throwable)
                 val completion = if (throwable == null) result else NpcLlmCompletion(fallbackMessage, giftSentiment = "neutral")
                 onComplete(NpcGiftSentimentResult(completion.message, completion.giftSentiment.ifBlank { "neutral" }, completion.memorable))
+            }
+        }
+    }
+
+    fun quiz(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, mission: NpcMissionDefinition, fallback: NpcQuizLlmResult, responseToken: Long, onComplete: (NpcQuizLlmResult) -> Unit) {
+        val settings = NpcConfig.settings().llm
+        if (!settings.enabled) return onComplete(fallback)
+        if (!startRequest(definition.id, player, responseToken)) return onComplete(fallback)
+        val input = quizPrompt(player, definition, mission)
+        CompletableFuture.supplyAsync({ complete(player, definition, input, settings, fallback.message, "Quiz request") }, executor).whenComplete { result, throwable ->
+            player.server.execute {
+                if (!finishRequest(definition.id, responseToken)) return@execute
+                if (throwable != null) ChowKingdomMod.LOGGER.warn("NPC LLM quiz request failed npc={} player={}", definition.id, player.gameProfile.name, throwable)
+                val completion = if (throwable == null) result else NpcLlmCompletion(fallback.message)
+                onComplete(quizResult(completion, fallback))
             }
         }
     }
@@ -293,7 +309,9 @@ object NpcLlmService {
             .ifBlank { "None." }
         val traits = definition.personality.traits.joinToString(", ").ifBlank { "unspecified" }
         val catchphrases = definition.personality.catchphrases.joinToString(", ").ifBlank { "none" }
-        val hour = NpcTime.hour(server.overworld())
+        val level = server.overworld()
+        val hour = NpcTime.hour(level)
+        val season = SereneSeasonSupport.currentSeasonStatus(level)
         val storeContext = buildStoreContext(definition)
         return """
             You are roleplaying as an NPC in a Minecraft multiplayer server.
@@ -325,6 +343,8 @@ object NpcLlmService {
             - Linked Minecraft player: no
             - Matched call name: $matchedCallName
             - Time hour: $hour
+            - Season: ${season?.seasonName ?: "unavailable"}
+            - Season day: ${season?.day?.toString() ?: "unavailable"}
             - Treat this speaker as a Discord user. Do not pretend you know their Minecraft inventory, location, or friendship.
 
             Store context:
@@ -607,7 +627,12 @@ object NpcLlmService {
             val message = obj.get("message")?.takeUnless { it.isJsonNull }?.asString.orEmpty()
             val memorable = obj.get("memorable")?.takeUnless { it.isJsonNull }?.asString.orEmpty()
             val giftSentiment = obj.get("gift_sentiment")?.takeUnless { it.isJsonNull }?.asString.orEmpty()
-            NpcLlmCompletion(message, sanitizeMemory(memorable), sanitizeGiftSentiment(giftSentiment))
+            val choices = obj.getAsJsonArray("choices")
+                ?.mapNotNull { element -> element.takeUnless { it.isJsonNull }?.asString?.trim()?.take(160) }
+                ?.filter(String::isNotBlank)
+                .orEmpty()
+            val answer = obj.get("answer")?.takeUnless { it.isJsonNull }?.asString?.trim().orEmpty()
+            NpcLlmCompletion(message, sanitizeMemory(memorable), sanitizeGiftSentiment(giftSentiment), choices, answer)
         }
             .onFailure { exception ->
                 ChowKingdomMod.LOGGER.warn("NPC LLM response was not JSON message. raw={}", cleaned.take(LOG_BODY_LIMIT), exception)
@@ -615,6 +640,53 @@ object NpcLlmService {
             }
             .getOrDefault(NpcLlmCompletion(cleaned))
         return parsed.copy(message = sanitizeReply(parsed.message, settings, fallbackMessage))
+    }
+
+    private fun quizPrompt(player: ServerPlayer, definition: NpcDefinition, mission: NpcMissionDefinition): String {
+        val topic = mission.quizTopic.ifBlank { mission.questText.ifBlank { "town lore and recent events" } }
+        val custom = mission.quizPrompt.ifBlank { "Use NPC lore, current world context, recent global events, player memories, jobs/classes, stores, homes, work, town needs, and server events when useful." }
+        return """
+            Create a quiz mission for ${player.gameProfile.name}.
+
+            Quiz topic:
+            $topic
+
+            Extra quiz instructions:
+            $custom
+
+            Requirements:
+            - Write exactly one multiple choice question that strengthens lore, worldbuilding, NPC personality, or recent server events.
+            - The question must be answerable from the question text and current context.
+            - Keep it playful, concrete, and in ${definition.name}'s voice.
+            - Use 3 or 4 choices.
+            - Exactly one choice must be correct.
+            - Do not make all answers obvious jokes.
+            - Avoid real-world trivia unless it connects to this server's world.
+            - Return JSON only in this exact shape: {"message":"question text","choices":["choice A","choice B","choice C"],"answer":"exact correct choice text"}
+        """.trimIndent()
+    }
+
+    private fun quizResult(completion: NpcLlmCompletion, fallback: NpcQuizLlmResult): NpcQuizLlmResult {
+        val choices = completion.quizChoices.map(String::trim).filter(String::isNotBlank).distinct().take(6)
+        if (completion.message.isBlank() || choices.size < 2) return fallback
+        val answerIndex = answerIndex(completion.quizAnswer, choices)
+        if (answerIndex !in choices.indices) return fallback
+        return NpcQuizLlmResult(completion.message, choices, answerIndex)
+    }
+
+    private fun answerIndex(answer: String, choices: List<String>): Int {
+        val trimmed = answer.trim()
+        val number = trimmed.toIntOrNull()
+        if (number != null) {
+            if (number in choices.indices) return number
+            if (number in 1..choices.size) return number - 1
+        }
+        val letter = trimmed.lowercase().firstOrNull()
+        if (letter != null && letter in 'a'..'z') {
+            val index = letter - 'a'
+            if (index in choices.indices) return index
+        }
+        return choices.indexOfFirst { choice -> choice.equals(trimmed, ignoreCase = true) }
     }
 
     private fun recordLlmError(provider: String, model: String, source: String, status: Int?, message: String, body: String = "") {
@@ -948,6 +1020,7 @@ object NpcLlmService {
     private fun buildWorldContext(player: ServerPlayer): String {
         val level = player.level() as? ServerLevel ?: return "None."
         val day = NpcTime.day(level)
+        val season = SereneSeasonSupport.currentSeasonStatus(level)
         val weather = when {
             level.isThundering -> "thunder"
             level.isRaining -> "rain"
@@ -961,6 +1034,8 @@ object NpcLlmService {
         return listOf(
             "- Dimension: ${level.dimension().location()}",
             "- Day: $day",
+            "- Season: ${season?.seasonName ?: "unavailable"}",
+            "- Season day: ${season?.day?.toString() ?: "unavailable"}",
             "- Weather: $weather",
             "- Nearby players: $nearby",
         ).joinToString("\n")
@@ -1109,7 +1184,9 @@ private data class ActiveNpcRequest(val playerId: UUID, val responseToken: Long)
 
 data class NpcGiftSentimentResult(val message: String, val giftSentiment: String, val memorable: String = "")
 
-private data class NpcLlmCompletion(val message: String, val memorable: String = "", val giftSentiment: String = "")
+private data class NpcLlmCompletion(val message: String, val memorable: String = "", val giftSentiment: String = "", val quizChoices: List<String> = emptyList(), val quizAnswer: String = "")
+
+data class NpcQuizLlmResult(val message: String, val choices: List<String>, val answerIndex: Int)
 
 private data class NpcRecentDialogReplyKey(val playerId: UUID, val npcId: String)
 

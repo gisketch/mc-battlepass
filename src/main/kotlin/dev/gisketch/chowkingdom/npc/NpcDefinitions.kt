@@ -20,6 +20,7 @@ class NpcDefinition(
     var housing: NpcHousingDefinition = NpcHousingDefinition(),
     var gifts: NpcGiftsDefinition = NpcGiftsDefinition(),
     var missions: NpcMissionsDefinition = NpcMissionsDefinition(),
+    @SerializedName("unique_quests") var uniqueQuests: NpcQuestPoolsDefinition = NpcQuestPoolsDefinition(),
     @SerializedName("voice") var voice: NpcVoiceDefinition = NpcVoiceDefinition(),
     var chat: NpcChatDefinition = NpcChatDefinition(),
     @SerializedName("friendship_messages") var friendshipMessages: NpcFriendshipMessagesDefinition = NpcFriendshipMessagesDefinition(),
@@ -47,6 +48,7 @@ class NpcDefinition(
         housing = housing.normalized()
         gifts = gifts.normalized()
         missions = missions.normalized()
+        uniqueQuests = uniqueQuests.normalized()
         voice = voice.normalized()
         chat = chat.normalized(id, name)
         friendshipMessages = friendshipMessages.normalized(friendshipDefaults)
@@ -849,6 +851,10 @@ class NpcMissionDefinition(
     var goal: Int = 1,
     @SerializedName("fetch_item") var fetchItem: String = "",
     @SerializedName("fetch_count") var fetchCount: Int = 1,
+    @SerializedName("quiz_topic") var quizTopic: String = "",
+    @SerializedName("quiz_prompt") var quizPrompt: String = "",
+    var filters: MutableMap<String, String> = mutableMapOf(),
+    var weight: Int = 10,
     @SerializedName("offer_messages") var offerMessages: MutableList<String> = mutableListOf(),
     @SerializedName("accepted_messages") var acceptedMessages: MutableList<String> = mutableListOf(),
     @SerializedName("progress_messages") var progressMessages: MutableList<String> = mutableListOf(),
@@ -856,7 +862,14 @@ class NpcMissionDefinition(
 ) {
     fun normalized(): NpcMissionDefinition = apply {
         id = id.trim().lowercase().replace(Regex("[^a-z0-9_.:-]+"), "_").trim('_')
-        category = category.trim().lowercase().let { if (it == "fetch" || it == "fetch_task") "fetch" else "task" }
+        category = category.trim().lowercase().let {
+            when (it) {
+                "fetch", "fetch_task" -> "fetch"
+                "quiz", "llm_quiz" -> "quiz"
+                "food_chain", "food_chain_quest", "farmers_delight_food_chain" -> "food_chain"
+                else -> "task"
+            }
+        }
         event = event.trim()
         eventDesc = eventDesc.trim()
         questText = questText.trim().ifBlank { eventDesc.ifBlank { id } }
@@ -866,11 +879,20 @@ class NpcMissionDefinition(
         goal = goal.coerceAtLeast(1)
         fetchItem = fetchItem.trim()
         fetchCount = fetchCount.coerceIn(1, 64)
+        quizTopic = quizTopic.trim()
+        quizPrompt = quizPrompt.trim()
+        filters = filters.mapKeys { (key, _) -> key.trim() }
+            .mapValues { (_, value) -> value.trim() }
+            .filter { (key, value) -> key.isNotBlank() && value.isNotBlank() }
+            .toMutableMap()
+        weight = weight.coerceIn(1, 1000)
         offerMessages = cleanMessages(offerMessages, listOf("Hey {player}, I have a favor to ask. {quest_text}"))
         acceptedMessages = cleanMessages(acceptedMessages, listOf("Thanks, {player}. I will be waiting for good news."))
         progressMessages = cleanMessages(progressMessages, listOf("Still working on it? {progress}/{goal}"))
         completeMessages = cleanMessages(completeMessages, listOf("You did it. Thank you, {player}."))
-        if (category == "fetch" && fetchItem.isBlank()) id = ""
+        if (category == "fetch" && fetchItem.isBlank() && filters.isEmpty()) id = ""
+        if (category == "food_chain" && (fetchItem.isBlank() || event.isBlank())) id = ""
+        if (category == "quiz") goal = 1
         if (category == "task" && event.isBlank()) id = ""
     }
 

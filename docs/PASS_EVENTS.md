@@ -41,11 +41,39 @@ Use `rotation_group` to force custom grouping:
 Implemented now:
 
 - `minecraft:monster_killed`: +1 when player kills a monster.
+- `minecraft:entity_killed`: +1 when player kills any entity. Filter with `entity`, `dimension`, or `monster`.
 - `minecraft:crop_harvested`: +1 when player breaks a max-age vanilla-style `CropBlock`.
 - `minecraft:animal_bred`: +1 when player breeds animals.
 - `minecraft:villager_traded`: +1 per villager trade.
 - `minecraft:fish_caught`: +drop count when fishing returns drops.
 - `minecraft:blocks_traveled`: +horizontal blocks moved, counted from player tick movement.
+- `minecraft:travel_on_foot`: +horizontal blocks moved while not riding, flying, elytra-flying, swimming, or in lava. Filter with `dimension` or `mode=on_foot`.
+- `cobblemon:pokemon_mount_traveled`: +horizontal blocks moved while riding a Cobblemon Pokemon. Filter with `dimension`, `mount=pokemon`, `mode=pokemon_land|pokemon_flying`, `ride.mode=land|flying`, `pokemon.species`, `type`, or `label`.
+- `cobblemon:pokemon_mount_land_traveled`: +horizontal blocks moved while riding a non-flying Pokemon mount. Filter with `dimension`, `mount=pokemon`, `mode=pokemon_land`, `pokemon.species`, `type`, or `label`.
+- `cobblemon:pokemon_mount_flying_traveled`: +horizontal blocks moved while riding a flying Pokemon mount. Flying is detected from Flying type or Cobblemon ride styles containing fly/air. Filter with `dimension`, `mount=pokemon`, `mode=pokemon_flying`, `pokemon.species`, `type`, or `label`.
+- `minecraft:item_crafted`: +crafted output count. Filter with `item`, `item.namespace`, `dimension`, or `process=craft|cook`.
+- `minecraft:item_smelted`: +smelted output count. Filter with `item`, `item.namespace`, `dimension`, or `process=smelt`.
+- `minecraft:item_eaten`: +1 when a player finishes eating food. Filter with `item`, `item.namespace`, or `dimension`.
+- `farmersdelight:food_created`: +created Farmer's Delight edible output count from crafting, cooking pot crafting, or smelting. Filter with `item`, `item.namespace=farmersdelight`, `process=cook|craft|smelt`, or `dimension`. NPC food-chain quests also mark matching output stacks so premade food cannot be handed in directly.
+- `farmersdelight:craft_food_created`, `farmersdelight:cook_food_created`, and `farmersdelight:smelt_food_created`: process-specific aliases for Farmer's Delight food creation.
+
+Examples:
+
+```json
+{ "id": "npc_kill_skeletons", "event": "minecraft:entity_killed", "type": "progressive", "event_desc": "Defeat {goal} Skeletons", "progress_goals": [30], "progress_xp": [150], "filters": { "entity": "minecraft:skeleton", "dimension": "minecraft:overworld" } }
+```
+
+```json
+{ "id": "npc_walk_on_foot", "event": "minecraft:travel_on_foot", "type": "progressive", "event_desc": "Travel {goal} Blocks On Foot", "progress_goals": [1000], "progress_xp": [80], "filters": { "mode": "on_foot" } }
+```
+
+```json
+{ "id": "npc_fly_pokemon", "event": "cobblemon:pokemon_mount_flying_traveled", "type": "progressive", "event_desc": "Travel {goal} Blocks On Flying Pokemon", "progress_goals": [2000], "progress_xp": [120], "filters": { "mode": "pokemon_flying" } }
+```
+
+```json
+{ "id": "npc_craft_torches", "event": "minecraft:item_crafted", "type": "progressive", "event_desc": "Craft {goal} Torches", "progress_goals": [32], "progress_xp": [80], "filters": { "item": "minecraft:torch" } }
+```
 
 Configured in old samples but not currently emitted:
 
@@ -125,6 +153,7 @@ Filterable attributes:
 - `label` or `pokemonLabel`: Cobblemon form labels.
 - `legendary`, `mythical`, `starter`: `true` or `false`.
 - `friendshipMin` or `minFriendship`: numeric minimum.
+- `dimension`: dimension id for catch/scan/send/friendship event location when the signal happened.
 
 Example with filters:
 

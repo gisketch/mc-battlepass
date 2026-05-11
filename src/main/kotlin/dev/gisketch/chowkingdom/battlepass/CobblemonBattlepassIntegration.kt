@@ -54,6 +54,21 @@ object CobblemonBattlepassIntegration {
         return refreshPokedexProgress(player) or refreshFriendshipProgress(player)
     }
 
+    fun riddenPokemonTravelAttributes(player: ServerPlayer): Map<String, String>? {
+        val vehicle = player.vehicle ?: return null
+        val pokemon = runCatching { vehicle.javaClass.getMethod("getPokemon").invoke(vehicle) }.getOrNull() ?: return null
+        val facts = pokemonFacts(pokemon, null)
+        val rideStyles = rideStyleIds(vehicle)
+        val mode = if ("flying" in facts.types || rideStyles.any { style -> "fly" in style || "air" in style }) "pokemon_flying" else "pokemon_land"
+        return BattlepassMissionEventBank.pokemonAttributes(facts) + mapOf(
+            "dimension" to player.level().dimension().location().toString(),
+            "mount" to "pokemon",
+            "mode" to mode,
+            "ride.mode" to if (mode == "pokemon_flying") "flying" else "land",
+            "ride.styles" to rideStyles.joinToString(","),
+        )
+    }
+
     private fun subscribeRaw(eventsClass: Class<*>, fieldName: String, handler: (Any) -> Unit) {
         val observable = eventsClass.getField(fieldName).get(null)
         val subscribe = observable.javaClass.methods.first { method ->
@@ -153,7 +168,7 @@ object CobblemonBattlepassIntegration {
         val changed = BattlepassMissionEventBank.record(
             player,
             eventId,
-            attributes = BattlepassMissionEventBank.pokemonAttributes(facts),
+            attributes = BattlepassMissionEventBank.pokemonAttributes(facts) + mapOf("dimension" to player.level().dimension().location().toString()),
             aliases = BattlepassMissionEventBank.pokemonAliases(eventId, facts),
         )
         if (changed) BattlepassNetwork.syncAllPlayers()
@@ -357,6 +372,12 @@ object CobblemonBattlepassIntegration {
         }
         return applied
     }
+
+    private fun rideStyleIds(pokemonEntity: Any): Set<String> = runCatching {
+        val rideProp = pokemonEntity.javaClass.getMethod("getRideProp").invoke(pokemonEntity)
+        val behaviours = rideProp.javaClass.getMethod("getBehaviours").invoke(rideProp) as? Map<*, *> ?: return@runCatching emptySet()
+        behaviours.keys.mapNotNull { key -> key?.let(::styleName) }.toSet()
+    }.getOrDefault(emptySet())
 
     private fun styleName(style: Any): String = (style as? Enum<*>)?.name?.lowercase(Locale.ROOT) ?: style.toString().normalizedToken()
 

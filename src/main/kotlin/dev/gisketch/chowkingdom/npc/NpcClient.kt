@@ -984,11 +984,14 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         if (talkMode) talkInput?.render(guiGraphics, localMouse.first, localMouse.second, partialTick)
         val hoveredAction = actionAt(localMouse.first, localMouse.second)
         val hoveredClassChange = if (classChangeMode()) classChangeOptionAt(localMouse.first, localMouse.second) else null
+        val hoveredQuizChoice = if (quizMode()) quizChoiceAt(localMouse.first, localMouse.second) else null
         if (classChangeMode()) renderClassChangeOptions(guiGraphics, localMouse.first, localMouse.second, layout)
+        if (quizMode()) renderQuizChoices(guiGraphics, localMouse.first, localMouse.second, layout)
         renderActionButtons(guiGraphics, localMouse.first, localMouse.second, buttonX, y + buttonTop)
         pose.popPose()
         renderActionTooltip(guiGraphics, mouseX, mouseY, hoveredAction)
         renderClassChangeTooltip(guiGraphics, mouseX, mouseY, hoveredClassChange)
+        renderQuizTooltip(guiGraphics, mouseX, mouseY, hoveredQuizChoice)
     }
 
     override fun mouseClicked(mouseX: Double, mouseY: Double, button: Int): Boolean {
@@ -1014,6 +1017,14 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
             if (option != null) {
                 skipPendingTalkResponse()
                 NpcNetwork.sendAction(payload.npcId, "class_change:${option.classId}")
+                return true
+            }
+        }
+        if (quizMode()) {
+            val choice = quizChoiceAt(localMouse.first, localMouse.second)
+            if (choice != null) {
+                skipPendingTalkResponse()
+                NpcNetwork.sendAction(payload.npcId, "quiz_answer:${choice.index}")
                 return true
             }
         }
@@ -1065,7 +1076,7 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
     }
 
     override fun mouseScrolled(mouseX: Double, mouseY: Double, scrollX: Double, scrollY: Double): Boolean {
-        if (classChangeMode() && classChangePageCount() > 1) {
+        if ((classChangeMode() || quizMode()) && classChangePageCount() > 1) {
             classChangePage = (classChangePage - scrollY.toInt()).coerceIn(0, classChangePageCount() - 1)
             return true
         }
@@ -1154,6 +1165,26 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         guiGraphics.drawString(font, ckdmSmallText(page), area.x + (area.width - font.width(page)) / 2, pagerY + 5, DISABLED_COLOR, false)
     }
 
+    private fun renderQuizChoices(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, layout: DialogLayout) {
+        val choices = quizPageChoices()
+        if (choices.isEmpty()) return
+        val area = classChangeArea(layout)
+        choices.forEachIndexed { index, choice ->
+            val optionY = area.y + index * CLASS_CHANGE_OPTION_STEP
+            val hovered = mouseX in area.x until area.x + area.width && mouseY in optionY until optionY + CLASS_CHANGE_OPTION_HEIGHT
+            val texture = if (hovered) BUTTON_HOVER_TEXTURE else BUTTON_TEXTURE
+            val sourceSize = if (hovered) BUTTON_HOVER_TEXTURE_SIZE else BUTTON_TEXTURE_SIZE
+            val sourceCorner = if (hovered) BUTTON_HOVER_SOURCE_CORNER else BUTTON_SOURCE_CORNER
+            renderNineSlice(guiGraphics, texture, area.x, optionY, area.width, CLASS_CHANGE_OPTION_HEIGHT, sourceSize, sourceSize, sourceCorner, BUTTON_DEST_CORNER)
+            val label = "${('A'.code + choice.index).toChar()}. ${choice.text}"
+            guiGraphics.drawString(font, ckdmSmallText(fitQuizChoice(label, area.width - 10)), area.x + 6, optionY + 5, NAME_COLOR, false)
+        }
+        if (classChangePageCount() <= 1) return
+        val pagerY = area.y + CLASS_CHANGE_VISIBLE_OPTIONS * CLASS_CHANGE_OPTION_STEP + 2
+        renderPagerButton(guiGraphics, area.x, pagerY, "PREV", mouseX, mouseY, enabled = classChangePage > 0)
+        renderPagerButton(guiGraphics, area.x + area.width - CLASS_CHANGE_PAGER_WIDTH, pagerY, "NEXT", mouseX, mouseY, enabled = classChangePage < classChangePageCount() - 1)
+    }
+
     private fun renderPagerButton(guiGraphics: GuiGraphics, x: Int, y: Int, label: String, mouseX: Int, mouseY: Int, enabled: Boolean) {
         val hovered = enabled && mouseX in x until x + CLASS_CHANGE_PAGER_WIDTH && mouseY in y until y + CLASS_CHANGE_OPTION_HEIGHT
         val texture = if (hovered) BUTTON_HOVER_TEXTURE else BUTTON_TEXTURE
@@ -1219,7 +1250,7 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         questMode() && action == DialogAction.Bye -> "DECLINE"
         joinMode() && action == DialogAction.Talk -> "JOIN CONVERSATION"
         action == DialogAction.Bye && payload.closeOnly -> payload.closeLabel
-        action == DialogAction.Bye && (payload.classChangeAvailable || classChangeMode()) -> payload.closeLabel
+        action == DialogAction.Bye && (payload.classChangeAvailable || classChangeMode() || quizMode()) -> payload.closeLabel
         else -> action.label
     }
 
@@ -1247,6 +1278,11 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
             "Replace ${option.displayName} for ${payload.classChangeCost} chowcoins. ${option.warning}"
         }
         guiGraphics.renderTooltip(font, Component.literal(text), mouseX, mouseY)
+    }
+
+    private fun renderQuizTooltip(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, choice: NpcQuizChoice?) {
+        if (choice == null) return
+        guiGraphics.renderTooltip(font, Component.literal(choice.text), mouseX, mouseY)
     }
 
     private fun giftStack(): ItemStack {
@@ -1295,6 +1331,7 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
 
     private fun actions(): List<DialogAction> = when {
         questMode() -> listOf(DialogAction.Talk, DialogAction.Bye)
+        quizMode() -> listOf(DialogAction.Bye)
         joinMode() -> listOf(DialogAction.Talk, DialogAction.Bye)
         workMode() -> listOf(DialogAction.Move, DialogAction.Fire, DialogAction.Bye)
         classChangeMode() -> listOf(DialogAction.Bye)
@@ -1310,6 +1347,8 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
     private fun workMode(): Boolean = payload.dialogMode == "work"
 
     private fun classChangeMode(): Boolean = payload.dialogMode == "class_change"
+
+    private fun quizMode(): Boolean = payload.dialogMode == "quiz"
 
     private fun classChangeOptionAt(mouseX: Int, mouseY: Int): NpcClassChangeOption? {
         val area = classChangeArea(layout())
@@ -1336,7 +1375,32 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         return payload.classChangeOptions.drop(classChangePage * CLASS_CHANGE_VISIBLE_OPTIONS).take(CLASS_CHANGE_VISIBLE_OPTIONS)
     }
 
-    private fun classChangePageCount(): Int = ((payload.classChangeOptions.size - 1) / CLASS_CHANGE_VISIBLE_OPTIONS + 1).coerceAtLeast(1)
+    private fun classChangePageCount(): Int {
+        val size = if (quizMode()) payload.quizChoices.size else payload.classChangeOptions.size
+        return ((size - 1) / CLASS_CHANGE_VISIBLE_OPTIONS + 1).coerceAtLeast(1)
+    }
+
+    private fun quizChoiceAt(mouseX: Int, mouseY: Int): NpcQuizChoice? {
+        val area = classChangeArea(layout())
+        return quizPageChoices().firstOrNull { choice ->
+            val index = quizPageChoices().indexOf(choice)
+            val top = area.y + index * CLASS_CHANGE_OPTION_STEP
+            mouseX in area.x until area.x + area.width && mouseY in top until top + CLASS_CHANGE_OPTION_HEIGHT
+        }
+    }
+
+    private fun quizPageChoices(): List<NpcQuizChoice> {
+        val pageCount = classChangePageCount()
+        classChangePage = classChangePage.coerceIn(0, pageCount - 1)
+        return payload.quizChoices.drop(classChangePage * CLASS_CHANGE_VISIBLE_OPTIONS).take(CLASS_CHANGE_VISIBLE_OPTIONS)
+    }
+
+    private fun fitQuizChoice(text: String, maxWidth: Int): String {
+        if (font.width(text) <= maxWidth) return text
+        var candidate = text
+        while (candidate.length > 4 && font.width("$candidate...") > maxWidth) candidate = candidate.dropLast(1)
+        return "$candidate..."
+    }
 
     private fun classChangeArea(layout: DialogLayout): ClassChangeArea {
         val width = layout.panelWidth - PAD * 2
@@ -1365,7 +1429,7 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         val dialogWidth = panelWidth - PAD * 2
         val fullLineCount = dialogLineCount(dialogWidth).coerceIn(1, BASE_DIALOG_LINES + MAX_EXTRA_DIALOG_LINES)
         val extraLines = (fullLineCount - BASE_DIALOG_LINES).coerceAtLeast(0)
-        val classChangeReserve = if (classChangeMode()) CLASS_CHANGE_PANEL_RESERVE else 0
+        val classChangeReserve = if (classChangeMode() || quizMode()) CLASS_CHANGE_PANEL_RESERVE else 0
         val talkReserve = ((INPUT_HEIGHT + INPUT_GAP) * talkProgress()).toInt()
         val maxPanelHeight = (height - 24 - talkReserve).coerceAtLeast(BASE_PANEL_HEIGHT)
         val dynamicBottomPad = if (extraLines > 0) DYNAMIC_BOTTOM_PAD else 0

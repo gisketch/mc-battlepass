@@ -934,7 +934,7 @@ object NpcFeature {
         SnackbarNetwork.send(player, SnackbarNotification.item(SnackbarIcons.ERROR, title, content, type, SnackbarSounds.forType(type)))
     }
 
-    fun dialogPayload(definition: NpcDefinition, npc: ChowNpcEntity, message: String, contractGranted: Boolean, friendshipLevel: Int, closeOnly: Boolean = false, closeLabel: String = "BYE", responseToken: Long = 0L, dialogMode: String = "normal", startTalkMode: Boolean = false, friendshipDelta: Int = 0, classChangeAvailable: Boolean = false, classChangeCost: Long = 0L, classChangeOptions: List<NpcClassChangeOption> = emptyList()): NpcDialogPayload = NpcDialogPayload(
+    fun dialogPayload(definition: NpcDefinition, npc: ChowNpcEntity, message: String, contractGranted: Boolean, friendshipLevel: Int, closeOnly: Boolean = false, closeLabel: String = "BYE", responseToken: Long = 0L, dialogMode: String = "normal", startTalkMode: Boolean = false, friendshipDelta: Int = 0, classChangeAvailable: Boolean = false, classChangeCost: Long = 0L, classChangeOptions: List<NpcClassChangeOption> = emptyList(), quizChoices: List<NpcQuizChoice> = emptyList()): NpcDialogPayload = NpcDialogPayload(
         definition.id,
         if (workBypassEnabled) "${definition.name} WORK OFF NPC" else definition.name,
         definition.title,
@@ -957,6 +957,7 @@ object NpcFeature {
         classChangeAvailable = classChangeAvailable,
         classChangeCost = classChangeCost,
         classChangeOptions = classChangeOptions,
+        quizChoices = quizChoices,
     )
 
     private fun friendshipMessage(set: NpcFriendshipMessageSet, friendship: NpcFriendshipSnapshot, player: ServerPlayer, definition: NpcDefinition, itemName: String = "", mood: String = "", quantity: Int = 0, totalCost: Long = 0L): String {
@@ -1759,6 +1760,7 @@ object NpcFeature {
         event.dispatcher.register(Commands.literal("ck").then(npcRoot("npc")))
         event.dispatcher.register(Commands.literal("chowkingdom").then(npcRoot("npc")))
         event.dispatcher.register(llmRoot())
+        NpcQuestDebugCommands.register(event.dispatcher)
     }
 
     private fun onRightClickBlock(event: PlayerInteractEvent.RightClickBlock) {
@@ -2863,7 +2865,7 @@ object NpcFeature {
         .mapNotNull { level -> level.getEntity(entityId) as? ChowNpcEntity }
         .firstOrNull()
 
-    private fun lookedAtNpc(player: ServerPlayer): ChowNpcEntity? {
+    fun lookedAtNpc(player: ServerPlayer): ChowNpcEntity? {
         val level = player.level() as? ServerLevel ?: return null
         val start = player.getEyePosition(0.0f)
         val look = player.lookAngle.normalize()

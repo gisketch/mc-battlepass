@@ -22,6 +22,7 @@ private const val MAX_NPC_DIALOG_LENGTH = 2000
 private const val MAX_NPC_BALLOON_LENGTH = 512
 private const val MAX_NPC_ACTION_LENGTH = 96
 private const val MAX_NPC_CLASS_CHANGE_OPTIONS = 12
+private const val MAX_NPC_QUIZ_CHOICES = 6
 private const val MAX_NPC_TALK_MESSAGE_LENGTH = 2000
 private const val MAX_NPC_CLOSE_LABEL_LENGTH = 24
 private const val MAX_NPC_VOICE_PITCH_LENGTH = 16
@@ -29,6 +30,7 @@ private const val MAX_NPC_DIALOG_MODE_LENGTH = 16
 private const val MAX_NPC_WORLD_CHAT_TARGET_KIND_LENGTH = 16
 private const val MAX_NPC_WORLD_CHAT_MESSAGE_LENGTH = 512
 private const val MAX_NPC_CLASS_CHANGE_WARNING_LENGTH = 160
+private const val MAX_NPC_QUIZ_CHOICE_LENGTH = 160
 private const val MAX_NPC_QUEST_DESCRIPTION_LENGTH = 160
 private const val MAX_NPC_QUEST_PASS_LENGTH = 32
 private const val MAX_NPC_FRIENDS = 128
@@ -80,7 +82,7 @@ object NpcNetwork {
     }
 
     private fun registerPayloads(event: RegisterPayloadHandlersEvent) {
-        val registrar = event.registrar("3")
+        val registrar = event.registrar("4")
         registrar.playToClient(NpcDialogPayload.TYPE, NpcDialogPayload.STREAM_CODEC, ::handleDialog)
         registrar.playToClient(NpcBalloonPayload.TYPE, NpcBalloonPayload.STREAM_CODEC, ::handleBalloon)
         registrar.playToClient(NpcTalkResponsePayload.TYPE, NpcTalkResponsePayload.STREAM_CODEC, ::handleTalkResponse)
@@ -196,6 +198,7 @@ data class NpcDialogPayload(
     val classChangeAvailable: Boolean = false,
     val classChangeCost: Long = 0L,
     val classChangeOptions: List<NpcClassChangeOption> = emptyList(),
+    val quizChoices: List<NpcQuizChoice> = emptyList(),
 ) : CustomPacketPayload {
     override fun type(): CustomPacketPayload.Type<NpcDialogPayload> = TYPE
 
@@ -226,6 +229,9 @@ data class NpcDialogPayload(
                 buffer.readVarLong(),
                 List(buffer.readVarInt().coerceIn(0, MAX_NPC_CLASS_CHANGE_OPTIONS)) {
                     NpcClassChangeOption(buffer.readUtf(MAX_NPC_ID_LENGTH), buffer.readUtf(MAX_NPC_NAME_LENGTH), buffer.readUtf(MAX_NPC_CLASS_CHANGE_WARNING_LENGTH))
+                },
+                List(buffer.readVarInt().coerceIn(0, MAX_NPC_QUIZ_CHOICES)) {
+                    NpcQuizChoice(buffer.readVarInt(), buffer.readUtf(MAX_NPC_QUIZ_CHOICE_LENGTH))
                 },
             )
 
@@ -258,12 +264,20 @@ data class NpcDialogPayload(
                     buffer.writeUtf(option.displayName.take(MAX_NPC_NAME_LENGTH), MAX_NPC_NAME_LENGTH)
                     buffer.writeUtf(option.warning.take(MAX_NPC_CLASS_CHANGE_WARNING_LENGTH), MAX_NPC_CLASS_CHANGE_WARNING_LENGTH)
                 }
+                val quizChoices = value.quizChoices.take(MAX_NPC_QUIZ_CHOICES)
+                buffer.writeVarInt(quizChoices.size)
+                quizChoices.forEach { choice ->
+                    buffer.writeVarInt(choice.index.coerceIn(0, MAX_NPC_QUIZ_CHOICES - 1))
+                    buffer.writeUtf(choice.text.take(MAX_NPC_QUIZ_CHOICE_LENGTH), MAX_NPC_QUIZ_CHOICE_LENGTH)
+                }
             }
         }
     }
 }
 
 data class NpcClassChangeOption(val classId: String, val displayName: String, val warning: String = "")
+
+data class NpcQuizChoice(val index: Int, val text: String)
 
 data class NpcBalloonPayload(
     val npcEntityId: Int,

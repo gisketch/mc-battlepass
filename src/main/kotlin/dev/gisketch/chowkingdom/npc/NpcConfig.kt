@@ -14,6 +14,7 @@ import kotlin.io.path.nameWithoutExtension
 object NpcConfig {
     private var definitions: Map<String, NpcDefinition> = linkedMapOf()
     private var settings: NpcSettingsDefinition = NpcSettingsDefinition().normalized()
+    private var genericQuests: NpcQuestPoolsDefinition = NpcQuestPoolsDefinition.defaults()
 
     private val dir: Path
         get() = FMLPaths.CONFIGDIR.get().resolve(ChowKingdomMod.MOD_ID).resolve("npcs")
@@ -22,12 +23,14 @@ object NpcConfig {
         dir.createDirectories()
         writeDefaultIfMissing()
         settings = loadSettings()
+        genericQuests = loadGenericQuests()
         val friendshipDefaults = loadFriendshipDefaults()
         val loaded = linkedMapOf<String, NpcDefinition>()
         Files.list(dir).use { files ->
             files.filter { path -> path.extension.equals("toml", ignoreCase = true) }
                 .filter { path -> path.fileName.toString() != FRIENDSHIP_MESSAGES_FILE }
                 .filter { path -> path.fileName.toString() != NPC_SETTINGS_FILE }
+                .filter { path -> path.fileName.toString() != GENERIC_QUESTS_FILE }
                 .sorted(Comparator.comparing { path -> path.fileName.toString() })
                 .forEach { path ->
                     val fallbackId = path.nameWithoutExtension
@@ -37,6 +40,7 @@ object NpcConfig {
                         ChowKingdomMod.LOGGER.warn("Failed to load NPC definition {}", path, exception)
                         NpcDefinition(id = fallbackId)
                     }.normalized(fallbackId, friendshipDefaults)
+                    mergeQuestPools(definition)
                     loaded[definition.id] = definition
                 }
         }
@@ -89,6 +93,13 @@ object NpcConfig {
                 Files.move(temp, settingsFile, StandardCopyOption.REPLACE_EXISTING)
             }
         }
+        val genericQuestsFile = dir.resolve(GENERIC_QUESTS_FILE)
+        if (!genericQuestsFile.exists()) {
+            Files.createTempFile(dir, "generic_quests", ".toml.tmp").also { temp ->
+                TomlConfigIO.write(temp, NpcQuestPoolsDefinition.defaults())
+                Files.move(temp, genericQuestsFile, StandardCopyOption.REPLACE_EXISTING)
+            }
+        }
     }
 
     private fun loadSettings(): NpcSettingsDefinition {
@@ -99,6 +110,25 @@ object NpcConfig {
             ChowKingdomMod.LOGGER.warn("Failed to load NPC settings {}", file, exception)
             NpcSettingsDefinition()
         }.normalized()
+    }
+
+    private fun loadGenericQuests(): NpcQuestPoolsDefinition {
+        val file = dir.resolve(GENERIC_QUESTS_FILE)
+        return try {
+            TomlConfigIO.read(file, NpcQuestPoolsDefinition::class.java, { NpcQuestPoolsDefinition.defaults() })
+        } catch (exception: Exception) {
+            ChowKingdomMod.LOGGER.warn("Failed to load NPC generic quests {}", file, exception)
+            NpcQuestPoolsDefinition.defaults()
+        }.normalized()
+    }
+
+    private fun mergeQuestPools(definition: NpcDefinition) {
+        if (!definition.missions.enabled) return
+        val compiled = genericQuests.compile(definition.id, "generic") + definition.uniqueQuests.compile(definition.id, "unique")
+        if (compiled.isEmpty()) return
+        definition.missions.pool = (definition.missions.pool + compiled)
+            .distinctBy { mission -> mission.id }
+            .toMutableList()
     }
 
     private fun writeSettings(value: NpcSettingsDefinition) {
@@ -193,3 +223,4 @@ class NpcLlmPresetSwitchResult(val success: Boolean, val message: String, val se
 
 private const val FRIENDSHIP_MESSAGES_FILE = "friendship_messages.toml"
 private const val NPC_SETTINGS_FILE = "settings.toml"
+private const val GENERIC_QUESTS_FILE = "generic_quests.toml"

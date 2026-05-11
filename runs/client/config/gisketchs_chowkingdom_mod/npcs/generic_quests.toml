@@ -1,0 +1,90 @@
+# Chow Kingdom NPC generic quests.
+# Shared pools in this file are auto-added to every NPC with missions enabled.
+# NPC TOMLs can add [unique_quests] with the same fetch/kill/travel/craft/smelt/eat/quiz/food_chain_quest shape.
+
+enabled = true
+
+[fetch]
+pool = [
+  { item = "minecraft:apple", qty = 8, xp = 70, chowcoins = 25, weight = 10, quest_text = "Bring fresh apples for town supplies." },
+  { item = "minecraft:bread", qty = 6, xp = 70, chowcoins = 25, weight = 10, quest_text = "Bring bread for the shared pantry." },
+  { item = "minecraft:iron_ingot", qty = 6, xp = 90, chowcoins = 40, weight = 6, quest_text = "Bring iron for repairs around town." },
+  { item = "minecraft:ender_pearl", qty = 2, xp = 130, chowcoins = 75, weight = 2, quest_text = "Bring ender pearls for risky field work." },
+]
+
+[kill.easy_mobs]
+pool = [
+  { entity = "minecraft:zombie", qty = 20, dimension = "minecraft:overworld", xp = 100, chowcoins = 50, weight = 10, quest_text = "Thin out zombies before they wander into town." },
+  { entity = "minecraft:skeleton", qty = 20, dimension = "minecraft:overworld", xp = 100, chowcoins = 50, weight = 10, quest_text = "Break up skeleton patrols on the roads." },
+  { entity = "minecraft:spider", qty = 15, dimension = "minecraft:overworld", xp = 100, chowcoins = 50, weight = 8, quest_text = "Clear spiders from the paths before nightfall." },
+]
+
+[kill.rare_mobs]
+pool = [
+  { entity = "minecraft:blaze", qty = 5, dimension = "minecraft:the_nether", xp = 180, chowcoins = 100, weight = 3, quest_text = "Collect field proof from blazes in the Nether." },
+  { entity = "minecraft:cave_spider", qty = 5, xp = 150, chowcoins = 80, weight = 3, quest_text = "Clear cave spiders from old tunnels." },
+  { entity = "minecraft:wither_skeleton", qty = 3, dimension = "minecraft:the_nether", xp = 220, chowcoins = 150, weight = 1, quest_text = "Cut down wither skeletons before they gather strength." },
+]
+
+[travel]
+pool = [
+  { mode = "on_foot", qty = 1000, xp = 80, chowcoins = 25, weight = 10, quest_text = "Scout the roads on foot. No mounts, no flying." },
+  { mode = "pokemon_land", qty = 1500, xp = 90, chowcoins = 35, weight = 7, quest_text = "Ride a land Pokemon along the routes and check the roads." },
+  { mode = "pokemon_flying", qty = 2000, xp = 110, chowcoins = 50, weight = 5, quest_text = "Fly on a Pokemon and survey the town from above." },
+]
+
+[craft]
+pool = [
+  { item = "minecraft:torch", qty = 32, xp = 80, chowcoins = 25, weight = 8, quest_text = "Craft torches for safer routes." },
+  { item = "minecraft:chest", qty = 4, xp = 70, chowcoins = 25, weight = 6, quest_text = "Craft chests for storage work." },
+]
+
+[smelt]
+pool = [
+  { item = "minecraft:iron_ingot", qty = 8, xp = 90, chowcoins = 40, weight = 8, quest_text = "Smelt iron for town maintenance." },
+  { item = "minecraft:glass", qty = 16, xp = 80, chowcoins = 30, weight = 6, quest_text = "Smelt glass for repairs and displays." },
+]
+
+[eat]
+pool = [
+  { item = "minecraft:bread", qty = 3, xp = 60, chowcoins = 20, weight = 8, quest_text = "Eat proper food before more work stacks up." },
+  { item = "minecraft:cooked_beef", qty = 3, xp = 70, chowcoins = 25, weight = 6, quest_text = "Eat a solid meal before patrol." },
+]
+
+[quiz]
+pool = [
+  { quiz_topic = "town lore", xp = 80, chowcoins = 25, weight = 4, quest_text = "Answer a quick town lore question." },
+  { quiz_topic = "recent events", xp = 90, chowcoins = 35, weight = 4, quest_text = "Answer a question about what has been happening lately." },
+  { quiz_topic = "NPC personality and work", xp = 80, chowcoins = 25, weight = 3, quest_text = "Answer a question from the NPC's own point of view." },
+]
+
+[catch_pokemon]
+pool = [
+  { pokemon_type = "water", qty = 3, xp = 110, chowcoins = 50, weight = 6, quest_text = "Catch Water Pokemon for field support." },
+  { pokemon_type = "fire", qty = 3, xp = 110, chowcoins = 50, weight = 6, quest_text = "Catch Fire Pokemon for field notes." },
+  { category = "starter", qty = 1, xp = 140, chowcoins = 75, weight = 2, quest_text = "Catch a starter Pokemon for special records." },
+]
+
+[quality_food_fetch]
+pool = [
+  { quality_tier = "iron", qty = 4, xp = 100, chowcoins = 50, weight = 6, quest_text = "Bring iron quality food for town meals." },
+  { quality_tier = "gold", qty = 3, xp = 130, chowcoins = 75, weight = 4, quest_text = "Bring gold quality food for a special request." },
+  { quality_tier = "diamond", qty = 2, xp = 170, chowcoins = 110, weight = 2, quest_text = "Bring diamond quality food for an important meal." },
+]
+
+[quality_crop_fetch]
+pool = [
+  { quality_tier = "iron", qty = 6, xp = 100, chowcoins = 50, weight = 6, quest_text = "Bring iron quality crops for town stores." },
+  { quality_tier = "gold", qty = 4, xp = 130, chowcoins = 75, weight = 4, quest_text = "Bring gold quality crops for premium supplies." },
+  { quality_tier = "diamond", qty = 2, xp = 170, chowcoins = 110, weight = 2, quest_text = "Bring diamond quality crops for a rare order." },
+]
+
+[food_chain_quest]
+pool = [
+  { item = "farmersdelight:beef_stew", process = "cook", qty = 1, xp = 130, chowcoins = 70, weight = 5, quest_text = "Cook beef stew after accepting this order, then bring it back." },
+  { item = "farmersdelight:vegetable_soup", process = "cook", qty = 1, xp = 120, chowcoins = 60, weight = 6, quest_text = "Cook vegetable soup after accepting this order, then bring it back." },
+  { item = "farmersdelight:fried_rice", process = "cook", qty = 1, xp = 130, chowcoins = 70, weight = 5, quest_text = "Cook fried rice after accepting this order, then bring it back." },
+  { item = "farmersdelight:dumplings", process = "cook", qty = 2, xp = 120, chowcoins = 60, weight = 6, quest_text = "Cook dumplings after accepting this order, then bring them back." },
+  { item = "farmersdelight:mixed_salad", process = "craft", qty = 1, xp = 100, chowcoins = 45, weight = 5, quest_text = "Prepare a fresh mixed salad after accepting this order, then bring it back." },
+  { item = "farmersdelight:barbecue_stick", process = "craft", qty = 2, xp = 100, chowcoins = 45, weight = 5, quest_text = "Prepare barbecue sticks after accepting this order, then bring them back." },
+]
