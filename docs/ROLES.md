@@ -44,7 +44,11 @@ Class unlocks use two license pools: starter and upgrade. Stored player license 
 
 Default starter license unlock levels are `1, 100, 300, 500, 1000`. Default upgrade license unlock levels are `75, 150, 250, 350, 450, 550, 650, 800, 1000`.
 
-Adding a starter class spends starter capacity. Adding an upgrade class spends upgrade capacity and requires at least one configured starter prerequisite from `starter_class_ids` or the built-in fallback upgrade path. Admin `/ck roles set class` force-sets a class; `/ck roles add class` enforces licenses. NPC Training uses the same license rules and reports missing prerequisite/license conditions in the dialog reply. If an NPC can teach a class but the matching starter/upgrade license pool is full, Training can offer paid class change instead: 50,000 chowcoins for starter classes and 100,000 chowcoins for upgrade classes. The player selects one owned same-type class to replace. Starter changes remove upgrade classes that no longer have any valid starter prerequisite after the replacement.
+Adding a starter class spends starter capacity. Adding an upgrade class spends upgrade capacity and requires at least one configured starter prerequisite from `starter_class_ids` or the built-in fallback upgrade path. Admin `/ck roles set class` force-sets a class; `/ck roles add class` enforces licenses.
+
+NPC Training uses class mentor questlines instead of direct unlocks. Each class TOML can define `[mentor_quest]` with non-expiring per-player steps. The current local classes use Vow, Offering, Discipline, Signature Trial, Payment, and Mentor Duel. Payment for a new class unlock costs 25,000 chowcoins for a starter class and 50,000 chowcoins for an upgrade class. Paid class changes are separate and keep the higher replacement prices: 50,000 chowcoins for starter class changes and 100,000 chowcoins for upgrade class changes. The mentor duel uses the NPC bossfight system; victory unlocks the class and grants class starting items.
+
+Full authored mentor questlines are documented in [NPC Class Quests](NPC_CLASS_QUESTS.md).
 
 ## Current Defaults
 

@@ -10,8 +10,9 @@ import dev.gisketch.chowkingdom.ChowClockConfig
 import dev.gisketch.chowkingdom.ChowKingdomMod
 import dev.gisketch.chowkingdom.discord.DiscordRelay
 import dev.gisketch.chowkingdom.relicroulette.RelicRouletteFeature
-import dev.gisketch.chowkingdom.roles.ClassLicenseResult
 import dev.gisketch.chowkingdom.roles.ClassLicenses
+import dev.gisketch.chowkingdom.roles.ClassMentorQuestService
+import dev.gisketch.chowkingdom.roles.ClassMentorTrainingResult
 import dev.gisketch.chowkingdom.roles.JobLevels
 import dev.gisketch.chowkingdom.roles.PerformerPerks
 import dev.gisketch.chowkingdom.roles.RoleClassEquipmentRules
@@ -372,9 +373,9 @@ object NpcFeature {
             return
         }
 
-        when (ClassLicenses.canUnlock(player, role)) {
-            ClassLicenseResult.Allowed -> completeClassTraining(player, npc, definition, role, roleName, friendship.level)
-            is ClassLicenseResult.Denied -> failClassTraining(player, npc, definition, role, roleName, ClassLicenses.failedConditions(player, role), friendship.level, changeOffer = ClassLicenses.changeOffer(player, role))
+        when (val mentor = ClassMentorQuestService.handleTraining(player, npc, definition, role, friendship.level)) {
+            ClassMentorTrainingResult.Handled -> return
+            is ClassMentorTrainingResult.LicenseDenied -> failClassTraining(player, npc, definition, role, roleName, mentor.conditions, friendship.level, changeOffer = mentor.changeOffer)
         }
     }
 

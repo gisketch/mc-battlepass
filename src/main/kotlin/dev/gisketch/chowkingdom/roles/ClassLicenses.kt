@@ -4,6 +4,8 @@ import net.minecraft.network.chat.Component
 import net.minecraft.server.level.ServerPlayer
 
 object ClassLicenses {
+    const val STARTER_CLASS_UNLOCK_COST: Long = 25_000L
+    const val UPGRADE_CLASS_UNLOCK_COST: Long = 50_000L
     const val STARTER_CLASS_CHANGE_COST: Long = 50_000L
     const val UPGRADE_CLASS_CHANGE_COST: Long = 100_000L
 

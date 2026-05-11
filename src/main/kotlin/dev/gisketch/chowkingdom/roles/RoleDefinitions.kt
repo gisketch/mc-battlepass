@@ -13,7 +13,40 @@ data class RoleDefinition(
     var starterClassIds: MutableList<String> = mutableListOf(),
     @SerializedName(value = "upgrade_class_ids", alternate = ["upgradeClassIds"])
     var upgradeClassIds: MutableList<String> = mutableListOf(),
+    @SerializedName(value = "mentor_quest", alternate = ["mentorQuest"])
+    var mentorQuest: ClassMentorQuestDefinition = ClassMentorQuestDefinition(),
     var perks: MutableList<RolePerkDefinition> = mutableListOf(),
+)
+
+data class ClassMentorQuestDefinition(
+    @SerializedName(value = "mentor_npc_id", alternate = ["mentorNpcId"])
+    var mentorNpcId: String = "",
+    var title: String = "",
+    @SerializedName(value = "intro_message", alternate = ["introMessage"])
+    var introMessage: String = "",
+    @SerializedName(value = "unlock_title", alternate = ["unlockTitle"])
+    var unlockTitle: String = "",
+    var announcement: String = "",
+    var steps: MutableList<ClassMentorQuestStepDefinition> = mutableListOf(),
+)
+
+data class ClassMentorQuestStepDefinition(
+    var id: String = "",
+    var skeleton: String = "",
+    var kind: String = "",
+    var title: String = "",
+    var objective: String = "",
+    var event: String = "",
+    var item: String = "",
+    var qty: Int = 1,
+    var goal: Int = 1,
+    var filters: MutableMap<String, String> = mutableMapOf(),
+    @SerializedName(value = "llm_prompt", alternate = ["llmPrompt"])
+    var llmPrompt: String = "",
+    @SerializedName(value = "start_message", alternate = ["startMessage"])
+    var startMessage: String = "",
+    @SerializedName(value = "complete_message", alternate = ["completeMessage"])
+    var completeMessage: String = "",
 )
 
 data class RolesOnboardingDefinition(

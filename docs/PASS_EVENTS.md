@@ -6,6 +6,8 @@ Use this when curating pass JSON under `config/gisketchs_chowkingdom_mod/battlep
 
 Daily battlepass missions are removed. Battlepasses expose Weekly and CKDM missions only. Former daily-sized task ideas now belong in NPC quest `missions.pool` entries.
 
+Class mentor quests also reuse these event ids for their non-expiring Discipline and Signature Trial steps. They live in class TOML under `[mentor_quest]`, not in pass JSON or daily NPC quest pools.
+
 For quick in-game testing of event progress, use NPC quests or complete a random active progressive mission:
 
 ```text

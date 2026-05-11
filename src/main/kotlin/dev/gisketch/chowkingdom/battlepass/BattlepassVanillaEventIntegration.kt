@@ -1,6 +1,7 @@
 package dev.gisketch.chowkingdom.battlepass
 
 import dev.gisketch.chowkingdom.npc.NpcQuestService
+import dev.gisketch.chowkingdom.roles.ClassMentorQuestService
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.entity.monster.Monster
@@ -76,6 +77,7 @@ object BattlepassVanillaEventIntegration {
         val aliases = farmerFoodAliases(player, stack, attributes["process"].orEmpty())
         val signal = BattlepassMissionSignal(setOf("minecraft:item_crafted") + aliases, stack.count.coerceAtLeast(1), attributes)
         NpcQuestService.markFoodChainCreatedItem(player, stack, signal)
+        ClassMentorQuestService.markFoodChainCreatedItem(player, stack, signal)
         record(player, "minecraft:item_crafted", stack.count.coerceAtLeast(1), attributes, aliases)
     }
 
@@ -87,6 +89,7 @@ object BattlepassVanillaEventIntegration {
         val aliases = farmerFoodAliases(player, stack, "smelt")
         val signal = BattlepassMissionSignal(setOf("minecraft:item_smelted") + aliases, stack.count.coerceAtLeast(1), attributes)
         NpcQuestService.markFoodChainCreatedItem(player, stack, signal)
+        ClassMentorQuestService.markFoodChainCreatedItem(player, stack, signal)
         record(player, "minecraft:item_smelted", stack.count.coerceAtLeast(1), attributes, aliases)
     }
 

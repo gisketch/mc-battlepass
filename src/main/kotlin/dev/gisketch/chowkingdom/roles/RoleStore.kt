@@ -147,6 +147,8 @@ object RoleStore {
         record.unlockedJobs.clear()
         record.unlockedClasses.clear()
         record.grantedStartingItems.clear()
+        record.classMentorQuests.clear()
+        record.completedClassMentorQuests.clear()
         record.height = DEFAULT_BODY_SCALE
         record.weight = DEFAULT_BODY_SCALE
         save()
@@ -219,6 +221,35 @@ object RoleStore {
         return changed
     }
 
+    fun classMentorQuest(player: ServerPlayer, classId: String): PlayerClassMentorQuestState? =
+        role(player).classMentorQuests[classId.trim()]
+
+    fun putClassMentorQuest(player: ServerPlayer, state: PlayerClassMentorQuestState) {
+        val record = ensureRecord(player)
+        val classId = state.classId.trim()
+        if (classId.isBlank()) return
+        record.classMentorQuests[classId] = state
+        save()
+    }
+
+    fun saveClassMentorQuest(player: ServerPlayer, state: PlayerClassMentorQuestState) {
+        putClassMentorQuest(player, state)
+    }
+
+    fun saveClassMentorQuests(player: ServerPlayer) {
+        ensureRecord(player)
+        save()
+    }
+
+    fun completeClassMentorQuest(player: ServerPlayer, classId: String) {
+        val record = ensureRecord(player)
+        val id = classId.trim()
+        if (id.isBlank()) return
+        record.classMentorQuests.remove(id)
+        record.completedClassMentorQuests.add(id)
+        save()
+    }
+
     private fun save() {
         TomlConfigIO.write(file, StoredRoleData(players))
     }
@@ -236,6 +267,18 @@ class PlayerRoleRecord(
     var unlockedJobs: MutableSet<String> = linkedSetOf(),
     var unlockedClasses: MutableSet<String> = linkedSetOf(),
     var grantedStartingItems: MutableSet<String> = linkedSetOf(),
+    var classMentorQuests: MutableMap<String, PlayerClassMentorQuestState> = linkedMapOf(),
+    var completedClassMentorQuests: MutableSet<String> = linkedSetOf(),
+)
+
+class PlayerClassMentorQuestState(
+    var classId: String = "",
+    var npcId: String = "",
+    var stepIndex: Int = 0,
+    var progress: Int = 0,
+    var startedAtTick: Long = 0L,
+    var stepStartedAtTick: Long = 0L,
+    var paid: Boolean = false,
 )
 
 data class BodyScaleChoice(val height: Double = DEFAULT_BODY_SCALE, val weight: Double = DEFAULT_BODY_SCALE)

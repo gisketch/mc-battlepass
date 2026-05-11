@@ -8,6 +8,7 @@ import dev.gisketch.chowkingdom.discord.DiscordRelay
 import dev.gisketch.chowkingdom.npc.NpcQuestService
 import dev.gisketch.chowkingdom.npc.NpcStore
 import dev.gisketch.chowkingdom.relicroulette.RelicRouletteFeature
+import dev.gisketch.chowkingdom.roles.ClassMentorQuestService
 import dev.gisketch.chowkingdom.snackbar.SnackbarIcons
 import dev.gisketch.chowkingdom.snackbar.SnackbarNetwork
 import dev.gisketch.chowkingdom.snackbar.SnackbarNotification
@@ -228,6 +229,7 @@ object BattlepassMissionProgressStore {
         }
 
         if (NpcQuestService.recordSignal(player, signal)) changed = true
+        if (ClassMentorQuestService.recordSignal(player, signal)) changed = true
         if (changed) save()
         return changed
     }

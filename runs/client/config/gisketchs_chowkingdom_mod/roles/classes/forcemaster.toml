@@ -8,6 +8,21 @@ description = "Upgrade martial fighter trained with knuckles, quarterstaffs, bac
 classification = "upgrade"
 starter_class_ids = ["rogue"]
 upgrade_class_ids = []
+[mentor_quest]
+mentor_npc_id = "vi"
+title = "Gauntlet Pressure Course"
+intro_message = "Vi teaches force through footwork, timing, and controlled impact."
+unlock_title = "Pressureline Breaker"
+announcement = "{player} completed Vis pressure course and unlocked Forcemaster as {title}."
+steps = [
+  { id = "forcemaster_vow", skeleton = "vow", kind = "dialogue", title = "Vow", objective = "Vow to hit hard only after you know exactly what your punch will break.", goal = 1, start_message = "Vow to hit hard only after you know exactly what your punch will break.", complete_message = "", llm_prompt = "Vi should sound blunt, street-smart, and protective." },
+  { id = "forcemaster_offering", skeleton = "offering", kind = "fetch", title = "Redstone For The Gauntlets", objective = "Bring 16 redstone dust.", item = "minecraft:redstone", qty = 16, goal = 16, start_message = "Bring <b>16 redstone dust</b>. Power needs wiring before fists.", complete_message = "Good. Now the gauntlets can wake up.", llm_prompt = "Tie redstone to gauntlet pressure and controlled force." },
+  { id = "forcemaster_discipline", skeleton = "discipline", kind = "task", title = "Footwork Pressure", objective = "Travel 1500 blocks.", event = "minecraft:blocks_traveled", goal = 1500, start_message = "Move <b>1500 blocks</b>. Heavy hits start with feet.", complete_message = "Your feet stopped lying. Good start.", llm_prompt = "Make movement the foundation for impact." },
+  { id = "forcemaster_signature_trial", skeleton = "signature_trial", kind = "task", title = "Clean Knockdown", objective = "Defeat 12 monsters.", event = "minecraft:monster_killed", goal = 12, start_message = "Drop <b>12 monsters</b>. Clean hits, no flailing.", complete_message = "Those hits had shape. That is force.", llm_prompt = "Make the trial about clean controlled impact." },
+  { id = "forcemaster_license", skeleton = "payment", kind = "payment", title = "License Seal", objective = "Pay the mentor license fee for forcemaster.", goal = 1, start_message = "The license seal is next. A new {classification} {class} unlock costs {cost} chowcoins.", complete_message = "The license is sealed. Only the mentor duel remains for {class}.", llm_prompt = "Treat payment as a formal license seal, not a bribe. Explain that class changes still use their separate higher fee." },
+  { id = "forcemaster_duel", skeleton = "mentor_duel", kind = "duel", title = "Mentor Duel", objective = "Win a non-lethal 1v1 mentor duel.", goal = 1, start_message = "Draw breath. The {class} mentor duel starts now.", complete_message = "The duel is won. {class} is yours.", llm_prompt = "Make this a sharp pre-duel line. The NPC must sound ready to test the player, not hostile." },
+]
+
 perks = [
   { type = "starting_items", multiplier = 1.0, weapon_tags = [], armor_tags = [], weapon_patterns = [], armor_patterns = [], wrong_weapon_damage_multiplier = 1.0, wrong_weapon_cooldown_ticks = 0, wrong_weapon_attack_speed_multiplier = 1.0, wrong_armor_disables_sprint = false, starting_items = ["minecraft:book", "forcemaster_rpg:wooden_knuckle", "minecraft:bread*8"], reward_pool = [] },
   { type = "equipment_affinity", multiplier = 1.0, weapon_tags = [], armor_tags = [], weapon_patterns = ["forcemaster_rpg:*knuckle", "forcemaster_rpg:spell_book/forcemaster", "simplymore:*quarterstaff", "simplymore:*backhand_blade", "cataclysm:*claw", "cataclysm:gauntlet_of_maelstrom", "artifacts:feral_claws", "cataclysm:tidal_claws", "forcemaster_rpg:unique_knuckle_0", "forcemaster_rpg:unique_knuckle_1", "simplymore:boas_fang", "simplymore:diamond_deer_horns", "simplymore:gold_deer_horns", "simplymore:iron_deer_horns", "simplymore:mimicry_deer_horns", "simplymore:netherite_deer_horns", "simplymore:runic_deer_horns", "simplymore:ruyi_jingu_bang", "simplymore:vipers_call"], weapon_exclude_patterns = ["*spawn_egg"], armor_patterns = ["minecraft:leather_*", "minecraft:chainmail_*", "forcemaster_rpg:*forcemaster*", "forcemaster_rpg:*monk*"], armor_exclude_patterns = [], wrong_weapon_damage_multiplier = 0.50, wrong_weapon_cooldown_ticks = 8, wrong_weapon_attack_speed_multiplier = 0.65, wrong_armor_disables_sprint = true, starting_items = [], reward_pool = [] },

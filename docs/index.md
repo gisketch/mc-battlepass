@@ -26,6 +26,7 @@
 - [NPC Conversations](NPC_CONVERSATIONS.md)
 - [Revive](REVIVE.md)
 - [Jobs And Classes](ROLES.md)
+- [NPC Class Quests](NPC_CLASS_QUESTS.md)
 - [Jobs And Classes Creation Guide](ROLE_CONFIGURATION_GUIDE.md)
 - [Role Creation Guide](ROLE_CREATION_GUIDE.md)
 - [Compatibility](COMPATIBILITY.md)

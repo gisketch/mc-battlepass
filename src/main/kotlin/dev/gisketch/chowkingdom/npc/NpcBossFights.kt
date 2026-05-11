@@ -4,6 +4,7 @@ import dev.gisketch.chowkingdom.snackbar.SnackbarNetwork
 import dev.gisketch.chowkingdom.snackbar.SnackbarNotification
 import dev.gisketch.chowkingdom.snackbar.SnackbarSounds
 import dev.gisketch.chowkingdom.snackbar.SnackbarType
+import dev.gisketch.chowkingdom.roles.ClassMentorQuestService
 import net.minecraft.commands.arguments.EntityAnchorArgument
 import net.minecraft.core.particles.ParticleTypes
 import net.minecraft.network.chat.Component
@@ -444,6 +445,7 @@ object NpcBossFights {
         showBossBalloon(entity, target, fight, fight.balloons.defeat, "defeat")
         finish(entity, fight, protectResultDialog = true)
         val definition = NpcConfig.get(fight.npcId) ?: return
+        if (ClassMentorQuestService.onMentorDuelWon(target, entity, definition)) return
         SnackbarNetwork.send(target, SnackbarNotification.npc(definition.id, "BOSS DEFEATED", definition.displayName(), SnackbarType.SUCCESS, SnackbarSounds.REWARD))
         openDefeatDialog(target, entity, definition)
     }
