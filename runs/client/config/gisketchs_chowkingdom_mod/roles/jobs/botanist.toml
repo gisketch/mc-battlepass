@@ -7,7 +7,8 @@ display_name = "Botanist"
 # Config value: icon.
 icon = "textures/gui/jobs/botanist.png"
 # Config value: description.
-description = "Reads leaf, vine, and bloom signs to work with Grass Pokemon."
+description = "Works soil, seasons, and living routes to find Grass Pokemon and improve harvests. Best for players who like farming, gentle utility, and steady growth."
+preview_items = ["minecraft:wheat_seeds", "minecraft:grass_block"]
 # Config value: perks.
 perks = [
   { type = "cobblemon_catch_rate", pokemon_type = "grass" },

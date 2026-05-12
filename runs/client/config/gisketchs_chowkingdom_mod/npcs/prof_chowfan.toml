@@ -14,6 +14,8 @@ body_type = "normal"
 height = 0.98
 # Config value: weight.
 weight = 1.12
+# Config value: main_pokemon.
+main_pokemon = "cobblemon:eevee"
 # Config value: job.
 job = "professor"
 # Config value: hurt_messages.

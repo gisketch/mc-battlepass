@@ -14,6 +14,8 @@ body_type = "normal"
 height = 1.1
 # Config value: weight.
 weight = 1.18
+# Config value: main_pokemon.
+main_pokemon = "cobblemon:growlithe"
 # Config value: job.
 job = "adventurer"
 # Config value: class.
@@ -266,7 +268,7 @@ enabled = true
 offer_radius = 7.0
 offer_balloon_messages = ["@quest_log.png That smells like a quest, {player}.", "@quest_log.png I need a hero for this one."]
 pool = [
-  { id = "finn_hunt_mobs", category = "task", event = "minecraft:monster_killed", event_desc = "Defeat {goal} Monsters", quest_text = "Thin out monsters near town.", pass_id = "combat", xp = 100, chowcoins = 50, goal = 10, complete_messages = ["@quest_log.png Mathematical! Monsters handled, {player}!", "@quest_log.png Woah, mission complete. Hero work!"] },
+  { id = "finn_hunt_mobs", category = "timed", event = "minecraft:monster_killed", event_desc = "Defeat {goal} Monsters In {seconds}s", quest_text = "Thin out monsters near town.", pass_id = "combat", xp = 100, chowcoins = 50, goal = 3, time_window_seconds = 20, complete_messages = ["@quest_log.png Mathematical! Monsters handled, {player}!", "@quest_log.png Woah, mission complete. Hero work!"] },
   { id = "finn_travel_blocks", category = "task", event = "minecraft:blocks_traveled", event_desc = "Travel {goal} Blocks", quest_text = "Scout the roads around the kingdom.", pass_id = "cozy", xp = 80, chowcoins = 25, goal = 1000, complete_messages = ["@quest_log.png Nice scouting, {player}. Map vibes secured!", "@quest_log.png Mission complete! The roads feel safer already."] },
   { id = "finn_fetch_beef", category = "fetch", event_desc = "Bring {goal} Cooked Beef", quest_text = "Bring cooked beef for the next patrol.", pass_id = "cozy", xp = 80, chowcoins = 25, fetch_item = "minecraft:cooked_beef", fetch_count = 4, complete_messages = ["@quest_log.png Supplies acquired. Adventure stomach saved!", "@quest_log.png Woah, perfect patrol food. Mission complete!"] },
 ]

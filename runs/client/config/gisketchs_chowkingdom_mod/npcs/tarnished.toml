@@ -5,6 +5,7 @@ skin = "gisketchs_chowkingdom_mod:npc/tarnished"
 body_type = "normal"
 height = 1.1
 weight = 1.08
+main_pokemon = "cobblemon:corviknight"
 job = "adventurer"
 class = "paladin"
 hurt_messages = ["Thy blow lands. Let it not become habit.", "Careful, {player}. Even grace has limits.", "Wouldst thou test steel, name it training."]
@@ -153,7 +154,7 @@ enabled = true
 offer_radius = 7.0
 offer_balloon_messages = ["@quest_log.png A trial awaits, {player}.", "@quest_log.png Grace points toward danger."]
 pool = [
-  { id = "tarnished_hunt_mobs", category = "task", event = "minecraft:monster_killed", event_desc = "Defeat {goal} Monsters", quest_text = "Drive back monsters that threaten the innocent.", pass_id = "combat", xp = 100, chowcoins = 50, goal = 10, complete_messages = ["@quest_log.png Well fought. The innocent breathe easier.", "@quest_log.png The dark recedes, if only for a time."] },
+  { id = "tarnished_hunt_mobs", category = "timed", event = "minecraft:monster_killed", event_desc = "Defeat {goal} Monsters In {seconds}s", quest_text = "Drive back monsters that threaten the innocent.", pass_id = "combat", xp = 100, chowcoins = 50, goal = 3, time_window_seconds = 20, complete_messages = ["@quest_log.png Well fought. The innocent breathe easier.", "@quest_log.png The dark recedes, if only for a time."] },
   { id = "tarnished_travel_blocks", category = "task", event = "minecraft:blocks_traveled", event_desc = "Travel {goal} Blocks", quest_text = "Walk the pilgrim road and mark safe passage.", pass_id = "cozy", xp = 80, chowcoins = 25, goal = 1000, complete_messages = ["@quest_log.png The road is known. Thy steps had purpose.", "@quest_log.png Good. Safe passage begins with one pilgrim's path."] },
   { id = "tarnished_fetch_gold", category = "fetch", event_desc = "Bring {goal} Gold Ingots", quest_text = "Bring gold for sacred repairs and warding marks.", pass_id = "cozy", xp = 80, chowcoins = 25, fetch_item = "minecraft:gold_ingot", fetch_count = 4, complete_messages = ["@quest_log.png The offering is enough. The wards shall hold.", "@quest_log.png Gold received. Grace willing, it will protect this place."] },
 ]

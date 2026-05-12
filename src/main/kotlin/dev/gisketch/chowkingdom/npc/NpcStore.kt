@@ -553,6 +553,8 @@ class NpcAcceptedQuestState(
     var chowcoins: Long = 0L,
     var goal: Int = 1,
     var progress: Int = 0,
+    var timeWindowSeconds: Int = 0,
+    var timedEventTicks: MutableList<Long> = mutableListOf(),
     var fetchItem: String = "",
     var fetchCount: Int = 0,
     var filters: MutableMap<String, String> = mutableMapOf(),

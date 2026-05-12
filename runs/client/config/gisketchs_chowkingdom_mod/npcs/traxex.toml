@@ -5,6 +5,7 @@ skin = "gisketchs_chowkingdom_mod:npc/traxex"
 body_type = "slim"
 height = 1.08
 weight = 0.84
+main_pokemon = "cobblemon:glaceon"
 job = "adventurer"
 class = "tundra_archer"
 hurt_messages = ["Careful. The next arrow answers.", "Do not test my aim, {player}.", "Cold hands. Steady bow. Last warning."]
@@ -154,7 +155,7 @@ enabled = true
 offer_radius = 7.0
 offer_balloon_messages = ["@quest_log.png A trail needs cutting, {player}.", "@quest_log.png Quiet work. Come here."]
 pool = [
-  { id = "traxex_hunt_mobs", category = "task", event = "minecraft:monster_killed", event_desc = "Defeat {goal} Monsters", quest_text = "Cull threats before they reach town.", pass_id = "combat", xp = 100, chowcoins = 50, goal = 10, complete_messages = ["@quest_log.png Good. Fewer footsteps in the dark.", "@quest_log.png Clean hunt. The town breathes easier."] },
+  { id = "traxex_hunt_mobs", category = "timed", event = "minecraft:monster_killed", event_desc = "Defeat {goal} Monsters In {seconds}s", quest_text = "Cull threats before they reach town.", pass_id = "combat", xp = 100, chowcoins = 50, goal = 3, time_window_seconds = 20, complete_messages = ["@quest_log.png Good. Fewer footsteps in the dark.", "@quest_log.png Clean hunt. The town breathes easier."] },
   { id = "traxex_travel_blocks", category = "task", event = "minecraft:blocks_traveled", event_desc = "Travel {goal} Blocks", quest_text = "Scout the cold paths and ridge lines.", pass_id = "cozy", xp = 80, chowcoins = 25, goal = 1000, complete_messages = ["@quest_log.png The route is mapped.", "@quest_log.png Good scouting. Your tracks were almost quiet."] },
   { id = "traxex_fetch_arrows", category = "fetch", event_desc = "Bring {goal} Arrows", quest_text = "Bring arrows for tundra drills.", pass_id = "cozy", xp = 80, chowcoins = 25, fetch_item = "minecraft:arrow", fetch_count = 16, complete_messages = ["@quest_log.png Enough for practice. Maybe enough for survival.", "@quest_log.png Good. Now learn not to need so many."] },
 ]

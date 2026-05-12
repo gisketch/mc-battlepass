@@ -7,7 +7,8 @@ display_name = "Field Researcher"
 # Config value: icon.
 icon = "textures/gui/jobs/field_researcher.png"
 # Config value: description.
-description = "Studies everyday habitats and migration trails for Normal Pokemon."
+description = "Studies everyday habitats, migrations, and field notes for Normal Pokemon. Best for players who want scanning, survey rewards, and broad exploration value."
+preview_items = ["minecraft:spyglass", "minecraft:paper"]
 # Config value: perks.
 perks = [
   { type = "cobblemon_catch_rate", pokemon_type = "normal", multiplier = 1.05, bonus_percent_by_level = [0.05, 0.10, 0.18, 0.28, 0.40], weapon_tags = [], armor_tags = [], weapon_patterns = [], armor_patterns = [], wrong_weapon_damage_multiplier = 1.0, wrong_weapon_cooldown_ticks = 0, wrong_weapon_attack_speed_multiplier = 1.0, wrong_armor_disables_sprint = false, starting_items = [], reward_pool = [] },

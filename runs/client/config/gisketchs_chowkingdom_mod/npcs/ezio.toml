@@ -5,6 +5,7 @@ skin = "gisketchs_chowkingdom_mod:npc/ezio"
 body_type = "normal"
 height = 1.06
 weight = 0.96
+main_pokemon = "cobblemon:talonflame"
 job = "adventurer"
 class = "rogue"
 hurt_messages = ["Careful, amico. My patience has limits.", "That was not a wise strike, {player}.", "If this is training, announce it first."]
@@ -153,7 +154,7 @@ enabled = true
 offer_radius = 7.0
 offer_balloon_messages = ["@quest_log.png A quiet task needs steady hands, {player}.", "@quest_log.png I have work for someone discreet."]
 pool = [
-  { id = "ezio_hunt_undead", category = "task", event = "minecraft:monster_killed", event_desc = "Defeat {goal} Monsters", quest_text = "Clear threats from the roads without endangering the town.", pass_id = "combat", xp = 100, chowcoins = 50, goal = 10, complete_messages = ["@quest_log.png Good. The roads breathe easier.", "@quest_log.png Clean work, {player}. The town will sleep better."] },
+  { id = "ezio_hunt_undead", category = "timed", event = "minecraft:monster_killed", event_desc = "Defeat {goal} Monsters In {seconds}s", quest_text = "Clear threats from the roads without endangering the town.", pass_id = "combat", xp = 100, chowcoins = 50, goal = 3, time_window_seconds = 20, complete_messages = ["@quest_log.png Good. The roads breathe easier.", "@quest_log.png Clean work, {player}. The town will sleep better."] },
   { id = "ezio_travel_rooftops", category = "task", event = "minecraft:blocks_traveled", event_desc = "Travel {goal} Blocks", quest_text = "Scout the alleys, roofs, and paths around the kingdom.", pass_id = "cozy", xp = 80, chowcoins = 25, goal = 1000, complete_messages = ["@quest_log.png Your map grows honest.", "@quest_log.png Good scouting. Knowledge is the first blade."] },
   { id = "ezio_fetch_arrows", category = "fetch", event_desc = "Bring {goal} Arrows", quest_text = "Bring arrows for Brotherhood training drills.", pass_id = "cozy", xp = 80, chowcoins = 25, fetch_item = "minecraft:arrow", fetch_count = 12, complete_messages = ["@quest_log.png Good. Training can continue.", "@quest_log.png These will teach patience before aim."] },
 ]

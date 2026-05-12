@@ -5,6 +5,7 @@ skin = "gisketchs_chowkingdom_mod:npc/gandalf"
 body_type = "normal"
 height = 1.14
 weight = 0.98
+main_pokemon = "cobblemon:alakazam"
 job = "adventurer"
 class = "wizard"
 hurt_messages = ["Do not take me for some conjurer of cheap tricks.", "Careful, {player}. I am not an enemy.", "A foolish blow. See that it remains the last."]
@@ -154,7 +155,7 @@ enabled = true
 offer_radius = 7.0
 offer_balloon_messages = ["@quest_log.png A task waits, {player}.", "@quest_log.png Come. We must not ignore this."]
 pool = [
-  { id = "gandalf_hunt_mobs", category = "task", event = "minecraft:monster_killed", event_desc = "Defeat {goal} Monsters", quest_text = "Drive back creatures of the dark before they threaten the town.", pass_id = "combat", xp = 100, chowcoins = 50, goal = 10, complete_messages = ["@quest_log.png Well done. Darkness has been checked for now.", "@quest_log.png Courage served the town today."] },
+  { id = "gandalf_hunt_mobs", category = "timed", event = "minecraft:monster_killed", event_desc = "Defeat {goal} Monsters In {seconds}s", quest_text = "Drive back creatures of the dark before they threaten the town.", pass_id = "combat", xp = 100, chowcoins = 50, goal = 3, time_window_seconds = 20, complete_messages = ["@quest_log.png Well done. Darkness has been checked for now.", "@quest_log.png Courage served the town today."] },
   { id = "gandalf_travel_blocks", category = "task", event = "minecraft:blocks_traveled", event_desc = "Travel {goal} Blocks", quest_text = "Scout the roads and listen for signs of trouble.", pass_id = "cozy", xp = 80, chowcoins = 25, goal = 1000, complete_messages = ["@quest_log.png The road is better known. That is no small thing.", "@quest_log.png Good. Knowledge is a lantern in dark country."] },
   { id = "gandalf_fetch_books", category = "fetch", event_desc = "Bring {goal} Books", quest_text = "Bring books for study and counsel.", pass_id = "cozy", xp = 80, chowcoins = 25, fetch_item = "minecraft:book", fetch_count = 4, complete_messages = ["@quest_log.png Books are never a poor harvest.", "@quest_log.png Excellent. Wisdom often begins on humble pages."] },
 ]

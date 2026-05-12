@@ -121,12 +121,20 @@ object NpcQuestService {
         val state = questState(player)
         var changed = false
         state.active.values.forEach { quest ->
-            if ((quest.category != "task" && quest.category != "food_chain") || quest.progress >= quest.goal) return@forEach
+            if ((quest.category != "task" && quest.category != "food_chain" && quest.category != "timed") || quest.progress >= quest.goal) return@forEach
             val event = BattlepassXpEventDefinition().apply {
                 this.event = quest.event
                 this.filters.putAll(quest.filters)
             }
             if (!BattlepassMissionEventBank.matches(signal, event)) return@forEach
+            if (quest.category == "timed") {
+                val progress = recordTimedEvent(player, quest, signal.amount)
+                changed = true
+                if (progress >= quest.goal) {
+                    SnackbarNetwork.send(player, SnackbarNotification.item("minecraft:paper", "NPC QUEST READY", "Return to ${quest.npcName}: ${quest.description}", SnackbarType.SUCCESS, SnackbarSounds.REWARD))
+                }
+                return@forEach
+            }
             quest.progress = (quest.progress + signal.amount).coerceAtMost(quest.goal)
             changed = true
             if (quest.progress >= quest.goal) {
@@ -242,6 +250,7 @@ object NpcQuestService {
         passId: String = "cozy",
         fetchItem: String = "",
         filters: Map<String, String> = emptyMap(),
+        timeWindowSeconds: Int = 0,
     ): NpcAcceptedQuestState {
         val acceptedAtTick = player.level().dayTime
         return NpcAcceptedQuestState(
@@ -256,6 +265,7 @@ object NpcQuestService {
             chowcoins = 0L,
             goal = goal,
             progress = 0,
+            timeWindowSeconds = if (category == "timed") timeWindowSeconds.coerceIn(1, 3600) else 0,
             fetchItem = fetchItem,
             fetchCount = if (category == "fetch" || category == "food_chain") goal else 0,
             filters = filters.toMutableMap(),
@@ -325,6 +335,7 @@ object NpcQuestService {
             xp = offer.xp,
             chowcoins = offer.chowcoins,
             goal = goal,
+            timeWindowSeconds = if (offer.category == "timed") offer.timeWindowSeconds.coerceIn(1, 3600) else 0,
             fetchItem = offer.fetchItem,
             fetchCount = offer.fetchCount,
             filters = offer.filters.toMutableMap(),
@@ -538,6 +549,7 @@ object NpcQuestService {
     private fun readyForClaim(player: ServerPlayer, active: NpcAcceptedQuestState): Boolean = when (active.category) {
         "fetch" -> countRequiredItems(player, active) >= active.fetchCount
         "food_chain" -> active.progress >= active.goal && countRequiredItems(player, active) >= active.fetchCount
+        "timed" -> refreshTimedProgress(player, active) >= active.goal
         else -> active.progress >= active.goal
     }
 
@@ -560,6 +572,7 @@ object NpcQuestService {
     private fun missionText(offer: NpcMissionDefinition, goal: Int): String = offer.eventDesc.ifBlank { offer.questText.ifBlank { offer.id } }
         .replace("{goal}", goal.toString())
         .replace("{progress}", "0")
+        .replace("{seconds}", offer.timeWindowSeconds.toString())
 
     private fun offerGoal(offer: NpcMissionDefinition): Int =
         if (offer.category == "fetch" || offer.category == "food_chain") offer.fetchCount else offer.goal
@@ -570,6 +583,7 @@ object NpcQuestService {
         .replace("{quest_text}", offer.questText.ifBlank { missionText(offer, offerGoal(offer)) })
         .replace("{goal}", offerGoal(offer).toString())
         .replace("{progress}", progress.toString())
+        .replace("{seconds}", offer.timeWindowSeconds.toString())
         .replace("{pass}", offer.passId)
         .replace("{xp}", offer.xp.toString())
         .replace("{chowcoins}", offer.chowcoins.toString())
@@ -580,6 +594,7 @@ object NpcQuestService {
         .replace("{quest_text}", "<mission>${offer.questText.ifBlank { missionText(offer, offerGoal(offer)) }}</mission>")
         .replace("{goal}", offerGoal(offer).toString())
         .replace("{progress}", "0")
+        .replace("{seconds}", offer.timeWindowSeconds.toString())
         .replace("{pass}", offer.passId)
         .replace("{xp}", "<xp>${offer.xp} xp</xp>")
         .replace("{chowcoins}", if (offer.chowcoins > 0L) "<coin>${offer.chowcoins}</coin>" else "<coin>0</coin>")
@@ -653,11 +668,34 @@ object NpcQuestService {
         ?.let { id -> BuiltInRegistries.ITEM.getOptional(id).orElse(Items.AIR) }
         ?: Items.AIR
 
+    private fun recordTimedEvent(player: ServerPlayer, quest: NpcAcceptedQuestState, amount: Int): Int {
+        val now = player.level().gameTime
+        repeat(amount.coerceAtLeast(1).coerceAtMost(1000)) {
+            quest.timedEventTicks.add(now)
+        }
+        val progress = refreshTimedProgress(player, quest)
+        if (progress >= quest.goal) {
+            quest.progress = quest.goal
+            quest.timedEventTicks.clear()
+        }
+        return quest.progress
+    }
+
+    private fun refreshTimedProgress(player: ServerPlayer, quest: NpcAcceptedQuestState): Int {
+        if (quest.progress >= quest.goal) return quest.goal
+        val windowTicks = quest.timeWindowSeconds.coerceAtLeast(1) * 20L
+        val cutoff = player.level().gameTime - windowTicks
+        quest.timedEventTicks.removeAll { tick -> tick < cutoff }
+        quest.progress = quest.timedEventTicks.size.coerceAtMost(quest.goal)
+        return quest.progress
+    }
+
     private fun foodChainKey(player: ServerPlayer, quest: NpcAcceptedQuestState): String =
         "${player.stringUUID}|${quest.npcId}|${quest.questId}|${quest.acceptedAtTick}"
 
     private fun displayProgress(player: ServerPlayer, quest: NpcAcceptedQuestState): Int = when (quest.category) {
         "fetch" -> countRequiredItems(player, quest).coerceAtMost(quest.goal)
+        "timed" -> refreshTimedProgress(player, quest)
         else -> quest.progress
     }
 }

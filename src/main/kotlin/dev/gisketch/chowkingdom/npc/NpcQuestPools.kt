@@ -7,6 +7,7 @@ class NpcQuestPoolsDefinition(
     var enabled: Boolean = true,
     var fetch: NpcQuestTemplatePoolDefinition = NpcQuestTemplatePoolDefinition(),
     var kill: NpcKillQuestPoolsDefinition = NpcKillQuestPoolsDefinition(),
+    var timed: NpcKillQuestPoolsDefinition = NpcKillQuestPoolsDefinition(),
     var travel: NpcQuestTemplatePoolDefinition = NpcQuestTemplatePoolDefinition(),
     var craft: NpcQuestTemplatePoolDefinition = NpcQuestTemplatePoolDefinition(),
     var smelt: NpcQuestTemplatePoolDefinition = NpcQuestTemplatePoolDefinition(),
@@ -20,6 +21,7 @@ class NpcQuestPoolsDefinition(
     fun normalized(): NpcQuestPoolsDefinition = apply {
         fetch = fetch.normalized()
         kill = kill.normalized()
+        timed = timed.normalized()
         travel = travel.normalized()
         craft = craft.normalized()
         smelt = smelt.normalized()
@@ -36,6 +38,7 @@ class NpcQuestPoolsDefinition(
         val missions = mutableListOf<NpcMissionDefinition>()
         fetch.pool.forEachIndexed { index, entry -> entry.fetchMission(npcId, scope, index)?.let(missions::add) }
         kill.allEntries().forEachIndexed { index, entry -> entry.killMission(npcId, scope, index)?.let(missions::add) }
+        timed.allEntries().forEachIndexed { index, entry -> entry.timedKillMission(npcId, scope, index)?.let(missions::add) }
         travel.pool.forEachIndexed { index, entry -> entry.travelMission(npcId, scope, index)?.let(missions::add) }
         craft.pool.forEachIndexed { index, entry -> entry.itemTaskMission(npcId, scope, "craft", "minecraft:item_crafted", index)?.let(missions::add) }
         smelt.pool.forEachIndexed { index, entry -> entry.itemTaskMission(npcId, scope, "smelt", "minecraft:item_smelted", index)?.let(missions::add) }
@@ -58,19 +61,19 @@ class NpcQuestPoolsDefinition(
                     NpcQuestTemplateEntryDefinition(item = "minecraft:ender_pearl", qty = 2, xp = 130, chowcoins = 75, weight = 2, questText = "Bring ender pearls for risky field work."),
                 ),
             ),
-            kill = NpcKillQuestPoolsDefinition(
+            timed = NpcKillQuestPoolsDefinition(
                 easyMobs = NpcQuestTemplatePoolDefinition(
                     pool = mutableListOf(
-                        NpcQuestTemplateEntryDefinition(entity = "minecraft:zombie", qty = 20, dimension = "minecraft:overworld", xp = 100, chowcoins = 50, weight = 10, questText = "Thin out zombies before they wander into town."),
-                        NpcQuestTemplateEntryDefinition(entity = "minecraft:skeleton", qty = 20, dimension = "minecraft:overworld", xp = 100, chowcoins = 50, weight = 10, questText = "Break up skeleton patrols on the roads."),
-                        NpcQuestTemplateEntryDefinition(entity = "minecraft:spider", qty = 15, dimension = "minecraft:overworld", xp = 100, chowcoins = 50, weight = 8, questText = "Clear spiders from the paths before nightfall."),
+                        NpcQuestTemplateEntryDefinition(entity = "minecraft:zombie", qty = 4, timeWindowSeconds = 25, dimension = "minecraft:overworld", xp = 100, chowcoins = 50, weight = 10, questText = "Thin out a fast wave of zombies before they wander into town."),
+                        NpcQuestTemplateEntryDefinition(entity = "minecraft:skeleton", qty = 4, timeWindowSeconds = 25, dimension = "minecraft:overworld", xp = 100, chowcoins = 50, weight = 10, questText = "Break a skeleton line before it can regroup."),
+                        NpcQuestTemplateEntryDefinition(entity = "minecraft:spider", qty = 3, timeWindowSeconds = 20, dimension = "minecraft:overworld", xp = 100, chowcoins = 50, weight = 8, questText = "Clear a quick spider rush from the paths before nightfall."),
                     ),
                 ),
                 rareMobs = NpcQuestTemplatePoolDefinition(
                     pool = mutableListOf(
-                        NpcQuestTemplateEntryDefinition(entity = "minecraft:blaze", qty = 5, dimension = "minecraft:the_nether", xp = 180, chowcoins = 100, weight = 3, questText = "Collect field proof from blazes in the Nether."),
-                        NpcQuestTemplateEntryDefinition(entity = "minecraft:cave_spider", qty = 5, xp = 150, chowcoins = 80, weight = 3, questText = "Clear cave spiders from old tunnels."),
-                        NpcQuestTemplateEntryDefinition(entity = "minecraft:wither_skeleton", qty = 3, dimension = "minecraft:the_nether", xp = 220, chowcoins = 150, weight = 1, questText = "Cut down wither skeletons before they gather strength."),
+                        NpcQuestTemplateEntryDefinition(entity = "minecraft:blaze", qty = 3, timeWindowSeconds = 30, dimension = "minecraft:the_nether", xp = 180, chowcoins = 100, weight = 3, questText = "Drop a blaze patrol before the fire spreads."),
+                        NpcQuestTemplateEntryDefinition(entity = "minecraft:cave_spider", qty = 3, timeWindowSeconds = 25, xp = 150, chowcoins = 80, weight = 3, questText = "Clear a cave spider pocket before it scatters."),
+                        NpcQuestTemplateEntryDefinition(entity = "minecraft:wither_skeleton", qty = 2, timeWindowSeconds = 30, dimension = "minecraft:the_nether", xp = 220, chowcoins = 150, weight = 1, questText = "Cut down wither skeletons in one clean push."),
                     ),
                 ),
             ),
@@ -178,6 +181,8 @@ class NpcQuestTemplateEntryDefinition(
     @SerializedName("quiz_topic") var quizTopic: String = "",
     @SerializedName("quiz_prompt") var quizPrompt: String = "",
     var qty: Int = 1,
+    @SerializedName(value = "time_window_seconds", alternate = ["timeWindowSeconds", "window_seconds", "seconds"])
+    var timeWindowSeconds: Int = 0,
     @SerializedName("pass_id") var passId: String = "cozy",
     var xp: Int = 100,
     var chowcoins: Long = 0L,
@@ -206,6 +211,7 @@ class NpcQuestTemplateEntryDefinition(
         quizTopic = quizTopic.trim()
         quizPrompt = quizPrompt.trim()
         qty = qty.coerceIn(1, 1000000)
+        timeWindowSeconds = timeWindowSeconds.coerceIn(0, 3600)
         passId = passId.trim().lowercase(Locale.ROOT).ifBlank { "cozy" }
         xp = xp.coerceAtLeast(0)
         chowcoins = chowcoins.coerceAtLeast(0L)
@@ -247,6 +253,7 @@ class NpcQuestTemplateEntryDefinition(
     }
 
     fun killMission(npcId: String, scope: String, index: Int): NpcMissionDefinition? {
+        if (timeWindowSeconds > 0) return timedKillMission(npcId, scope, index)
         val target = entity.ifBlank { filters["entity"].orEmpty() }
         if (target.isBlank()) return null
         val missionFilters = linkedMapOf<String, String>()
@@ -254,6 +261,17 @@ class NpcQuestTemplateEntryDefinition(
         missionFilters["entity"] = target
         if (dimension.isNotBlank()) missionFilters["dimension"] = dimension
         return mission(npcId, scope, "kill", index, "task", "minecraft:entity_killed", "Defeat {goal} ${displayName(target)}", missionFilters, passIdOverride = "combat")
+    }
+
+    fun timedKillMission(npcId: String, scope: String, index: Int): NpcMissionDefinition? {
+        val target = entity.ifBlank { filters["entity"].orEmpty() }
+        if (target.isBlank()) return null
+        val missionFilters = linkedMapOf<String, String>()
+        missionFilters.putAll(filters)
+        missionFilters["entity"] = target
+        if (dimension.isNotBlank()) missionFilters["dimension"] = dimension
+        val seconds = (timeWindowSeconds.takeIf { it > 0 } ?: 20).coerceIn(1, 3600)
+        return mission(npcId, scope, "timed", index, "timed", "minecraft:entity_killed", "Defeat {goal} ${displayName(target)} In {seconds}s", missionFilters, passIdOverride = "combat", timeWindowSecondsOverride = seconds)
     }
 
     fun travelMission(npcId: String, scope: String, index: Int): NpcMissionDefinition? {
@@ -417,6 +435,7 @@ class NpcQuestTemplateEntryDefinition(
         fallbackDesc: String,
         missionFilters: Map<String, String>,
         passIdOverride: String? = null,
+        timeWindowSecondsOverride: Int = 0,
     ): NpcMissionDefinition = NpcMissionDefinition(
         id = id.ifBlank { "${scope}_${npcId}_${type}_${index}_${targetSlug()}" },
         category = category,
@@ -427,6 +446,7 @@ class NpcQuestTemplateEntryDefinition(
         xp = xp,
         chowcoins = chowcoins,
         goal = qty,
+        timeWindowSeconds = timeWindowSecondsOverride,
         filters = missionFilters.toMutableMap(),
         weight = weight,
         offerMessages = offerMessages.toMutableList(),

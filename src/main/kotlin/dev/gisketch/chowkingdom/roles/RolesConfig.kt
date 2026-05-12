@@ -187,6 +187,7 @@ object RolesConfig {
         displayName = displayName,
         icon = "textures/gui/jobs/$id.png",
         description = description,
+        previewItems = defaultJobPreviewItems(id).toMutableList(),
         perks = mutableListOf(
             RolePerkDefinition(
                 type = "cobblemon_catch_rate",
@@ -658,11 +659,34 @@ object RolesConfig {
         "encore",
     )
 
+    private fun defaultJobPreviewItems(id: String): List<String> = when (id) {
+        "botanist" -> listOf("minecraft:wheat_seeds", "minecraft:grass_block")
+        "diver" -> listOf("minecraft:fishing_rod", "minecraft:kelp")
+        "magma_scout" -> listOf("minecraft:blaze_powder", "minecraft:magma_block")
+        "engineer" -> listOf("minecraft:redstone", "minecraft:comparator")
+        "field_researcher" -> listOf("minecraft:spyglass", "minecraft:paper")
+        "bug_scout" -> listOf("minecraft:spider_eye", "minecraft:oak_leaves")
+        "falconer" -> listOf("minecraft:feather", "minecraft:spyglass")
+        "shade_runner" -> listOf("minecraft:echo_shard", "minecraft:ender_pearl")
+        "esper" -> listOf("minecraft:amethyst_shard", "minecraft:ender_eye")
+        "martial_artist" -> listOf("minecraft:leather_boots", "minecraft:iron_nugget")
+        "mountaineer" -> listOf("minecraft:powder_snow_bucket", "minecraft:snowball")
+        "shinobi" -> listOf("minecraft:poisonous_potato", "minecraft:fermented_spider_eye")
+        "mason" -> listOf("minecraft:stone_bricks", "minecraft:brick")
+        "excavator" -> listOf("minecraft:iron_shovel", "minecraft:brush")
+        "blacksmith" -> listOf("minecraft:iron_ingot", "minecraft:anvil")
+        "spirit_medium" -> listOf("minecraft:soul_lantern", "minecraft:echo_shard")
+        "drake_tamer" -> listOf("minecraft:dragon_breath", "minecraft:amethyst_shard")
+        "performer" -> listOf("minecraft:note_block", "minecraft:amethyst_shard")
+        else -> emptyList()
+    }
+
     private fun defaultRogue(): RoleDefinition = RoleDefinition(
         id = "rogue",
         displayName = "Rogue",
         icon = "textures/gui/classes/rogue.png",
         description = "Move light, hit hard, and favor quick gear built for sharp openings.",
+        previewItems = mutableListOf("simplymore:iron_dagger", "minecraft:stone_sword"),
         classification = CLASS_STARTER,
         upgradeClassIds = mutableListOf("forcemaster", "bounty_hunter", "bard", "witcher"),
         perks = mutableListOf(
@@ -691,6 +715,7 @@ object RolesConfig {
         displayName = "Warrior",
         icon = "textures/gui/classes/warrior.png",
         description = "Stand in the front line with sturdy weapons, heavier armor, and simple force.",
+        previewItems = mutableListOf("minecraft:iron_sword", "minecraft:wooden_sword"),
         classification = CLASS_STARTER,
         upgradeClassIds = mutableListOf("berserker", "paladin", "witcher"),
         perks = mutableListOf(

@@ -4,7 +4,8 @@
 id = "forcemaster"
 display_name = "Forcemaster"
 icon = "textures/gui/classes/forcemaster.png"
-description = "Upgrade martial fighter trained with knuckles, quarterstaffs, backhand blades, claws, and light armor."
+description = "Upgrade martial class for players who want close-range speed and weapon discipline. Trained for knuckles, quarterstaffs, backhand blades, claws, and light armor."
+preview_items = ["rogues:wooden_quarterstaff", "minecraft:stick"]
 classification = "upgrade"
 starter_class_ids = ["rogue"]
 upgrade_class_ids = []
@@ -18,7 +19,7 @@ steps = [
   { id = "forcemaster_vow", skeleton = "vow", kind = "dialogue", title = "Vow", objective = "Vow to hit hard only after you know exactly what your punch will break.", goal = 1, start_message = "Vow to hit hard only after you know exactly what your punch will break.", complete_message = "", llm_prompt = "Vi should sound blunt, street-smart, and protective." },
   { id = "forcemaster_offering", skeleton = "offering", kind = "fetch", title = "Redstone For The Gauntlets", objective = "Bring 16 redstone dust.", item = "minecraft:redstone", qty = 16, goal = 16, start_message = "Bring <b>16 redstone dust</b>. Power needs wiring before fists.", complete_message = "Good. Now the gauntlets can wake up.", llm_prompt = "Tie redstone to gauntlet pressure and controlled force." },
   { id = "forcemaster_discipline", skeleton = "discipline", kind = "task", title = "Footwork Pressure", objective = "Travel 1500 blocks.", event = "minecraft:blocks_traveled", goal = 1500, start_message = "Move <b>1500 blocks</b>. Heavy hits start with feet.", complete_message = "Your feet stopped lying. Good start.", llm_prompt = "Make movement the foundation for impact." },
-  { id = "forcemaster_signature_trial", skeleton = "signature_trial", kind = "task", title = "Clean Knockdown", objective = "Defeat 12 monsters.", event = "minecraft:monster_killed", goal = 12, start_message = "Drop <b>12 monsters</b>. Clean hits, no flailing.", complete_message = "Those hits had shape. That is force.", llm_prompt = "Make the trial about clean controlled impact." },
+  { id = "forcemaster_signature_trial", skeleton = "signature_trial", kind = "timed", title = "Impact Chain", objective = "Defeat 6 monsters within 20 seconds.", event = "minecraft:monster_killed", goal = 6, time_window_seconds = 20, start_message = "Break <b>6 monsters in {seconds} seconds</b>. Pressure is not one punch. It is the chain after it.", complete_message = "Impact followed impact. Good. The line did not recover.", llm_prompt = "Make this feel like Vi testing chained pressure, momentum, and clean impact." },
   { id = "forcemaster_license", skeleton = "payment", kind = "payment", title = "License Seal", objective = "Pay the mentor license fee for forcemaster.", goal = 1, start_message = "The license seal is next. A new {classification} {class} unlock costs {cost} chowcoins.", complete_message = "The license is sealed. Only the mentor duel remains for {class}.", llm_prompt = "Treat payment as a formal license seal, not a bribe. Explain that class changes still use their separate higher fee." },
   { id = "forcemaster_duel", skeleton = "mentor_duel", kind = "duel", title = "Mentor Duel", objective = "Win a non-lethal 1v1 mentor duel.", goal = 1, start_message = "Draw breath. The {class} mentor duel starts now.", complete_message = "The duel is won. {class} is yours.", llm_prompt = "Make this a sharp pre-duel line. The NPC must sound ready to test the player, not hostile." },
 ]

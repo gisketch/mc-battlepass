@@ -7,7 +7,8 @@ display_name = "Diver"
 # Config value: icon.
 icon = "textures/gui/jobs/diver.png"
 # Config value: description.
-description = "Works rivers, reefs, and rain routes to track Water Pokemon."
+description = "Works rivers, reefs, rain routes, and deep water to track Water Pokemon. Best for players who want swimming, fishing, and water travel utility."
+preview_items = ["minecraft:fishing_rod", "minecraft:kelp"]
 # Config value: perks.
 perks = [
   { type = "cobblemon_catch_rate", pokemon_type = "water" },

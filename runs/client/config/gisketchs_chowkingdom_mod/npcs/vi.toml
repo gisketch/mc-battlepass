@@ -5,6 +5,7 @@ skin = "gisketchs_chowkingdom_mod:npc/vi"
 body_type = "slim"
 height = 1.06
 weight = 1.0
+main_pokemon = "cobblemon:lucario"
 job = "adventurer"
 class = "forcemaster"
 hurt_messages = ["Bad idea. I punch back.", "Careful, {player}. These fists solve problems.", "You want a spar, say so first."]
@@ -154,7 +155,7 @@ enabled = true
 offer_radius = 7.0
 offer_balloon_messages = ["@quest_log.png Got a job for you, {player}.", "@quest_log.png Trouble needs punching."]
 pool = [
-  { id = "vi_hunt_mobs", category = "task", event = "minecraft:monster_killed", event_desc = "Defeat {goal} Monsters", quest_text = "Clear threats before they hit town.", pass_id = "combat", xp = 100, chowcoins = 50, goal = 10, complete_messages = ["@quest_log.png Nice. They won't bother anyone now.", "@quest_log.png Good work. Clean enough."] },
+  { id = "vi_hunt_mobs", category = "timed", event = "minecraft:monster_killed", event_desc = "Defeat {goal} Monsters In {seconds}s", quest_text = "Clear threats before they hit town.", pass_id = "combat", xp = 100, chowcoins = 50, goal = 3, time_window_seconds = 20, complete_messages = ["@quest_log.png Nice. They won't bother anyone now.", "@quest_log.png Good work. Clean enough."] },
   { id = "vi_travel_blocks", category = "task", event = "minecraft:blocks_traveled", event_desc = "Travel {goal} Blocks", quest_text = "Patrol the streets and outer roads.", pass_id = "cozy", xp = 80, chowcoins = 25, goal = 1000, complete_messages = ["@quest_log.png Patrol done. Good legs.", "@quest_log.png Roads checked. Town's safer."] },
   { id = "vi_fetch_iron", category = "fetch", event_desc = "Bring {goal} Iron Ingots", quest_text = "Bring iron for gauntlet repairs.", pass_id = "cozy", xp = 80, chowcoins = 25, fetch_item = "minecraft:iron_ingot", fetch_count = 6, complete_messages = ["@quest_log.png Perfect. Repairs are back on.", "@quest_log.png Iron secured. Now I can hit things properly."] },
 ]

@@ -7,7 +7,8 @@ display_name = "Excavator"
 # Config value: icon.
 icon = "textures/gui/jobs/excavator.png"
 # Config value: description.
-description = "Cuts tunnels and studies soil shifts for Ground Pokemon."
+description = "Cuts tunnels, reads soil shifts, and digs old ground signs for Ground Pokemon. Best for players who mine terrain, clear soft blocks, and hunt buried rewards."
+preview_items = ["minecraft:iron_shovel", "minecraft:brush"]
 # Config value: perks.
 perks = [
   { type = "cobblemon_catch_rate", pokemon_type = "ground", multiplier = 1.05, bonus_percent_by_level = [0.05, 0.10, 0.18, 0.28, 0.40], weapon_tags = [], armor_tags = [], weapon_patterns = [], armor_patterns = [], wrong_weapon_damage_multiplier = 1.0, wrong_weapon_cooldown_ticks = 0, wrong_weapon_attack_speed_multiplier = 1.0, wrong_armor_disables_sprint = false, starting_items = [] },

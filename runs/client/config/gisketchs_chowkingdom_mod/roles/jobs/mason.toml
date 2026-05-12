@@ -7,7 +7,8 @@ display_name = "Mason"
 # Config value: icon.
 icon = "textures/gui/jobs/mason.png"
 # Config value: description.
-description = "Reads cliffs, ruins, and quarry marks to find Rock Pokemon."
+description = "Reads cliffs, ruins, quarry marks, and stonework to find Rock Pokemon. Best for players who build often and want reach, refunds, and block-sense utility."
+preview_items = ["minecraft:stone_bricks", "minecraft:brick"]
 # Config value: perks.
 perks = [
   { type = "cobblemon_catch_rate", pokemon_type = "rock", multiplier = 1.05, bonus_percent_by_level = [0.05, 0.10, 0.18, 0.28, 0.40], weapon_tags = [], armor_tags = [], weapon_patterns = [], armor_patterns = [], wrong_weapon_damage_multiplier = 1.0, wrong_weapon_cooldown_ticks = 0, wrong_weapon_attack_speed_multiplier = 1.0, wrong_armor_disables_sprint = false, starting_items = [] },

@@ -5,6 +5,7 @@ skin = "gisketchs_chowkingdom_mod:npc/venti"
 body_type = "slim"
 height = 0.95
 weight = 0.78
+main_pokemon = "cobblemon:altaria"
 job = "adventurer"
 class = "bard"
 hurt_messages = ["Ehe! That stung a little, {player}.", "Ow! Even the wind does not strike without reason.", "Careful, traveler. My lyre is not a shield."]
@@ -155,7 +156,7 @@ enabled = true
 offer_radius = 7.0
 offer_balloon_messages = ["@quest_log.png The wind has a task for you, {player}.", "@quest_log.png A bard needs a hero. Or at least someone heroic-adjacent."]
 pool = [
-  { id = "venti_hunt_mobs", category = "task", event = "minecraft:monster_killed", event_desc = "Defeat {goal} Monsters", quest_text = "Clear the roads so songs can travel without interruption.", pass_id = "combat", xp = 100, chowcoins = 50, goal = 10, complete_messages = ["@quest_log.png The roads shall sing again! Well done, {player}.", "@quest_log.png Ehe! Monsters defeated and the wind can breathe. A fine ballad-worthy victory!"] },
+  { id = "venti_hunt_mobs", category = "timed", event = "minecraft:monster_killed", event_desc = "Defeat {goal} Monsters In {seconds}s", quest_text = "Clear the roads so songs can travel without interruption.", pass_id = "combat", xp = 100, chowcoins = 50, goal = 3, time_window_seconds = 20, complete_messages = ["@quest_log.png The roads shall sing again! Well done, {player}.", "@quest_log.png Ehe! Monsters defeated and the wind can breathe. A fine ballad-worthy victory!"] },
   { id = "venti_travel_blocks", category = "task", event = "minecraft:blocks_traveled", event_desc = "Travel {goal} Blocks", quest_text = "Wander the kingdom and bring back stories for a new song.", pass_id = "cozy", xp = 80, chowcoins = 25, goal = 1000, complete_messages = ["@quest_log.png Ah, you walked far! I can already hear the melody forming.", "@quest_log.png Every block you traveled is a note in the ballad to come. Thank you!"] },
   { id = "venti_fetch_apples", category = "fetch", event_desc = "Bring {goal} Apples", quest_text = "Bring apples for inspiration. And snacks. Mostly snacks.", pass_id = "cozy", xp = 80, chowcoins = 25, fetch_item = "minecraft:apple", fetch_count = 6, complete_messages = ["@quest_log.png Apples! The crisp crunch of a quest complete!", "@quest_log.png These apples will fuel many songs and at least one nap."] },
 ]

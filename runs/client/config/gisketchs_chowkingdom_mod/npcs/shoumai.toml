@@ -14,6 +14,8 @@ body_type = "slim"
 height = 0.96
 # Config value: weight.
 weight = 0.86
+# Config value: main_pokemon.
+main_pokemon = "cobblemon:minccino"
 # Config value: job.
 job = "fashionista"
 # Config value: hurt_messages.

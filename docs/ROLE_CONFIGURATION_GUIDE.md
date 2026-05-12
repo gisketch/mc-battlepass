@@ -54,6 +54,7 @@ id = "botanist"
 display_name = "Botanist"
 icon = "textures/gui/jobs/botanist.png"
 description = "Reads leaf, vine, and bloom signs to work with Grass Pokemon."
+preview_items = ["minecraft:wheat_seeds", "minecraft:grass_block"]
 perks = [
   { type = "cobblemon_catch_rate", pokemon_type = "grass" },
   { type = "mount_speed", pokemon_type = "grass" },
@@ -84,6 +85,7 @@ id = "rogue"
 display_name = "Rogue"
 icon = "minecraft:grass_block"
 description = "Move light, hit hard, and favor quick gear built for sharp openings."
+preview_items = ["simplymore:iron_dagger", "minecraft:stone_sword"]
 perks = [
   { type = "starting_items", starting_items = ["minecraft:book", "minecraft:diamond_axe", "minecraft:leather_boots"] },
   { type = "equipment_affinity", weapon_tag = "gisketchs_chowkingdom_mod:class/rogue_weapons", armor_tag = "gisketchs_chowkingdom_mod:class/rogue_armor", wrong_weapon_damage_multiplier = 0.2, wrong_weapon_attack_speed_multiplier = 0.1, wrong_weapon_cooldown_ticks = 12, wrong_armor_disables_sprint = true },
@@ -99,6 +101,7 @@ Current class perk types:
 
 - `description`: shown in onboarding when the role is hovered or selected.
 - `icon`: item id first, texture resource id second. Use item ids like `minecraft:grass_block` for quick testing. Texture paths can point at bundled assets, for example `textures/gui/jobs/botanist.png`.
+- `preview_items`: optional ordered item-id fallback list for the onboarding paperdoll. Use a class weapon or job tool first, then a vanilla fallback. Missing optional mod items are skipped silently.
 
 ## Onboarding TOML Shape
 

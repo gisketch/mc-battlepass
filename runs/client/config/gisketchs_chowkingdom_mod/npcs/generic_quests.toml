@@ -1,6 +1,6 @@
 # Chow Kingdom NPC generic quests.
 # Shared pools in this file are auto-added to every NPC with missions enabled.
-# NPC TOMLs can add [unique_quests] with the same fetch/kill/travel/craft/smelt/eat/quiz/food_chain_quest shape.
+# NPC TOMLs can add [unique_quests] with the same fetch/kill/timed/travel/craft/smelt/eat/quiz/food_chain_quest shape.
 
 enabled = true
 
@@ -12,18 +12,18 @@ pool = [
   { item = "minecraft:ender_pearl", qty = 2, xp = 130, chowcoins = 75, weight = 2, quest_text = "Bring ender pearls for risky field work." },
 ]
 
-[kill.easy_mobs]
+[timed.easy_mobs]
 pool = [
-  { entity = "minecraft:zombie", qty = 20, dimension = "minecraft:overworld", xp = 100, chowcoins = 50, weight = 10, quest_text = "Thin out zombies before they wander into town." },
-  { entity = "minecraft:skeleton", qty = 20, dimension = "minecraft:overworld", xp = 100, chowcoins = 50, weight = 10, quest_text = "Break up skeleton patrols on the roads." },
-  { entity = "minecraft:spider", qty = 15, dimension = "minecraft:overworld", xp = 100, chowcoins = 50, weight = 8, quest_text = "Clear spiders from the paths before nightfall." },
+  { entity = "minecraft:zombie", qty = 4, time_window_seconds = 25, dimension = "minecraft:overworld", xp = 100, chowcoins = 50, weight = 10, quest_text = "Thin out a fast wave of zombies before they wander into town." },
+  { entity = "minecraft:skeleton", qty = 4, time_window_seconds = 25, dimension = "minecraft:overworld", xp = 100, chowcoins = 50, weight = 10, quest_text = "Break a skeleton line before it can regroup." },
+  { entity = "minecraft:spider", qty = 3, time_window_seconds = 20, dimension = "minecraft:overworld", xp = 100, chowcoins = 50, weight = 8, quest_text = "Clear a quick spider rush from the paths before nightfall." },
 ]
 
-[kill.rare_mobs]
+[timed.rare_mobs]
 pool = [
-  { entity = "minecraft:blaze", qty = 5, dimension = "minecraft:the_nether", xp = 180, chowcoins = 100, weight = 3, quest_text = "Collect field proof from blazes in the Nether." },
-  { entity = "minecraft:cave_spider", qty = 5, xp = 150, chowcoins = 80, weight = 3, quest_text = "Clear cave spiders from old tunnels." },
-  { entity = "minecraft:wither_skeleton", qty = 3, dimension = "minecraft:the_nether", xp = 220, chowcoins = 150, weight = 1, quest_text = "Cut down wither skeletons before they gather strength." },
+  { entity = "minecraft:blaze", qty = 3, time_window_seconds = 30, dimension = "minecraft:the_nether", xp = 180, chowcoins = 100, weight = 3, quest_text = "Drop a blaze patrol before the fire spreads." },
+  { entity = "minecraft:cave_spider", qty = 3, time_window_seconds = 25, xp = 150, chowcoins = 80, weight = 3, quest_text = "Clear a cave spider pocket before it scatters." },
+  { entity = "minecraft:wither_skeleton", qty = 2, time_window_seconds = 30, dimension = "minecraft:the_nether", xp = 220, chowcoins = 150, weight = 1, quest_text = "Cut down wither skeletons in one clean push." },
 ]
 
 [travel]

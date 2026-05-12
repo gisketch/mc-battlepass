@@ -4,7 +4,8 @@
 id = "bard"
 display_name = "Bard"
 icon = "textures/gui/classes/bard.png"
-description = "Upgrade party support class trained with songs, lutes, lyres, rapiers, and harp crossbows."
+description = "Upgrade support class for players who want party buffs, rhythm, and stylish utility. Trained for lutes, lyres, rapiers, harp crossbows, and light performance gear."
+preview_items = ["bards_rpg:wooden_lute", "minecraft:note_block"]
 classification = "upgrade"
 starter_class_ids = ["rogue", "archer", "priest"]
 upgrade_class_ids = []

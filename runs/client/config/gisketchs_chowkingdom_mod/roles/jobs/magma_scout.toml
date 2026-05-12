@@ -7,7 +7,8 @@ display_name = "Magma Scout"
 # Config value: icon.
 icon = "textures/gui/jobs/magma_scout.png"
 # Config value: description.
-description = "Scouts hot springs, ash fields, and lava paths for Fire Pokemon."
+description = "Scouts hot springs, ash fields, lava paths, and the Nether edge for Fire Pokemon. Best for players who want heat resistance and dangerous-route exploration."
+preview_items = ["minecraft:blaze_powder", "minecraft:magma_block"]
 # Config value: perks.
 perks = [
   { type = "cobblemon_catch_rate", pokemon_type = "fire", bonus_percent_by_level = [0.05, 0.10, 0.18, 0.28, 0.40] },

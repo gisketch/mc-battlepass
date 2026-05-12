@@ -5,6 +5,7 @@ skin = "gisketchs_chowkingdom_mod:npc/zagreus"
 body_type = "normal"
 height = 1.08
 weight = 1.02
+main_pokemon = "cobblemon:houndoom"
 job = "adventurer"
 class = "berserker"
 hurt_messages = ["Ow. I've had worse from Father, but still.", "Careful, mate. I do hit back.", "Bit enthusiastic there, aren't you, {player}?"]
@@ -153,7 +154,7 @@ enabled = true
 offer_radius = 7.0
 offer_balloon_messages = ["@quest_log.png Got a run for you, {player}.", "@quest_log.png Bad odds. Interested?"]
 pool = [
-  { id = "zagreus_hunt_mobs", category = "task", event = "minecraft:monster_killed", event_desc = "Defeat {goal} Monsters", quest_text = "Clear a path through hostile territory.", pass_id = "combat", xp = 100, chowcoins = 50, goal = 10, complete_messages = ["@quest_log.png Nice work. That path is less murderous now.", "@quest_log.png Monsters down. Excellent run."] },
+  { id = "zagreus_hunt_mobs", category = "timed", event = "minecraft:monster_killed", event_desc = "Defeat {goal} Monsters In {seconds}s", quest_text = "Clear a path through hostile territory.", pass_id = "combat", xp = 100, chowcoins = 50, goal = 3, time_window_seconds = 20, complete_messages = ["@quest_log.png Nice work. That path is less murderous now.", "@quest_log.png Monsters down. Excellent run."] },
   { id = "zagreus_travel_blocks", category = "task", event = "minecraft:blocks_traveled", event_desc = "Travel {goal} Blocks", quest_text = "Scout a possible escape route.", pass_id = "cozy", xp = 80, chowcoins = 25, goal = 1000, complete_messages = ["@quest_log.png Route checked. Still dangerous, obviously.", "@quest_log.png Good scouting. I like our odds slightly more."] },
   { id = "zagreus_fetch_gold", category = "fetch", event_desc = "Bring {goal} Gold Ingots", quest_text = "Bring gold for repairs and questionable escape supplies.", pass_id = "cozy", xp = 80, chowcoins = 25, fetch_item = "minecraft:gold_ingot", fetch_count = 3, complete_messages = ["@quest_log.png Gold secured. Charon would approve.", "@quest_log.png Perfect. Repairs, supplies, maybe bribes."] },
 ]

@@ -7,7 +7,8 @@ display_name = "Engineer"
 # Config value: icon.
 icon = "textures/gui/jobs/engineer.png"
 # Config value: description.
-description = "Tunes circuits, rails, and storms to find Electric Pokemon."
+description = "Tunes circuits, rails, tools, and storms to find Electric Pokemon. Best for players who like reach, repair tricks, magnets, and technical utility."
+preview_items = ["minecraft:redstone", "minecraft:comparator"]
 # Config value: perks.
 perks = [
   { type = "cobblemon_catch_rate", pokemon_type = "electric", bonus_percent_by_level = [0.05, 0.10, 0.18, 0.28, 0.40] },

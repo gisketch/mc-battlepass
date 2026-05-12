@@ -17,12 +17,17 @@ import net.minecraft.client.renderer.MultiBufferSource
 import net.minecraft.client.renderer.RenderType
 import net.minecraft.client.renderer.texture.OverlayTexture
 import net.minecraft.client.resources.sounds.SimpleSoundInstance
+import net.minecraft.core.registries.BuiltInRegistries
+import net.minecraft.core.registries.Registries
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.sounds.SoundEvents
+import net.minecraft.tags.TagKey
 import net.minecraft.util.Mth
+import net.minecraft.world.InteractionHand
 import net.minecraft.world.entity.EntityAttachment
 import net.minecraft.world.entity.player.Player
+import net.minecraft.world.item.Item
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.ItemDisplayContext
 import net.neoforged.neoforge.client.ClientHooks
@@ -416,9 +421,11 @@ private class RolesOnboardingScreen(private var payload: RolesSyncPayload) : Scr
     private var backgroundParallaxX = 0.0f
     private var backgroundParallaxY = 0.0f
     private var skipPanelEntrance = false
+    private val equipmentCountCache = mutableMapOf<String, Pair<Int, Int>>()
 
     fun updatePayload(next: RolesSyncPayload) {
         payload = next
+        equipmentCountCache.clear()
         if (step != Step.BODY || draggingSlider == null) {
             selectedHeight = next.height
             selectedWeight = next.weight
@@ -576,18 +583,18 @@ private class RolesOnboardingScreen(private var payload: RolesSyncPayload) : Scr
             drawCenteredCkdm(guiGraphics, stepTitle(), 0, TITLE_Y, width, WHITE, CKDM_LARGE)
         }
         if (skipPanelEntrance) {
-            renderLeftColumn(guiGraphics, layout.left)
+            renderRoleBrowser(guiGraphics, layout.left, layout.grid, slots, mouseX, mouseY)
             renderPaperDoll(guiGraphics, layout.center, mouseX, mouseY)
-            renderRightColumn(guiGraphics, layout.right, layout.grid, slots, mouseX, mouseY)
+            renderRoleInspector(guiGraphics, layout.right)
         } else {
             withEntrance(guiGraphics, EntranceStyle(50, offsetX = -18, scaleFrom = 0.98f), layout.left.x + layout.left.width / 2, layout.left.y + layout.left.height / 2) {
-                renderLeftColumn(guiGraphics, layout.left)
+                renderRoleBrowser(guiGraphics, layout.left, layout.grid, slots, mouseX, mouseY)
             }
             withEntrance(guiGraphics, EntranceStyle(90, offsetY = 14, scaleFrom = 0.98f), layout.center.x + layout.center.width / 2, layout.center.y + layout.center.height / 2) {
                 renderPaperDoll(guiGraphics, layout.center, mouseX, mouseY)
             }
             withEntrance(guiGraphics, EntranceStyle(110, offsetX = 18, scaleFrom = 0.98f), layout.right.x + layout.right.width / 2, layout.right.y + layout.right.height / 2) {
-                renderRightColumn(guiGraphics, layout.right, layout.grid, slots, mouseX, mouseY)
+                renderRoleInspector(guiGraphics, layout.right)
             }
         }
         withEntrance(guiGraphics, EntranceStyle(170, offsetY = 10, scaleFrom = 0.98f), width / 2, continueRect().y + continueRect().height / 2) {
@@ -614,30 +621,119 @@ private class RolesOnboardingScreen(private var payload: RolesSyncPayload) : Scr
         RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f)
     }
 
-    private fun renderLeftColumn(guiGraphics: GuiGraphics, rect: Rect) {
+    private fun renderRoleBrowser(guiGraphics: GuiGraphics, rect: Rect, list: Rect, slots: List<RoleSlot>, mouseX: Int, mouseY: Int) {
         renderNineSlice(guiGraphics, GREY_CONTAINER_TEXTURE, rect, CONTAINER_TEXTURE_WIDTH, CONTAINER_TEXTURE_HEIGHT, CONTAINER_SOURCE_CORNER, CONTAINER_DEST_CORNER, 0.96f)
+        drawCenteredCkdm(guiGraphics, browserHeader(), rect.x + PAD, rect.y + 18, rect.width - PAD * 2, WHITE, CKDM_BOLD)
+        val hint = if (step == Step.JOB) "Pick the work you want to grow through." else "Pick your starter combat identity."
+        drawWrapped(guiGraphics, hint, rect.x + PAD, rect.y + 38, rect.width - PAD * 2, WHITE_MUTED, maxLines = 2)
+        guiGraphics.enableScissor(list.x, list.y, list.right, list.bottom)
+        slots.forEachIndexed { index, slot ->
+            withEntrance(guiGraphics, EntranceStyle(120 + index * 18, offsetY = 6, scaleFrom = 0.98f), slot.rect.x + slot.rect.width / 2, slot.rect.y + slot.rect.height / 2) {
+                renderRoleSlot(guiGraphics, slot, mouseX, mouseY)
+            }
+        }
+        guiGraphics.disableScissor()
+    }
+
+    private fun renderRoleInspector(guiGraphics: GuiGraphics, rect: Rect) {
+        renderNineSlice(guiGraphics, YELLOW_CONTAINER_TEXTURE, rect, CONTAINER_TEXTURE_WIDTH, CONTAINER_TEXTURE_HEIGHT, CONTAINER_SOURCE_CORNER, CONTAINER_DEST_CORNER, 0.96f)
         val preview = previewRole()
         val title = preview?.displayName ?: noSelectionLabel()
-        val description = preview?.description ?: noSelectionDescription()
-        drawCenteredCkdm(guiGraphics, fitText(title, rect.width - PAD * 2, CKDM_BOLD), rect.x + PAD, rect.y + 22, rect.width - PAD * 2, WHITE, CKDM_BOLD)
+        drawCenteredCkdm(guiGraphics, fitText(title, rect.width - PAD * 2, CKDM_BOLD), rect.x + PAD, rect.y + 18, rect.width - PAD * 2, WHITE, CKDM_BOLD)
         if (preview == null) {
-            drawWrapped(guiGraphics, description, rect.x + PAD + 2, rect.y + 56, rect.width - PAD * 2 - 4, WHITE_MUTED, maxLines = ((rect.height - 72) / 12).coerceAtLeast(1))
+            drawWrapped(guiGraphics, noSelectionDescription(), rect.x + PAD + 2, rect.y + 50, rect.width - PAD * 2 - 4, WHITE_MUTED, maxLines = ((rect.height - 64) / WRAPPED_LINE_HEIGHT).coerceAtLeast(1))
             return
         }
+        guiGraphics.enableScissor(rect.x + PAD, rect.y + 42, rect.right - PAD, rect.bottom - PAD)
         renderRolePreviewDetails(guiGraphics, rect, preview)
+        guiGraphics.disableScissor()
     }
 
     private fun renderRolePreviewDetails(guiGraphics: GuiGraphics, rect: Rect, role: RoleUiDefinitionPayload) {
         val contentX = rect.x + PAD + 2
         val contentWidth = rect.width - PAD * 2 - 4
-        var cursorY = rect.y + 54
+        val bottom = rect.bottom - PAD
+        var cursorY = rect.y + 48
+        cursorY = renderBadgeRow(guiGraphics, role, contentX, cursorY, contentWidth)
         drawWrapped(guiGraphics, role.description, contentX, cursorY, contentWidth, WHITE_MUTED, maxLines = 3)
-        cursorY += 38
+        cursorY += 40
+        if (step == Step.CLASS) {
+            cursorY = renderClassInspector(guiGraphics, role, contentX, cursorY, contentWidth, bottom)
+        } else {
+            cursorY = renderJobInspector(guiGraphics, role, contentX, cursorY, contentWidth, bottom)
+        }
+        if (cursorY < bottom - 10) renderPreviewItemName(guiGraphics, role, contentX, cursorY + 4, contentWidth)
+    }
+
+    private fun renderBadgeRow(guiGraphics: GuiGraphics, role: RoleUiDefinitionPayload, x: Int, y: Int, width: Int): Int {
+        val tag = when {
+            step == Step.JOB -> roleTypeLabel(role)
+            isStarterClass(role) -> "Starter Class"
+            else -> "Upgrade Class"
+        }
+        drawCkdmPair(guiGraphics, "Type", tag, x, y, width)
+        return y + 15
+    }
+
+    private fun renderJobInspector(guiGraphics: GuiGraphics, role: RoleUiDefinitionPayload, x: Int, startY: Int, width: Int, bottom: Int): Int {
+        var cursorY = startY
         val rank = RolesClientState.jobRankFor(Minecraft.getInstance().player?.uuid)
         val displays = rolePerkDisplays(role, rank)
-        cursorY = renderPerkPairs(guiGraphics, displays.filter { display -> display.group == RolePerkDisplayGroup.STAT }, contentX, cursorY, contentWidth, rect.bottom - PAD)
-        cursorY = renderPerkSection(guiGraphics, "Passive", displays.filter { display -> display.group == RolePerkDisplayGroup.PASSIVE }, contentX, cursorY + 4, contentWidth, rect.bottom - PAD)
-        renderPerkSection(guiGraphics, "Unique Perks", displays.filter { display -> display.group == RolePerkDisplayGroup.UNIQUE || display.group == RolePerkDisplayGroup.OTHER }, contentX, cursorY + 4, contentWidth, rect.bottom - PAD)
+        displays.firstOrNull { display -> display.title.contains("Pokemon Catch Rate") }?.let { display ->
+            cursorY = renderSinglePerk(guiGraphics, "Pokemon Focus", display, x, cursorY, width, bottom)
+        }
+        cursorY = renderPerkPairs(guiGraphics, displays.filter { display -> display.group == RolePerkDisplayGroup.STAT }, x, cursorY + 2, width, bottom)
+        cursorY = renderPerkSection(guiGraphics, "Passive", displays.filter { display -> display.group == RolePerkDisplayGroup.PASSIVE }, x, cursorY + 5, width, bottom, maxRankRows = 1)
+        return renderPerkSection(guiGraphics, "Unique Perks", displays.filter { display -> display.group == RolePerkDisplayGroup.UNIQUE || display.group == RolePerkDisplayGroup.OTHER }, x, cursorY + 5, width, bottom, maxRankRows = 0)
+    }
+
+    private fun renderClassInspector(guiGraphics: GuiGraphics, role: RoleUiDefinitionPayload, x: Int, startY: Int, width: Int, bottom: Int): Int {
+        var cursorY = startY
+        val summary = roleClassConfigSummary(role)
+        val loaded = loadedEquipmentCounts(role)
+        cursorY = renderClassLockInfo(guiGraphics, role, x, cursorY, width, bottom)
+        if (cursorY + PERK_PAIR_LINE_HEIGHT > bottom) return cursorY
+        drawCkdmPair(guiGraphics, "Weapons", "${loaded.first} loaded / ${summary.weaponRuleCount} rules", x, cursorY, width)
+        cursorY += PERK_PAIR_LINE_HEIGHT
+        if (cursorY + PERK_PAIR_LINE_HEIGHT > bottom) return cursorY
+        drawCkdmPair(guiGraphics, "Armor", "${loaded.second} loaded / ${summary.armorRuleCount} rules", x, cursorY, width)
+        cursorY += PERK_PAIR_LINE_HEIGHT
+        if (cursorY + PERK_PAIR_LINE_HEIGHT > bottom) return cursorY
+        drawCkdmPair(guiGraphics, "Starter Kit", "${summary.starterKitCount} items", x, cursorY, width)
+        cursorY += PERK_PAIR_LINE_HEIGHT + 5
+        cursorY = renderExampleList(guiGraphics, "Weapon Examples", summary.weaponExamples, x, cursorY, width, bottom)
+        cursorY = renderExampleList(guiGraphics, "Armor Examples", summary.armorExamples, x, cursorY + 3, width, bottom)
+        if (cursorY + PERK_SECTION_HEADER_HEIGHT > bottom) return cursorY
+        drawCkdm(guiGraphics, "Penalties", x, cursorY + 3, GOLD, CKDM_SMALL)
+        cursorY += PERK_SECTION_HEADER_HEIGHT + 3
+        val penalty = "${summary.wrongWeaponDamagePercent}% dmg, ${summary.wrongWeaponAttackSpeedPercent}% speed, ${summary.wrongWeaponCooldownTicks}t CD"
+        drawWrapped(guiGraphics, penalty, x + 6, cursorY, width - 6, WHITE, maxLines = 1)
+        cursorY += WRAPPED_LINE_HEIGHT
+        if (summary.wrongArmorDisablesSprint) {
+            drawWrapped(guiGraphics, "Wrong armor disables sprint.", x + 6, cursorY, width - 6, WHITE_MUTED, maxLines = 1)
+            cursorY += WRAPPED_LINE_HEIGHT
+        }
+        return cursorY
+    }
+
+    private fun renderClassLockInfo(guiGraphics: GuiGraphics, role: RoleUiDefinitionPayload, x: Int, startY: Int, width: Int, bottom: Int): Int {
+        if (!isLockedUpgradeClass(role)) return startY
+        var cursorY = startY
+        if (cursorY + PERK_SECTION_HEADER_HEIGHT > bottom) return cursorY
+        drawCkdm(guiGraphics, "Locked Path", x, cursorY, GOLD, CKDM_SMALL)
+        cursorY += PERK_SECTION_HEADER_HEIGHT
+        val prerequisite = role.starterClassIds.joinToString(", ") { id -> className(id) }.ifBlank { "a matching starter class" }
+        val mentor = role.mentorName.ifBlank { role.mentorNpcId.ifBlank { "class mentor" } }
+        listOf(
+            "Train ${role.displayName} after $prerequisite.",
+            "Find $mentor for mentor training.",
+            "Unlock cost: ${formatChowcoins(role.unlockCost)} chowcoins.",
+        ).forEach { line ->
+            if (cursorY + WRAPPED_LINE_HEIGHT > bottom) return cursorY
+            drawWrapped(guiGraphics, line, x + 6, cursorY, width - 6, WHITE_MUTED, maxLines = 1)
+            cursorY += WRAPPED_LINE_HEIGHT
+        }
+        return cursorY + 4
     }
 
     private fun renderPerkPairs(guiGraphics: GuiGraphics, displays: List<RolePerkDisplay>, x: Int, startY: Int, width: Int, bottom: Int): Int {
@@ -650,7 +746,7 @@ private class RolesOnboardingScreen(private var payload: RolesSyncPayload) : Scr
         return cursorY
     }
 
-    private fun renderPerkSection(guiGraphics: GuiGraphics, header: String, displays: List<RolePerkDisplay>, x: Int, startY: Int, width: Int, bottom: Int): Int {
+    private fun renderPerkSection(guiGraphics: GuiGraphics, header: String, displays: List<RolePerkDisplay>, x: Int, startY: Int, width: Int, bottom: Int, maxRankRows: Int = 2): Int {
         if (displays.isEmpty() || startY + PERK_SECTION_HEADER_HEIGHT > bottom) return startY
         var cursorY = startY
         drawCkdm(guiGraphics, header, x, cursorY, GOLD, CKDM_SMALL)
@@ -660,7 +756,7 @@ private class RolesOnboardingScreen(private var payload: RolesSyncPayload) : Scr
             val title = if (display.group == RolePerkDisplayGroup.UNIQUE) "Perk ${index + 1} - ${display.title}" else display.title
             drawCkdmPair(guiGraphics, title, display.value, x, cursorY, width)
             cursorY += PERK_PAIR_LINE_HEIGHT
-            display.rankValues.chunked(3).take(2).forEach { ranks ->
+            display.rankValues.chunked(3).take(maxRankRows).forEach { ranks ->
                 if (cursorY + PERK_RANK_LINE_HEIGHT > bottom) return cursorY
                 guiGraphics.drawString(font, ranks.joinToString("   "), x + 6, cursorY, colorWithRenderAlpha(WHITE), false)
                 cursorY += PERK_RANK_LINE_HEIGHT
@@ -669,16 +765,26 @@ private class RolesOnboardingScreen(private var payload: RolesSyncPayload) : Scr
         return cursorY
     }
 
-    private fun renderRightColumn(guiGraphics: GuiGraphics, rect: Rect, grid: Rect, slots: List<RoleSlot>, mouseX: Int, mouseY: Int) {
-        renderNineSlice(guiGraphics, YELLOW_CONTAINER_TEXTURE, rect, CONTAINER_TEXTURE_WIDTH, CONTAINER_TEXTURE_HEIGHT, CONTAINER_SOURCE_CORNER, CONTAINER_DEST_CORNER, 0.96f)
-        drawCenteredCkdm(guiGraphics, rightHeader(), rect.x + PAD, rect.y + 18, rect.width - PAD * 2, WHITE, CKDM_BOLD)
-        guiGraphics.enableScissor(grid.x, grid.y, grid.right, grid.bottom)
-        slots.forEachIndexed { index, slot ->
-            withEntrance(guiGraphics, EntranceStyle(170 + index * 24, offsetY = 8, scaleFrom = 0.96f), slot.rect.x + slot.rect.width / 2, slot.rect.y + slot.rect.height / 2) {
-                renderRoleSlot(guiGraphics, slot, mouseX, mouseY)
-            }
-        }
-        guiGraphics.disableScissor()
+    private fun renderSinglePerk(guiGraphics: GuiGraphics, label: String, display: RolePerkDisplay, x: Int, startY: Int, width: Int, bottom: Int): Int {
+        if (startY + PERK_PAIR_LINE_HEIGHT > bottom) return startY
+        drawCkdmPair(guiGraphics, label, display.value, x, startY, width)
+        return startY + PERK_PAIR_LINE_HEIGHT
+    }
+
+    private fun renderExampleList(guiGraphics: GuiGraphics, header: String, examples: List<String>, x: Int, startY: Int, width: Int, bottom: Int): Int {
+        if (examples.isEmpty() || startY + PERK_SECTION_HEADER_HEIGHT > bottom) return startY
+        var cursorY = startY
+        drawCkdm(guiGraphics, header, x, cursorY, GOLD, CKDM_SMALL)
+        cursorY += PERK_SECTION_HEADER_HEIGHT
+        val text = examples.joinToString(", ")
+        drawWrapped(guiGraphics, text, x + 6, cursorY, width - 6, WHITE, maxLines = 2)
+        return cursorY + WRAPPED_LINE_HEIGHT * minOf(2, font.split(Component.literal(text), width - 6).size.coerceAtLeast(1))
+    }
+
+    private fun renderPreviewItemName(guiGraphics: GuiGraphics, role: RoleUiDefinitionPayload, x: Int, y: Int, width: Int) {
+        val stack = previewItemStack(role)
+        if (stack.isEmpty) return
+        drawCkdmPair(guiGraphics, "Preview", stack.hoverName.string, x, y, width)
     }
 
     private fun renderRoleSlot(guiGraphics: GuiGraphics, slot: RoleSlot, mouseX: Int, mouseY: Int) {
@@ -691,14 +797,16 @@ private class RolesOnboardingScreen(private var payload: RolesSyncPayload) : Scr
         }
         renderNineSlice(guiGraphics, texture, slot.rect, CONTAINER_TEXTURE_WIDTH, CONTAINER_TEXTURE_HEIGHT, CONTAINER_SOURCE_CORNER, TILE_DEST_CORNER, if (hovered || selected) 1.0f else 0.86f)
         val role = slot.role
-        if (role == null) {
-            drawCenteredCkdm(guiGraphics, fitText(noSelectionLabel(), slot.rect.width - 10, CKDM_SMALL), slot.rect.x + 5, slot.rect.y + slot.rect.height / 2 - 4, slot.rect.width - 10, if (selected || hovered) WHITE else WHITE_MUTED, CKDM_SMALL)
-            return
-        }
+        if (role == null) return
         val locked = isLockedUpgradeClass(role)
-        renderRoleIcon(guiGraphics, role.icon, Rect(slot.rect.x + (slot.rect.width - ROLE_ICON_SIZE) / 2, slot.rect.y + 9, ROLE_ICON_SIZE, ROLE_ICON_SIZE))
-        drawCenteredCkdm(guiGraphics, fitText(role.displayName, slot.rect.width - 10, CKDM_SMALL), slot.rect.x + 5, slot.rect.bottom - 18, slot.rect.width - 10, if (locked) DISABLED else WHITE, CKDM_SMALL)
-        if (locked) renderLockedClassOverlay(guiGraphics, slot.rect)
+        val icon = Rect(slot.rect.x + 9, slot.rect.y + (slot.rect.height - ROLE_ICON_SIZE) / 2, ROLE_ICON_SIZE, ROLE_ICON_SIZE)
+        renderRoleIcon(guiGraphics, role.icon, icon)
+        val textX = icon.right + 9
+        val color = if (locked) DISABLED else WHITE
+        drawCkdm(guiGraphics, fitText(role.displayName, slot.rect.right - textX - 30, CKDM_SMALL), textX, slot.rect.y + 8, color, CKDM_SMALL)
+        val tag = if (locked) "LOCKED UPGRADE" else roleTypeLabel(role).uppercase(Locale.ROOT)
+        drawCkdm(guiGraphics, fitText(tag, slot.rect.right - textX - 12, CKDM_SMALL), textX, slot.rect.y + 24, if (locked) DISABLED else GOLD, CKDM_SMALL)
+        if (locked) renderLockedClassOverlay(guiGraphics, Rect(slot.rect.right - 28, slot.rect.y + 9, 20, 20))
     }
 
     private fun renderLockedClassOverlay(guiGraphics: GuiGraphics, rect: Rect) {
@@ -712,6 +820,9 @@ private class RolesOnboardingScreen(private var payload: RolesSyncPayload) : Scr
 
     private fun renderPaperDoll(guiGraphics: GuiGraphics, rect: Rect, mouseX: Int, mouseY: Int) {
         val player = Minecraft.getInstance().player ?: return
+        val mainHand = player.mainHandItem.copy()
+        val offHand = player.offhandItem.copy()
+        val previewStack = if (step == Step.JOB || step == Step.CLASS) previewRole()?.let(::previewItemStack) ?: ItemStack.EMPTY else ItemStack.EMPTY
         val dollHeight = (rect.height - 16).coerceAtLeast(120)
         val bodyHeight = if (step == Step.BODY) selectedHeight.toFloat() else 1.0f
         val bodyWeight = if (step == Step.BODY) selectedWeight.toFloat() else 1.0f
@@ -723,32 +834,55 @@ private class RolesOnboardingScreen(private var payload: RolesSyncPayload) : Scr
         pose.translate(centerX, floorY, 0.0f)
         pose.scale(bodyWeight, bodyHeight, 1.0f)
         pose.translate(-centerX, -floorY, 0.0f)
-        InventoryScreen.renderEntityInInventoryFollowsMouse(
-            guiGraphics,
-            rect.x + 4,
-            rect.y + 6,
-            rect.right - 4,
-            rect.bottom - 8,
-            scale,
-            0.04f,
-            (rect.x + rect.right) / 2.0f,
-            (rect.y + rect.bottom) / 2.0f,
-            player,
-        )
+        try {
+            if (!previewStack.isEmpty) {
+                player.setItemInHand(InteractionHand.MAIN_HAND, previewStack.copyWithCount(1))
+                player.setItemInHand(InteractionHand.OFF_HAND, ItemStack.EMPTY)
+            }
+            InventoryScreen.renderEntityInInventoryFollowsMouse(
+                guiGraphics,
+                rect.x + 4,
+                rect.y + 6,
+                rect.right - 4,
+                rect.bottom - 8,
+                scale,
+                0.04f,
+                (rect.x + rect.right) / 2.0f,
+                (rect.y + rect.bottom) / 2.0f,
+                player,
+            )
+        } finally {
+            if (!previewStack.isEmpty) {
+                player.setItemInHand(InteractionHand.MAIN_HAND, mainHand)
+                player.setItemInHand(InteractionHand.OFF_HAND, offHand)
+            }
+        }
         pose.popPose()
     }
 
     private fun renderBodySummary(guiGraphics: GuiGraphics, rect: Rect) {
         renderNineSlice(guiGraphics, GREY_CONTAINER_TEXTURE, rect, CONTAINER_TEXTURE_WIDTH, CONTAINER_TEXTURE_HEIGHT, CONTAINER_SOURCE_CORNER, CONTAINER_DEST_CORNER, 0.96f)
         drawCenteredCkdm(guiGraphics, "YOUR PATH", rect.x + PAD, rect.y + 22, rect.width - PAD * 2, WHITE, CKDM_BOLD)
+        val contentX = rect.x + PAD
+        val contentWidth = rect.width - PAD * 2
         var cursorY = rect.y + 58
-        drawCkdmPair(guiGraphics, "Job", selectedJob()?.displayName ?: "None", rect.x + PAD + 2, cursorY, rect.width - PAD * 2 - 4)
+        cursorY = renderBodyRoleRow(guiGraphics, Rect(contentX, cursorY, contentWidth, BODY_ROLE_ROW_HEIGHT), "Job", selectedJob())
+        cursorY += 8
+        cursorY = renderBodyRoleRow(guiGraphics, Rect(contentX, cursorY, contentWidth, BODY_ROLE_ROW_HEIGHT), "Class", selectedClass())
+        cursorY += 14
+        drawCkdmPair(guiGraphics, "Height", scaleLabel(selectedHeight), contentX + 2, cursorY, contentWidth - 4)
         cursorY += 18
-        drawCkdmPair(guiGraphics, "Class", selectedClass()?.displayName ?: "None", rect.x + PAD + 2, cursorY, rect.width - PAD * 2 - 4)
-        cursorY += 26
-        drawCkdmPair(guiGraphics, "Height", scaleLabel(selectedHeight), rect.x + PAD + 2, cursorY, rect.width - PAD * 2 - 4)
-        cursorY += 18
-        drawCkdmPair(guiGraphics, "Weight", scaleLabel(selectedWeight), rect.x + PAD + 2, cursorY, rect.width - PAD * 2 - 4)
+        drawCkdmPair(guiGraphics, "Weight", scaleLabel(selectedWeight), contentX + 2, cursorY, contentWidth - 4)
+    }
+
+    private fun renderBodyRoleRow(guiGraphics: GuiGraphics, row: Rect, label: String, role: RoleUiDefinitionPayload?): Int {
+        renderNineSlice(guiGraphics, YELLOW_CONTAINER_TEXTURE, row, CONTAINER_TEXTURE_WIDTH, CONTAINER_TEXTURE_HEIGHT, CONTAINER_SOURCE_CORNER, TILE_DEST_CORNER, 0.78f)
+        val icon = Rect(row.x + 8, row.y + (row.height - BODY_ROLE_ICON_SIZE) / 2, BODY_ROLE_ICON_SIZE, BODY_ROLE_ICON_SIZE)
+        if (role != null) renderRoleIcon(guiGraphics, role.icon, icon)
+        val textX = if (role == null) row.x + 10 else icon.right + 8
+        drawCkdm(guiGraphics, label, textX, row.y + 8, GOLD, CKDM_SMALL)
+        drawPlain(guiGraphics, role?.displayName ?: "None selected", textX, row.y + 22, WHITE, row.right - textX - 8)
+        return row.bottom
     }
 
     private fun renderBodyControls(guiGraphics: GuiGraphics, rect: Rect, mouseX: Int, mouseY: Int) {
@@ -762,7 +896,8 @@ private class RolesOnboardingScreen(private var payload: RolesSyncPayload) : Scr
         val track = bodySliderRect(controls, slider)
         val hovered = track.contains(mouseX, mouseY) || draggingSlider == slider
         drawCkdm(guiGraphics, label, track.x, track.y - 16, WHITE, CKDM_SMALL)
-        drawCkdm(guiGraphics, scaleLabel(value), track.right - font.width(ckdmText(scaleLabel(value), CKDM_SMALL)), track.y - 16, GOLD, CKDM_SMALL)
+        val valueText = scaleLabel(value)
+        guiGraphics.drawString(font, Component.literal(valueText), track.right - font.width(valueText), track.y - 16, colorWithRenderAlpha(GOLD), false)
         renderNineSlice(guiGraphics, GREY_CONTAINER_TEXTURE, track, CONTAINER_TEXTURE_WIDTH, CONTAINER_TEXTURE_HEIGHT, CONTAINER_SOURCE_CORNER, TILE_DEST_CORNER, if (hovered) 1.0f else 0.82f)
         val fillWidth = ((track.width - 8) * scaleProgress(value)).toInt().coerceIn(0, track.width - 8)
         guiGraphics.fill(track.x + 4, track.y + 5, track.x + 4 + fillWidth, track.bottom - 5, colorWithRenderAlpha(GOLD))
@@ -868,33 +1003,32 @@ private class RolesOnboardingScreen(private var payload: RolesSyncPayload) : Scr
     }
 
     private fun roleSlots(roles: List<RoleUiDefinitionPayload>, grid: Rect, scrollRows: Int): List<RoleSlot> {
-        val items = listOf<RoleUiDefinitionPayload?>(null) + roles
+        val items = roles
         val visibleRows = visibleGridRows(grid)
-        val startIndex = scrollRows * GRID_COLUMNS
-        val endIndex = (startIndex + visibleRows * GRID_COLUMNS).coerceAtMost(items.size)
-        val cellWidth = (grid.width - GRID_GAP * (GRID_COLUMNS - 1)) / GRID_COLUMNS
+        val startIndex = scrollRows
+        val endIndex = (startIndex + visibleRows).coerceAtMost(items.size)
+        val cellWidth = grid.width
         return (startIndex until endIndex).map { index ->
             val localIndex = index - startIndex
-            val col = localIndex % GRID_COLUMNS
-            val row = localIndex / GRID_COLUMNS
-            val x = grid.x + col * (cellWidth + GRID_GAP)
+            val row = localIndex
+            val x = grid.x
             val y = grid.y + row * (TILE_HEIGHT + GRID_GAP)
             RoleSlot(Rect(x, y, cellWidth, TILE_HEIGHT), items[index])
         }
     }
 
     private fun maxGridScroll(roles: List<RoleUiDefinitionPayload>, grid: Rect): Int {
-        val rows = (roles.size + 1 + GRID_COLUMNS - 1) / GRID_COLUMNS
+        val rows = roles.size
         return (rows - visibleGridRows(grid)).coerceAtLeast(0)
     }
 
     private fun visibleGridRows(grid: Rect): Int = ((grid.height + GRID_GAP) / (TILE_HEIGHT + GRID_GAP)).coerceAtLeast(1)
 
     private fun selectionLayout(): Layout {
-        val margin = 12
-        val gap = 10
-        val top = 48
-        val bottom = 46
+        val margin = (width / 34).coerceIn(18, 28)
+        val gap = 14
+        val top = 56
+        val bottom = 54
         val totalWidth = (width - margin * 2 - gap * 2).coerceAtLeast(300)
         val side = (totalWidth * 0.31f).toInt().coerceAtLeast(116)
         val center = (totalWidth - side * 2).coerceAtLeast(80)
@@ -902,7 +1036,7 @@ private class RolesOnboardingScreen(private var payload: RolesSyncPayload) : Scr
         val left = Rect(margin, top, side, columnHeight)
         val centerRect = Rect(left.right + gap, top, center, columnHeight)
         val right = Rect(centerRect.right + gap, top, width - margin - (centerRect.right + gap), columnHeight)
-        val grid = Rect(right.x + PAD, right.y + 48, right.width - PAD * 2, right.height - 62)
+        val grid = Rect(left.x + PAD, left.y + 66, left.width - PAD * 2, left.height - 82)
         return Layout(left, centerRect, right, grid)
     }
 
@@ -927,7 +1061,7 @@ private class RolesOnboardingScreen(private var payload: RolesSyncPayload) : Scr
 
     private fun stepTitle(): String = if (step == Step.JOB) "CHOOSE YOUR JOB" else "CHOOSE YOUR CLASS"
 
-    private fun rightHeader(): String = if (step == Step.JOB) "CHOOSE YOUR JOB" else "CHOOSE YOUR CLASS"
+    private fun browserHeader(): String = if (step == Step.JOB) "AVAILABLE JOBS" else "AVAILABLE CLASSES"
 
     private fun noSelectionLabel(): String = if (step == Step.JOB) "NO JOB SELECTED" else "NO CLASS SELECTED"
 
@@ -1010,12 +1144,19 @@ private class RolesOnboardingScreen(private var payload: RolesSyncPayload) : Scr
 
     private fun drawCkdmPair(guiGraphics: GuiGraphics, label: String, value: String, x: Int, y: Int, width: Int) {
         if (renderAlpha <= MIN_TEXT_RENDER_ALPHA) return
-        val valueComponent = ckdmText(value, CKDM_SMALL)
-        val valueWidth = font.width(valueComponent)
+        val valueWidthBudget = (width * 0.58f).toInt().coerceAtLeast(24)
+        val valueText = fitPlainText(value, valueWidthBudget)
+        val valueComponent = Component.literal(valueText)
+        val valueWidth = font.width(valueText)
         val labelText = fitText(label, (width - valueWidth - 5).coerceAtLeast(24), CKDM_SMALL)
         val labelComponent = ckdmText(labelText, CKDM_SMALL)
         guiGraphics.drawString(font, labelComponent, x, y, colorWithRenderAlpha(GOLD), false)
         guiGraphics.drawString(font, valueComponent, x + font.width(labelComponent) + 5, y, colorWithRenderAlpha(WHITE), false)
+    }
+
+    private fun drawPlain(guiGraphics: GuiGraphics, text: String, x: Int, y: Int, color: Int, maxWidth: Int) {
+        if (renderAlpha <= MIN_TEXT_RENDER_ALPHA) return
+        guiGraphics.drawString(font, Component.literal(fitPlainText(text, maxWidth)), x, y, colorWithRenderAlpha(color), false)
     }
 
     private fun drawWrapped(guiGraphics: GuiGraphics, text: String, x: Int, y: Int, width: Int, color: Int, maxLines: Int) {
@@ -1032,6 +1173,13 @@ private class RolesOnboardingScreen(private var payload: RolesSyncPayload) : Scr
         if (font.width(ckdmText(text, fontId)) <= maxWidth) return text
         var value = text
         while (value.isNotEmpty() && font.width(ckdmText("$value...", fontId)) > maxWidth) value = value.dropLast(1)
+        return "$value..."
+    }
+
+    private fun fitPlainText(text: String, maxWidth: Int): String {
+        if (font.width(text) <= maxWidth) return text
+        var value = text
+        while (value.isNotEmpty() && font.width("$value...") > maxWidth) value = value.dropLast(1)
         return "$value..."
     }
 
@@ -1055,6 +1203,80 @@ private class RolesOnboardingScreen(private var payload: RolesSyncPayload) : Scr
         }.getOrNull()
     }
 
+    private fun previewItemStack(role: RoleUiDefinitionPayload): ItemStack =
+        RoleItemStacks.firstFromIds(role.previewItems, "role preview ${role.id}") ?: ItemStack.EMPTY
+
+    private fun roleTypeLabel(role: RoleUiDefinitionPayload): String = when {
+        step == Step.JOB -> role.perks.firstNotNullOfOrNull { perk -> perk.pokemonType.takeIf(String::isNotBlank) }?.let { "${typeLabelForUi(it)} Job" } ?: "Job"
+        isStarterClass(role) -> "Starter Class"
+        else -> "Upgrade Class"
+    }
+
+    private fun typeLabelForUi(raw: String): String =
+        raw.replace('_', ' ').replaceFirstChar { char -> if (char.isLowerCase()) char.titlecase(Locale.ROOT) else char.toString() }
+
+    private fun className(id: String): String =
+        payload.classes.firstOrNull { role -> role.id.equals(id, ignoreCase = true) }?.displayName ?: id.replace('_', ' ').replaceFirstChar { char -> if (char.isLowerCase()) char.titlecase(Locale.ROOT) else char.toString() }
+
+    private fun formatChowcoins(value: Long): String = String.format(Locale.ROOT, "%,d", value)
+
+    private fun loadedEquipmentCounts(role: RoleUiDefinitionPayload): Pair<Int, Int> =
+        equipmentCountCache.getOrPut(role.id) { computeLoadedEquipmentCounts(role) }
+
+    private fun computeLoadedEquipmentCounts(role: RoleUiDefinitionPayload): Pair<Int, Int> {
+        val equipment = role.perks.filter { perk -> perk.type == "equipment_affinity" }
+        if (equipment.isEmpty()) return 0 to 0
+        var weapons = 0
+        var armor = 0
+        BuiltInRegistries.ITEM.asSequence().forEach { item ->
+            val stack = ItemStack(item)
+            if (equipment.any { perk -> uiWeaponAllowed(stack, perk) }) weapons++
+            if (equipment.any { perk -> uiArmorAllowed(stack, perk) }) armor++
+        }
+        return weapons to armor
+    }
+
+    private fun uiWeaponAllowed(stack: ItemStack, perk: RolePerkUiPayload): Boolean = itemAllowed(
+        stack,
+        tagList(perk.weaponTag, perk.weaponTags),
+        perk.weaponPatterns,
+        perk.weaponExcludePatterns,
+    )
+
+    private fun uiArmorAllowed(stack: ItemStack, perk: RolePerkUiPayload): Boolean = itemAllowed(
+        stack,
+        tagList(perk.armorTag, perk.armorTags),
+        perk.armorPatterns,
+        perk.armorExcludePatterns,
+    )
+
+    private fun itemAllowed(stack: ItemStack, tags: List<TagKey<Item>>, patterns: List<String>, excludePatterns: List<String> = emptyList()): Boolean {
+        val allowed = tags.any { tag -> stack.`is`(tag) } || patternAllowed(stack, patterns)
+        return allowed && !patternAllowed(stack, excludePatterns)
+    }
+
+    private fun tagList(single: String, many: List<String>): List<TagKey<Item>> =
+        (listOf(single.trim()).filter(String::isNotBlank) + many.map(String::trim).filter(String::isNotBlank)).map(::itemTag)
+
+    private fun itemTag(raw: String): TagKey<Item> = TagKey.create(Registries.ITEM, ResourceLocation.parse(raw.removePrefix("#")))
+
+    private fun patternAllowed(stack: ItemStack, patterns: List<String>): Boolean {
+        val itemId = BuiltInRegistries.ITEM.getKey(stack.item).toString()
+        return patterns.any { pattern ->
+            val trimmed = pattern.trim()
+            when {
+                trimmed.isBlank() -> false
+                trimmed.startsWith("#") -> stack.`is`(itemTag(trimmed))
+                else -> globMatches(trimmed, itemId)
+            }
+        }
+    }
+
+    private fun globMatches(pattern: String, value: String): Boolean {
+        val regex = pattern.split('*').joinToString(".*") { part -> Regex.escape(part) }
+        return Regex("^$regex$", RegexOption.IGNORE_CASE).matches(value)
+    }
+
     private fun playClick() {
         Minecraft.getInstance().soundManager.play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK.value(), 1.0f, 0.5f))
     }
@@ -1067,10 +1289,11 @@ private class RolesOnboardingScreen(private var payload: RolesSyncPayload) : Scr
         private const val DISABLED = 0xFF817865.toInt()
         private const val PAD = 14
         private const val TITLE_Y = 14
-        private const val GRID_COLUMNS = 4
         private const val GRID_GAP = 6
-        private const val TILE_HEIGHT = 66
+        private const val TILE_HEIGHT = 46
         private const val ROLE_ICON_SIZE = 28
+        private const val BODY_ROLE_ROW_HEIGHT = 46
+        private const val BODY_ROLE_ICON_SIZE = 26
         private const val LOCK_ICON_SIZE = 18
         private const val ICON_TEXTURE_SIZE = 16
         private const val LOCK_TEXTURE_SIZE = 16

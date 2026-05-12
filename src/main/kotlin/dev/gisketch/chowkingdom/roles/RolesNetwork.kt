@@ -1,6 +1,7 @@
 package dev.gisketch.chowkingdom.roles
 
 import dev.gisketch.chowkingdom.ChowKingdomMod
+import dev.gisketch.chowkingdom.npc.NpcConfig
 import net.minecraft.network.RegistryFriendlyByteBuf
 import net.minecraft.network.codec.StreamCodec
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload
@@ -33,7 +34,7 @@ object RolesNetwork {
     }
 
     private fun registerPayloads(event: RegisterPayloadHandlersEvent) {
-        val registrar = event.registrar("3")
+        val registrar = event.registrar("4")
         registrar.playToClient(RolesSyncPayload.TYPE, RolesSyncPayload.STREAM_CODEC, ::handleSyncClient)
         registrar.playToServer(RolesChoosePayload.TYPE, RolesChoosePayload.STREAM_CODEC, ::handleChoose)
     }
@@ -86,9 +87,13 @@ object RolesNetwork {
         displayName = role.displayName.ifBlank { role.id },
         icon = role.icon.ifBlank { DEFAULT_ROLE_ICON },
         description = role.description.ifBlank { "A Chowkingdom role waiting for a proper description." },
+        previewItems = role.previewItems.toList(),
         classification = RolesConfig.classClassification(role),
         starterClassIds = RolesConfig.starterClassIds(role),
         upgradeClassIds = RolesConfig.upgradeClassIds(role),
+        mentorNpcId = role.mentorQuest.mentorNpcId,
+        mentorName = role.mentorQuest.mentorNpcId.takeIf(String::isNotBlank)?.let { npcId -> NpcConfig.get(npcId)?.displayName() ?: npcId }.orEmpty(),
+        unlockCost = if (RolesConfig.isStarterClass(role.id)) ClassLicenses.STARTER_CLASS_UNLOCK_COST else ClassLicenses.UPGRADE_CLASS_UNLOCK_COST,
         perks = role.perks.map(::perkPayload),
     )
 
@@ -105,6 +110,10 @@ object RolesNetwork {
         weaponExcludePatterns = perk.weaponExcludePatterns.toList(),
         armorPatterns = perk.armorPatterns.toList(),
         armorExcludePatterns = perk.armorExcludePatterns.toList(),
+        wrongWeaponDamageMultiplier = perk.wrongWeaponDamageMultiplier,
+        wrongWeaponAttackSpeedMultiplier = perk.wrongWeaponAttackSpeedMultiplier,
+        wrongWeaponCooldownTicks = perk.wrongWeaponCooldownTicks,
+        wrongArmorDisablesSprint = perk.wrongArmorDisablesSprint,
         startingItems = perk.startingItems.toList(),
     )
 }
@@ -192,9 +201,13 @@ data class RoleUiDefinitionPayload(
     val displayName: String,
     val icon: String,
     val description: String,
+    val previewItems: List<String>,
     val classification: String,
     val starterClassIds: List<String>,
     val upgradeClassIds: List<String>,
+    val mentorNpcId: String,
+    val mentorName: String,
+    val unlockCost: Long,
     val perks: List<RolePerkUiPayload>,
 ) {
     fun encode(buffer: RegistryFriendlyByteBuf) {
@@ -202,9 +215,13 @@ data class RoleUiDefinitionPayload(
         buffer.writeUtf(displayName.take(MAX_DISPLAY_LENGTH), MAX_DISPLAY_LENGTH)
         buffer.writeUtf(icon.take(MAX_ICON_LENGTH), MAX_ICON_LENGTH)
         buffer.writeUtf(description.take(MAX_DESCRIPTION_LENGTH), MAX_DESCRIPTION_LENGTH)
+        writeStringList(buffer, previewItems, MAX_PREVIEW_ITEMS, MAX_ICON_LENGTH)
         buffer.writeUtf(classification.take(MAX_ID_LENGTH), MAX_ID_LENGTH)
         writeStringList(buffer, starterClassIds, MAX_ACTIVE_ROLES, MAX_ID_LENGTH)
         writeStringList(buffer, upgradeClassIds, MAX_ACTIVE_ROLES, MAX_ID_LENGTH)
+        buffer.writeUtf(mentorNpcId.take(MAX_ID_LENGTH), MAX_ID_LENGTH)
+        buffer.writeUtf(mentorName.take(MAX_DISPLAY_LENGTH), MAX_DISPLAY_LENGTH)
+        buffer.writeLong(unlockCost.coerceAtLeast(0L))
         val perks = perks.take(MAX_PERKS)
         buffer.writeVarInt(perks.size)
         perks.forEach { perk -> perk.encode(buffer) }
@@ -216,9 +233,13 @@ data class RoleUiDefinitionPayload(
             displayName = buffer.readUtf(MAX_DISPLAY_LENGTH),
             icon = buffer.readUtf(MAX_ICON_LENGTH),
             description = buffer.readUtf(MAX_DESCRIPTION_LENGTH),
+            previewItems = readStringList(buffer, MAX_PREVIEW_ITEMS, MAX_ICON_LENGTH),
             classification = buffer.readUtf(MAX_ID_LENGTH),
             starterClassIds = readStringList(buffer, MAX_ACTIVE_ROLES, MAX_ID_LENGTH),
             upgradeClassIds = readStringList(buffer, MAX_ACTIVE_ROLES, MAX_ID_LENGTH),
+            mentorNpcId = buffer.readUtf(MAX_ID_LENGTH),
+            mentorName = buffer.readUtf(MAX_DISPLAY_LENGTH),
+            unlockCost = buffer.readLong().coerceAtLeast(0L),
             perks = List(buffer.readVarInt().coerceIn(0, MAX_PERKS)) { RolePerkUiPayload.decode(buffer) },
         )
     }
@@ -237,6 +258,10 @@ data class RolePerkUiPayload(
     val weaponExcludePatterns: List<String>,
     val armorPatterns: List<String>,
     val armorExcludePatterns: List<String>,
+    val wrongWeaponDamageMultiplier: Double,
+    val wrongWeaponAttackSpeedMultiplier: Double,
+    val wrongWeaponCooldownTicks: Int,
+    val wrongArmorDisablesSprint: Boolean,
     val startingItems: List<String>,
 ) {
     fun encode(buffer: RegistryFriendlyByteBuf) {
@@ -252,6 +277,10 @@ data class RolePerkUiPayload(
         writeStringList(buffer, weaponExcludePatterns, MAX_PERK_VALUES, MAX_ICON_LENGTH)
         writeStringList(buffer, armorPatterns, MAX_PERK_VALUES, MAX_ICON_LENGTH)
         writeStringList(buffer, armorExcludePatterns, MAX_PERK_VALUES, MAX_ICON_LENGTH)
+        buffer.writeDouble(wrongWeaponDamageMultiplier.coerceIn(0.0, 1.0))
+        buffer.writeDouble(wrongWeaponAttackSpeedMultiplier.coerceIn(0.0, 1.0))
+        buffer.writeVarInt(wrongWeaponCooldownTicks.coerceAtLeast(0))
+        buffer.writeBoolean(wrongArmorDisablesSprint)
         writeStringList(buffer, startingItems, MAX_PERK_VALUES, MAX_ICON_LENGTH)
     }
 
@@ -269,6 +298,10 @@ data class RolePerkUiPayload(
             weaponExcludePatterns = readStringList(buffer, MAX_PERK_VALUES, MAX_ICON_LENGTH),
             armorPatterns = readStringList(buffer, MAX_PERK_VALUES, MAX_ICON_LENGTH),
             armorExcludePatterns = readStringList(buffer, MAX_PERK_VALUES, MAX_ICON_LENGTH),
+            wrongWeaponDamageMultiplier = buffer.readDouble().coerceIn(0.0, 1.0),
+            wrongWeaponAttackSpeedMultiplier = buffer.readDouble().coerceIn(0.0, 1.0),
+            wrongWeaponCooldownTicks = buffer.readVarInt().coerceAtLeast(0),
+            wrongArmorDisablesSprint = buffer.readBoolean(),
             startingItems = readStringList(buffer, MAX_PERK_VALUES, MAX_ICON_LENGTH),
         )
     }
@@ -335,6 +368,7 @@ private const val MAX_PLAYERS = 256
 private const val MAX_ACTIVE_ROLES = 32
 private const val MAX_PERKS = 32
 private const val MAX_PERK_VALUES = 256
+private const val MAX_PREVIEW_ITEMS = 8
 private const val MAX_JOB_RANKS = 16
 private const val MAX_ID_LENGTH = 64
 private const val MAX_DISPLAY_LENGTH = 96

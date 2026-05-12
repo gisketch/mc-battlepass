@@ -5,6 +5,7 @@ skin = "gisketchs_chowkingdom_mod:npc/invoker"
 body_type = "normal"
 height = 1.12
 weight = 0.94
+main_pokemon = "cobblemon:rotom"
 job = "adventurer"
 class = "elemental_wizard"
 hurt_messages = ["A mere scratch. I have endured the collapse of civilizations.", "Impudence! I am a beacon of knowledge, not a training dummy.", "Mind your hands, {player}. Even patience has its terminus."]
@@ -153,7 +154,7 @@ enabled = true
 offer_radius = 7.0
 offer_balloon_messages = ["@quest_log.png I have a task for someone of minimal competence. That includes you, {player}.", "@quest_log.png A mission presents itself. I would do it myself, but I am busy being magnificent."]
 pool = [
-  { id = "invoker_hunt_mobs", category = "task", event = "minecraft:monster_killed", event_desc = "Defeat {goal} Monsters", quest_text = "Cleanse the region of hostile creatures. They offend my arcane sensibilities.", pass_id = "combat", xp = 100, chowcoins = 50, goal = 10, complete_messages = ["@quest_log.png Acceptable. The region is marginally less infested. You have my acknowledgment.", "@quest_log.png Monsters dispatched. A crude solution, but effective. I am almost impressed."] },
+  { id = "invoker_hunt_mobs", category = "timed", event = "minecraft:monster_killed", event_desc = "Defeat {goal} Monsters In {seconds}s", quest_text = "Cleanse the region of hostile creatures. They offend my arcane sensibilities.", pass_id = "combat", xp = 100, chowcoins = 50, goal = 3, time_window_seconds = 20, complete_messages = ["@quest_log.png Acceptable. The region is marginally less infested. You have my acknowledgment.", "@quest_log.png Monsters dispatched. A crude solution, but effective. I am almost impressed."] },
   { id = "invoker_travel_blocks", category = "task", event = "minecraft:blocks_traveled", event_desc = "Travel {goal} Blocks", quest_text = "Survey the land. I require updated topographical data for my arcane cartography.", pass_id = "cozy", xp = 80, chowcoins = 25, goal = 1000, complete_messages = ["@quest_log.png The terrain data has been mentally catalogued. Your feet served adequately.", "@quest_log.png Good. My map of this dimension grows more precise. You were a useful instrument."] },
   { id = "invoker_fetch_books", category = "fetch", event_desc = "Bring {goal} Books", quest_text = "Bring books. Even primitive tomes contain fragments worth extracting.", pass_id = "cozy", xp = 80, chowcoins = 25, fetch_item = "minecraft:book", fetch_count = 5, complete_messages = ["@quest_log.png Books! Fragile vessels of infantile knowledge. I shall devour them nonetheless.", "@quest_log.png These tomes will be catalogued, cross-referenced, and quietly mocked. Well done."] },
 ]

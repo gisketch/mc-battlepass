@@ -324,6 +324,7 @@ object NpcLlmService {
             - Speech style: ${definition.personality.speechStyle}
             - Catchphrase references: $catchphrases
             - Prompt: ${definition.personality.llmPrompt}
+            ${NpcPokemonCompanions.llmSummary(definition)}
 
             Rules:
             - Stay in character as ${definition.name}.
@@ -970,6 +971,7 @@ object NpcLlmService {
             - If asked to do a game action, suggest the real UI action instead.
             - Home, bed, camp, workplace, and schedule in NPC state belong to you, the NPC, not the player.
             - If your home bed is unset, you are the one without a home. Ask the player for help with your bed or rent contract; do not say the player lacks a house.
+            - Your Pokemon companion in NPC state belongs to you. Mention them only when it fits the conversation, not every reply.
             - Return JSON only: {"message":"NPC reply here","memorable":null}
             - Set memorable to one short player-specific fact only when the player reveals something important, lasting, and useful later. Otherwise use null.
 
@@ -1074,6 +1076,7 @@ object NpcLlmService {
         val giftAvailability = if (giftLimit <= 0) "disabled" else if (giftsToday >= giftLimit) "cooldown until ${definition.gifts.resetHour.toString().padStart(2, '0')}:00" else "can receive gift"
         return listOf(
             "- Work: ${definition.job}",
+            NpcPokemonCompanions.llmSummary(definition),
             "- Activity: $activity",
             "- Schedule: $schedule",
             "- Health: $health",

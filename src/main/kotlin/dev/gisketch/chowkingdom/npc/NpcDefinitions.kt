@@ -11,6 +11,7 @@ class NpcDefinition(
     @SerializedName("height") var height: Double = DEFAULT_NPC_BODY_SCALE,
     @SerializedName("weight") var weight: Double = DEFAULT_NPC_BODY_SCALE,
     @SerializedName("custom_animation") var customAnimation: Boolean = false,
+    @SerializedName("main_pokemon") var mainPokemon: String = "",
     var job: String = "adventurer",
     @SerializedName("class") var classId: String = "",
     @SerializedName("job_definition") var jobDefinition: NpcJobDefinition = NpcJobDefinition(),
@@ -40,6 +41,7 @@ class NpcDefinition(
         bodyType = NpcBodyTypes.normalize(bodyType)
         height = normalizeNpcBodyScale(height)
         weight = normalizeNpcBodyScale(weight)
+        mainPokemon = normalizeMainPokemon(mainPokemon)
         job = NpcJobs.normalizeId(job)
         classId = classId.trim()
         jobDefinition = jobDefinition.normalized(job, store)
@@ -146,6 +148,14 @@ class NpcBossBalloonDefinition(
 }
 
 private fun normalizeNpcBodyScale(value: Double): Double = value.coerceIn(MIN_NPC_BODY_SCALE, MAX_NPC_BODY_SCALE)
+
+private fun normalizeMainPokemon(value: String): String {
+    val clean = value.trim().lowercase()
+        .replace(Regex("[^a-z0-9_.:/-]+"), "_")
+        .trim('_')
+    if (clean.isBlank()) return ""
+    return if (":" in clean) clean else "cobblemon:$clean"
+}
 
 private const val MIN_NPC_BODY_SCALE = 0.6
 private const val MAX_NPC_BODY_SCALE = 1.4
@@ -908,6 +918,8 @@ class NpcMissionDefinition(
     var xp: Int = 100,
     var chowcoins: Long = 0L,
     var goal: Int = 1,
+    @SerializedName(value = "time_window_seconds", alternate = ["timeWindowSeconds", "window_seconds", "seconds"])
+    var timeWindowSeconds: Int = 0,
     @SerializedName("fetch_item") var fetchItem: String = "",
     @SerializedName("fetch_count") var fetchCount: Int = 1,
     @SerializedName("quiz_topic") var quizTopic: String = "",
@@ -926,6 +938,7 @@ class NpcMissionDefinition(
                 "fetch", "fetch_task" -> "fetch"
                 "quiz", "llm_quiz" -> "quiz"
                 "food_chain", "food_chain_quest", "farmers_delight_food_chain" -> "food_chain"
+                "timed", "timed_task", "timed_kill", "time_trial" -> "timed"
                 else -> "task"
             }
         }
@@ -936,6 +949,7 @@ class NpcMissionDefinition(
         xp = xp.coerceAtLeast(0)
         chowcoins = chowcoins.coerceAtLeast(0L)
         goal = goal.coerceAtLeast(1)
+        timeWindowSeconds = if (category == "timed") (timeWindowSeconds.takeIf { it > 0 } ?: 10).coerceIn(1, 3600) else timeWindowSeconds.coerceIn(0, 3600)
         fetchItem = fetchItem.trim()
         fetchCount = fetchCount.coerceIn(1, 64)
         quizTopic = quizTopic.trim()
@@ -952,7 +966,7 @@ class NpcMissionDefinition(
         if (category == "fetch" && fetchItem.isBlank() && filters.isEmpty()) id = ""
         if (category == "food_chain" && (fetchItem.isBlank() || event.isBlank())) id = ""
         if (category == "quiz") goal = 1
-        if (category == "task" && event.isBlank()) id = ""
+        if ((category == "task" || category == "timed") && event.isBlank()) id = ""
     }
 
     private fun cleanMessages(values: List<String>, fallback: List<String>): MutableList<String> = values.map(String::trim).filter(String::isNotBlank).ifEmpty { fallback }.toMutableList()

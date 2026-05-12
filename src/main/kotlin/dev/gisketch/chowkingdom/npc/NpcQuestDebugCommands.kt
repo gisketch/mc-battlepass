@@ -28,6 +28,7 @@ object NpcQuestDebugCommands {
                 .then(Commands.literal("clear").executes(::clearCommand))
                 .then(fetchCommand())
                 .then(killCommand())
+                .then(timedKillCommand())
                 .then(travelCommand())
                 .then(itemTaskCommand("craft", "minecraft:item_crafted", "Craft"))
                 .then(itemTaskCommand("smelt", "minecraft:item_smelted", "Smelt"))
@@ -60,6 +61,20 @@ object NpcQuestDebugCommands {
                     Commands.argument("qty", IntegerArgumentType.integer(1, 9999))
                         .executes { context -> trackKill(context, "") }
                         .then(Commands.argument("dimension", StringArgumentType.word()).suggests(::suggestDimensions).executes { context -> trackKill(context, StringArgumentType.getString(context, "dimension")) }),
+                ),
+        )
+
+    private fun timedKillCommand(): LiteralArgumentBuilder<CommandSourceStack> = Commands.literal("timed_kill")
+        .then(
+            Commands.argument("entity", StringArgumentType.word())
+                .suggests(::suggestEntities)
+                .then(
+                    Commands.argument("qty", IntegerArgumentType.integer(1, 9999))
+                        .then(
+                            Commands.argument("seconds", IntegerArgumentType.integer(1, 3600))
+                                .executes { context -> trackTimedKill(context, "") }
+                                .then(Commands.argument("dimension", StringArgumentType.word()).suggests(::suggestDimensions).executes { context -> trackTimedKill(context, StringArgumentType.getString(context, "dimension")) }),
+                        ),
                 ),
         )
 
@@ -184,6 +199,16 @@ object NpcQuestDebugCommands {
         return track(context, "kill", "task", "minecraft:entity_killed", "Defeat $qty $entity$suffix", qty, "combat", filters = filters)
     }
 
+    private fun trackTimedKill(context: CommandContext<CommandSourceStack>, dimension: String): Int {
+        val entity = StringArgumentType.getString(context, "entity")
+        val qty = IntegerArgumentType.getInteger(context, "qty")
+        val seconds = IntegerArgumentType.getInteger(context, "seconds")
+        val filters = linkedMapOf("entity" to entity)
+        if (dimension.isNotBlank()) filters["dimension"] = dimension
+        val suffix = if (dimension.isBlank()) "" else " in $dimension"
+        return track(context, "timed_kill", "timed", "minecraft:entity_killed", "Defeat $qty $entity in ${seconds}s$suffix", qty, "combat", filters = filters, timeWindowSeconds = seconds)
+    }
+
     private fun trackTravel(context: CommandContext<CommandSourceStack>): Int {
         val blocks = IntegerArgumentType.getInteger(context, "blocks")
         return track(context, "travel_on_foot", "task", "minecraft:travel_on_foot", "Travel $blocks blocks on foot", blocks, filters = mapOf("mode" to "on_foot"))
@@ -261,9 +286,10 @@ object NpcQuestDebugCommands {
         passId: String = "cozy",
         fetchItem: String = "",
         filters: Map<String, String> = emptyMap(),
+        timeWindowSeconds: Int = 0,
     ): Int {
         val player = context.source.playerOrException
-        val quest = NpcQuestService.debugQuest(player, sanitizeSlot(slot), category, event, description, goal, passId, fetchItem, filters)
+        val quest = NpcQuestService.debugQuest(player, sanitizeSlot(slot), category, event, description, goal, passId, fetchItem, filters, timeWindowSeconds)
         NpcQuestService.debugTrack(player, quest)
         context.source.sendSuccess({ Component.literal("Tracking debug quest: ${quest.description}").withStyle(ChatFormatting.GREEN) }, false)
         return 1
@@ -279,6 +305,7 @@ object NpcQuestDebugCommands {
         val lines = listOf(
             "/quests debug fetch <item> <qty>",
             "/quests debug kill <entity> <qty> [dimension]",
+            "/quests debug timed_kill <entity> <qty> <seconds> [dimension]",
             "/quests debug travel on_foot|pokemon_land|pokemon_flying <blocks>",
             "/quests debug craft|smelt|eat <item> <qty>",
             "/quests debug catch any <qty> | type <type> <qty> | species <species> <qty> | category <legendary|mythical|starter> <qty>",

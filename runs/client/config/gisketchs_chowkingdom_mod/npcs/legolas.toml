@@ -5,6 +5,7 @@ skin = "gisketchs_chowkingdom_mod:npc/legolas"
 body_type = "slim"
 height = 1.12
 weight = 0.86
+main_pokemon = "cobblemon:leafeon"
 job = "adventurer"
 class = "war_archer"
 hurt_messages = ["Your aim is poor, but your manners are worse.", "Careful, {player}. Elven patience is not infinite.", "Strike again and I shall answer properly."]
@@ -154,7 +155,7 @@ enabled = true
 offer_radius = 7.0
 offer_balloon_messages = ["@quest_log.png A patrol needs steady eyes, {player}.", "@quest_log.png Come. The road asks for courage."]
 pool = [
-  { id = "legolas_hunt_mobs", category = "task", event = "minecraft:monster_killed", event_desc = "Defeat {goal} Monsters", quest_text = "Drive back enemies before they reach the town.", pass_id = "combat", xp = 100, chowcoins = 50, goal = 10, complete_messages = ["@quest_log.png Well done. The shadow thins.", "@quest_log.png The road is safer by your hand."] },
+  { id = "legolas_hunt_mobs", category = "timed", event = "minecraft:monster_killed", event_desc = "Defeat {goal} Monsters In {seconds}s", quest_text = "Drive back enemies before they reach the town.", pass_id = "combat", xp = 100, chowcoins = 50, goal = 3, time_window_seconds = 20, complete_messages = ["@quest_log.png Well done. The shadow thins.", "@quest_log.png The road is safer by your hand."] },
   { id = "legolas_travel_blocks", category = "task", event = "minecraft:blocks_traveled", event_desc = "Travel {goal} Blocks", quest_text = "Scout the high paths and forest edges.", pass_id = "cozy", xp = 80, chowcoins = 25, goal = 1000, complete_messages = ["@quest_log.png Good scouting. Your eyes served the town.", "@quest_log.png The map is wiser now."] },
   { id = "legolas_fetch_arrows", category = "fetch", event_desc = "Bring {goal} Arrows", quest_text = "Bring arrows for line-defense drills.", pass_id = "cozy", xp = 80, chowcoins = 25, fetch_item = "minecraft:arrow", fetch_count = 16, complete_messages = ["@quest_log.png Good. The quivers are ready.", "@quest_log.png These will guard more than targets."] },
 ]

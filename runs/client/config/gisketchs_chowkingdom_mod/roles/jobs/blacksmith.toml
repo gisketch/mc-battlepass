@@ -7,7 +7,8 @@ display_name = "Blacksmith"
 # Config value: icon.
 icon = "textures/gui/jobs/blacksmith.png"
 # Config value: description.
-description = "Works anvils, ore, and machine scrap around Steel Pokemon."
+description = "Works anvils, ore, machine scrap, and tempered metal around Steel Pokemon. Best for players who maintain gear, smelt often, and care about durability."
+preview_items = ["minecraft:iron_ingot", "minecraft:anvil"]
 # Config value: perks.
 perks = [
   { type = "cobblemon_catch_rate", pokemon_type = "steel", multiplier = 1.05, bonus_percent_by_level = [0.05, 0.10, 0.18, 0.28, 0.40], weapon_tags = [], armor_tags = [], weapon_patterns = [], armor_patterns = [], wrong_weapon_damage_multiplier = 1.0, wrong_weapon_cooldown_ticks = 0, wrong_weapon_attack_speed_multiplier = 1.0, wrong_armor_disables_sprint = false, starting_items = [] },

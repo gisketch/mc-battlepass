@@ -7,7 +7,8 @@ display_name = "Bug Scout"
 # Config value: icon.
 icon = "textures/gui/jobs/bug_scout.png"
 # Config value: description.
-description = "Checks groves, flowers, and old logs for Bug Pokemon."
+description = "Checks groves, flowers, webs, and old logs for Bug Pokemon. Best for players who want foraging, sticky-block movement, and swarm awareness."
+preview_items = ["minecraft:spider_eye", "minecraft:oak_leaves"]
 # Config value: perks.
 perks = [
   { type = "cobblemon_catch_rate", pokemon_type = "bug", multiplier = 1.05, bonus_percent_by_level = [0.05, 0.10, 0.18, 0.28, 0.40], weapon_tags = [], armor_tags = [], weapon_patterns = [], armor_patterns = [], wrong_weapon_damage_multiplier = 1.0, wrong_weapon_cooldown_ticks = 0, wrong_weapon_attack_speed_multiplier = 1.0, wrong_armor_disables_sprint = false, starting_items = [], reward_pool = [] },

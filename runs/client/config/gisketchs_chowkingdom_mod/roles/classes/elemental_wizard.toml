@@ -4,7 +4,8 @@
 id = "elemental_wizard"
 display_name = "Elemental Wizard"
 icon = "textures/gui/classes/elemental_wizard.png"
-description = "Upgrade caster trained with elemental staves, wands, runes, damage staffs, and elemental robes."
+description = "Upgrade caster for players who want stronger elemental tools and risky burst power. Trained for elemental staves, wands, runes, damage staffs, and elemental robes."
+preview_items = ["wizards:staff_arcane", "minecraft:blaze_rod"]
 classification = "upgrade"
 starter_class_ids = ["wizard", "priest"]
 upgrade_class_ids = []

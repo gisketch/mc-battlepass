@@ -139,6 +139,7 @@ object NpcFeature {
         BLOCK_ENTITIES.register(modBus)
         NpcNetwork.register(modBus)
         NpcConfig.load()
+        NpcPokemonCompanions.registerEvents()
         modBus.addListener(::registerAttributes)
         NeoForge.EVENT_BUS.addListener(::onServerStarted)
         NeoForge.EVENT_BUS.addListener(::onServerTick)
@@ -1651,6 +1652,7 @@ object NpcFeature {
         tickRealtimeDebug(event.server)
         NpcQuestService.tick(event.server)
         NpcWorldChatService.tick(event.server)
+        NpcPokemonCompanions.tick(event.server)
     }
 
     fun plazaMeetupStartHour(): Int = meetupEntries().minOfOrNull { entry -> entry.fromHour } ?: NPC_DEFAULT_MEETUP_START_HOUR
@@ -1703,12 +1705,21 @@ object NpcFeature {
 
     private fun onAttackEntity(event: AttackEntityEvent) {
         val player = event.entity as? ServerPlayer ?: return
+        if (NpcPokemonCompanions.isCompanion(event.target)) {
+            event.isCanceled = true
+            return
+        }
         val npc = event.target as? ChowNpcEntity ?: return
         if (!NpcBossFights.handleNpcAttackAttempt(npc, player)) return
         event.isCanceled = true
     }
 
     private fun onIncomingDamage(event: LivingIncomingDamageEvent) {
+        if (NpcPokemonCompanions.isCompanion(event.entity)) {
+            event.isCanceled = true
+            event.amount = 0.0f
+            return
+        }
         val npc = event.entity as? ChowNpcEntity
         if (npc != null && NpcBossFights.handleNpcAttackAttempt(npc, event.source.entity as? ServerPlayer)) {
             event.isCanceled = true
@@ -1722,6 +1733,10 @@ object NpcFeature {
 
     private fun onLivingChangeTarget(event: LivingChangeTargetEvent) {
         val target = event.newAboutToBeSetTarget ?: return
+        if (NpcPokemonCompanions.isCompanion(target) || NpcPokemonCompanions.isCompanion(event.entity)) {
+            event.newAboutToBeSetTarget = null
+            return
+        }
         if (NpcBossFights.shouldBlockDamage(target, event.entity, event.entity)) event.newAboutToBeSetTarget = null
     }
 
@@ -1754,6 +1769,7 @@ object NpcFeature {
             NpcBossFights.clear(npc)
             NpcSmartBrainOverrides.clear(npc)
             val definition = NpcConfig.get(npc.npcId) ?: return
+            npc.server?.let { server -> NpcPokemonCompanions.removeForNpc(server, definition.id) }
             val killer = event.source.entity as? ServerPlayer
             val deathText = killer?.let { "${definition.name} died, killed by ${it.gameProfile.name}" } ?: "${definition.name} died"
             NpcStore.recordGlobalEvent("npc_death", deathText)
@@ -2328,6 +2344,7 @@ object NpcFeature {
     private fun clearAllNpcsCommand(context: CommandContext<CommandSourceStack>): Int {
         val server = context.source.server
         val removedEntities = removeLiveNpcs(server, null)
+        NpcConfig.all().forEach { definition -> NpcPokemonCompanions.removeForNpc(server, definition.id) }
         val removedContracts = removeRentContracts(server, null)
         val backup = NpcStore.backupAndClearAll()
         realtimeDebugTargets.clear()
@@ -2348,6 +2365,7 @@ object NpcFeature {
         }
         val server = context.source.server
         val removedEntities = removeLiveNpcs(server, id)
+        NpcPokemonCompanions.removeForNpc(server, id)
         val removedContracts = removeRentContracts(server, id)
         val backup = NpcStore.backupAndClearNpc(id)
         realtimeDebugTargets.clear()
@@ -2854,6 +2872,7 @@ object NpcFeature {
         npc.configure(definition, campPos)
         npc.moveTo(spawnPos.x + 0.5, spawnPos.y.toDouble(), spawnPos.z + 0.5, level.random.nextFloat() * 360.0f, 0.0f)
         level.addFreshEntity(npc)
+        NpcPokemonCompanions.ensureFor(npc, definition)
         NpcStore.setEntity(definition.id, npc.uuid, campPos)
         NpcStore.clearDead(definition.id)
         NpcStore.recordGlobalEvent("npc_spawned", "${definition.name} appeared near the camping block on day ${NpcTime.day(level)}.")
@@ -2906,6 +2925,7 @@ object NpcFeature {
         npc.homePos = homePos.immutable()
         npc.moveTo(homePos.x + 0.5, homePos.y + 1.0, homePos.z + 0.5, level.random.nextFloat() * 360.0f, 0.0f)
         level.addFreshEntity(npc)
+        NpcPokemonCompanions.ensureFor(npc, definition)
         NpcStore.setEntity(definition.id, npc.uuid, camp)
         NpcStore.clearDead(definition.id)
         NpcStore.recordGlobalEvent("npc_respawn", "${definition.name} respawned at home bed")

@@ -278,6 +278,7 @@ class PlayerClassMentorQuestState(
     var progress: Int = 0,
     var startedAtTick: Long = 0L,
     var stepStartedAtTick: Long = 0L,
+    var timedEventTicks: MutableList<Long> = mutableListOf(),
     var paid: Boolean = false,
 )
 

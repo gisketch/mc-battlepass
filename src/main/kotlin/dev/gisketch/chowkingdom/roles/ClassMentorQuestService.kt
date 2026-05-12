@@ -71,6 +71,7 @@ object ClassMentorQuestService {
             "fetch" -> handleFetch(player, npc, definition, role, state, step, friendshipLevel)
             "food_chain" -> handleFoodChain(player, npc, definition, role, state, step, friendshipLevel)
             "task" -> handleTask(player, npc, definition, role, state, step, friendshipLevel)
+            "timed" -> handleTask(player, npc, definition, role, state, step, friendshipLevel)
             "payment" -> handlePayment(player, npc, definition, role, state, step, friendshipLevel)
             "duel" -> handleDuel(player, npc, definition, role, state, step, friendshipLevel)
             "unlock" -> completeUnlock(player, npc, definition, role, state, friendshipLevel)
@@ -87,9 +88,18 @@ object ClassMentorQuestService {
         record.classMentorQuests.values.forEach { state ->
             val role = RolesConfig.roleClass(state.classId) ?: return@forEach
             val step = normalizedSteps(role).getOrNull(state.stepIndex) ?: return@forEach
-            if (step.kindKey() !in setOf("task", "food_chain")) return@forEach
+            if (step.kindKey() !in setOf("task", "timed", "food_chain")) return@forEach
             if (state.progress >= step.goalValue()) return@forEach
             if (!matches(signal, step)) return@forEach
+            if (step.kindKey() == "timed") {
+                val progress = recordTimedEvent(player, state, step, signal.amount)
+                changed = true
+                if (progress >= step.goalValue()) {
+                    val mentorNpc = role.mentorQuest.mentorNpcId.ifBlank { state.npcId }
+                    SnackbarNetwork.send(player, SnackbarNotification.npc(mentorNpc, "CLASS QUEST READY", "${role.displayName.ifBlank { role.id }}: ${step.title.ifBlank { step.objective }}", SnackbarType.SUCCESS, SnackbarSounds.REWARD))
+                }
+                return@forEach
+            }
             state.progress = (state.progress + signal.amount.coerceAtLeast(1)).coerceAtMost(step.goalValue())
             changed = true
             if (state.progress >= step.goalValue()) {
@@ -165,8 +175,9 @@ object ClassMentorQuestService {
 
     private fun handleTask(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, role: RoleDefinition, state: PlayerClassMentorQuestState, step: ClassMentorQuestStepDefinition, friendshipLevel: Int): ClassMentorTrainingResult {
         val goal = step.goalValue()
+        val progress = if (step.kindKey() == "timed") refreshTimedProgress(player, state, step) else state.progress
         if (state.progress < goal) {
-            openMentorDialog(player, npc, definition, role, state, step.startMessage.ifBlank { "${step.objective} Progress: ${state.progress}/$goal." }, "step_progress", step, stepPrompt(player, definition, role, state, step, "The player is still working on this field task. Mention progress ${state.progress}/$goal and the exact objective."))
+            openMentorDialog(player, npc, definition, role, state, step.startMessage.ifBlank { "${step.objective} Progress: $progress/$goal." }, "step_progress", step, stepPrompt(player, definition, role, state, step, "The player is still working on this field task. Mention progress $progress/$goal and the exact objective."))
             return ClassMentorTrainingResult.Handled
         }
         openMentorDialog(player, npc, definition, role, state, step.completeMessage.ifBlank { "The discipline holds. You passed this {class} step." }, "step_complete", step, stepPrompt(player, definition, role, state, step, "The player completed this class-specific task. Acknowledge it and hint at the next stage."))
@@ -237,6 +248,7 @@ object ClassMentorQuestService {
         state.stepIndex += 1
         state.progress = 0
         state.stepStartedAtTick = player.level().dayTime
+        state.timedEventTicks.clear()
         RoleStore.saveClassMentorQuest(player, state)
     }
 
@@ -269,7 +281,8 @@ object ClassMentorQuestService {
     private fun stepPrompt(player: ServerPlayer, definition: NpcDefinition, role: RoleDefinition, state: PlayerClassMentorQuestState, step: ClassMentorQuestStepDefinition, instruction: String): String {
         val steps = normalizedSteps(role)
         val outline = steps.mapIndexed { index, entry ->
-            "${index + 1}. ${entry.skeletonLabel()} - ${entry.title.ifBlank { entry.objective }} (${entry.kindKey()}, goal ${entry.goalValue()})"
+            val window = if (entry.kindKey() == "timed") ", ${entry.timeWindowSeconds.coerceAtLeast(1)}s window" else ""
+            "${index + 1}. ${entry.skeletonLabel()} - ${entry.title.ifBlank { entry.objective }} (${entry.kindKey()}, goal ${entry.goalValue()}$window)"
         }.joinToString("\n")
         return """
             $instruction
@@ -282,6 +295,7 @@ object ClassMentorQuestService {
             Unlock cost: ${unlockCost(role)} chowcoins
             Current step: ${state.stepIndex + 1}/${steps.size}
             Current progress: ${state.progress}/${step.goalValue()}
+            Current time window: ${if (step.kindKey() == "timed") "${step.timeWindowSeconds.coerceAtLeast(1)} seconds" else "none"}
             Current skeleton: ${step.skeletonLabel()}
             Current title: ${step.title}
             Current objective: ${step.objective}
@@ -314,6 +328,7 @@ object ClassMentorQuestService {
         .replace("{objective}", step?.objective.orEmpty())
         .replace("{progress}", (state?.progress ?: 0).toString())
         .replace("{goal}", (step?.goalValue() ?: 1).toString())
+        .replace("{seconds}", (step?.timeWindowSeconds ?: 0).toString())
         .replace("{item}", step?.item?.let(::displayName).orEmpty())
 
     private fun countRequiredItems(player: ServerPlayer, step: ClassMentorQuestStepDefinition, state: PlayerClassMentorQuestState, requireFoodChainMark: Boolean): Int =
@@ -373,6 +388,7 @@ object ClassMentorQuestService {
                 item = step.item.trim(),
                 qty = step.qty.coerceAtLeast(1),
                 goal = step.goal.coerceAtLeast(1),
+                timeWindowSeconds = if (normalizeKind(step.kind.ifBlank { kindForSkeleton(step.skeleton.ifBlank { defaultSkeleton(index) }) }) == "timed") (step.timeWindowSeconds.takeIf { it > 0 } ?: 20).coerceIn(1, 3600) else step.timeWindowSeconds.coerceIn(0, 3600),
                 filters = step.filters.mapKeys { (key, _) -> key.trim() }.mapValues { (_, value) -> value.trim() }.filter { (key, value) -> key.isNotBlank() && value.isNotBlank() }.toMutableMap(),
                 llmPrompt = step.llmPrompt.trim(),
                 startMessage = step.startMessage.trim(),
@@ -395,6 +411,7 @@ object ClassMentorQuestService {
         "offering", "fetch_item" -> "fetch"
         "food", "cooking", "prep", "prepare_food" -> "food_chain"
         "discipline", "trial", "field_trial", "signature_trial", "event" -> "task"
+        "timed", "timed_task", "timed_kill", "time_trial", "burst_trial" -> "timed"
         "license", "pay", "fee" -> "payment"
         "mentor_duel", "boss", "bossfight", "fight" -> "duel"
         else -> value.trim().lowercase(Locale.ROOT).replace('-', '_').ifBlank { "dialogue" }
@@ -426,6 +443,28 @@ object ClassMentorQuestService {
     private fun item(itemId: String) = runCatching { ResourceLocation.parse(itemId) }.getOrNull()
         ?.let { id -> BuiltInRegistries.ITEM.getOptional(id).orElse(Items.AIR) }
         ?: Items.AIR
+
+    private fun recordTimedEvent(player: ServerPlayer, state: PlayerClassMentorQuestState, step: ClassMentorQuestStepDefinition, amount: Int): Int {
+        val now = player.level().gameTime
+        repeat(amount.coerceAtLeast(1).coerceAtMost(1000)) {
+            state.timedEventTicks.add(now)
+        }
+        val progress = refreshTimedProgress(player, state, step)
+        if (progress >= step.goalValue()) {
+            state.progress = step.goalValue()
+            state.timedEventTicks.clear()
+        }
+        return state.progress
+    }
+
+    private fun refreshTimedProgress(player: ServerPlayer, state: PlayerClassMentorQuestState, step: ClassMentorQuestStepDefinition): Int {
+        if (state.progress >= step.goalValue()) return step.goalValue()
+        val windowTicks = step.timeWindowSeconds.coerceAtLeast(1) * 20L
+        val cutoff = player.level().gameTime - windowTicks
+        state.timedEventTicks.removeAll { tick -> tick < cutoff }
+        state.progress = state.timedEventTicks.size.coerceAtMost(step.goalValue())
+        return state.progress
+    }
 
     private fun foodChainKey(player: ServerPlayer, state: PlayerClassMentorQuestState): String =
         "${player.stringUUID}|${state.classId}|${state.npcId}|${state.stepIndex}|${state.stepStartedAtTick}"

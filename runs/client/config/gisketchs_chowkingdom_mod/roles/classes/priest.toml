@@ -4,7 +4,8 @@
 id = "priest"
 display_name = "Priest"
 icon = "textures/gui/classes/priest.png"
-description = "Starter holy support caster trained with basic holy staffs, holy wands, and priest robes."
+description = "Starter holy support class for players who want healing, protection, and careful team play. Uses holy staffs, holy wands, priest robes, and support spell books."
+preview_items = ["paladins:wand_holy", "minecraft:golden_carrot", "minecraft:blaze_rod"]
 classification = "starter"
 starter_class_ids = []
 upgrade_class_ids = ["paladin", "bard", "elemental_wizard"]

@@ -8,6 +8,8 @@ data class RoleDefinition(
     var displayName: String = "",
     var icon: String = "minecraft:grass_block",
     var description: String = "",
+    @SerializedName(value = "preview_items", alternate = ["previewItems", "preview_item", "previewItem"])
+    var previewItems: MutableList<String> = mutableListOf(),
     var classification: String = "",
     @SerializedName(value = "starter_class_ids", alternate = ["starterClassIds", "starter_class_id", "starterClassId"])
     var starterClassIds: MutableList<String> = mutableListOf(),
@@ -40,6 +42,8 @@ data class ClassMentorQuestStepDefinition(
     var item: String = "",
     var qty: Int = 1,
     var goal: Int = 1,
+    @SerializedName(value = "time_window_seconds", alternate = ["timeWindowSeconds", "window_seconds", "seconds"])
+    var timeWindowSeconds: Int = 0,
     var filters: MutableMap<String, String> = mutableMapOf(),
     @SerializedName(value = "llm_prompt", alternate = ["llmPrompt"])
     var llmPrompt: String = "",

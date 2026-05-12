@@ -5,6 +5,7 @@ skin = "gisketchs_chowkingdom_mod:npc/katara"
 body_type = "slim"
 height = 0.98
 weight = 0.82
+main_pokemon = "cobblemon:lapras"
 job = "adventurer"
 class = "priest"
 hurt_messages = ["Hey! I am trying to help.", "That hurt, {player}. Please be careful.", "Do not make me freeze your boots to the floor."]
@@ -154,7 +155,7 @@ enabled = true
 offer_radius = 7.0
 offer_balloon_messages = ["@quest_log.png {player}, someone needs help.", "@quest_log.png I have a task that could protect the town."]
 pool = [
-  { id = "katara_hunt_mobs", category = "task", event = "minecraft:monster_killed", event_desc = "Defeat {goal} Monsters", quest_text = "Clear monsters before they hurt anyone.", pass_id = "combat", xp = 100, chowcoins = 50, goal = 10, complete_messages = ["@quest_log.png Thank you. People are safer now.", "@quest_log.png You protected them. That matters."] },
+  { id = "katara_hunt_mobs", category = "timed", event = "minecraft:monster_killed", event_desc = "Defeat {goal} Monsters In {seconds}s", quest_text = "Clear monsters before they hurt anyone.", pass_id = "combat", xp = 100, chowcoins = 50, goal = 3, time_window_seconds = 20, complete_messages = ["@quest_log.png Thank you. People are safer now.", "@quest_log.png You protected them. That matters."] },
   { id = "katara_travel_blocks", category = "task", event = "minecraft:blocks_traveled", event_desc = "Travel {goal} Blocks", quest_text = "Check the roads for injured travelers.", pass_id = "cozy", xp = 80, chowcoins = 25, goal = 1000, complete_messages = ["@quest_log.png Good. The roads were checked.", "@quest_log.png Thank you for making sure no one was left behind."] },
   { id = "katara_fetch_melon", category = "fetch", event_desc = "Bring {goal} Glistering Melon Slices", quest_text = "Bring healing ingredients for the clinic.", pass_id = "cozy", xp = 80, chowcoins = 25, fetch_item = "minecraft:glistering_melon_slice", fetch_count = 3, complete_messages = ["@quest_log.png Perfect. These will help with healing.", "@quest_log.png Thank you. The supplies are ready now."] },
 ]

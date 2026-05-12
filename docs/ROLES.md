@@ -46,7 +46,7 @@ Default starter license unlock levels are `1, 100, 300, 500, 1000`. Default upgr
 
 Adding a starter class spends starter capacity. Adding an upgrade class spends upgrade capacity and requires at least one configured starter prerequisite from `starter_class_ids` or the built-in fallback upgrade path. Admin `/ck roles set class` force-sets a class; `/ck roles add class` enforces licenses.
 
-NPC Training uses class mentor questlines instead of direct unlocks. Each class TOML can define `[mentor_quest]` with non-expiring per-player steps. The current local classes use Vow, Offering, Discipline, Signature Trial, Payment, and Mentor Duel. Payment for a new class unlock costs 25,000 chowcoins for a starter class and 50,000 chowcoins for an upgrade class. Paid class changes are separate and keep the higher replacement prices: 50,000 chowcoins for starter class changes and 100,000 chowcoins for upgrade class changes. The mentor duel uses the NPC bossfight system; victory unlocks the class and grants class starting items.
+NPC Training uses class mentor questlines instead of direct unlocks. Each class TOML can define `[mentor_quest]` with non-expiring per-player steps. The current local classes use Vow, Offering, Discipline, Signature Trial, Payment, and Mentor Duel. Combat trials can be `kind = "timed"` with `time_window_seconds`, while endurance trials can stay normal `task` goals. Payment for a new class unlock costs 25,000 chowcoins for a starter class and 50,000 chowcoins for an upgrade class. Paid class changes are separate and keep the higher replacement prices: 50,000 chowcoins for starter class changes and 100,000 chowcoins for upgrade class changes. The mentor duel uses the NPC bossfight system; victory unlocks the class and grants class starting items.
 
 Full authored mentor questlines are documented in [NPC Class Quests](NPC_CLASS_QUESTS.md).
 
@@ -59,7 +59,7 @@ Full authored mentor questlines are documented in [NPC Class Quests](NPC_CLASS_Q
 - `rogue`: starts with a book, diamond axe, and leather boots. Only Rogue-tagged equipment avoids class penalties.
 - `warrior`: starts with a book, wooden sword, and iron boots. Only Warrior-tagged equipment avoids class penalties.
 
-Role definitions include `icon` and `description` for onboarding UI. `icon` accepts an item id first, then falls back to a texture resource id. Current job defaults point to `textures/gui/jobs/<job_id>.png`. Missing optional mod item ids warn once in logs and render as empty/fallback icons instead of failing role loading.
+Role definitions include `icon`, `description`, and optional `preview_items` for onboarding UI. `icon` accepts an item id first, then falls back to a texture resource id. `preview_items` is an ordered item-id fallback list used only by the onboarding paperdoll preview; missing optional mod item ids are skipped silently until a registered fallback is found. Current job defaults point to `textures/gui/jobs/<job_id>.png`. Missing optional mod item ids warn once in logs and render as empty/fallback icons instead of failing role loading.
 
 Class definitions also support progression metadata:
 
@@ -68,6 +68,8 @@ Class definitions also support progression metadata:
 - `starter_class_ids = ["warrior", "priest"]` on upgrade classes.
 
 Onboarding only allows starter classes. Upgrade classes still render for visibility, but they are greyed out, locked, and cannot be selected. Existing configs without these keys use the built-in starter order: `warrior`, `rogue`, `archer`, `wizard`, `priest`.
+
+The class onboarding inspector shows starter/upgrade status, lock path, mentor, unlock cost, loaded weapon/armor match counts, starter-kit count, allowed-equipment examples, and wrong-equipment penalties. The center paperdoll holds the selected or hovered class preview item when configured.
 
 Built-in upgrade paths are: Warrior -> Berserker, Paladin, Witcher; Rogue -> Forcemaster, Bounty Hunter, Bard, Witcher; Archer -> War Archer, Tundra Archer, Bounty Hunter, Bard; Wizard -> Elemental Wizard, Priest, Witcher; Priest -> Paladin, Bard, Elemental Wizard.
 

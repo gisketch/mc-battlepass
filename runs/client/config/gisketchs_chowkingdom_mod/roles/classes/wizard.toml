@@ -4,7 +4,8 @@
 id = "wizard"
 display_name = "Wizard"
 icon = "textures/gui/classes/wizard.png"
-description = "Starter arcane caster trained with basic staves, wands, spell books, and robes."
+description = "Starter arcane class for players who want spell tools and fragile burst control. Uses novice wands, staves, spell books, runes, pouches, and robes."
+preview_items = ["wizards:wand_novice", "minecraft:blaze_rod"]
 classification = "starter"
 starter_class_ids = []
 upgrade_class_ids = ["elemental_wizard", "witcher"]
@@ -18,7 +19,7 @@ steps = [
   { id = "wizard_vow", skeleton = "vow", kind = "dialogue", title = "Vow", objective = "Vow to seek wisdom before power and to use magic as light against fear.", goal = 1, start_message = "Vow to seek wisdom before power and to use magic as light against fear.", complete_message = "", llm_prompt = "Gandalf should sound grave, warm, and quietly amused." },
   { id = "wizard_offering", skeleton = "offering", kind = "fetch", title = "Amethyst Focus", objective = "Bring 6 amethyst shards for a focus lesson.", item = "minecraft:amethyst_shard", qty = 6, goal = 6, start_message = "Bring <b>6 amethyst shards</b>. A focus must ring true before a spell does.", complete_message = "Clear facets, clear mind. We may proceed.", llm_prompt = "Tie amethyst to focus, resonance, and restraint." },
   { id = "wizard_discipline", skeleton = "discipline", kind = "task", title = "Spark And Smoke", objective = "Craft 3 fire charges.", event = "minecraft:item_crafted", item = "minecraft:fire_charge", goal = 3, start_message = "Craft <b>3 fire charges</b>. Hold fire in your hand and do not let it rule you.", complete_message = "You made fire obey a recipe. That is a beginning.", llm_prompt = "Make crafting fire charges a lesson in controlled power." },
-  { id = "wizard_signature_trial", skeleton = "signature_trial", kind = "task", title = "Blaze Lesson", objective = "Defeat 4 blazes in the Nether.", event = "minecraft:entity_killed", goal = 4, filters = { entity = "minecraft:blaze", dimension = "minecraft:the_nether" }, start_message = "Defeat <b>4 blazes</b>. Learn fire where fire thinks it is master.", complete_message = "You returned from flame with judgment intact.", llm_prompt = "Frame the Nether blaze trial as courage plus wisdom." },
+  { id = "wizard_signature_trial", skeleton = "signature_trial", kind = "timed", title = "Blaze Lesson", objective = "Defeat 3 blazes in the Nether within 45 seconds.", event = "minecraft:entity_killed", goal = 3, time_window_seconds = 45, filters = { entity = "minecraft:blaze", dimension = "minecraft:the_nether" }, start_message = "Defeat <b>3 blazes in {seconds} seconds</b>. Learn fire where fire thinks it is master.", complete_message = "You returned from flame with judgment intact, and the fire had no time to argue.", llm_prompt = "Frame the timed Nether blaze trial as courage plus wisdom under pressure." },
   { id = "wizard_license", skeleton = "payment", kind = "payment", title = "License Seal", objective = "Pay the mentor license fee for wizard.", goal = 1, start_message = "The license seal is next. A new {classification} {class} unlock costs {cost} chowcoins.", complete_message = "The license is sealed. Only the mentor duel remains for {class}.", llm_prompt = "Treat payment as a formal license seal, not a bribe. Explain that class changes still use their separate higher fee." },
   { id = "wizard_duel", skeleton = "mentor_duel", kind = "duel", title = "Mentor Duel", objective = "Win a non-lethal 1v1 mentor duel.", goal = 1, start_message = "Draw breath. The {class} mentor duel starts now.", complete_message = "The duel is won. {class} is yours.", llm_prompt = "Make this a sharp pre-duel line. The NPC must sound ready to test the player, not hostile." },
 ]

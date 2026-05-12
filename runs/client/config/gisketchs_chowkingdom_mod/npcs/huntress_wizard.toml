@@ -5,6 +5,7 @@ skin = "gisketchs_chowkingdom_mod:npc/huntress_wizard"
 body_type = "slim"
 height = 1.08
 weight = 0.82
+main_pokemon = "cobblemon:decidueye"
 job = "seed_merchant"
 class = "archer"
 hurt_messages = ["Careful. The forest notices small violence.", "Ow. Bad aim, or bad manners?", "Do not make me teach the roots your name."]

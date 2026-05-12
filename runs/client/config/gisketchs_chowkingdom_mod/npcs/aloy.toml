@@ -5,6 +5,7 @@ skin = "gisketchs_chowkingdom_mod:npc/aloy"
 body_type = "slim"
 height = 1.04
 weight = 0.88
+main_pokemon = "cobblemon:lycanroc"
 job = "adventurer"
 class = "bounty_hunter"
 hurt_messages = ["Hey. I am not your target.", "Try that again and we are going to have a problem.", "Careful, {player}. I hit weak points for a living."]
@@ -154,7 +155,7 @@ enabled = true
 offer_radius = 7.0
 offer_balloon_messages = ["@quest_log.png Got a target for you, {player}.", "@quest_log.png Track came in. Looks serious."]
 pool = [
-  { id = "aloy_hunt_mobs", category = "task", event = "minecraft:monster_killed", event_desc = "Defeat {goal} Monsters", quest_text = "Track and eliminate threats before they hit the settlement.", pass_id = "combat", xp = 100, chowcoins = 50, goal = 10, complete_messages = ["@quest_log.png Target count cleared. Nice work.", "@quest_log.png Good hunt. The settlement is safer."] },
+  { id = "aloy_hunt_mobs", category = "timed", event = "minecraft:monster_killed", event_desc = "Defeat {goal} Monsters In {seconds}s", quest_text = "Track and eliminate threats before they hit the settlement.", pass_id = "combat", xp = 100, chowcoins = 50, goal = 3, time_window_seconds = 20, complete_messages = ["@quest_log.png Target count cleared. Nice work.", "@quest_log.png Good hunt. The settlement is safer."] },
   { id = "aloy_travel_blocks", category = "task", event = "minecraft:blocks_traveled", event_desc = "Travel {goal} Blocks", quest_text = "Scout the perimeter and mark useful routes.", pass_id = "cozy", xp = 80, chowcoins = 25, goal = 1000, complete_messages = ["@quest_log.png Perimeter mapped. That helps.", "@quest_log.png Good scouting. I can work with this data."] },
   { id = "aloy_fetch_redstone", category = "fetch", event_desc = "Bring {goal} Redstone Dust", quest_text = "Bring redstone for trap and sensor tests.", pass_id = "cozy", xp = 80, chowcoins = 25, fetch_item = "minecraft:redstone", fetch_count = 12, complete_messages = ["@quest_log.png Good. Now we can test the circuit.", "@quest_log.png Redstone acquired. Primitive, but useful."] },
 ]

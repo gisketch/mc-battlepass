@@ -7,7 +7,8 @@ display_name = "Mountaineer"
 # Config value: icon.
 icon = "textures/gui/jobs/mountaineer.png"
 # Config value: description.
-description = "Crosses frost lines and high passes to find Ice Pokemon."
+description = "Crosses frost lines, stone passes, and high mountain routes to find Ice Pokemon. Best for players who want cold safety, step assist, and cliffside work."
+preview_items = ["minecraft:powder_snow_bucket", "minecraft:snowball"]
 # Config value: perks.
 perks = [
   { type = "cobblemon_catch_rate", pokemon_type = "ice", multiplier = 1.05, bonus_percent_by_level = [0.05, 0.10, 0.18, 0.28, 0.40], weapon_tags = [], armor_tags = [], weapon_patterns = [], armor_patterns = [], wrong_weapon_damage_multiplier = 1.0, wrong_weapon_cooldown_ticks = 0, wrong_weapon_attack_speed_multiplier = 1.0, wrong_armor_disables_sprint = false, starting_items = [] },
