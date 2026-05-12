@@ -258,7 +258,7 @@ class ChowNpcEntity(entityType: EntityType<out PathfinderMob>, level: Level) : P
 
     override fun mobInteract(player: Player, hand: InteractionHand): InteractionResult {
         if (hand != InteractionHand.MAIN_HAND) return InteractionResult.PASS
-        if (passThroughInteractions) return InteractionResult.PASS
+        if (passThroughInteractions && NpcBossFights.isActive(this)) return InteractionResult.PASS
         if (!level().isClientSide && player is ServerPlayer) NpcFeature.interact(player, this)
         return InteractionResult.sidedSuccess(level().isClientSide)
     }

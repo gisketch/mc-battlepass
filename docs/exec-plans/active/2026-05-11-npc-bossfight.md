@@ -16,7 +16,7 @@ Add a barebones, extensible NPC bossfight prototype using the current SmartBrain
 - Bossfight balloons are probabilistic barks, not guaranteed messages; current chance is 30% per trigger.
 - The first bossfight phase bark is guaranteed so a duel cannot be silent just because early 30% rolls miss.
 - A boss hit that would down the player skips revive, ends the duel as an NPC victory, fully heals the player, and opens an NPC victory dialog.
-- After a boss result dialog opens, the NPC stays protected briefly and right-click entity interaction passes through so held sword/spell item use is not swallowed by TALK.
+- After a boss result dialog opens, the NPC stays protected briefly but can be right-clicked for normal talk again.
 - The V1 `sword_user` loop has chase, attack, strafing recovery, guard bait, guard react, and parry behavior.
 - Existing third-hit retaliation and animation debug commands keep working.
 
@@ -67,3 +67,4 @@ Add a barebones, extensible NPC bossfight prototype using the current SmartBrain
 - 2026-05-11: Added per-NPC bossfight balloon pools and runtime hooks for phase/combat barks.
 - 2026-05-11: Added NPC victory flow for would-be lethal boss hits and changed boss balloons to 30% chance barks.
 - 2026-05-11: Added post-result NPC protection/pass-through interaction and guaranteed the first bossfight bark.
+- 2026-05-13: Limited right-click pass-through to active bossfights only so defeated/result-protected bosses can be talked to again.
