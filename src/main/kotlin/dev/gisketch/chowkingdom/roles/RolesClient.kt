@@ -4,6 +4,7 @@ import com.mojang.blaze3d.systems.RenderSystem
 import com.mojang.blaze3d.vertex.PoseStack
 import dev.gisketch.chowkingdom.ChowKingdomMod
 import dev.gisketch.chowkingdom.battlepass.BattlepassClientState
+import dev.gisketch.chowkingdom.compat.PehkuiScaleBridge
 import dev.gisketch.chowkingdom.npc.ChowNpcEntity
 import dev.gisketch.chowkingdom.npc.NpcConfig
 import net.minecraft.Util
@@ -69,7 +70,6 @@ object RolesClient {
             is ChowNpcEntity -> npcClassIcons(entity)
             else -> return
         }
-        if (icons.jobIcons.isEmpty() && icons.classIcons.isEmpty()) return
         event.setCanRender(TriState.FALSE)
         renderRoleNameTag(event, icons)
     }
@@ -98,12 +98,13 @@ object RolesClient {
         val minecraft = Minecraft.getInstance()
         val distance = minecraft.entityRenderDispatcher.distanceToSqr(entity)
         if (!ClientHooks.isNameplateInRenderDistance(entity, distance)) return
-        val attachment = entity.attachments.getNullable(EntityAttachment.NAME_TAG, 0, entity.getViewYRot(event.partialTick)) ?: return
+        val attachment = entity.attachments.getNullable(EntityAttachment.NAME_TAG, 0, entity.getViewYRot(event.partialTick))
         val visibleThroughWalls = !entity.isDiscrete
         val y = if (event.content.string == "deadmau5") -10.0f else 0.0f
         val poseStack = event.poseStack
         poseStack.pushPose()
-        poseStack.translate(attachment.x, attachment.y + 0.5, attachment.z)
+        applyInversePehkuiBillboardScale(entity, poseStack)
+        poseStack.translate(attachment?.x ?: 0.0, entity.bbHeight.toDouble() + NAMETAG_WORLD_Y_OFFSET, attachment?.z ?: 0.0)
         poseStack.mulPose(minecraft.entityRenderDispatcher.cameraOrientation())
         poseStack.scale(0.025f, -0.025f, 0.025f)
         val matrix = poseStack.last().pose()
@@ -183,6 +184,12 @@ object RolesClient {
     }
 
     private fun iconGroupWidth(count: Int): Float = if (count <= 0) 0.0f else count * NAMETAG_ICON_SIZE + (count - 1) * NAMETAG_ICON_GAP
+
+    private fun applyInversePehkuiBillboardScale(entity: net.minecraft.world.entity.Entity, poseStack: PoseStack) {
+        val width = PehkuiScaleBridge.widthScale(entity).takeIf { it > 0.0f } ?: 1.0f
+        val height = PehkuiScaleBridge.heightScale(entity).takeIf { it > 0.0f } ?: 1.0f
+        poseStack.scale(1.0f / width, 1.0f / height, 1.0f / width)
+    }
 }
 
 private fun jobStatusFor(instance: net.minecraft.world.effect.MobEffectInstance): JobStatusDisplay? {
@@ -379,6 +386,7 @@ private const val NAMETAG_ICON_Y_OFFSET = -1.0f
 private const val NAMETAG_TEXT = -1
 private const val NAMETAG_SEE_THROUGH_TEXT = 553648127
 private const val NAMETAG_SEE_THROUGH_ICON_ALPHA = 96
+private const val NAMETAG_WORLD_Y_OFFSET = 0.5
 private const val BATTLEPASS_XP_PER_LEVEL = 100
 private const val INVENTORY_WIDTH = 176
 private const val INVENTORY_HEIGHT = 166

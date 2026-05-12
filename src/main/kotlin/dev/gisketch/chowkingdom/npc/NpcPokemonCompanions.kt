@@ -30,6 +30,7 @@ object NpcPokemonCompanions {
     private val unbattleableAccessor: Any? by lazy { pokemonEntityClass?.staticAccessor("UNBATTLEABLE") }
     private val shouldRenderNameAccessor: Any? by lazy { pokemonEntityClass?.staticAccessor("SHOULD_RENDER_NAME") }
     private val countsTowardsSpawnCapAccessor: Any? by lazy { pokemonEntityClass?.staticAccessor("COUNTS_TOWARDS_SPAWN_CAP") }
+    private val labelLevelAccessor: Any? by lazy { pokemonEntityClass?.staticAccessor("LABEL_LEVEL") }
 
     fun registerEvents() {
         if (eventsRegistered) return
@@ -94,7 +95,10 @@ object NpcPokemonCompanions {
         val matching = companions.filter { companion -> companion.persistentData.getCompound(COMPANION_TAG).getString(SPECIES_TAG) == definition.mainPokemon }
         val active = matching.firstOrNull { companion -> companion.level() == level && companion.isAlive } ?: spawn(level, npc, definition)
         companions.filter { companion -> companion != active }.forEach { companion -> companion.discard() }
-        if (active != null) follow(active, npc)
+        if (active != null) {
+            applyCompanionState(active, definition)
+            follow(active, npc)
+        }
     }
 
     private fun spawn(level: ServerLevel, npc: ChowNpcEntity, definition: NpcDefinition): Entity? {
@@ -129,7 +133,8 @@ object NpcPokemonCompanions {
     private fun applyCompanionState(entity: Entity, definition: NpcDefinition) {
         entity.setInvulnerable(true)
         entity.isCustomNameVisible = true
-        entity.customName = Component.literal("${definition.name}'s ${speciesLabel(definition)}")
+        entity.customName = Component.literal(speciesLabel(definition))
+        writeEntityDataValue(entity, labelLevelAccessor, 0)
         writeEntityDataBoolean(entity, hideLabelAccessor, false)
         writeEntityDataBoolean(entity, unbattleableAccessor, true)
         writeEntityDataBoolean(entity, shouldRenderNameAccessor, true)
@@ -215,6 +220,10 @@ object NpcPokemonCompanions {
             ?: runCatching { getDeclaredField(name).also { it.isAccessible = true }.get(null) }.getOrNull()
 
     private fun writeEntityDataBoolean(entity: Entity, accessor: Any?, value: Boolean) {
+        writeEntityDataValue(entity, accessor, value)
+    }
+
+    private fun writeEntityDataValue(entity: Entity, accessor: Any?, value: Any?) {
         accessor ?: return
         runCatching {
             val setMethod = entity.entityData.javaClass.methods.firstOrNull { method ->

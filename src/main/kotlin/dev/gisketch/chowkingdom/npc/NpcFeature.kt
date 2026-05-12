@@ -1676,6 +1676,10 @@ object NpcFeature {
     }
 
     private fun onLivingDamagePre(event: LivingDamageEvent.Pre) {
+        if (NpcPokemonCompanions.isCompanion(event.entity)) {
+            event.newDamage = 0.0f
+            return
+        }
         val targetPlayer = event.entity as? ServerPlayer
         if (targetPlayer != null && NpcBossFights.handlePlayerDamagePre(targetPlayer, event.source.entity, event.source.directEntity, event.newDamage)) {
             event.newDamage = 0.0f

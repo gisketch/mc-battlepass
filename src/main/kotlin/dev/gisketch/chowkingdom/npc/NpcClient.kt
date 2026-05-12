@@ -5,6 +5,7 @@ import com.mojang.blaze3d.platform.NativeImage
 import com.mojang.blaze3d.vertex.PoseStack
 import com.mojang.math.Axis
 import dev.gisketch.chowkingdom.ChowKingdomMod
+import dev.gisketch.chowkingdom.compat.PehkuiScaleBridge
 import dev.gisketch.chowkingdom.discord.DiscordQuickSkinSupport
 import dev.gisketch.chowkingdom.mixin.GuiGraphicsAccessor
 import dev.gisketch.chowkingdom.roles.RoleNametagIcons
@@ -174,6 +175,7 @@ object NpcClient {
         val balloonY = -balloonHeight
 
         poseStack.pushPose()
+        applyInversePehkuiBillboardScale(entity, poseStack)
         poseStack.translate(0.0, entity.bbHeight + BALLOON_ENTITY_Y_OFFSET, 0.0)
         poseStack.mulPose(rotation)
         val animatedScale = BALLOON_SCALE * (0.88f + 0.12f * alpha)
@@ -468,6 +470,7 @@ object NpcClient {
         val popupY = FRIENDSHIP_DELTA_WORLD_Y - (progress * FRIENDSHIP_DELTA_WORLD_SLIDE).roundToInt()
 
         poseStack.pushPose()
+        applyInversePehkuiBillboardScale(entity, poseStack)
         poseStack.translate(0.0, entity.bbHeight + FRIENDSHIP_DELTA_WORLD_ENTITY_Y_OFFSET, 0.0)
         poseStack.mulPose(rotation)
         val scale = FRIENDSHIP_DELTA_WORLD_SCALE * (0.88f + 0.12f * alpha)
@@ -522,6 +525,12 @@ object NpcClient {
         guiGraphics.blit(BALLOON_TEXTURE, x, y + height - BALLOON_CORNER, BALLOON_CORNER, BALLOON_CORNER, 0.0f, (BALLOON_TEXTURE_SIZE - BALLOON_CORNER).toFloat(), BALLOON_CORNER, BALLOON_CORNER, BALLOON_TEXTURE_SIZE, BALLOON_TEXTURE_SIZE)
         guiGraphics.blit(BALLOON_TEXTURE, x + BALLOON_CORNER, y + height - BALLOON_CORNER, middleWidth, BALLOON_CORNER, BALLOON_CORNER.toFloat(), (BALLOON_TEXTURE_SIZE - BALLOON_CORNER).toFloat(), BALLOON_TEXTURE_SIZE - BALLOON_CORNER * 2, BALLOON_CORNER, BALLOON_TEXTURE_SIZE, BALLOON_TEXTURE_SIZE)
         guiGraphics.blit(BALLOON_TEXTURE, x + width - BALLOON_CORNER, y + height - BALLOON_CORNER, BALLOON_CORNER, BALLOON_CORNER, (BALLOON_TEXTURE_SIZE - BALLOON_CORNER).toFloat(), (BALLOON_TEXTURE_SIZE - BALLOON_CORNER).toFloat(), BALLOON_CORNER, BALLOON_CORNER, BALLOON_TEXTURE_SIZE, BALLOON_TEXTURE_SIZE)
+    }
+
+    private fun applyInversePehkuiBillboardScale(entity: LivingEntity, poseStack: PoseStack) {
+        val width = PehkuiScaleBridge.widthScale(entity).takeIf { it > 0.0f } ?: 1.0f
+        val height = PehkuiScaleBridge.heightScale(entity).takeIf { it > 0.0f } ?: 1.0f
+        poseStack.scale(1.0f / width, 1.0f / height, 1.0f / width)
     }
 
     private fun toEulerXyz(quaternion: Quaternionf): Vector3f {
