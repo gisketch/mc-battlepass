@@ -6,7 +6,7 @@ body_type = "normal"
 height = 1.06
 weight = 0.96
 main_pokemon = "cobblemon:talonflame"
-job = "adventurer"
+store = "cosmetics"
 class = "rogue"
 hurt_messages = ["Careful, amico. My patience has limits.", "That was not a wise strike, {player}.", "If this is training, announce it first."]
 wake_messages = ["I was resting, not unaware.", "Speak softly. Night keeps many ears.", "You wake me for a reason, yes?"]
@@ -38,8 +38,6 @@ victory = ["I win this round. I have tended the wound.", "Rise, amico. You are h
 defeat = ["I yield with respect.", "You have earned this victory.", "You fought with purpose.", "Bene. A true victory.", "I concede. Well done.", "You proved the lesson.", "Respect to the victor.", "Earned. I yield.", "A worthy win.", "The Creed acknowledges skill."]
 
 [job_definition]
-id = "adventurer"
-store = "cosmetics"
 scan_interval_ticks = 60
 roam_radius = 8
 work_scan_radius = 10

@@ -6,7 +6,7 @@ body_type = "normal"
 height = 1.14
 weight = 0.98
 main_pokemon = "cobblemon:alakazam"
-job = "adventurer"
+store = "cosmetics"
 class = "wizard"
 hurt_messages = ["Do not take me for some conjurer of cheap tricks.", "Careful, {player}. I am not an enemy.", "A foolish blow. See that it remains the last."]
 wake_messages = ["I was not sleeping so deeply as you hoped.", "Speak, then. Time is shorter than it seems.", "If danger is near, say so plainly."]
@@ -38,8 +38,6 @@ victory = ["The duel is mine. I have mended what I struck.", "Rise now. You are 
 defeat = ["I yield. You have chosen well in the moment.", "Enough. The lesson is yours.", "Wisdom concedes to skill.", "You have earned it. Well fought.", "The moment was yours. I yield.", "A worthy victory. Accept it.", "You passed the test. I yield.", "Courage won the day.", "Well chosen. Well struck.", "I concede. You have grown."]
 
 [job_definition]
-id = "adventurer"
-store = "cosmetics"
 scan_interval_ticks = 60
 roam_radius = 8
 work_scan_radius = 10

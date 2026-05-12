@@ -6,7 +6,7 @@ body_type = "slim"
 height = 1.08
 weight = 0.84
 main_pokemon = "cobblemon:glaceon"
-job = "adventurer"
+store = "cosmetics"
 class = "tundra_archer"
 hurt_messages = ["Careful. The next arrow answers.", "Do not test my aim, {player}.", "Cold hands. Steady bow. Last warning."]
 wake_messages = ["I was listening to the snow.", "Speak quietly. The night carries sound.", "You wake an archer. Make it worth the risk."]
@@ -38,8 +38,6 @@ victory = ["I win. You are healed. Waste less motion.", "Downed, then mended. Le
 defeat = ["I yield. Your shot was true.", "Enough. You tracked well.", "Good hunt. I concede.", "You earned the silence. I yield.", "Victory yours. The north watches.", "Clean win. Well tracked.", "I yield. You have a hunter's eye.", "The tundra bows. I yield.", "A worthy hunt. You win.", "Well fought. The cold salutes."]
 
 [job_definition]
-id = "adventurer"
-store = "cosmetics"
 scan_interval_ticks = 60
 roam_radius = 8
 work_scan_radius = 10

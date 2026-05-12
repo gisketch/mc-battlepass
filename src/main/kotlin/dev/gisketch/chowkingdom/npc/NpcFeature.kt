@@ -326,10 +326,10 @@ object NpcFeature {
 
     private fun firstMeetingPrompt(player: ServerPlayer, definition: NpcDefinition, hasHome: Boolean, contractGranted: Boolean): String {
         val lore = definition.personality.llmPrompt.ifBlank {
-            listOf(definition.title, definition.job, definition.personality.traits.joinToString(", "))
+            listOf(definition.title, definition.storeId().takeIf(String::isNotBlank)?.let { "store: $it" }.orEmpty(), definition.personality.traits.joinToString(", "))
                 .filter(String::isNotBlank)
                 .joinToString("; ")
-                .ifBlank { "your own background, job, and personality" }
+                .ifBlank { "your own background, shop, and personality" }
         }
         return """
             Recognition status: recognized=false. This is the first remembered meeting between ${definition.name} and ${player.gameProfile.name}.
@@ -2233,7 +2233,7 @@ object NpcFeature {
         val routine = "every ${definition?.jobDefinition?.scanIntervalTicks ?: 60} ticks: schedule -> target -> path"
         listOf(
             Component.literal("NPC REALTIME DEBUG: ${definition?.displayName() ?: npc.npcId}").withStyle(ChatFormatting.GOLD),
-            Component.literal("id=${npc.npcId} job=${definition?.job ?: "unknown"} body=${npc.bodyType} nav=$navigation"),
+            Component.literal("id=${npc.npcId} store=${definition?.storeId()?.ifBlank { "none" } ?: "unknown"} body=${npc.bodyType} nav=$navigation"),
             Component.literal("activity=${npc.debugActivity} task=${npc.debugGoal} target=$target routine=$routine"),
             Component.literal("camp=$camp home=$home store=${definition?.storeId().orEmpty().ifBlank { "none" }}"),
             Component.literal("Actionbar will update live. Run /npc debug on the same NPC again to stop.").withStyle(ChatFormatting.DARK_GRAY),

@@ -6,7 +6,7 @@ body_type = "normal"
 height = 1.08
 weight = 1.02
 main_pokemon = "cobblemon:absol"
-job = "adventurer"
+store = "cosmetics"
 class = "witcher"
 hurt_messages = ["Careful. I charge extra for stupidity.", "Bad idea, {player}.", "I've been hit by worse. Still rude."]
 wake_messages = ["Mm. Better be important.", "I was resting, not dead.", "Speak. Quietly."]
@@ -38,8 +38,6 @@ victory = ["I win. Patched you up. Try again smarter.", "You were done. I healed
 defeat = ["Enough. You win.", "I yield. Decent work.", "Good fight. Earned.", "You got me. Clean win.", "I yield. Better than expected.", "Coin well earned. Victory yours.", "You won. Now go celebrate.", "Fine. That was solid work.", "I concede. Respect.", "You fought like a witcher."]
 
 [job_definition]
-id = "adventurer"
-store = "cosmetics"
 scan_interval_ticks = 60
 roam_radius = 8
 work_scan_radius = 10

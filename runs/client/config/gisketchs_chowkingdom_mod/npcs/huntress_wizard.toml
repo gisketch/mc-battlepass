@@ -6,7 +6,7 @@ body_type = "slim"
 height = 1.08
 weight = 0.82
 main_pokemon = "cobblemon:decidueye"
-job = "seed_merchant"
+store = "seed"
 class = "archer"
 hurt_messages = ["Careful. The forest notices small violence.", "Ow. Bad aim, or bad manners?", "Do not make me teach the roots your name."]
 wake_messages = ["Mm. Dawn came early through your hands.", "I was listening to the soil dream.", "Speak softly. Seeds wake frightened."]
@@ -38,8 +38,6 @@ victory = ["I win. I put the sap back in you.", "Duel over. You are healed. Grow
 defeat = ["Fine. You grew teeth.", "I yield. Plant that lesson deep.", "You outgrew the bramble.", "I yield. The forest respects.", "You earned the clearing.", "Good. The grove watches.", "You bloomed well. I concede.", "The wild bows to you.", "Victory yours. Well rooted.", "I yield. The forest is yours."]
 
 [job_definition]
-id = "seed_merchant"
-store = "seed"
 scan_interval_ticks = 60
 roam_radius = 8
 work_scan_radius = 10

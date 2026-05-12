@@ -6,7 +6,7 @@ body_type = "normal"
 height = 1.1
 weight = 1.08
 main_pokemon = "cobblemon:corviknight"
-job = "adventurer"
+store = "cosmetics"
 class = "paladin"
 hurt_messages = ["Thy blow lands. Let it not become habit.", "Careful, {player}. Even grace has limits.", "Wouldst thou test steel, name it training."]
 wake_messages = ["Grace wakes me. Or perhaps thy noise.", "Speak, traveler. What calls us?", "Rest was brief. Duty remains."]
@@ -38,8 +38,6 @@ victory = ["This trial is mine. I have restored thee.", "Rise, healed by grace. 
 defeat = ["I yield. Grace has favored thee.", "Enough. Thy courage endured.", "Thou hast bested me. Well fought.", "Victory is thine. Grace blesses thee.", "I concede. Thy blade was true.", "Thou art worthy. I yield.", "A noble win. Accept it.", "I yield. The Erdtree smiles on thee.", "Well fought, brave Tarnished.", "Thou hast earned the crown. I yield."]
 
 [job_definition]
-id = "adventurer"
-store = "cosmetics"
 scan_interval_ticks = 60
 roam_radius = 8
 work_scan_radius = 10

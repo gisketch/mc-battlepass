@@ -12,7 +12,6 @@ class NpcDefinition(
     @SerializedName("weight") var weight: Double = DEFAULT_NPC_BODY_SCALE,
     @SerializedName("custom_animation") var customAnimation: Boolean = false,
     @SerializedName("main_pokemon") var mainPokemon: String = "",
-    var job: String = "adventurer",
     @SerializedName("class") var classId: String = "",
     @SerializedName("job_definition") var jobDefinition: NpcJobDefinition = NpcJobDefinition(),
     var schedule: NpcScheduleDefinition = NpcScheduleDefinition(),
@@ -42,11 +41,10 @@ class NpcDefinition(
         height = normalizeNpcBodyScale(height)
         weight = normalizeNpcBodyScale(weight)
         mainPokemon = normalizeMainPokemon(mainPokemon)
-        job = NpcJobs.normalizeId(job)
         classId = classId.trim()
-        jobDefinition = jobDefinition.normalized(job, store)
+        jobDefinition = jobDefinition.normalized("", store)
         schedule = schedule.normalized()
-        store = store.trim()
+        store = store.trim().ifBlank { jobDefinition.store.orEmpty().trim() }
         personality = personality.normalized()
         boss = boss.normalized()
         housing = housing.normalized()
@@ -69,9 +67,9 @@ class NpcDefinition(
 
     fun displayName(): String = if (title.isBlank()) name else "$name, $title"
 
-    fun storeId(): String = jobDefinition.store.trim().ifBlank { store.trim() }
+    fun storeId(): String = store.trim().ifBlank { jobDefinition.store.orEmpty().trim() }
 
-    fun storeStockKey(): String = "npc_${id}_${job}".lowercase()
+    fun storeStockKey(): String = "npc_$id".lowercase()
 
     private fun defaultHurtMessages(): List<String> = listOf(
         "Hey, watch it, {player}!",
@@ -702,15 +700,15 @@ object FinnFriendshipMessages {
 }
 
 class NpcJobDefinition(
-    var id: String = "",
-    var store: String = "",
+    var id: String? = null,
+    var store: String? = null,
     @SerializedName("scan_interval_ticks") var scanIntervalTicks: Int = 60,
     @SerializedName("roam_radius") var roamRadius: Int = 7,
     @SerializedName("work_scan_radius") var workScanRadius: Int = 9,
 ) {
     fun normalized(fallbackId: String, fallbackStore: String = ""): NpcJobDefinition = apply {
-        id = NpcJobs.normalizeId(id.ifBlank { fallbackId })
-        store = store.trim().ifBlank { fallbackStore.trim() }
+        id = NpcJobs.normalizeId(id.orEmpty().ifBlank { fallbackId }).ifBlank { null }
+        store = store.orEmpty().trim().ifBlank { fallbackStore.trim() }.ifBlank { null }
         scanIntervalTicks = scanIntervalTicks.coerceIn(10, 20 * 60)
         roamRadius = roamRadius.coerceIn(1, 64)
         workScanRadius = workScanRadius.coerceIn(1, 64)

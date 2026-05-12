@@ -15,6 +15,7 @@ import net.minecraft.world.InteractionResult
 import net.minecraft.world.entity.EntityType
 import net.minecraft.world.entity.PathfinderMob
 import net.minecraft.world.entity.ai.Brain
+import net.minecraft.world.item.Items
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.level.Level
 import net.tslat.smartbrainlib.api.SmartBrainOwner
@@ -259,6 +260,10 @@ class ChowNpcEntity(entityType: EntityType<out PathfinderMob>, level: Level) : P
     override fun mobInteract(player: Player, hand: InteractionHand): InteractionResult {
         if (hand != InteractionHand.MAIN_HAND) return InteractionResult.PASS
         if (passThroughInteractions && NpcBossFights.isActive(this)) return InteractionResult.PASS
+        if (player.getItemInHand(hand).`is`(Items.LEAD) || isLeashed) {
+            val leashResult = super.mobInteract(player, hand)
+            if (leashResult != InteractionResult.PASS) return leashResult
+        }
         if (!level().isClientSide && player is ServerPlayer) NpcFeature.interact(player, this)
         return InteractionResult.sidedSuccess(level().isClientSide)
     }

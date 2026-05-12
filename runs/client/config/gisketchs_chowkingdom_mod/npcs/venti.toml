@@ -6,7 +6,7 @@ body_type = "slim"
 height = 0.95
 weight = 0.78
 main_pokemon = "cobblemon:altaria"
-job = "adventurer"
+store = "cosmetics"
 class = "bard"
 hurt_messages = ["Ehe! That stung a little, {player}.", "Ow! Even the wind does not strike without reason.", "Careful, traveler. My lyre is not a shield."]
 wake_messages = ["Mmm... five more centuries...", "Oh! Is it time for a song already?", "I was dreaming of dandelion wine. Now I am just disappointed."]
@@ -38,8 +38,6 @@ victory = ["My verse wins! I healed you, so no gloomy ending.", "The song is min
 defeat = ["I yield. What a splendid finale!", "You win. That deserves a song.", "A beautiful ending! I yield!", "You earned the ovation! Victory yours!", "The wind bows to you! I concede.", "A standing ovation for the winner!", "Bravo! Encore! I yield!", "Your song was sweeter. I yield.", "What a performance! You win!", "The crowd goes wild! I concede!"]
 
 [job_definition]
-id = "adventurer"
-store = "cosmetics"
 scan_interval_ticks = 60
 roam_radius = 7
 work_scan_radius = 9

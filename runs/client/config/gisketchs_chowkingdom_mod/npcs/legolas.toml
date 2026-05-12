@@ -6,7 +6,7 @@ body_type = "slim"
 height = 1.12
 weight = 0.86
 main_pokemon = "cobblemon:leafeon"
-job = "adventurer"
+store = "cosmetics"
 class = "war_archer"
 hurt_messages = ["Your aim is poor, but your manners are worse.", "Careful, {player}. Elven patience is not infinite.", "Strike again and I shall answer properly."]
 wake_messages = ["Even in rest, I hear footsteps.", "Speak softly. Dawn has not yet forgiven noise.", "You wake me for urgent news, I hope."]
@@ -38,8 +38,6 @@ victory = ["The bout is mine. You are healed, friend.", "Rise lightly. I have me
 defeat = ["I yield. Your aim was true.", "Well fought, friend of this realm.", "You have elven quality.", "I concede. The stars smile on you.", "Victory yours. Well earned.", "You pierced the leaf. I yield.", "A worthy win. Celebrate it.", "I yield. You have the eyes of an elf.", "Well struck. The forest bows.", "You fought with light. I concede."]
 
 [job_definition]
-id = "adventurer"
-store = "cosmetics"
 scan_interval_ticks = 60
 roam_radius = 8
 work_scan_radius = 10

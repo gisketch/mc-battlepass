@@ -6,7 +6,7 @@ body_type = "slim"
 height = 1.04
 weight = 0.88
 main_pokemon = "cobblemon:lycanroc"
-job = "adventurer"
+store = "cosmetics"
 class = "bounty_hunter"
 hurt_messages = ["Hey. I am not your target.", "Try that again and we are going to have a problem.", "Careful, {player}. I hit weak points for a living."]
 wake_messages = ["I was resting, not careless.", "This better be important.", "Keep your voice down. Something might be tracking us."]
@@ -38,8 +38,6 @@ victory = ["You were down. I patched you up. Learn from it.", "I win. You are he
 defeat = ["Enough. You earned the win.", "I yield. Strong work.", "You tracked me. Good hunt.", "I yield. Respect.", "You read the terrain better.", "Victory yours. Well earned.", "You found every weakness.", "I concede. Nice work.", "Strong finish. You win.", "You hunted well. I yield."]
 
 [job_definition]
-id = "adventurer"
-store = "cosmetics"
 scan_interval_ticks = 60
 roam_radius = 8
 work_scan_radius = 10

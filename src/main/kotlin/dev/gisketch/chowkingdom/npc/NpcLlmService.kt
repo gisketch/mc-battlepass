@@ -319,7 +319,7 @@ object NpcLlmService {
             NPC:
             - Name: ${definition.name}
             - Title: ${definition.title}
-            - Job: ${definition.job}
+            - Store: ${definition.storeId().ifBlank { "none" }}
             - Personality: $traits
             - Speech style: ${definition.personality.speechStyle}
             - Catchphrase references: $catchphrases
@@ -948,7 +948,7 @@ object NpcLlmService {
             NPC:
             - Name: ${definition.name}
             - Title: ${definition.title}
-            - Job: ${definition.job}
+            - Store: ${definition.storeId().ifBlank { "none" }}
             - Personality: $traits
             - Speech style: ${definition.personality.speechStyle}
             - Catchphrase references: $catchphrases
@@ -1075,14 +1075,13 @@ object NpcLlmService {
         val giftLimit = definition.gifts.dailyLimit
         val giftAvailability = if (giftLimit <= 0) "disabled" else if (giftsToday >= giftLimit) "cooldown until ${definition.gifts.resetHour.toString().padStart(2, '0')}:00" else "can receive gift"
         return listOf(
-            "- Work: ${definition.job}",
+            "- Store id: $store",
             NpcPokemonCompanions.llmSummary(definition),
             "- Activity: $activity",
             "- Schedule: $schedule",
             "- Health: $health",
             "- Your home bed: $home",
             "- Camp: $camp",
-            "- Store id: $store",
             "- Dead: $dead",
             "- Gift status: $giftAvailability ($giftsToday/$giftLimit today)",
             "- Loved gifts: ${definition.gifts.loved.take(8).joinToString(", ").ifBlank { "none" }}",

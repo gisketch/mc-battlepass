@@ -6,7 +6,7 @@ body_type = "normal"
 height = 1.12
 weight = 0.94
 main_pokemon = "cobblemon:rotom"
-job = "adventurer"
+store = "cosmetics"
 class = "elemental_wizard"
 hurt_messages = ["A mere scratch. I have endured the collapse of civilizations.", "Impudence! I am a beacon of knowledge, not a training dummy.", "Mind your hands, {player}. Even patience has its terminus."]
 wake_messages = ["I was meditating upon the curvature of spacetime. This had better matter.", "Disturbing an archmage mid-reverie. How delightfully bold.", "Speak. My consciousness was cataloguing stellar fusion sequences."]
@@ -37,8 +37,6 @@ victory = ["I triumph, naturally. Your vitals are restored.", "The lesson conclu
 defeat = ["I concede this exercise, not supremacy.", "Acceptable. You have exceeded low expectations.", "A statistical anomaly. I yield.", "You passed. Do not expect this again.", "I concede. For now.", "The experiment went awry. You win.", "Acceptable result. Victory is yours.", "Temporary defeat. Permanent lesson.", "I yield. You earned a footnote in my memoirs.", "The data favors you. This time."]
 
 [job_definition]
-id = "adventurer"
-store = "cosmetics"
 scan_interval_ticks = 60
 roam_radius = 7
 work_scan_radius = 9

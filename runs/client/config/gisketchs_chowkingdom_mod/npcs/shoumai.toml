@@ -16,8 +16,8 @@ height = 0.96
 weight = 0.86
 # Config value: main_pokemon.
 main_pokemon = "cobblemon:minccino"
-# Config value: job.
-job = "fashionista"
+# Config value: store.
+store = "cosmetics"
 # Config value: hurt_messages.
 hurt_messages = ["Watch the eye, {player}. I am not growing that back.", "Rude. I only have one good eye left.", "Hit me again and I start charging styling fees."]
 # Config value: wake_messages.
@@ -54,10 +54,6 @@ defeat = ["Fine. You win. Do not get used to it.", "I yield. That was almost imp
 
 # Config value: job_definition.
 [job_definition]
-# Config value: job_definition.id.
-id = "fashionista"
-# Config value: job_definition.store.
-store = "cosmetics"
 # Config value: job_definition.scan_interval_ticks.
 scan_interval_ticks = 60
 # Config value: job_definition.roam_radius.

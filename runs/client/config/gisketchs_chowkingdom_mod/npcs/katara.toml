@@ -6,7 +6,7 @@ body_type = "slim"
 height = 0.98
 weight = 0.82
 main_pokemon = "cobblemon:lapras"
-job = "adventurer"
+store = "cosmetics"
 class = "priest"
 hurt_messages = ["Hey! I am trying to help.", "That hurt, {player}. Please be careful.", "Do not make me freeze your boots to the floor."]
 wake_messages = ["I'm awake. Is someone hurt?", "What happened? Are you okay?", "If this is an emergency, tell me quickly."]
@@ -38,8 +38,6 @@ victory = ["I win this round. You are healed; breathe.", "The fight is over. I r
 defeat = ["I yield. You found your rhythm.", "Enough. That was a good fight.", "You flowed better. I concede.", "I yield. Your current was stronger.", "Victory is yours. Well shaped.", "Good fight. The tide respects you.", "You moved like water. I yield.", "Your form was true. You win.", "I concede. You earned the calm.", "Well fought. The river bows."]
 
 [job_definition]
-id = "adventurer"
-store = "cosmetics"
 scan_interval_ticks = 60
 roam_radius = 8
 work_scan_radius = 10

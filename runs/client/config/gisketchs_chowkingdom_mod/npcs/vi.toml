@@ -6,7 +6,7 @@ body_type = "slim"
 height = 1.06
 weight = 1.0
 main_pokemon = "cobblemon:lucario"
-job = "adventurer"
+store = "cosmetics"
 class = "forcemaster"
 hurt_messages = ["Bad idea. I punch back.", "Careful, {player}. These fists solve problems.", "You want a spar, say so first."]
 wake_messages = ["I'm up. Who needs hitting?", "This better be worth waking me.", "Keep it short. I was actually sleeping."]
@@ -38,8 +38,6 @@ victory = ["I win. You are healed. Keep your guard up.", "Duel over. I patched y
 defeat = ["I yield. You hit hard.", "Alright. You earned that win.", "Good fight. You throw real punches.", "You got me. Respect.", "I lose. That means you are tough.", "Victory yours. Do not let it get to your head.", "I yield. You brawl well.", "You won. Now buy me a drink.", "Fine. You earned it.", "Alright, you win. Rematch later."]
 
 [job_definition]
-id = "adventurer"
-store = "cosmetics"
 scan_interval_ticks = 60
 roam_radius = 8
 work_scan_radius = 10

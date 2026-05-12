@@ -6,7 +6,7 @@ body_type = "normal"
 height = 1.08
 weight = 1.02
 main_pokemon = "cobblemon:houndoom"
-job = "adventurer"
+store = "cosmetics"
 class = "berserker"
 hurt_messages = ["Ow. I've had worse from Father, but still.", "Careful, mate. I do hit back.", "Bit enthusiastic there, aren't you, {player}?"]
 wake_messages = ["Already back from the dead? No, just awake.", "If this is an escape attempt, I'm listening.", "Right. Awake. What's trying to kill us?"]
@@ -38,8 +38,6 @@ victory = ["I win this run. You are healed; no trip to the Styx.", "That one is 
 defeat = ["I yield. Excellent run.", "You win. I have escaped worse, but still.", "You got out. Well played.", "A successful escape. I yield.", "Victory yours. Father would be annoyed.", "Well fought. You earned the surface.", "I concede. What a run!", "You beat me to the exit. I yield.", "Good fight. The Styx parts for you.", "You win. I will try again. I always do."]
 
 [job_definition]
-id = "adventurer"
-store = "cosmetics"
 scan_interval_ticks = 60
 roam_radius = 8
 work_scan_radius = 10
