@@ -57,6 +57,15 @@ class ChowNpcEntity(entityType: EntityType<out PathfinderMob>, level: Level) : P
     private var customAnimationPlayId: Int
         get() = entityData.get(CUSTOM_ANIMATION_PLAY_ID_DATA)
         set(value) = entityData.set(CUSTOM_ANIMATION_PLAY_ID_DATA, value)
+    var playerlikeAnimation: Boolean
+        get() = entityData.get(PLAYERLIKE_ANIMATION_DATA)
+        private set(value) = entityData.set(PLAYERLIKE_ANIMATION_DATA, value)
+    var playerlikeAnimationKey: String
+        get() = entityData.get(PLAYERLIKE_ANIMATION_KEY_DATA)
+        private set(value) = entityData.set(PLAYERLIKE_ANIMATION_KEY_DATA, NpcPlayerlikeAnimationRegistry.normalize(value))
+    var playerlikeAnimationPlayId: Int
+        get() = entityData.get(PLAYERLIKE_ANIMATION_PLAY_ID_DATA)
+        private set(value) = entityData.set(PLAYERLIKE_ANIMATION_PLAY_ID_DATA, value)
     var scriptedAttackTicks: Int
         get() = entityData.get(SCRIPTED_ATTACK_TICKS_DATA)
         private set(value) = entityData.set(SCRIPTED_ATTACK_TICKS_DATA, value.coerceAtLeast(0))
@@ -116,6 +125,9 @@ class ChowNpcEntity(entityType: EntityType<out PathfinderMob>, level: Level) : P
         builder.define(CUSTOM_ANIMATION_KEY_DATA, "")
         builder.define(CUSTOM_ANIMATION_SPEED_DATA, 1.0f)
         builder.define(CUSTOM_ANIMATION_PLAY_ID_DATA, 0)
+        builder.define(PLAYERLIKE_ANIMATION_DATA, false)
+        builder.define(PLAYERLIKE_ANIMATION_KEY_DATA, "")
+        builder.define(PLAYERLIKE_ANIMATION_PLAY_ID_DATA, 0)
         builder.define(SCRIPTED_ATTACK_TICKS_DATA, 0)
         builder.define(PASS_THROUGH_INTERACTIONS_DATA, false)
         builder.define(HELD_ITEM_DEBUG_ROT_X_DATA, 0.0f)
@@ -150,6 +162,8 @@ class ChowNpcEntity(entityType: EntityType<out PathfinderMob>, level: Level) : P
         campPos = camp.immutable()
         homePos = NpcStore.homePos(definition.id)
         customAnimation = definition.customAnimation
+        playerlikeAnimation = definition.playerlikeAnimation
+        if (playerlikeAnimation) customAnimation = false
         customName = Component.literal(definition.displayName())
         isCustomNameVisible = true
         PehkuiScaleBridge.apply(this, definition.bodyScale())
@@ -168,6 +182,7 @@ class ChowNpcEntity(entityType: EntityType<out PathfinderMob>, level: Level) : P
 
     fun setCustomAnimationMode(enabled: Boolean) {
         customAnimation = enabled
+        if (enabled) playerlikeAnimation = false
         if (!enabled) {
             customAnimationKey = ""
             customAnimationSpeed = 1.0f
@@ -190,6 +205,7 @@ class ChowNpcEntity(entityType: EntityType<out PathfinderMob>, level: Level) : P
 
     fun playCustomAnimation(animationId: String, speed: Float = 1.0f): Boolean {
         val animation = NpcAnimationRegistry.resolve(animationId) ?: return false
+        playerlikeAnimation = false
         customAnimation = true
         customAnimationKey = animation.id
         customAnimationSpeed = speed
@@ -200,10 +216,25 @@ class ChowNpcEntity(entityType: EntityType<out PathfinderMob>, level: Level) : P
 
     fun restoreCustomAnimation(enabled: Boolean, animationKey: String, speed: Float = 1.0f) {
         customAnimation = enabled
+        if (enabled) playerlikeAnimation = false
         customAnimationKey = if (enabled) animationKey else ""
         customAnimationSpeed = if (enabled) speed else 1.0f
         customAnimationEndsAtTick = 0
         customAnimationPlayId = customAnimationPlayId + 1
+    }
+
+    fun setPlayerlikeAnimationMode(enabled: Boolean) {
+        playerlikeAnimation = enabled
+        if (enabled) setCustomAnimationMode(false) else playerlikeAnimationKey = ""
+        playerlikeAnimationPlayId = playerlikeAnimationPlayId + 1
+    }
+
+    fun playPlayerlikeAnimation(animationId: String): Boolean {
+        val animation = NpcPlayerlikeAnimationRegistry.resolve(animationId) ?: return false
+        setPlayerlikeAnimationMode(true)
+        playerlikeAnimationKey = animation.id
+        playerlikeAnimationPlayId = playerlikeAnimationPlayId + 1
+        return true
     }
 
     fun setHeldItemDebugRotation(x: Float, y: Float, z: Float) {
@@ -345,6 +376,8 @@ class ChowNpcEntity(entityType: EntityType<out PathfinderMob>, level: Level) : P
         tag.putString(BODY_TYPE_TAG, bodyType)
         tag.putBoolean(CUSTOM_ANIMATION_TAG, customAnimation)
         tag.putString(CUSTOM_ANIMATION_KEY_TAG, customAnimationKey)
+        tag.putBoolean(PLAYERLIKE_ANIMATION_TAG, playerlikeAnimation)
+        tag.putString(PLAYERLIKE_ANIMATION_KEY_TAG, playerlikeAnimationKey)
         campPos?.let { pos -> tag.putLong(CAMP_POS_TAG, pos.asLong()) }
         homePos?.let { pos -> tag.putLong(HOME_POS_TAG, pos.asLong()) }
     }
@@ -355,6 +388,9 @@ class ChowNpcEntity(entityType: EntityType<out PathfinderMob>, level: Level) : P
         bodyType = tag.getString(BODY_TYPE_TAG).ifBlank { NpcBodyTypes.NORMAL }
         customAnimation = tag.getBoolean(CUSTOM_ANIMATION_TAG)
         customAnimationKey = tag.getString(CUSTOM_ANIMATION_KEY_TAG)
+        playerlikeAnimation = tag.getBoolean(PLAYERLIKE_ANIMATION_TAG)
+        playerlikeAnimationKey = tag.getString(PLAYERLIKE_ANIMATION_KEY_TAG)
+        if (playerlikeAnimation) customAnimation = false
         if (tag.contains(CAMP_POS_TAG)) campPos = BlockPos.of(tag.getLong(CAMP_POS_TAG))
         if (tag.contains(HOME_POS_TAG)) homePos = BlockPos.of(tag.getLong(HOME_POS_TAG))
         setPersistenceRequired()
@@ -369,6 +405,9 @@ class ChowNpcEntity(entityType: EntityType<out PathfinderMob>, level: Level) : P
         private val CUSTOM_ANIMATION_KEY_DATA: EntityDataAccessor<String> = SynchedEntityData.defineId(ChowNpcEntity::class.java, EntityDataSerializers.STRING)
         private val CUSTOM_ANIMATION_SPEED_DATA: EntityDataAccessor<Float> = SynchedEntityData.defineId(ChowNpcEntity::class.java, EntityDataSerializers.FLOAT)
         private val CUSTOM_ANIMATION_PLAY_ID_DATA: EntityDataAccessor<Int> = SynchedEntityData.defineId(ChowNpcEntity::class.java, EntityDataSerializers.INT)
+        private val PLAYERLIKE_ANIMATION_DATA: EntityDataAccessor<Boolean> = SynchedEntityData.defineId(ChowNpcEntity::class.java, EntityDataSerializers.BOOLEAN)
+        private val PLAYERLIKE_ANIMATION_KEY_DATA: EntityDataAccessor<String> = SynchedEntityData.defineId(ChowNpcEntity::class.java, EntityDataSerializers.STRING)
+        private val PLAYERLIKE_ANIMATION_PLAY_ID_DATA: EntityDataAccessor<Int> = SynchedEntityData.defineId(ChowNpcEntity::class.java, EntityDataSerializers.INT)
         private val SCRIPTED_ATTACK_TICKS_DATA: EntityDataAccessor<Int> = SynchedEntityData.defineId(ChowNpcEntity::class.java, EntityDataSerializers.INT)
         private val PASS_THROUGH_INTERACTIONS_DATA: EntityDataAccessor<Boolean> = SynchedEntityData.defineId(ChowNpcEntity::class.java, EntityDataSerializers.BOOLEAN)
         private val HELD_ITEM_DEBUG_ROT_X_DATA: EntityDataAccessor<Float> = SynchedEntityData.defineId(ChowNpcEntity::class.java, EntityDataSerializers.FLOAT)
@@ -388,6 +427,8 @@ class ChowNpcEntity(entityType: EntityType<out PathfinderMob>, level: Level) : P
         private const val BODY_TYPE_TAG = "BodyType"
         private const val CUSTOM_ANIMATION_TAG = "CustomAnimation"
         private const val CUSTOM_ANIMATION_KEY_TAG = "CustomAnimationKey"
+        private const val PLAYERLIKE_ANIMATION_TAG = "PlayerlikeAnimation"
+        private const val PLAYERLIKE_ANIMATION_KEY_TAG = "PlayerlikeAnimationKey"
         private const val CAMP_POS_TAG = "CampPos"
         private const val HOME_POS_TAG = "HomePos"
         private const val SCRIPTED_ATTACK_ANIMATION_TICKS = 9

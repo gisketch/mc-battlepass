@@ -61,6 +61,10 @@ import net.neoforged.neoforge.client.event.RenderTooltipEvent
 import net.neoforged.neoforge.client.gui.VanillaGuiLayers
 import net.neoforged.neoforge.common.NeoForge
 import com.mojang.datafixers.util.Either
+import dev.kosmx.playerAnim.api.layered.IAnimation
+import dev.kosmx.playerAnim.api.layered.ModifierLayer
+import dev.kosmx.playerAnim.minecraftApi.PlayerAnimationRegistry
+import me.Thelnfamous1.mobplayeranimator.api.MobAnimationFactory
 import java.util.Locale
 import java.util.UUID
 import java.io.ByteArrayInputStream
@@ -87,6 +91,7 @@ object NpcClient {
     private val worldChatEntries = mutableListOf<NpcWorldChatEntry>()
     private val quickSkinChatTextures = mutableMapOf<UUID, ResourceLocation?>()
     private val skippedTalkResponses = mutableSetOf<Long>()
+    private var playerlikeAnimationFactoryRegistered = false
 
     @JvmStatic
     fun openDialog(payload: NpcDialogPayload) {
@@ -213,6 +218,7 @@ object NpcClient {
     }
 
     fun register(modBus: IEventBus) {
+        registerPlayerlikeAnimationFactory()
         modBus.addListener(::registerRenderers)
         modBus.addListener(::registerGuiLayers)
         modBus.addListener(::registerTooltipFactories)
@@ -226,6 +232,14 @@ object NpcClient {
     private fun registerRenderers(event: EntityRenderersEvent.RegisterRenderers) {
         event.registerEntityRenderer(NpcFeature.NPC_ENTITY.get()) { context -> ChowNpcDelegatingRenderer(context) }
         event.registerBlockEntityRenderer(NpcFeature.CAMPING_BLOCK_ENTITY.get()) { CampingBlockRenderer() }
+    }
+
+    private fun registerPlayerlikeAnimationFactory() {
+        if (playerlikeAnimationFactoryRegistered) return
+        playerlikeAnimationFactoryRegistered = true
+        MobAnimationFactory.ANIMATION_DATA_FACTORY.registerFactory(ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "npc_playerlike_debug"), 2000) { mob ->
+            (mob as? ChowNpcEntity)?.let(::NpcPlayerlikeAnimationLayer)
+        }
     }
 
     private fun registerGuiLayers(event: RegisterGuiLayersEvent) {
@@ -621,6 +635,7 @@ private fun npcTexture(npcId: String): ResourceLocation {
 private val STEVE_TEXTURE = ResourceLocation.withDefaultNamespace("textures/entity/player/wide/steve.png")
 
 private class ChowNpcDelegatingRenderer(context: EntityRendererProvider.Context) : EntityRenderer<ChowNpcEntity>(context) {
+    private val betterCombatPlayerlikeRenderer = ChowNpcBetterCombatPlayerlikeRenderer(context)
     private val playerlikeRenderer = ChowNpcPlayerlikeRenderer(context)
     private val vanillaRenderer = ChowNpcRenderer(context)
     private val geckoRenderer = ChowNpcGeoRenderer(context)
@@ -632,10 +647,37 @@ private class ChowNpcDelegatingRenderer(context: EntityRendererProvider.Context)
     override fun getTextureLocation(entity: ChowNpcEntity): ResourceLocation = rendererFor(entity).getTextureLocation(entity)
 
     private fun rendererFor(entity: ChowNpcEntity): EntityRenderer<ChowNpcEntity> = when {
+        entity.playerlikeAnimation -> betterCombatPlayerlikeRenderer
         entity.customAnimation -> geckoRenderer
+        NpcConfig.settings().rendering.betterCombatPlayerlikeRenderer -> betterCombatPlayerlikeRenderer
         NpcConfig.settings().rendering.playerlikeRenderer -> playerlikeRenderer
         else -> vanillaRenderer
     }
+}
+
+private class ChowNpcBetterCombatPlayerlikeRenderer(context: EntityRendererProvider.Context) : HumanoidMobRenderer<ChowNpcEntity, PlayerModel<ChowNpcEntity>>(context, PlayerModel(context.bakeLayer(ModelLayers.PLAYER), false), 0.5f) {
+    private val normalModel = PlayerModel<ChowNpcEntity>(context.bakeLayer(ModelLayers.PLAYER), false)
+    private val slimModel = PlayerModel<ChowNpcEntity>(context.bakeLayer(ModelLayers.PLAYER_SLIM), true)
+
+    init {
+        addLayer(
+            HumanoidArmorLayer(
+                this,
+                HumanoidModel(context.bakeLayer(ModelLayers.PLAYER_INNER_ARMOR)),
+                HumanoidModel(context.bakeLayer(ModelLayers.PLAYER_OUTER_ARMOR)),
+                context.modelManager,
+            )
+        )
+        addLayer(ItemInHandLayer(this, context.itemInHandRenderer))
+    }
+
+    override fun render(entity: ChowNpcEntity, entityYaw: Float, partialTicks: Float, poseStack: PoseStack, buffer: MultiBufferSource, packedLight: Int) {
+        model = if (entity.bodyType == NpcBodyTypes.SLIM) slimModel else normalModel
+        model.rightArmPose = if (entity.mainHandItem.isEmpty) HumanoidModel.ArmPose.EMPTY else HumanoidModel.ArmPose.ITEM
+        super.render(entity, entityYaw, partialTicks, poseStack, buffer, packedLight)
+    }
+
+    override fun getTextureLocation(entity: ChowNpcEntity): ResourceLocation = npcTexture(entity.npcId)
 }
 
 private class ChowNpcPlayerlikeRenderer(context: EntityRendererProvider.Context) : HumanoidMobRenderer<ChowNpcEntity, PlayerModel<ChowNpcEntity>>(context, PlayerModel(context.bakeLayer(ModelLayers.PLAYER), false), 0.5f) {
@@ -811,6 +853,31 @@ private class NpcGeoHeldItemLayer(renderer: GeoEntityRenderer<ChowNpcEntity>) : 
         private const val HELD_WEAPON_MODELED_AXIS_X_DEGREES = 45.0f
         private const val HELD_WEAPON_MODELED_AXIS_Z_DEGREES = 45.0f
         private const val HELD_WEAPON_LEFT_HAND_ITEM_AXIS_Z_DEGREES = 90.0f
+    }
+}
+
+private class NpcPlayerlikeAnimationLayer(private val entity: ChowNpcEntity) : ModifierLayer<IAnimation>() {
+    private var observedPlayId = Int.MIN_VALUE
+    private var observedAnimationKey = ""
+
+    override fun tick() {
+        val playId = entity.playerlikeAnimationPlayId
+        val animationKey = entity.playerlikeAnimationKey
+        if (!entity.playerlikeAnimation || animationKey.isBlank()) {
+            if (observedAnimationKey.isNotBlank()) setAnimation(null)
+            observedAnimationKey = ""
+            observedPlayId = playId
+            super.tick()
+            return
+        }
+        if (playId != observedPlayId || animationKey != observedAnimationKey) {
+            val animationId = runCatching { ResourceLocation.parse(animationKey) }.getOrNull()
+            val playable = animationId?.let(PlayerAnimationRegistry::getAnimation)
+            setAnimation(playable?.playAnimation() as? IAnimation)
+            observedAnimationKey = animationKey
+            observedPlayId = playId
+        }
+        super.tick()
     }
 }
 

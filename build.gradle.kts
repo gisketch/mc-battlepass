@@ -20,6 +20,14 @@ val geckoLibVersion = providers.gradleProperty("geckolib_version").get()
 val geckoLibVersionRange = providers.gradleProperty("geckolib_version_range").get()
 val smartBrainLibVersion = providers.gradleProperty("smartbrainlib_version").get()
 val smartBrainLibVersionRange = providers.gradleProperty("smartbrainlib_version_range").get()
+val betterCombatVersion = providers.gradleProperty("bettercombat_version").get()
+val betterCombatVersionRange = providers.gradleProperty("bettercombat_version_range").get()
+val playerAnimatorVersion = providers.gradleProperty("playeranimator_version").get()
+val playerAnimatorVersionRange = providers.gradleProperty("playeranimator_version_range").get()
+val mobPlayerAnimatorVersion = providers.gradleProperty("mobplayeranimator_version").get()
+val mobPlayerAnimatorVersionRange = providers.gradleProperty("mobplayeranimator_version_range").get()
+val clothConfigVersion = providers.gradleProperty("cloth_config_version").get()
+val clothConfigVersionRange = providers.gradleProperty("cloth_config_version_range").get()
 val modId = providers.gradleProperty("mod_id").get()
 val modName = providers.gradleProperty("mod_name").get()
 val modLicense = providers.gradleProperty("mod_license").get()
@@ -112,6 +120,10 @@ dependencies {
     implementation("maven.modrinth:owo-lib:$owoLibVersion")
     implementation("software.bernie.geckolib:geckolib-neoforge-$minecraftVersion:$geckoLibVersion")
     implementation("net.tslat.smartbrainlib:SmartBrainLib-neoforge-$minecraftVersion:$smartBrainLibVersion")
+    implementation("maven.modrinth:better-combat:$betterCombatVersion")
+    implementation("maven.modrinth:playeranimator:$playerAnimatorVersion")
+    implementation("maven.modrinth:mob-player-animator-neo:$mobPlayerAnimatorVersion")
+    implementation("maven.modrinth:cloth-config:$clothConfigVersion")
     compileOnly("maven.modrinth:jade:15.9.3+neoforge")
 
     testImplementation(kotlin("test"))
@@ -129,6 +141,10 @@ tasks.processResources {
         "owo_version_range" to owoVersionRange,
         "geckolib_version_range" to geckoLibVersionRange,
         "smartbrainlib_version_range" to smartBrainLibVersionRange,
+        "bettercombat_version_range" to betterCombatVersionRange,
+        "playeranimator_version_range" to playerAnimatorVersionRange,
+        "mobplayeranimator_version_range" to mobPlayerAnimatorVersionRange,
+        "cloth_config_version_range" to clothConfigVersionRange,
         "mod_id" to modId,
         "mod_name" to modName,
         "mod_license" to modLicense,
