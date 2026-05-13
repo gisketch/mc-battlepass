@@ -2,6 +2,7 @@ package dev.gisketch.chowkingdom.roles
 
 import dev.gisketch.chowkingdom.ChowKingdomMod
 import dev.gisketch.chowkingdom.config.TomlConfigIO
+import com.google.gson.GsonBuilder
 import net.neoforged.fml.loading.FMLPaths
 import java.nio.file.Files
 import java.nio.file.Path
@@ -11,6 +12,7 @@ import kotlin.io.path.extension
 import kotlin.random.Random
 
 object RolesConfig {
+    private val gson = GsonBuilder().create()
     private var jobsById: Map<String, RoleDefinition> = emptyMap()
     private var classesById: Map<String, RoleDefinition> = emptyMap()
     private var onboardingDefinition = RolesOnboardingDefinition()
@@ -84,6 +86,8 @@ object RolesConfig {
 
     fun equipmentWhitelist(): EquipmentWhitelistDefinition = equipmentWhitelistDefinition
 
+    fun configRoot(): Path = root
+
     private fun roleByIdOrName(rolesById: Map<String, RoleDefinition>, rawId: String): RoleDefinition? {
         val id = rawId.trim()
         return rolesById[id]
@@ -118,10 +122,22 @@ object RolesConfig {
     }
 
     private fun readDefinition(path: Path): RoleDefinition = try {
-        TomlConfigIO.read(path, RoleDefinition::class.java, ::RoleDefinition)
+        TomlConfigIO.read(path, RoleDefinition::class.java, ::RoleDefinition).also { definition ->
+            if (definition.perks.isEmpty()) definition.perks += misplacedRootPerks(path)
+        }
     } catch (exception: Exception) {
         ChowKingdomMod.LOGGER.warn("Failed to load role definition {}", path, exception)
         RoleDefinition()
+    }
+
+    private fun misplacedRootPerks(path: Path): List<RolePerkDefinition> {
+        val json = TomlConfigIO.readObject(path) ?: return emptyList()
+        val mentorQuest = json.getAsJsonObject("mentor_quest") ?: return emptyList()
+        val perks = mentorQuest.getAsJsonArray("perks") ?: return emptyList()
+        ChowKingdomMod.LOGGER.warn("Loaded misplaced root perks from {}. Move perks before [mentor_quest] in TOML.", path)
+        return perks.mapNotNull { element ->
+            runCatching { gson.fromJson(element, RolePerkDefinition::class.java) }.getOrNull()
+        }
     }
 
     private fun readOnboarding(path: Path): RolesOnboardingDefinition = try {

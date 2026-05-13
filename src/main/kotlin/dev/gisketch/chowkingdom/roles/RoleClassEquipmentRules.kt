@@ -21,6 +21,7 @@ import net.neoforged.neoforge.event.entity.player.ItemTooltipEvent
 
 internal object RoleClassEquipmentRules {
     private val WRONG_WEAPON_ATTACK_SPEED_MODIFIER = ResourceLocation.parse("${ChowKingdomMod.MOD_ID}:wrong_weapon_attack_speed")
+    private var lastEmptyEquipmentReloadMs = 0L
 
     fun onLivingDamagePre(event: LivingDamageEvent.Pre) {
         val attacker = event.source.entity as? ServerPlayer ?: return
@@ -48,8 +49,8 @@ internal object RoleClassEquipmentRules {
         if (classIds.isEmpty()) return
         val stack = event.itemStack
         when {
-            isClassControlledWeapon(stack) && !isGloballyAllowedWeapon(stack) -> event.toolTip.add(classTooltipLine(classIds, stack, ActiveClassEquipment::allowsWeapon) ?: unconfiguredWeaponTooltip())
-            stack.item is ArmorItem && !RecipeDisablerFeature.isCosmeticized(stack) && !isGloballyAllowedArmor(stack) -> classTooltipLine(classIds, stack, ActiveClassEquipment::allowsArmor)?.let(event.toolTip::add)
+            isClassControlledWeapon(stack) && !isGloballyAllowedWeapon(stack) -> insertUnderTitle(event, classTooltipLine(classIds, stack, ActiveClassEquipment::allowsWeapon) ?: unconfiguredWeaponTooltip())
+            stack.item is ArmorItem && !RecipeDisablerFeature.isCosmeticized(stack) && !isGloballyAllowedArmor(stack) -> classTooltipLine(classIds, stack, ActiveClassEquipment::allowsArmor)?.let { line -> insertUnderTitle(event, line) }
         }
     }
 
@@ -131,6 +132,35 @@ internal object RoleClassEquipmentRules {
         .sorted()
         .toList()
 
+    fun configuredEquipmentReport(): List<ClassEquipmentReport> = configuredClassEquipment()
+        .map { entry ->
+            ClassEquipmentReport(
+                classId = entry.id,
+                className = entry.name,
+                weaponIds = resolvedItemIds { stack -> entry.allowsWeapon(stack) },
+                armorIds = resolvedItemIds { stack -> stack.item is ArmorItem && entry.allowsArmor(stack) },
+            )
+        }
+        .sortedBy { report -> report.classId }
+
+    private fun resolvedItemIds(matches: (ItemStack) -> Boolean): List<String> = BuiltInRegistries.ITEM.asSequence()
+        .map { item -> BuiltInRegistries.ITEM.getKey(item).toString() to ItemStack(item) }
+        .filter { (_, stack) -> !stack.isEmpty && matches(stack) }
+        .map { (id, _) -> id }
+        .sorted()
+        .toList()
+
+    data class ClassEquipmentReport(
+        val classId: String,
+        val className: String,
+        val weaponIds: List<String>,
+        val armorIds: List<String>,
+    )
+
+    private fun insertUnderTitle(event: ItemTooltipEvent, line: Component) {
+        event.toolTip.add(1.coerceAtMost(event.toolTip.size), line)
+    }
+
     private fun equipmentAffinities(player: ServerPlayer): List<RolePerkDefinition> = RolePerks.classPerks(player, "equipment_affinity")
 
     private fun equipmentAffinities(classIds: Set<String>): List<RolePerkDefinition> = classIds
@@ -145,7 +175,15 @@ internal object RoleClassEquipmentRules {
         ActiveClassEquipment(role.id, role.displayName.ifBlank { role.id }, perks)
     }
 
-    private fun configuredClassEquipment(): List<ActiveClassEquipment> = RolesConfig.classes().mapNotNull { role ->
+    private fun configuredClassEquipment(): List<ActiveClassEquipment> = configuredClassEquipmentLoaded().ifEmpty {
+        val now = System.currentTimeMillis()
+        if (now - lastEmptyEquipmentReloadMs < EMPTY_EQUIPMENT_RELOAD_INTERVAL_MS) return@ifEmpty emptyList()
+        lastEmptyEquipmentReloadMs = now
+        RolesConfig.load()
+        configuredClassEquipmentLoaded()
+    }
+
+    private fun configuredClassEquipmentLoaded(): List<ActiveClassEquipment> = RolesConfig.classes().mapNotNull { role ->
         val perks = role.perks.filter { perk -> perk.type == "equipment_affinity" }
         if (perks.isEmpty()) return@mapNotNull null
         ActiveClassEquipment(role.id, role.displayName.ifBlank { role.id }, perks)
@@ -285,4 +323,6 @@ internal object RoleClassEquipmentRules {
     )
 
     private fun Set<String>.matchesClass(id: String, name: String): Boolean = any { activeId -> activeId.equals(id, ignoreCase = true) || activeId.equals(name, ignoreCase = true) }
+
+    private const val EMPTY_EQUIPMENT_RELOAD_INTERVAL_MS = 5_000L
 }

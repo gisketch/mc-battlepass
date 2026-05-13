@@ -161,6 +161,7 @@ object RolesFeature {
 
     private fun onRegisterCommands(event: RegisterCommandsEvent) {
         event.dispatcher.register(Commands.literal("unconfigured").requires { source -> source.hasPermission(2) }.executes(::unconfiguredWeapons))
+        event.dispatcher.register(Commands.literal("weapons").requires { source -> source.hasPermission(2) }.executes(::configuredWeapons))
         event.dispatcher.register(
             Commands.literal("tag")
                 .requires { source -> source.hasPermission(2) }
@@ -174,6 +175,7 @@ object RolesFeature {
                         .requires { source -> source.hasPermission(2) }
                         .then(Commands.literal("reload").executes(::reloadRoles))
                         .then(Commands.literal("unconfigured").executes(::unconfiguredWeapons))
+                        .then(Commands.literal("weapons").executes(::configuredWeapons))
                         .then(Commands.literal("list").executes(::listRoles))
                         .then(starterLicensesCommand())
                         .then(upgradeLicensesCommand())
@@ -314,13 +316,44 @@ object RolesFeature {
     }
 
     private fun unconfiguredWeapons(context: CommandContext<CommandSourceStack>): Int {
+        RolesConfig.load()
         val ids = RoleClassEquipmentRules.unconfiguredWeaponIds()
         writeUnconfiguredTagDatapack(context.source.server, ids)
         val chunks = codeblockChunks(ids)
-        context.source.sendSuccess({ Component.literal("Unconfigured weapons: ${ids.size}. Wrote datapack tag #${ChowKingdomMod.MOD_ID}:unconfigured. Run /reload before EMI sees the refreshed tag.") }, true)
+        context.source.sendSuccess({ Component.literal("Unconfigured weapons: ${ids.size}. Reloaded role config, wrote datapack tag #${ChowKingdomMod.MOD_ID}:unconfigured. Run /reload before EMI sees the refreshed tag.") }, true)
         chunks.forEach { chunk -> context.source.sendSuccess({ Component.literal(chunk) }, false) }
         chunks.forEach { chunk -> DiscordWebhookClient.send(chunk) }
         return ids.size.coerceAtLeast(1)
+    }
+
+    private fun configuredWeapons(context: CommandContext<CommandSourceStack>): Int {
+        RolesConfig.load()
+        val reports = RoleClassEquipmentRules.configuredEquipmentReport()
+        if (reports.isEmpty()) {
+            context.source.sendFailure(Component.literal("No class equipment affinity loaded from ${RolesConfig.configRoot().resolve("classes")}. Check class TOMLs, then run /ck roles reload."))
+            return 0
+        }
+        val lines = classEquipmentReportLines(reports)
+        val chunks = codeblockChunks("Configured class weapons and armor", lines)
+        val itemCount = reports.sumOf { report -> report.weaponIds.size + report.armorIds.size }
+        context.source.sendSuccess({ Component.literal("Configured class weapons and armor: ${reports.size} class(es), $itemCount item match(es). Reloaded role config and sent to Discord.") }, true)
+        chunks.forEach { chunk -> context.source.sendSuccess({ Component.literal(chunk) }, false) }
+        chunks.forEach { chunk -> DiscordWebhookClient.send(chunk) }
+        return itemCount.coerceAtLeast(1)
+    }
+
+    private fun classEquipmentReportLines(reports: List<RoleClassEquipmentRules.ClassEquipmentReport>): List<String> {
+        if (reports.isEmpty()) return listOf("none")
+        val lines = mutableListOf<String>()
+        reports.forEachIndexed { index, report ->
+            if (index > 0) lines += ""
+            lines += "${report.classId}:"
+            lines += "weapons:"
+            lines += report.weaponIds.ifEmpty { listOf("none") }
+            lines += "armor:"
+            lines += report.armorIds.ifEmpty { listOf("none") }
+        }
+        return lines
     }
 
     private fun sendItemTag(context: CommandContext<CommandSourceStack>): Int {

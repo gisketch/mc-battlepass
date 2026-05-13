@@ -26,6 +26,9 @@ The source defaults create editable job/class TOML, but they no longer auto-assi
 - `/ck onboarding`
 - `/ck roles reload`
 - `/ck roles list`
+- `/weapons`
+- `/ck roles weapons`
+- `/unconfigured`
 - `/ck roles get <player>`
 - `/ck roles starter_licenses set <player> <licenses>`
 - `/ck roles upgrade_licenses set <player> <licenses>`
@@ -67,6 +70,8 @@ Class definitions also support progression metadata:
 - `upgrade_class_ids = ["berserker", "paladin"]` on starter classes.
 - `starter_class_ids = ["warrior", "priest"]` on upgrade classes.
 
+TOML table headers are sticky. Keep root fields such as `perks = [...]` before `[mentor_quest]`, or open a new root-level file section by moving the table lower. The loader recovers legacy class TOMLs where `perks` was accidentally placed under `[mentor_quest]`, but new configs should keep `perks` at the role root.
+
 Onboarding only allows starter classes. Upgrade classes still render for visibility, but they are greyed out, locked, and cannot be selected. Existing configs without these keys use the built-in starter order: `warrior`, `rogue`, `archer`, `wizard`, `priest`.
 
 The class onboarding inspector shows starter/upgrade status, lock path, mentor, unlock cost, loaded weapon/armor match counts, starter-kit count, allowed-equipment examples, and wrong-equipment penalties. The center paperdoll holds the selected or hovered class preview item when configured.
@@ -93,15 +98,19 @@ Current values:
 - Warrior weapons: `minecraft:wooden_sword`.
 - Warrior armor: iron armor.
 
-Wrong weapons deal reduced damage, reduce attack speed while held, apply an item cooldown after attacks, spend at least the configured wrong-weapon stamina floor, and show compact `Classes:` tooltip compatibility lines. Wrong armor disables sprinting while worn and uses the same class compatibility tooltip. Starting items are only inventory grants after class application; allowed weapons and armor come from `equipment_affinity` tags/patterns, not `starting_items`.
+Wrong weapons deal reduced damage, reduce attack speed while held, apply an item cooldown after attacks, spend at least the configured wrong-weapon stamina floor, and show compact `Classes:` compatibility directly under the item name in the normal tooltip. Wrong armor disables sprinting while worn and uses the same under-title compatibility line. Starting items are only inventory grants after class application; allowed weapons and armor come from `equipment_affinity` tags/patterns, not `starting_items`.
 
 Equipment affinity supports deny patterns with `weapon_exclude_patterns` and `armor_exclude_patterns`. Matching is `allowed tag or pattern` and `not excluded`; entries in pattern arrays can also be item tags by using `#namespace:path`. Weapon-like items that match no class affinity and no global whitelist show `Weapon unconfigured, ask @gisketch for help`.
 
-Use `/unconfigured` or `/ck roles unconfigured` as an operator to scan loaded items for unconfigured weapons. The command prints codeblocks in game, posts them to Discord through the configured webhook, and writes a generated datapack tag at `#gisketchs_chowkingdom_mod:unconfigured`; run `/reload` before EMI sees the refreshed generated tag.
+Use `/unconfigured` or `/ck roles unconfigured` as an operator to scan loaded items for unconfigured weapons. The command reloads role config first, prints codeblocks in game, posts them to Discord through the configured webhook, and writes a generated datapack tag at `#gisketchs_chowkingdom_mod:unconfigured`; run `/reload` before EMI sees the refreshed generated tag.
+
+Use `/weapons` or `/ck roles weapons` as an operator to list the opposite report: every loaded concrete weapon and armor item matched by each class. The command reloads role config first, resolves tags and glob patterns into item ids, prints sections such as `rogue:`, `weapons:`, and `armor:` in game, and posts the same codeblocks to Discord through the configured webhook.
 
 Inventory slots render a grey overlay on weapon-like items and armor that none of the player's active classes can use. Global whitelist matches keep normal rendering.
 
 Class weapon tag aliases exist for EMI/tag search, such as `#gisketchs_chowkingdom_mod:rogue`, `#gisketchs_chowkingdom_mod:warrior`, `#gisketchs_chowkingdom_mod:archer`, and plural aliases like `#gisketchs_chowkingdom_mod:tundra_archers`. They point at concrete vanilla entries plus optional mod item tags where available; glob-only runtime patterns still need concrete item tags or datapack entries before EMI can list them.
+
+Class arsenal balance should preserve role fantasy rather than equalize raw counts. Starter/support classes can receive safe base/support families when they feel starved, but flashy uniques, broad legendary families, heavy shields, and off-fantasy weapons should stay upgrade-gated or class-specific.
 
 `equipment_whitelist.toml` has `weapon_tags`, `weapon_patterns`, `armor_tags`, and `armor_patterns`. Matching items are globally allowed for every class, keep vanilla behavior, and show no class compatibility tooltip.
 
