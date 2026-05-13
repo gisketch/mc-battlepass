@@ -342,11 +342,17 @@ object NpcStore {
     fun adjustFriendship(npcId: String, player: ServerPlayer, delta: Int, reason: String): NpcFriendshipSnapshot {
         val state = state(npcId)
         val friendship = state.friendships.getOrPut(player.stringUUID) { NpcFriendshipState() }
-        friendship.points = (friendship.points + PerformerPerks.friendshipDelta(player, delta)).coerceIn(NpcFriendshipLevels.MIN_POINTS, NpcFriendshipLevels.MAX_POINTS)
+        friendship.points = (friendship.points + effectiveFriendshipDelta(player, delta)).coerceIn(NpcFriendshipLevels.MIN_POINTS, NpcFriendshipLevels.MAX_POINTS)
         friendship.lastChangedAt = System.currentTimeMillis()
         friendship.lastReason = reason
         save()
         return NpcFriendshipSnapshot.from(friendship.points)
+    }
+
+    fun effectiveFriendshipDelta(player: ServerPlayer, delta: Int): Int {
+        val perkAdjusted = PerformerPerks.friendshipDelta(player, delta)
+        if (perkAdjusted <= 0) return perkAdjusted
+        return (perkAdjusted / FRIENDSHIP_GAIN_DIVISOR).coerceAtLeast(1)
     }
 
     fun setFriendship(npcId: String, player: ServerPlayer, points: Int, reason: String): NpcFriendshipSnapshot {
@@ -670,3 +676,4 @@ private const val MAX_GLOBAL_EVENTS = 30
 private const val MAX_GLOBAL_MEMORIES = 60
 private const val MAX_PLAYER_MEMORIES = 30
 private const val MAX_MEMORY_TEXT_LENGTH = 180
+private const val FRIENDSHIP_GAIN_DIVISOR = 2

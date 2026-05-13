@@ -209,9 +209,10 @@ object NpcFeature {
         val wasSleeping = npc.isSleeping
         val currentDay = NpcTime.day(player.level())
         val firstChatToday = NpcStore.markFirstChatIfNeeded(definition.id, player, currentDay)
+        val firstChatFriendshipDelta = if (firstChatToday) NpcStore.effectiveFriendshipDelta(player, FIRST_DAILY_CHAT_FRIENDSHIP_DELTA) else 0
         val recognized = NpcStore.recognized(definition.id, player)
         val friendship = if (firstChatToday) NpcStore.adjustFriendship(definition.id, player, FIRST_DAILY_CHAT_FRIENDSHIP_DELTA, "first_daily_chat") else NpcStore.friendshipSnapshot(definition.id, player)
-        if (firstChatToday) showFriendshipDelta(npc.level() as? ServerLevel, npc, FIRST_DAILY_CHAT_FRIENDSHIP_DELTA)
+        if (firstChatFriendshipDelta != 0) showFriendshipDelta(npc.level() as? ServerLevel, npc, firstChatFriendshipDelta)
         if (wasSleeping) npc.stopSleeping()
         val contractGranted = definition.housing.canMoveIn && !hasHome && !hasRentContract(player, definition.id)
         if (contractGranted) {
@@ -246,13 +247,13 @@ object NpcFeature {
         }
         if (settings.llm.enabled && llmInput != null) {
             val responseToken = NpcDialogTokens.next()
-            NpcNetwork.openDialog(player, dialogPayload(definition, npc, "...", contractGranted, friendship.level, closeOnly = !hasHome || contractGranted, closeLabel = if (!hasHome || contractGranted) "OKAY" else "BYE", responseToken = responseToken, friendshipDelta = if (firstChatToday) FIRST_DAILY_CHAT_FRIENDSHIP_DELTA else 0))
+            NpcNetwork.openDialog(player, dialogPayload(definition, npc, "...", contractGranted, friendship.level, closeOnly = !hasHome || contractGranted, closeLabel = if (!hasHome || contractGranted) "OKAY" else "BYE", responseToken = responseToken, friendshipDelta = firstChatFriendshipDelta))
             if (!recognized) NpcStore.markRecognized(definition.id, player)
             NpcLlmService.event(player, npc, definition, message, llmInput, npcRecordType = "npc_llm_interact", responseToken = responseToken)
             return
         }
         NpcStore.recordConversation(definition.id, player, definition.name, message, "npc_message")
-        NpcNetwork.openDialog(player, dialogPayload(definition, npc, message, contractGranted, friendship.level, closeOnly = !hasHome || contractGranted, closeLabel = if (!hasHome || contractGranted) "OKAY" else "BYE", friendshipDelta = if (firstChatToday) FIRST_DAILY_CHAT_FRIENDSHIP_DELTA else 0))
+        NpcNetwork.openDialog(player, dialogPayload(definition, npc, message, contractGranted, friendship.level, closeOnly = !hasHome || contractGranted, closeLabel = if (!hasHome || contractGranted) "OKAY" else "BYE", friendshipDelta = firstChatFriendshipDelta))
         if (!recognized) NpcStore.markRecognized(definition.id, player)
         relayNpcDialog(player, npc, definition, message)
     }
@@ -869,15 +870,16 @@ object NpcFeature {
         }
         val mood = configuredMood ?: "neutral"
         val friendshipDelta = PerformerPerks.giftFriendshipDelta(player, mood, giftFriendshipDelta(mood))
+        val appliedFriendshipDelta = NpcStore.effectiveFriendshipDelta(player, friendshipDelta)
         val friendship = NpcStore.adjustFriendship(definition.id, player, friendshipDelta, "gift_$mood")
-        showFriendshipDelta(npc.level() as? ServerLevel, npc, friendshipDelta)
+        showFriendshipDelta(npc.level() as? ServerLevel, npc, appliedFriendshipDelta)
         val message = friendshipMessage(definition.friendshipMessages.gift, friendship, player, definition, itemName, mood)
         if (!player.abilities.instabuild) stack.shrink(1)
         NpcStore.recordConversation(definition.id, player, player.gameProfile.name, "gifts $itemName to ${definition.name}", "player_gift")
         NpcStore.recordPlayerMemory(player, "gift_to_npc", "${player.gameProfile.name} gave $itemName to ${definition.name}; reaction mood was $mood.")
         if (NpcConfig.settings().llm.enabled && NpcConfig.settings().llmMessageUsage.gift) {
             val responseToken = NpcDialogTokens.next()
-            NpcNetwork.openDialog(player, dialogPayload(definition, npc, "...", false, friendship.level, closeOnly = true, closeLabel = "OKAY", responseToken = responseToken, friendshipDelta = friendshipDelta))
+            NpcNetwork.openDialog(player, dialogPayload(definition, npc, "...", false, friendship.level, closeOnly = true, closeLabel = "OKAY", responseToken = responseToken, friendshipDelta = appliedFriendshipDelta))
             NpcLlmService.event(
                 player,
                 npc,
@@ -890,21 +892,22 @@ object NpcFeature {
             return
         }
         NpcStore.recordConversation(definition.id, player, definition.name, message, "npc_gift_$mood")
-        NpcNetwork.openDialog(player, dialogPayload(definition, npc, message, false, friendship.level, closeOnly = true, closeLabel = "OKAY", friendshipDelta = friendshipDelta))
+        NpcNetwork.openDialog(player, dialogPayload(definition, npc, message, false, friendship.level, closeOnly = true, closeLabel = "OKAY", friendshipDelta = appliedFriendshipDelta))
         relayNpcDialog(player, npc, definition, message)
     }
 
     private fun finishGiftToNpc(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, itemName: String, mood: String, message: String, responseToken: Long) {
         val friendshipDelta = PerformerPerks.giftFriendshipDelta(player, mood, giftFriendshipDelta(mood))
+        val appliedFriendshipDelta = NpcStore.effectiveFriendshipDelta(player, friendshipDelta)
         val friendship = NpcStore.adjustFriendship(definition.id, player, friendshipDelta, "gift_$mood")
-        showFriendshipDelta(npc.level() as? ServerLevel, npc, friendshipDelta)
+        showFriendshipDelta(npc.level() as? ServerLevel, npc, appliedFriendshipDelta)
         val fallback = friendshipMessage(definition.friendshipMessages.gift, friendship, player, definition, itemName, mood)
         val reply = message.trim().ifBlank { fallback }
         npc.startTalkingTo(player, NPC_DIALOG_DURATION_TICKS)
         NpcStore.recordConversation(definition.id, player, player.gameProfile.name, "gifts $itemName to ${definition.name}", "player_gift")
         NpcStore.recordPlayerMemory(player, "gift_to_npc", "${player.gameProfile.name} gave $itemName to ${definition.name}; reaction mood was $mood.")
         NpcStore.recordConversation(definition.id, player, definition.name, reply, "npc_gift_$mood")
-        NpcNetwork.openDialog(player, dialogPayload(definition, npc, reply, false, friendship.level, closeOnly = true, closeLabel = "OKAY", friendshipDelta = friendshipDelta))
+        NpcNetwork.openDialog(player, dialogPayload(definition, npc, reply, false, friendship.level, closeOnly = true, closeLabel = "OKAY", friendshipDelta = appliedFriendshipDelta))
         relayNpcDialog(player, npc, definition, reply)
     }
 
@@ -2429,8 +2432,9 @@ object NpcFeature {
         val definition = npcDefinitionArgument(context) ?: return 0
         val player = EntityArgument.getPlayer(context, "player")
         val delta = IntegerArgumentType.getInteger(context, "delta")
+        val appliedDelta = NpcStore.effectiveFriendshipDelta(player, delta)
         val friendship = NpcStore.adjustFriendship(definition.id, player, delta, "command_add")
-        context.source.sendSuccess({ Component.literal("Adjusted ${definition.displayName()} / ${player.gameProfile.name} by $delta to ${friendship.points} points, Lv.${friendship.level}.") }, true)
+        context.source.sendSuccess({ Component.literal("Adjusted ${definition.displayName()} / ${player.gameProfile.name} by $appliedDelta to ${friendship.points} points, Lv.${friendship.level}.") }, true)
         return friendship.points
     }
 
