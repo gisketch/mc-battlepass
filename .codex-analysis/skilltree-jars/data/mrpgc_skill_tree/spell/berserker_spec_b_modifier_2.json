@@ -1,0 +1,49 @@
+{
+  "school": "spell_power:rage_melee",
+  "range": 6.0,
+  "tier": 1,
+  "tooltip": {
+    "show_activation": false
+  },
+  "type": "PASSIVE",
+  "passive": {
+    "triggers": [
+      {
+        "type": "SPELL_CAST",
+        "spell": {
+          "id": "berserker_rpg:blood_reckoning"
+        }
+      }
+    ]
+  },
+  "target": {
+    "type": "AREA",
+    "area": {
+      "distance_dropoff": "SQUARED"
+    }
+  },
+  "impacts": [
+    {
+      "target_modifiers": [
+        {
+          "conditions": [
+            {
+              "entity_predicate_id": "has_effect_optimized:more_rpg_classes.bleeding"
+            }
+          ],
+          "execute": "ALLOW"
+        }
+      ],
+      "action": {
+        "type": "DAMAGE",
+        "damage": {
+          "spell_power_coefficient": 0.4,
+          "knockback": 0.0
+        }
+      }
+    }
+  ],
+  "cost": {
+    "durability": 0
+  }
+}

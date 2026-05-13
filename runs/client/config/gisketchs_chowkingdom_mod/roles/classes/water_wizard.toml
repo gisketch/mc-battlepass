@@ -1,0 +1,31 @@
+# CKDM class config: water_wizard.toml
+
+id = "water_wizard"
+display_name = "Water Wizard"
+icon = "textures/gui/classes/wizard.png"
+description = "Upgrade magic path for water pressure, cleansing, healing rain, and flexible support damage."
+preview_items = ["elemental_wizards_rpg:staff_aqua", "minecraft:water_bucket"]
+classification = "upgrade"
+starter_class_ids = ["wizard"]
+upgrade_class_ids = []
+
+perks = [
+  { type = "equipment_affinity", multiplier = 1.0, weapon_tags = ["rpg_series:weapon_type/damage_staff", "elemental_wizards_rpg:elemental_staves", "elemental_wizards_rpg:elemental_wands", "runes:runes", "runes:pouches"], armor_tags = ["rpg_series:armor_type/magic"], weapon_patterns = ["elemental_wizards_rpg:*aqua*", "elemental_wizards_rpg:spell_book/aqua"], weapon_exclude_patterns = ["*spawn_egg"], armor_patterns = ["minecraft:leather_*", "elemental_wizards_rpg:*aqua*", "elemental_wizards_rpg:*kelp*", "elemental_wizards_rpg:*ocean*", "wizards:*robe*"], armor_exclude_patterns = [], wrong_weapon_damage_multiplier = 0.35, wrong_weapon_cooldown_ticks = 12, wrong_weapon_attack_speed_multiplier = 0.55, wrong_armor_disables_sprint = true, starting_items = [], reward_pool = [] },
+  { type = "spell_affinity", spell_ids = ["elemental_wizards_rpg:aqua_water_whip", "elemental_wizards_rpg:aqua_splash", "elemental_wizards_rpg:elemental_avatar", "elemental_wizards_rpg:improved_aqua_springwater"], spell_tags = ["elemental_wizards_rpg:spell_book/aqua", "elemental_wizards_rpg:spell_scroll/aqua", "elemental_wizards_rpg:weapon/aqua_staff"] },
+]
+
+
+[mentor_quest]
+mentor_npc_id = "katara"
+title = "Aqua Mercy Exam"
+intro_message = "Katara tests whether water can move through the apprentice without anger taking the shape of a wave."
+unlock_title = "Aqua Adept"
+announcement = "{player} completed Kataras aqua mercy exam and unlocked Water Wizard as {title}."
+steps = [
+  { id = "water_wizard_vow", skeleton = "vow", kind = "dialogue", title = "Vow", objective = "Vow to let water heal first and strike only with purpose.", goal = 1, start_message = "Vow to let water heal first and strike only with purpose.", complete_message = "", llm_prompt = "Katara should sound compassionate, firm, and waterbender-practical." },
+  { id = "water_wizard_offering", skeleton = "offering", kind = "fetch", title = "River Offering", objective = "Bring 8 kelp.", item = "minecraft:kelp", qty = 8, goal = 8, start_message = "Bring <b>8 kelp</b>. Water remembers where care begins.", complete_message = "Good. The river fed someone before it fought anyone.", llm_prompt = "Tie kelp to rivers, care, and water discipline." },
+  { id = "water_wizard_discipline", skeleton = "discipline", kind = "task", title = "Patient Current", objective = "Catch 8 fish.", event = "minecraft:fish_caught", goal = 8, start_message = "Catch <b>8 fish</b>. A current teaches patience before power.", complete_message = "You waited. That matters.", llm_prompt = "Connect fishing, patience, and healing water." },
+  { id = "water_wizard_signature_trial", skeleton = "signature_trial", kind = "task", title = "Water Field Notes", objective = "Catch 3 Water Pokemon.", event = "cobblemon:pokemon_caught", goal = 3, filters = { type = "water" }, start_message = "Catch <b>3 Water Pokemon</b>. Study living water without forcing it.", complete_message = "You listened to the tide.", llm_prompt = "Connect Pokemon water type to waterbending study." },
+  { id = "water_wizard_license", skeleton = "payment", kind = "payment", title = "License Seal", objective = "Pay the mentor license fee for water_wizard.", goal = 1, start_message = "The license seal is next. A new {classification} {class} unlock costs {cost} chowcoins.", complete_message = "The license is sealed. Only the mentor duel remains for {class}.", llm_prompt = "Treat payment as a formal license seal, not a bribe." },
+  { id = "water_wizard_duel", skeleton = "mentor_duel", kind = "duel", title = "Mentor Duel", objective = "Win a non-lethal 1v1 mentor duel.", goal = 1, start_message = "Draw breath. The {class} mentor duel starts now.", complete_message = "The duel is won. {class} is yours.", llm_prompt = "Katara starts a firm non-lethal duel test." },
+]

@@ -1,0 +1,64 @@
+{
+  "school": "spell_power:frost_ranged",
+  "range": 0.0,
+  "tier": 1,
+  "type": "PASSIVE",
+  "passive": {
+    "triggers": [
+      {
+        "type": "ARROW_IMPACT",
+        "target_conditions": [
+          {
+            "entity_predicate_id": "has_effect_optimized:more_rpg_classes.frosted"
+          }
+        ]
+      }
+    ]
+  },
+  "target": {
+    "type": "FROM_TRIGGER"
+  },
+  "impacts": [
+    {
+      "action": {
+        "type": "HEAL",
+        "apply_to_caster": true,
+        "heal": {
+          "spell_power_coefficient": 0.05
+        }
+      },
+      "particles": [
+        {
+          "particle_id": "spell_engine:area_circle_1",
+          "origin": "FEET",
+          "shape": "LINE_VERTICAL",
+          "count": 1.0,
+          "min_speed": 0.2,
+          "max_speed": 0.2,
+          "color_rgba": 1724710911,
+          "scale": 0.8,
+          "follow_entity": true,
+          "max_age": 0.8
+        },
+        {
+          "particle_id": "spell_engine:magic_heal_decelerate",
+          "origin": "CENTER",
+          "shape": "SPHERE",
+          "count": 15.0,
+          "min_speed": 0.2,
+          "max_speed": 0.25,
+          "color_rgba": 1724710911
+        }
+      ],
+      "sound": {
+        "id": "spell_engine:generic_healing_impact_3"
+      }
+    }
+  ],
+  "cost": {
+    "durability": 0,
+    "cooldown": {
+      "duration": 5.0
+    }
+  }
+}

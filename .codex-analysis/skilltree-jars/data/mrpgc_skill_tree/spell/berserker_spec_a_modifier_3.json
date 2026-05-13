@@ -1,0 +1,14 @@
+{
+  "school": "spell_power:rage_melee",
+  "range": 0.0,
+  "tier": 1,
+  "type": "MODIFIER",
+  "modifiers": [
+    {
+      "spell_pattern": "berserker_rpg:bloody_strike",
+      "power_modifier": {
+        "power_multiplier": 0.25
+      }
+    }
+  ]
+}

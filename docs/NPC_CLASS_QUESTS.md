@@ -34,7 +34,12 @@ Class mentor quests are separate from daily NPC quests. They are one-time, non-e
 | Witcher | Geralt | Cook 1 fresh Farmer's Delight beef stew after the step begins. | Defeat 100 monsters as bestiary work. | Defeat 4 endermen as a sparse contract, untimed. | Silver-Signed Hunter |
 | War Archer | Legolas | Bring 48 arrows for the company. | March 1200 blocks on foot. | Timed: defeat 5 Overworld skeleton archers in 35s. | White-Fletched Captain |
 | Tundra Archer | Traxex | Bring 16 snowballs for breath control. | Travel 1200 blocks on foot in silence. | Timed: defeat 3 strays in 45s. | Frost-Quiet Arrow |
-| Elemental Wizard | Invoker | Bring 2 blaze rods for Exort focus. | Smelt 16 glass for heat and clarity. | Catch 3 Fire, Water, or Electric Pokemon. | Quas-Wex-Exort Adept |
+| Arcane Wizard | Invoker | Bring 12 amethyst shards for resonance focus. | Travel 800 blocks on foot for vector work. | Timed: defeat 3 endermen in 60s. | Arcane Sequencer |
+| Fire Wizard | Invoker | Bring 4 blaze rods for Exort focus. | Smelt 24 glass for heat and clarity. | Timed: defeat 5 Nether blazes in 60s. | Exort Adept |
+| Frost Wizard | Invoker | Bring 8 blue ice for Quas focus. | Craft 8 snow blocks for control drills. | Defeat 6 strays. | Quas Adept |
+| Water Wizard | Katara | Bring 8 kelp for river study. | Catch 8 fish for current patience. | Catch 3 Water Pokemon. | Aqua Adept |
+| Earth Wizard | Invoker | Bring 32 deepslate for Terra focus. | Craft 16 stone bricks for structure work. | Smelt 12 iron ingots. | Terra Adept |
+| Wind Wizard | Venti | Bring 16 feathers for Wex focus. | Travel 1200 blocks on foot. | Catch 3 Flying Pokemon. | Wex Adept |
 
 ## Config Surface
 

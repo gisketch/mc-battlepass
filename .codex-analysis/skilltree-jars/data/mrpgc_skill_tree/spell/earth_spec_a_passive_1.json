@@ -1,0 +1,58 @@
+{
+  "school": "spell_power:earth",
+  "range": 0.0,
+  "tier": 1,
+  "type": "PASSIVE",
+  "passive": {
+    "triggers": [
+      {
+        "target_override": "CASTER",
+        "type": "SPELL_IMPACT_SPECIFIC",
+        "chance": 0.2,
+        "spell": {
+          "school": "earth",
+          "type": "ACTIVE"
+        },
+        "impact": {
+          "impact_type": "DAMAGE"
+        }
+      }
+    ]
+  },
+  "target": {
+    "type": "FROM_TRIGGER"
+  },
+  "impacts": [
+    {
+      "action": {
+        "type": "STATUS_EFFECT",
+        "status_effect": {
+          "effect_id": "mrpgc_skill_tree:earthen_blessing",
+          "amplifier": 1,
+          "amplifier_cap": 5,
+          "apply_mode": "ADD"
+        }
+      },
+      "particles": [
+        {
+          "particle_id": "more_rpg_classes:stone_particle",
+          "origin": "FEET",
+          "shape": "PILLAR",
+          "count": 5.0,
+          "min_speed": 0.1,
+          "max_speed": 0.8,
+          "extent": 1.0
+        }
+      ],
+      "sound": {
+        "id": "mrpgc_skill_tree:earthen_blessing"
+      }
+    }
+  ],
+  "cost": {
+    "durability": 0,
+    "cooldown": {
+      "duration": 5.0
+    }
+  }
+}

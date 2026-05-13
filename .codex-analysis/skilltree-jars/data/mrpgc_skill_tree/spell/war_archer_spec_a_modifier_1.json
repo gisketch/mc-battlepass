@@ -1,0 +1,16 @@
+{
+  "school": "spell_power:fire_ranged",
+  "range": 0.0,
+  "tier": 1,
+  "type": "MODIFIER",
+  "modifiers": [
+    {
+      "spell_pattern": "archers_expansion:smoldering_arrow",
+      "replacing_area_impact": {
+        "sound": {
+          "id": "entity.generic.explode"
+        }
+      }
+    }
+  ]
+}

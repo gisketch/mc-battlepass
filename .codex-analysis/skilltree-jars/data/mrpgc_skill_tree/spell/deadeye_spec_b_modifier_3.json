@@ -1,0 +1,66 @@
+{
+  "school": "spell_power:physical_ranged",
+  "range": 0.0,
+  "tier": 1,
+  "tooltip": {
+    "show_activation": false
+  },
+  "type": "PASSIVE",
+  "passive": {
+    "triggers": [
+      {
+        "type": "SPELL_IMPACT_SPECIFIC",
+        "target_conditions": [
+          {
+            "entity_predicate_id": "spell_engine:has_bad_effect"
+          }
+        ],
+        "spell": {
+          "id": "archers_expansion:disabling_shot"
+        },
+        "impact": {
+          "impact_type": "DAMAGE"
+        }
+      }
+    ]
+  },
+  "release": {
+    "particles": [
+      {
+        "particle_id": "spell_engine:sign_speed",
+        "origin": "CENTER",
+        "shape": "LINE_VERTICAL",
+        "count": 1.0,
+        "min_speed": 0.8,
+        "max_speed": 0.8,
+        "color_rgba": 4294967295,
+        "scale": 0.8,
+        "follow_entity": true
+      }
+    ],
+    "sound": {
+      "id": "spell_engine:speed_boost"
+    }
+  },
+  "target": {
+    "type": "FROM_TRIGGER"
+  },
+  "impacts": [
+    {
+      "action": {
+        "type": "STATUS_EFFECT",
+        "apply_to_caster": true,
+        "status_effect": {
+          "effect_id": "mrpgc_skill_tree:leaping_swiftness",
+          "duration": 5.0
+        }
+      }
+    }
+  ],
+  "cost": {
+    "durability": 0,
+    "cooldown": {
+      "duration": 0.5
+    }
+  }
+}

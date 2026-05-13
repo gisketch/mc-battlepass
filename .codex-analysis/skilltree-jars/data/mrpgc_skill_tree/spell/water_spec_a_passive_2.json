@@ -1,0 +1,77 @@
+{
+  "school": "spell_power:water",
+  "range": 0.0,
+  "tier": 1,
+  "type": "PASSIVE",
+  "passive": {
+    "triggers": [
+      {
+        "type": "ROLL",
+        "chance": 0.5
+      }
+    ]
+  },
+  "deliver": {
+    "type": "CLOUD",
+    "delay": 5,
+    "clouds": [
+      {
+        "volume": {
+          "radius": 2.5,
+          "area": {
+            "vertical_range_multiplier": 0.3
+          }
+        },
+        "time_to_live_seconds": 5.0,
+        "impact_tick_interval": 20,
+        "client_data": {
+          "particles": [
+            {
+              "particle_id": "more_rpg_classes:water_mist",
+              "origin": "GROUND",
+              "shape": "PILLAR",
+              "count": 20.0,
+              "max_speed": 0.0
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "impacts": [
+    {
+      "action": {
+        "type": "STATUS_EFFECT",
+        "status_effect": {
+          "apply_mode": "REMOVE",
+          "remove": {
+            "id": "!minecraft:trial_omen"
+          }
+        }
+      },
+      "particles": [
+        {
+          "particle_id": "spell_engine:area_circle_1",
+          "origin": "FEET",
+          "shape": "LINE_VERTICAL",
+          "count": 1.0,
+          "min_speed": 0.15,
+          "max_speed": 0.16,
+          "color_rgba": 4294967295,
+          "scale": 0.8,
+          "follow_entity": true,
+          "max_age": 0.8
+        }
+      ],
+      "sound": {
+        "id": "mrpgc_skill_tree:soothing_mist_cleanse"
+      }
+    }
+  ],
+  "cost": {
+    "durability": 0,
+    "cooldown": {
+      "duration": 20.0
+    }
+  }
+}

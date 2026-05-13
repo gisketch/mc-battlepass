@@ -1,0 +1,49 @@
+{
+  "school": "spell_power:air",
+  "range": 0.0,
+  "tier": 1,
+  "type": "PASSIVE",
+  "passive": {
+    "triggers": [
+      {
+        "type": "SPELL_IMPACT_SPECIFIC",
+        "chance": 0.5,
+        "target_conditions": [
+          {
+            "health_percent_above": 0.01,
+            "health_percent_below": 0.3
+          }
+        ],
+        "spell": {
+          "school": "air"
+        },
+        "impact": {
+          "impact_type": "DAMAGE"
+        }
+      }
+    ]
+  },
+  "target": {
+    "type": "FROM_TRIGGER"
+  },
+  "impacts": [
+    {
+      "action": {
+        "type": "STATUS_EFFECT",
+        "status_effect": {
+          "effect_id": "mrpgc_skill_tree:eye_of_the_storm",
+          "duration": 5.0
+        }
+      },
+      "sound": {
+        "id": "mrpgc_skill_tree:air_eye_of_the_storm"
+      }
+    }
+  ],
+  "cost": {
+    "durability": 0,
+    "cooldown": {
+      "duration": 1.0
+    }
+  }
+}

@@ -1,0 +1,60 @@
+{
+  "school": "spell_power:physical_melee",
+  "range": 0.0,
+  "tier": 1,
+  "type": "PASSIVE",
+  "passive": {
+    "triggers": [
+      {
+        "target_override": "CASTER",
+        "type": "DAMAGE_TAKEN",
+        "caster_conditions": [
+          {
+            "health_percent_above": 0.01,
+            "health_percent_below": 0.3
+          }
+        ]
+      }
+    ]
+  },
+  "impacts": [
+    {
+      "action": {
+        "type": "STATUS_EFFECT",
+        "status_effect": {
+          "effect_id": "mrpgc_skill_tree:surys_tenacity",
+          "duration": 5.0,
+          "apply_mode": "ADD"
+        }
+      },
+      "particles": [
+        {
+          "particle_id": "spell_engine:magic_arcane_decelerate",
+          "origin": "CENTER",
+          "shape": "SPHERE",
+          "count": 30.0,
+          "min_speed": 0.5,
+          "max_speed": 0.5,
+          "color_rgba": 3439329279
+        },
+        {
+          "particle_id": "spell_engine:aura_effect_642",
+          "origin": "CENTER",
+          "shape": "SPHERE",
+          "count": 1.0,
+          "max_speed": 0.0,
+          "color_rgba": 3439329279
+        }
+      ],
+      "sound": {
+        "id": "mrpgc_skill_tree:surys_tenacity"
+      }
+    }
+  ],
+  "cost": {
+    "durability": 0,
+    "cooldown": {
+      "duration": 40.0
+    }
+  }
+}

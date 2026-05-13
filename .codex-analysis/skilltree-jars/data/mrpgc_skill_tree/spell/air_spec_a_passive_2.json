@@ -1,0 +1,84 @@
+{
+  "school": "spell_power:air",
+  "range": 0.0,
+  "tier": 1,
+  "type": "PASSIVE",
+  "passive": {
+    "triggers": [
+      {
+        "type": "ROLL",
+        "chance": 0.5
+      }
+    ]
+  },
+  "deliver": {
+    "type": "CLOUD",
+    "clouds": [
+      {
+        "volume": {
+          "radius": 3.5,
+          "area": {
+            "vertical_range_multiplier": 1.5
+          },
+          "sound": {
+            "id": "mrpgc_skill_tree:air_tailwind_loop"
+          }
+        },
+        "time_to_live_seconds": 5.0,
+        "impact_tick_interval": 20,
+        "client_data": {
+          "particles": [
+            {
+              "particle_id": "spell_engine:magic_stripe_float",
+              "origin": "FEET",
+              "shape": "PILLAR",
+              "count": 20.0,
+              "min_speed": 0.3,
+              "max_speed": 0.6,
+              "extent": 3.5
+            },
+            {
+              "particle_id": "more_rpg_classes:small_gust",
+              "origin": "FEET",
+              "shape": "PILLAR",
+              "count": 15.0,
+              "min_speed": 0.1,
+              "max_speed": 0.3,
+              "extent": 3.5
+            }
+          ]
+        },
+        "spawn": {
+          "sound": {
+            "id": "mrpgc_skill_tree:air_tailwind_release"
+          }
+        }
+      }
+    ]
+  },
+  "impacts": [
+    {
+      "action": {
+        "type": "STATUS_EFFECT",
+        "status_effect": {
+          "effect_id": "mrpgc_skill_tree:tailwind",
+          "duration": 6.0
+        }
+      },
+      "particles": [
+        {
+          "particle_id": "spell_engine:magic_stripe_float",
+          "origin": "FEET",
+          "shape": "WIDE_PIPE",
+          "count": 5.0,
+          "min_speed": 1.0,
+          "max_speed": 2.0,
+          "extent": 3.5
+        }
+      ]
+    }
+  ],
+  "cost": {
+    "durability": 0
+  }
+}

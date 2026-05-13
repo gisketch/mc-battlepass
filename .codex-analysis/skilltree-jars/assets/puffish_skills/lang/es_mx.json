@@ -1,0 +1,64 @@
+{
+	"text.puffish_skills.skills": "Habilidades",
+	"text.puffish_skills.points_left": "Puntos restantes: ",
+
+	"tooltip.puffish_skills.current_level": "Nivel actual: %s",
+	"tooltip.puffish_skills.experience_progress": "Experiencia: %s/%s (%s%%)",
+	"tooltip.puffish_skills.to_next_level": "Para el próximo nivel: %s",
+	"tooltip.puffish_skills.earned_points": "Puntos ganados: %s",
+	"tooltip.puffish_skills.spent_points": "Puntos gastados: %s",
+
+	"category.puffish_skills.skills": "Habilidades",
+	"key.puffish_skills.open": "Abrir Árbol de Habilidades",
+
+	"chat.puffish_skills.new_point": "Tienes un nuevo punto de habilidad. Presiona %s para abrir tu árbol de habilidades.",
+
+	"toast.puffish_skills.invalid_config.description": "Configuración inválida, revisa los registros del juego.",
+	"toast.puffish_skills.missing_config.description": "No hay arboles de habilidades, asegurate de haber agregado uno.",
+
+	"gamerule.puffish_skills:announceNewPoints": "Anunciar nuevos puntos de habilidad",
+
+	"command.puffish_skills.no_such_category": "No hay una categoría con el ID %s",
+	"command.puffish_skills.no_such_skill": "No hay una habilidad con el ID %s",
+	"command.puffish_skills.no_experience": "La experiencia no está habilitada para esta categoría",
+
+	"command.puffish_skills.category.lock.success.single": "Categoría %s bloqueada para %s",
+	"command.puffish_skills.category.lock.success.multiple": "Categoría %s bloqueada para %s jugadores",
+
+	"command.puffish_skills.category.unlock.success.single": "Categoría %s desbloqueada para %s",
+	"command.puffish_skills.category.unlock.success.multiple": "Categoría %s desbloqueada para %s jugadores",
+
+	"command.puffish_skills.category.erase.success.single": "Categoría %s borrada para %s",
+	"command.puffish_skills.category.erase.success.multiple": "Categoría %s borrada para %s jugadores",
+
+	"command.puffish_skills.experience.add.success.single": "Se añadieron %s de experiencia a la categoría %s para %s",
+	"command.puffish_skills.experience.add.success.multiple": "Se añadieron %s de experiencia a la categoría %s para %s jugadores",
+
+	"command.puffish_skills.experience.set.success.single": "Se estableció %s de experiencia en la categoría %s para %s",
+	"command.puffish_skills.experience.set.success.multiple": "Se estableció %s de experiencia en la categoría %s para %s jugadores",
+
+	"command.puffish_skills.experience.get.success": "%3$s tiene %1$s de experiencia en la categoría %2$s",
+
+	"command.puffish_skills.points.add.success.single": "Se añadieron %s puntos a la categoría %s para %s",
+	"command.puffish_skills.points.add.success.multiple": "Se añadieron %s puntos a la categoría %s para %s jugadores",
+
+	"command.puffish_skills.points.set.success.single": "Se establecieron %s puntos en la categoría %s para %s",
+	"command.puffish_skills.points.set.success.multiple": "Se establecieron %s puntos en la categoría %s para %s jugadores",
+
+	"command.puffish_skills.points.get.success": "%3$s tiene %1$s puntos en la categoría %2$s",
+
+	"command.puffish_skills.skills.unlock.success.single": "Se desbloqueó la habilidad %s en la categoría %s para %s",
+	"command.puffish_skills.skills.unlock.success.multiple": "Se desbloqueó la habilidad %s en la categoría %s para %s jugadores",
+
+	"command.puffish_skills.skills.lock.success.single": "Se bloqueó la habilidad %s en la categoría %s para %s",
+	"command.puffish_skills.skills.lock.success.multiple": "Se bloqueó la habilidad %s en la categoría %s para %s jugadores",
+
+	"command.puffish_skills.skills.reset.success.single": "Se restablecieron todas las habilidades en la categoría %s para %s",
+	"command.puffish_skills.skills.reset.success.multiple": "Se restablecieron todas las habilidades en la categoría %s para %s jugadores",
+
+	"command.puffish_skills.category.open.success.single": "Abrió la pantalla de la categoría %s para %s",
+	"command.puffish_skills.category.open.success.multiple": "Abrió la pantalla de la categoría %s para %s jugadores",
+
+	"command.puffish_skills.open.success.single": "Abrió la pantalla de habilidades para %s",
+	"command.puffish_skills.open.success.multiple": "Abrió la pantalla de habilidades para %s jugadores"
+}

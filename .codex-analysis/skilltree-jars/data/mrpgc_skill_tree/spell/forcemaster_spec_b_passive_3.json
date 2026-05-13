@@ -1,0 +1,57 @@
+{
+  "school": "spell_power:arcane",
+  "range": 0.0,
+  "tier": 1,
+  "type": "PASSIVE",
+  "passive": {
+    "triggers": [
+      {
+        "target_override": "CASTER",
+        "type": "SPELL_CAST",
+        "spell": {
+          "school": "spell_power:arcane",
+          "type": "ACTIVE"
+        }
+      }
+    ]
+  },
+  "impacts": [
+    {
+      "action": {
+        "type": "STATUS_EFFECT",
+        "status_effect": {
+          "effect_id": "mrpgc_skill_tree:surys_grace",
+          "apply_mode": "ADD"
+        }
+      },
+      "particles": [
+        {
+          "particle_id": "spell_engine:magic_arcane_decelerate",
+          "origin": "CENTER",
+          "shape": "SPHERE",
+          "count": 30.0,
+          "min_speed": 0.5,
+          "max_speed": 0.5,
+          "color_rgba": 4284940287
+        },
+        {
+          "particle_id": "spell_engine:aura_effect_642",
+          "origin": "CENTER",
+          "shape": "SPHERE",
+          "count": 1.0,
+          "max_speed": 0.0,
+          "color_rgba": 4284940287
+        }
+      ],
+      "sound": {
+        "id": "mrpgc_skill_tree:surys_grace"
+      }
+    }
+  ],
+  "cost": {
+    "durability": 0,
+    "cooldown": {
+      "duration": 60.0
+    }
+  }
+}

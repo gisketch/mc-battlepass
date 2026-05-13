@@ -1,0 +1,83 @@
+{
+  "school": "spell_power:physical_melee",
+  "range": 5.0,
+  "tier": 1,
+  "type": "PASSIVE",
+  "passive": {
+    "triggers": [
+      {
+        "type": "MELEE_IMPACT"
+      },
+      {
+        "type": "SPELL_IMPACT_SPECIFIC",
+        "spell": {
+          "archetype": "MELEE",
+          "type": "ACTIVE"
+        }
+      }
+    ]
+  },
+  "release": {
+    "sound": {
+      "id": "spell_engine:generic_healing_release"
+    }
+  },
+  "target": {
+    "type": "FROM_TRIGGER"
+  },
+  "deliver": {
+    "type": "PROJECTILE",
+    "projectile": {
+      "direct_towards_target": true,
+      "launch_properties": {
+        "velocity": 0.6
+      },
+      "projectile": {
+        "perks": {
+          "ricochet": 2,
+          "ricochet_range": 8.0,
+          "bounce": 3
+        },
+        "client_data": {
+          "model": {
+            "model_id": "paladins:spell_projectile/judgement",
+            "light_emission": "RADIATE",
+            "scale": 0.8,
+            "rotate_degrees_per_tick": 20.0
+          }
+        }
+      }
+    }
+  },
+  "impacts": [
+    {
+      "action": {
+        "type": "DAMAGE",
+        "damage": {
+          "spell_power_coefficient": 0.5,
+          "knockback": 0.0
+        }
+      },
+      "particles": [
+        {
+          "particle_id": "spell_engine:magic_holy_burst",
+          "origin": "CENTER",
+          "shape": "SPHERE",
+          "count": 15.0,
+          "min_speed": 0.6,
+          "max_speed": 0.8,
+          "color_rgba": 4294954239
+        }
+      ],
+      "sound": {
+        "id": "skill_tree_rpgs:paladin_divine_hammer_impact"
+      }
+    }
+  ],
+  "cost": {
+    "durability": 0,
+    "cooldown": {
+      "duration": 5.0
+    }
+  }
+}

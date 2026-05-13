@@ -1,0 +1,33 @@
+{
+  "school": "spell_power:physical_melee",
+  "range": 0.0,
+  "tier": 1,
+  "type": "MODIFIER",
+  "modifiers": [
+    {
+      "spell_pattern": "paladins:judgement",
+      "mutate_impacts": "APPEND",
+      "impacts": [
+        {
+          "action": {
+            "type": "AGGRO",
+            "aggro": {}
+          },
+          "particles": [
+            {
+              "particle_id": "spell_engine:sign_aggro",
+              "origin": "CENTER",
+              "shape": "LINE_VERTICAL",
+              "count": 1.0,
+              "min_speed": 0.8,
+              "max_speed": 0.8,
+              "color_rgba": 3208659199,
+              "scale": 0.8,
+              "follow_entity": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

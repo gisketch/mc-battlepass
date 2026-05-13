@@ -1,0 +1,31 @@
+# CKDM class config: arcane_wizard.toml
+
+id = "arcane_wizard"
+display_name = "Arcane Wizard"
+icon = "textures/gui/classes/wizard.png"
+description = "Upgrade magic path for raw arcane force, blink movement, beam channeling, and pure spell pressure."
+preview_items = ["wizards:staff_arcane", "minecraft:amethyst_shard"]
+classification = "upgrade"
+starter_class_ids = ["wizard"]
+upgrade_class_ids = []
+
+perks = [
+  { type = "equipment_affinity", multiplier = 1.0, weapon_tags = ["rpg_series:weapon_type/damage_staff", "rpg_series:loot_theme/aether", "wizards:staves", "wizards:wands", "wizards:wizard_runes", "runes:runes", "runes:pouches"], armor_tags = ["rpg_series:armor_type/magic"], weapon_patterns = ["wizards:spell_book/arcane", "wizards:*arcane*", "arsenal:unique_staff_damage_*", "simplyswords:arcanethyst", "simplyswords:enigma"], weapon_exclude_patterns = ["*spawn_egg"], armor_patterns = ["minecraft:leather_*", "wizards:*wizard*", "wizards:*robe*", "wizards:*arcane*", "armory_rpgs:*astral*"], armor_exclude_patterns = [], wrong_weapon_damage_multiplier = 0.35, wrong_weapon_cooldown_ticks = 12, wrong_weapon_attack_speed_multiplier = 0.55, wrong_armor_disables_sprint = true, starting_items = [], reward_pool = [] },
+  { type = "spell_affinity", spell_ids = ["wizards:arcane_blast", "wizards:arcane_bolt"], spell_tags = ["wizards:spell_book/arcane", "wizards:spell_scroll/arcane", "wizards:weapon/arcane_staff"] },
+]
+
+
+[mentor_quest]
+mentor_npc_id = "invoker"
+title = "Arcane Sequence Exam"
+intro_message = "Invoker tests whether the apprentice can shape raw force without confusing power for understanding."
+unlock_title = "Arcane Sequencer"
+announcement = "{player} completed Invokers arcane sequence exam and unlocked Arcane Wizard as {title}."
+steps = [
+  { id = "arcane_wizard_vow", skeleton = "vow", kind = "dialogue", title = "Vow", objective = "Vow to command arcane force through memory, precision, and restraint.", goal = 1, start_message = "Vow to command arcane force through memory, precision, and restraint.", complete_message = "", llm_prompt = "Invoker should sound arrogant, brilliant, and theatrical but concise." },
+  { id = "arcane_wizard_offering", skeleton = "offering", kind = "fetch", title = "Amethyst Equation", objective = "Bring 12 amethyst shards.", item = "minecraft:amethyst_shard", qty = 12, goal = 12, start_message = "Bring <b>12 amethyst shards</b>. Resonance is arithmetic with better posture.", complete_message = "Adequate facets. Try not to squander them.", llm_prompt = "Tie amethyst to arcane focus and Invoker's superiority." },
+  { id = "arcane_wizard_discipline", skeleton = "discipline", kind = "task", title = "Vector Walk", objective = "Travel 800 blocks on foot.", event = "minecraft:travel_on_foot", goal = 800, start_message = "Travel <b>800 blocks on foot</b>. Spatial theory improves when legs verify it.", complete_message = "Distance has become slightly less theoretical to you.", llm_prompt = "Make travel a lesson in blink geometry and spatial discipline." },
+  { id = "arcane_wizard_signature_trial", skeleton = "signature_trial", kind = "timed", title = "Arcane Reflex", objective = "Defeat 3 endermen within 60 seconds.", event = "minecraft:entity_killed", goal = 3, time_window_seconds = 60, filters = { entity = "minecraft:enderman" }, start_message = "Defeat <b>3 endermen in {seconds} seconds</b>. Precision before panic.", complete_message = "Your vectors survived contact with inconvenience.", llm_prompt = "Frame the trial as spatial discipline and raw arcane control." },
+  { id = "arcane_wizard_license", skeleton = "payment", kind = "payment", title = "License Seal", objective = "Pay the mentor license fee for arcane_wizard.", goal = 1, start_message = "The license seal is next. A new {classification} {class} unlock costs {cost} chowcoins.", complete_message = "The license is sealed. Only the mentor duel remains for {class}.", llm_prompt = "Treat payment as a formal license seal, not a bribe." },
+  { id = "arcane_wizard_duel", skeleton = "mentor_duel", kind = "duel", title = "Mentor Duel", objective = "Win a non-lethal 1v1 mentor duel.", goal = 1, start_message = "Draw breath. The {class} mentor duel starts now.", complete_message = "The duel is won. {class} is yours.", llm_prompt = "Invoker starts a sharp duel test." },
+]

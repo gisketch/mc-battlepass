@@ -1,0 +1,54 @@
+{
+  "school": "spell_power:rage_melee",
+  "range": 1.0,
+  "range_mechanic": "MELEE",
+  "tier": 1,
+  "type": "PASSIVE",
+  "passive": {
+    "triggers": [
+      {
+        "type": "ROLL"
+      }
+    ]
+  },
+  "target": {
+    "type": "FROM_TRIGGER"
+  },
+  "deliver": {
+    "type": "STASH_EFFECT",
+    "stash_effect": {
+      "id": "mrpgc_skill_tree:spinning_slash",
+      "duration": 0.7,
+      "triggers": [
+        {
+          "type": "EFFECT_TICK",
+          "effect": {
+            "id": "mrpgc_skill_tree:spinning_slash"
+          }
+        }
+      ],
+      "consume": 0
+    }
+  },
+  "impacts": [
+    {
+      "action": {
+        "type": "DAMAGE",
+        "damage": {
+          "spell_power_coefficient": 0.5,
+          "knockback": 0.0
+        }
+      }
+    }
+  ],
+  "area_impact": {
+    "force_indirect": true,
+    "radius": 2.0,
+    "sound": {
+      "id": "mrpgc_skill_tree:spinning_slash_impact"
+    }
+  },
+  "cost": {
+    "durability": 0
+  }
+}

@@ -1,0 +1,62 @@
+{
+  "school": "spell_power:rage_melee",
+  "range": 0.0,
+  "tier": 1,
+  "type": "PASSIVE",
+  "passive": {
+    "triggers": [
+      {
+        "target_override": "CASTER",
+        "type": "ROLL",
+        "target_conditions": [
+          {
+            "entity_predicate_id": "has_effect_optimized:berserker_rpg.rage"
+          }
+        ]
+      }
+    ]
+  },
+  "target": {
+    "type": "FROM_TRIGGER"
+  },
+  "impacts": [
+    {
+      "action": {
+        "type": "STATUS_EFFECT",
+        "status_effect": {
+          "effect_id": "mrpgc_skill_tree:burst_of_aggression",
+          "duration": 5.0
+        }
+      },
+      "particles": [
+        {
+          "particle_id": "spell_engine:magic_stripe_decelerate",
+          "origin": "CENTER",
+          "shape": "WIDE_PIPE",
+          "count": 25.0,
+          "min_speed": 0.3,
+          "max_speed": 0.8,
+          "extent": 1.0,
+          "color_rgba": 3208659199,
+          "follow_entity": true
+        },
+        {
+          "particle_id": "spell_engine:area_effect_658",
+          "origin": "CENTER",
+          "shape": "SPHERE",
+          "count": 1.0,
+          "max_speed": 0.0,
+          "color_rgba": 3208659199,
+          "scale": 1.5,
+          "follow_entity": true
+        }
+      ],
+      "sound": {
+        "id": "mrpgc_skill_tree:burst_of_aggression"
+      }
+    }
+  ],
+  "cost": {
+    "durability": 0
+  }
+}

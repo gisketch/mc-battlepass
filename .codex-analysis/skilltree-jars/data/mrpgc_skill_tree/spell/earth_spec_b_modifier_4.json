@@ -1,0 +1,13 @@
+{
+  "school": "spell_power:earth",
+  "range": 0.0,
+  "tier": 1,
+  "type": "MODIFIER",
+  "modifiers": [
+    {
+      "spell_pattern": "elemental_wizards_rpg:terra_earthquake",
+      "range_add": 5.0,
+      "power_modifier": {}
+    }
+  ]
+}

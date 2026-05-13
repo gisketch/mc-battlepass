@@ -1,0 +1,100 @@
+{
+  "school": "spell_power:physical_ranged",
+  "range": 0.0,
+  "tier": 1,
+  "type": "PASSIVE",
+  "passive": {
+    "triggers": [
+      {
+        "target_override": "CASTER",
+        "type": "DAMAGE_TAKEN",
+        "caster_conditions": [
+          {
+            "health_percent_above": 0.01,
+            "health_percent_below": 0.35
+          }
+        ]
+      }
+    ]
+  },
+  "target": {
+    "type": "FROM_TRIGGER"
+  },
+  "deliver": {
+    "type": "CLOUD",
+    "clouds": [
+      {
+        "volume": {
+          "radius": 5.0,
+          "area": {
+            "vertical_range_multiplier": 0.5
+          }
+        },
+        "time_to_live_seconds": 7.0,
+        "impact_tick_interval": 20,
+        "client_data": {
+          "light_level": 10,
+          "particle_spawn_interval": 20,
+          "interval_particles": [
+            {
+              "particle_id": "spell_engine:area_effect_658",
+              "origin": "GROUND",
+              "shape": "SPHERE",
+              "count": 1.0,
+              "max_speed": 0.0,
+              "color_rgba": 11579583,
+              "scale": 4.0
+            }
+          ]
+        },
+        "spawn": {
+          "sound": {
+            "id": "mrpgc_skill_tree:shadow_refuge_release"
+          }
+        }
+      }
+    ]
+  },
+  "impacts": [
+    {
+      "attribute_from_target": true,
+      "attribute": "minecraft:generic.max_health",
+      "action": {
+        "type": "HEAL",
+        "apply_to_caster": true,
+        "heal": {
+          "spell_power_coefficient": 0.05
+        }
+      },
+      "particles": [
+        {
+          "particle_id": "spell_engine:magic_heal_burst",
+          "origin": "CENTER",
+          "shape": "SPHERE",
+          "count": 10.0,
+          "min_speed": 0.25,
+          "max_speed": 0.4,
+          "color_rgba": 11579647
+        }
+      ]
+    },
+    {
+      "action": {
+        "type": "STATUS_EFFECT",
+        "status_effect": {
+          "effect_id": "mrpgc_skill_tree:shadows_refuge",
+          "duration": 2.0
+        }
+      },
+      "sound": {
+        "id": "mrpgc_skill_tree:shadow_refuge_release"
+      }
+    }
+  ],
+  "cost": {
+    "durability": 0,
+    "cooldown": {
+      "duration": 40.0
+    }
+  }
+}

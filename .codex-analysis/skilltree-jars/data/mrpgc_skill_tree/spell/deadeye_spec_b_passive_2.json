@@ -1,0 +1,113 @@
+{
+  "school": "spell_power:physical_ranged",
+  "range": 0.0,
+  "tier": 1,
+  "type": "PASSIVE",
+  "passive": {
+    "triggers": [
+      {
+        "type": "ROLL",
+        "chance": 0.5
+      }
+    ]
+  },
+  "deliver": {
+    "type": "CLOUD",
+    "delay": 5,
+    "clouds": [
+      {
+        "volume": {
+          "radius": 2.5,
+          "area": {
+            "vertical_range_multiplier": 0.3
+          },
+          "sound": {
+            "id": "mrpgc_skill_tree:smokebomb_loop"
+          }
+        },
+        "time_to_live_seconds": 5.0,
+        "impact_tick_interval": 10,
+        "client_data": {
+          "particles": [
+            {
+              "particle_id": "spell_engine:smoke_large",
+              "origin": "FEET",
+              "shape": "PILLAR",
+              "count": 1.0,
+              "min_speed": 0.01,
+              "max_speed": 0.02,
+              "color_rgba": 808201471
+            },
+            {
+              "particle_id": "spell_engine:smoke_large",
+              "origin": "FEET",
+              "shape": "PILLAR",
+              "count": 1.0,
+              "min_speed": 0.01,
+              "max_speed": 0.02,
+              "color_rgba": 808201471
+            }
+          ]
+        },
+        "spawn": {
+          "sound": {
+            "id": "mrpgc_skill_tree:smokebomb_release"
+          }
+        }
+      }
+    ]
+  },
+  "impacts": [
+    {
+      "action": {
+        "type": "STATUS_EFFECT",
+        "status_effect": {
+          "effect_id": "mrpgc_skill_tree:smoke_bomb",
+          "duration": 1.0
+        }
+      }
+    },
+    {
+      "action": {
+        "type": "STATUS_EFFECT",
+        "status_effect": {
+          "effect_id": "blindness",
+          "duration": 1.0
+        }
+      }
+    },
+    {
+      "action": {
+        "type": "STATUS_EFFECT",
+        "apply_to_caster": true,
+        "status_effect": {
+          "effect_id": "mrpgc_skill_tree:camouflaged",
+          "duration": 1.0
+        }
+      },
+      "particles": [
+        {
+          "particle_id": "spell_engine:smoke_large",
+          "origin": "CENTER",
+          "shape": "SPHERE",
+          "count": 5.0,
+          "min_speed": 0.001,
+          "max_speed": 0.001,
+          "color_rgba": 808201471
+        },
+        {
+          "particle_id": "spell_engine:smoke_medium",
+          "origin": "CENTER",
+          "shape": "SPHERE",
+          "count": 5.0,
+          "min_speed": 0.001,
+          "max_speed": 0.001,
+          "color_rgba": 808201471
+        }
+      ]
+    }
+  ],
+  "cost": {
+    "durability": 0
+  }
+}

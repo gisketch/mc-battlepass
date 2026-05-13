@@ -1,0 +1,77 @@
+{
+  "school": "spell_power:rage_melee",
+  "range": 0.0,
+  "tier": 1,
+  "tooltip": {
+    "show_activation": false
+  },
+  "type": "PASSIVE",
+  "passive": {
+    "triggers": [
+      {
+        "type": "SPELL_CAST",
+        "spell": {
+          "id": "berserker_rpg:outrage"
+        }
+      }
+    ]
+  },
+  "target": {
+    "type": "FROM_TRIGGER"
+  },
+  "deliver": {
+    "type": "STASH_EFFECT",
+    "stash_effect": {
+      "id": "mrpgc_skill_tree:reckless_rage",
+      "duration": 6.0,
+      "triggers": [
+        {
+          "type": "MELEE_IMPACT"
+        }
+      ],
+      "consume": 0
+    }
+  },
+  "impacts": [
+    {
+      "action": {
+        "type": "CUSTOM",
+        "custom": {
+          "intent": "HARMFUL",
+          "handler": "mrpgc_skill_tree:reckless_rage"
+        }
+      },
+      "particles": [
+        {
+          "particle_id": "spell_engine:magic_stripe_ascend",
+          "origin": "FEET",
+          "shape": "WIDE_PIPE",
+          "count": 20.0,
+          "min_speed": 0.2,
+          "max_speed": 0.25,
+          "extent": 0.25,
+          "invert": true,
+          "color_rgba": 3208659199
+        }
+      ]
+    },
+    {
+      "action": {
+        "type": "STATUS_EFFECT",
+        "apply_to_caster": true,
+        "status_effect": {
+          "effect_id": "mrpgc_skill_tree:reckless_rage",
+          "duration": 12.0,
+          "amplifier": 1,
+          "amplifier_cap": 9,
+          "amplifier_cap_power_multiplier": 0.2,
+          "refresh_duration": false,
+          "apply_mode": "ADD"
+        }
+      }
+    }
+  ],
+  "cost": {
+    "durability": 0
+  }
+}

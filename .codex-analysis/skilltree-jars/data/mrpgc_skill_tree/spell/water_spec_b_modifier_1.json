@@ -1,0 +1,49 @@
+{
+  "school": "spell_power:water",
+  "range": 0.0,
+  "tier": 1,
+  "type": "MODIFIER",
+  "modifiers": [
+    {
+      "spell_pattern": "elemental_wizards_rpg:aqua_water_whip",
+      "mutate_impacts": "APPEND",
+      "impacts": [
+        {
+          "action": {
+            "type": "DAMAGE",
+            "allow_on_center_target": false,
+            "damage": {
+              "spell_power_coefficient": 0.25,
+              "knockback": 0.3
+            }
+          }
+        }
+      ],
+      "replacing_area_impact": {
+        "execute_action_type": "DAMAGE",
+        "radius": 2.0,
+        "area": {
+          "distance_dropoff": "SQUARED"
+        },
+        "particles": [
+          {
+            "particle_id": "more_rpg_classes:big_splash",
+            "origin": "CENTER",
+            "shape": "SPHERE",
+            "count": 20.0,
+            "min_speed": 0.35,
+            "max_speed": 0.35
+          },
+          {
+            "particle_id": "more_rpg_classes:splash",
+            "origin": "CENTER",
+            "shape": "SPHERE",
+            "count": 20.0,
+            "min_speed": 0.15,
+            "max_speed": 0.15
+          }
+        ]
+      }
+    }
+  ]
+}

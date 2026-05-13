@@ -1,0 +1,25 @@
+{
+  "school": "spell_power:earth",
+  "range": 0.0,
+  "tier": 1,
+  "type": "MODIFIER",
+  "modifiers": [
+    {
+      "spell_pattern": "elemental_wizards_rpg:terra_stone_flesh",
+      "mutate_impacts": "APPEND",
+      "impacts": [
+        {
+          "action": {
+            "type": "STATUS_EFFECT",
+            "apply_to_caster": true,
+            "status_effect": {
+              "effect_id": "mrpgc_skill_tree:obsidian_skin",
+              "duration": 5.0,
+              "amplifier": 1
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

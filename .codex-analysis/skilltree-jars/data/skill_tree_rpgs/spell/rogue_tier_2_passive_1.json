@@ -1,0 +1,55 @@
+{
+  "school": "spell_power:physical_melee",
+  "range": 0.0,
+  "tier": 1,
+  "type": "PASSIVE",
+  "passive": {
+    "triggers": [
+      {
+        "type": "ROLL"
+      }
+    ]
+  },
+  "release": {
+    "sound": {
+      "id": "skill_tree_rpgs:rogue_sidestep_activate"
+    }
+  },
+  "target": {
+    "type": "FROM_TRIGGER"
+  },
+  "deliver": {
+    "type": "STASH_EFFECT",
+    "stash_effect": {
+      "id": "skill_tree_rpgs:side_step",
+      "amplifier": 4,
+      "stacking": true,
+      "duration": 12.0,
+      "triggers": [
+        {
+          "type": "DAMAGE_TAKEN"
+        }
+      ],
+      "consume": 5,
+      "consumed_next_tick": true,
+      "consume_any_stacks": true
+    }
+  },
+  "impacts": [
+    {
+      "action": {
+        "type": "STATUS_EFFECT",
+        "apply_to_caster": true,
+        "status_effect": {
+          "apply_mode": "REMOVE",
+          "remove": {
+            "id": "skill_tree_rpgs:side_step"
+          }
+        }
+      }
+    }
+  ],
+  "cost": {
+    "durability": 0
+  }
+}

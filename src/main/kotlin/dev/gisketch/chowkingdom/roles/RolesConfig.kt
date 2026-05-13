@@ -798,22 +798,13 @@ object RolesConfig {
             "war_archer" to listOf("archers_expansion:spell_book/war_archer"),
             "tundra_archer" to listOf("archers_expansion:spell_book/tundra_hunter"),
             "bounty_hunter" to listOf("archers_expansion:spell_book/deadeye"),
-            "wizard" to listOf(
-                "wizards:spell_book/arcane",
-                "wizards:spell_book/fire",
-                "wizards:spell_book/frost",
-                "wizards:weapon/arcane_staff",
-                "wizards:weapon/fire_staff",
-                "wizards:weapon/frost_staff",
-            ),
-            "elemental_wizard" to listOf(
-                "elemental_wizards_rpg:spell_book/aqua",
-                "elemental_wizards_rpg:spell_book/terra",
-                "elemental_wizards_rpg:spell_book/wind",
-                "elemental_wizards_rpg:weapon/aqua_staff",
-                "elemental_wizards_rpg:weapon/terra_staff",
-                "elemental_wizards_rpg:weapon/wind_staff",
-            ),
+            "wizard" to listOf("wizards:weapon/arcane_staff", "wizards:weapon/fire_staff", "wizards:weapon/frost_staff"),
+            "arcane_wizard" to listOf("wizards:spell_book/arcane", "wizards:weapon/arcane_staff"),
+            "fire_wizard" to listOf("wizards:spell_book/fire", "wizards:weapon/fire_staff"),
+            "frost_wizard" to listOf("wizards:spell_book/frost", "wizards:weapon/frost_staff"),
+            "water_wizard" to listOf("elemental_wizards_rpg:spell_book/aqua", "elemental_wizards_rpg:weapon/aqua_staff"),
+            "earth_wizard" to listOf("elemental_wizards_rpg:spell_book/terra", "elemental_wizards_rpg:weapon/terra_staff"),
+            "wind_wizard" to listOf("elemental_wizards_rpg:spell_book/wind", "elemental_wizards_rpg:weapon/wind_staff"),
             "priest" to listOf(
                 "paladins:spell_book/priest",
                 "paladins:weapon/holy_staff",
@@ -837,20 +828,33 @@ object RolesConfig {
             "warrior" to listOf("rogues:throw", "rogues:shout", "rogues:charge"),
             "rogue" to listOf("rogues:slice_and_dice", "rogues:shock_powder", "rogues:shadow_step", "rogues:vanish"),
             "archer" to listOf("archers:power_shot", "archers:entangling_roots", "archers:barrage", "archers:magic_arrow"),
-            "war_archer" to listOf("archers_expansion:dual_shot", "archers_expansion:smoldering_arrow", "archers_expansion:point_blank_shot", "archers_expansion:pin_down"),
-            "tundra_archer" to listOf("archers_expansion:frozen_shot", "archers_expansion:frozen_pact", "archers_expansion:arctic_volley", "archers_expansion:enchanted_crystal_arrow"),
-            "bounty_hunter" to listOf("archers_expansion:fast_shot", "archers_expansion:trick_shot", "archers_expansion:disabling_shot", "archers_expansion:choking_gas"),
+            "war_archer" to listOf("archers_expansion:dual_shot", "archers_expansion:smoldering_arrow", "archers_expansion:point_blank_shot", "archers_expansion:pin_down", "archers_expansion:fan_of_fire", "archers_expansion:improved_point_blank_shot"),
+            "tundra_archer" to listOf("archers_expansion:frozen_shot", "archers_expansion:frozen_pact", "archers_expansion:arctic_volley", "archers_expansion:enchanted_crystal_arrow", "archers_expansion:improved_arctic_volley", "archers_expansion:winters_grip"),
+            "bounty_hunter" to listOf("archers_expansion:fast_shot", "archers_expansion:trick_shot", "archers_expansion:disabling_shot", "archers_expansion:choking_gas", "archers_expansion:alter_ego", "archers_expansion:improved_disabling_shot", "archers_expansion:infiltrators_arrow"),
             "wizard" to listOf("wizards:arcane_blast", "wizards:fire_blast", "wizards:frostbolt"),
-            "elemental_wizard" to listOf("elemental_wizards_rpg:aqua_water_whip", "elemental_wizards_rpg:terra_stone_spear", "elemental_wizards_rpg:wind_air_cutter"),
+            "arcane_wizard" to listOf("wizards:arcane_blast", "wizards:arcane_bolt"),
+            "fire_wizard" to listOf("wizards:fire_blast", "wizards:fireball", "wizards:fire_scorch"),
+            "frost_wizard" to listOf("wizards:frostbolt", "wizards:frost_shard"),
+            "water_wizard" to listOf("elemental_wizards_rpg:aqua_water_whip", "elemental_wizards_rpg:aqua_splash", "elemental_wizards_rpg:elemental_avatar", "elemental_wizards_rpg:improved_aqua_springwater"),
+            "earth_wizard" to listOf("elemental_wizards_rpg:terra_stone_spear", "elemental_wizards_rpg:terra_stone_throw", "elemental_wizards_rpg:elemental_avatar", "elemental_wizards_rpg:improved_terra_drip_circle"),
+            "wind_wizard" to listOf("elemental_wizards_rpg:wind_air_cutter", "elemental_wizards_rpg:wind_gust", "elemental_wizards_rpg:elemental_avatar", "elemental_wizards_rpg:improved_wind_updraft"),
             "priest" to listOf("paladins:holy_shock", "paladins:heal"),
+        )
+        val patternMap = mapOf(
+            "bard" to listOf("bards_rpg:*"),
+            "berserker" to listOf("berserker_rpg:*"),
+            "forcemaster" to listOf("forcemaster_rpg:*"),
+            "witcher" to listOf("witcher_rpg:*"),
         )
         val tags = tagMap[classId].orEmpty().withSpellScrollTags()
         val ids = idMap[classId].orEmpty()
-        if (tags.isEmpty() && ids.isEmpty()) return null
+        val patterns = patternMap[classId].orEmpty()
+        if (tags.isEmpty() && ids.isEmpty() && patterns.isEmpty()) return null
         return RolePerkDefinition(
             type = "spell_affinity",
             spellIds = ids.toMutableList(),
             spellTags = tags.toMutableList(),
+            spellPatterns = patterns.toMutableList(),
         )
     }
 
@@ -875,8 +879,8 @@ object RolesConfig {
         "warrior" to listOf("berserker", "paladin", "witcher"),
         "rogue" to listOf("forcemaster", "bounty_hunter", "bard", "witcher"),
         "archer" to listOf("war_archer", "tundra_archer", "bounty_hunter", "bard"),
-        "wizard" to listOf("elemental_wizard", "priest", "witcher"),
-        "priest" to listOf("paladin", "bard", "elemental_wizard"),
+        "wizard" to listOf("arcane_wizard", "fire_wizard", "frost_wizard", "water_wizard", "earth_wizard", "wind_wizard", "witcher"),
+        "priest" to listOf("paladin", "bard"),
     )
     private val FALLBACK_UPGRADE_STARTERS = FALLBACK_STARTER_UPGRADES.entries
         .flatMap { (starterId, upgradeIds) -> upgradeIds.map { upgradeId -> upgradeId to starterId } }

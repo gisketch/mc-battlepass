@@ -1,0 +1,1216 @@
+# Skill Tree Jar Data Report
+
+Sources: skill_tree-neoforge-1.4.0+1.21.1.jar, puffish_skills-0.17.3-1.21-neoforge.jar, mrpgc_skill_tree-neoforge-1.1.2+1.21.1.jar
+
+## Category Summary
+- base active: `skill_tree_rpgs:class_skills` defs=161 nodes=128 roots=8 point_limit=10 exclusive_root=True xp=`min((level * 12) ^ 1.6 + 100, 20000)` sources=puffish_skills:kill_entity
+- base active: `skill_tree_rpgs:weapon_skills` defs=161 nodes=48 roots=16 point_limit=6 exclusive_root=False xp=`min((level * 10) ^ 1.6 + 100, 20000)` sources=puffish_skills:kill_entity
+- mrpgc definitions only: `mrpgc_skill_tree:skill_tree_rpgs` defs=128 nodes=0 roots=0 point_limit=None exclusive_root=None xp=`None` sources=
+- mrpgc resourcepack overlay: `skill_tree_rpgs:skill_tree_rpgs` defs=257 nodes=288 roots=16 point_limit=None exclusive_root=None xp=`None` sources=
+
+## Skills
+### base active
+#### skill_tree_rpgs:class_skills
+- `arcane_boost`: Arcane Attunement [x3, mods wizards]; attr spell_power:arcane multiply_base 0.01
+- `arcane_root`: Path of Arcane [root, mods wizards]; attr spell_power:arcane multiply_base 0.01
+- `arcane_tier_1_passive_1`: Fissile Magic [mods wizards]; spell skill_tree_rpgs:arcane_tier_1_passive_1
+  - Arcane spell impacts have {trigger_chance} chance, to cause a small explosion, dealing {damage} damage.
+- `arcane_tier_1_passive_2`: Evocation Radiance [mods wizards]; spell skill_tree_rpgs:arcane_tier_1_passive_2
+  - Arcane spell impacts have {trigger_chance} chance, to heal the you for {heal}.
+- `arcane_tier_2_passive_1`: Arcane Trap [mods wizards]; spell skill_tree_rpgs:arcane_tier_2_passive_1
+  - Upon rolling, you leave behind an Arcane Trap, lasting {cloud_duration} sec, dealing {damage} damage to entering enemies.
+- `arcane_tier_2_passive_2`: Phase Shift [mods wizards]; spell skill_tree_rpgs:arcane_tier_2_passive_2
+  - Upon rolling, you become invulnerable for {effect_duration} sec.
+- `arcane_tier_2_spell_1_modifier_1`: Conjured Missile [mods wizards]; spell skill_tree_rpgs:arcane_tier_2_spell_1_modifier_1
+  - Arcane Missile shoots {extra_launch} additional missile per batch.
+- `arcane_tier_2_spell_1_modifier_2`: Crippling Barrage [mods wizards]; spell skill_tree_rpgs:arcane_tier_2_spell_1_modifier_2
+  - Arcane Missiles apply slowness, reducing movement speed by {bonus}, stacking up to {effect_amplifier_cap} times, lasting {effect_duration} sec.
+- `arcane_tier_3_passive_1`: Spell Riposte [mods wizards]; spell skill_tree_rpgs:arcane_tier_3_passive_1
+  - Upon taking damage, an Arcane Bolt is launched at the attacker, dealing {damage} damage.
+- `arcane_tier_3_passive_2`: Arcane Ward [mods wizards]; spell skill_tree_rpgs:arcane_tier_3_passive_2
+  - Arcane spells have {trigger_chance} chance, to grant you Arcane Ward, absorbing high amount of damage, lasting {effect_duration} sec.
+- `arcane_tier_3_spell_1_modifier_1`: Beam Exposure [mods wizards]; spell skill_tree_rpgs:arcane_tier_3_spell_1_modifier_1
+  - Arcane Beam applies Arcane Exposure increasing Arcane damage taken by {bonus}, stacking up to {effect_amplifier_cap} times, lasting {effect_duration} sec.
+- `arcane_tier_3_spell_1_modifier_2`: Beam Propulsion [mods wizards]; spell skill_tree_rpgs:arcane_tier_3_spell_1_modifier_2
+  - Arcane Beam hits increase your speed and jump strength by {bonus} for {effect_duration} sec, stacking up to {effect_amplifier_cap} times.
+- `arcane_tier_4_spell_1_modifier_1`: Presence of Mind [mods wizards]; spell skill_tree_rpgs:arcane_tier_4_spell_1_modifier_1
+  - Blink turns your next spell cast instant, within the next {stash_duration} sec.
+- `arcane_tier_4_spell_1_modifier_2`: Purge [mods wizards]; spell skill_tree_rpgs:arcane_tier_4_spell_1_modifier_2
+  - Blink attempts to remove 2 negative effects from you entirely.
+- `archer_boost`: Archer Empowerment [x3, mods archers]; attr ranged_weapon:damage multiply_base 0.01
+- `archer_root`: Path of the Archer [root, mods archers]; attr ranged_weapon:damage multiply_base 0.01
+- `archer_tier_1_passive_1`: Rhythm [mods archers]; spell skill_tree_rpgs:archer_tier_1_passive_1
+  - Hitting Marked target increasing ranged attack speed by {bonus}, stacking up to {effect_amplifier_cap} times, lasting {effect_duration} sec.
+- `archer_tier_1_passive_2`: Concussive Shot [mods archers]; spell skill_tree_rpgs:archer_tier_1_passive_2
+  - Arrows have {trigger_chance} chance, to stun the target for {effect_duration} sec.
+- `archer_tier_2_passive_1`: Momentum [mods archers]; spell skill_tree_rpgs:archer_tier_2_passive_1
+  - Rolling grants you an additional stack of Rhythm.
+- `archer_tier_2_passive_2`: Tactical Maneuver [mods archers]; spell skill_tree_rpgs:archer_tier_2_passive_2
+  - Rolling has {trigger_chance} chance to increase your roll recharge speed by {bonus}, for {effect_duration} sec.
+- `archer_tier_2_spell_1_modifier_1`: Improved Hunter's Mark [mods archers]; spell skill_tree_rpgs:archer_tier_2_spell_1_modifier_1
+  - Power Shot applies {stash_amplifier_add} additional Hunter's Mark stack.
+- `archer_tier_2_spell_1_modifier_2`: Nature's Grasp [mods archers]; spell skill_tree_rpgs:archer_tier_2_spell_1_modifier_2
+  - Entangling Roots has {impact_chance} chance to immobilize the target for {effect_duration} sec.
+- `archer_tier_3_passive_1`: Supercharge [mods archers]; spell skill_tree_rpgs:archer_tier_3_passive_1
+  - Arrow hits have {trigger_chance_1} chance to Supercharge your next shot within {stash_duration} sec, taking longer to pull but dealing {bonus} damage with strong knockback.
+- `archer_tier_3_passive_2`: Deflection [mods archers]; spell skill_tree_rpgs:archer_tier_3_passive_2
+  - Upon taking damage below {threshold} health you gain Deflection effect, parrying the next {effect_amplifier} incoming melee attack, lasting {effect_duration} sec.
+- `archer_tier_3_spell_1_modifier_1`: Extensive Barrage [mods archers]; spell skill_tree_rpgs:archer_tier_3_spell_1_modifier_1
+  - Barrage fires {extra_launch} extra arrow.
+- `archer_tier_3_spell_1_modifier_2`: Blood Barrage [mods archers]; spell skill_tree_rpgs:archer_tier_3_spell_1_modifier_2
+  - Barrage arrow hits heal you by {heal}.
+- `archer_tier_4_spell_1_modifier_1`: Conjured Arrow [mods archers]; spell skill_tree_rpgs:archer_tier_4_spell_1_modifier_1
+  - Magic Arrow has {trigger_chance} chance to reset its own cooldown.
+- `archer_tier_4_spell_1_modifier_2`: Magic Punch [mods archers]; spell skill_tree_rpgs:archer_tier_4_spell_1_modifier_2
+  - Magic Arrow deals extra {knockback_multiply_base} knockback.
+- `fire_boost`: Fire Attunement [x3, mods wizards]; attr spell_power:fire multiply_base 0.01
+- `fire_root`: Path of Fire [root, mods wizards]; attr spell_power:fire multiply_base 0.01
+- `fire_tier_1_passive_1`: Scorching Flames [mods wizards]; spell skill_tree_rpgs:fire_tier_1_passive_1
+  - Fire spell impacts have {trigger_chance} chance to apply Fire Vulnerability. Increasing damage taken from fire spells by {bonus}, stacking up to {effect_amplifier_cap} times, lasting {effect_duration} sec.
+- `fire_tier_1_passive_2`: Hot Impact [mods wizards]; spell skill_tree_rpgs:fire_tier_1_passive_2
+  - Fire spell impacts have {trigger_chance} chance to stun the target for {effect_duration} sec.
+- `fire_tier_2_passive_1`: Flame Trap [mods wizards]; spell skill_tree_rpgs:fire_tier_2_passive_1
+  - Upon rolling, you leave behind a Flame Trap, lasting {cloud_duration} sec, dealing {damage} damage and applying Fire Vulnerability to entering enemies.
+- `fire_tier_2_passive_2`: Blazing Speed [mods wizards]; spell skill_tree_rpgs:fire_tier_2_passive_2
+  - Upon rolling, you have {trigger_chance} chance to gain {bonus} movement speed for {effect_duration} sec.
+- `fire_tier_2_spell_1_modifier_1`: Explosive Breath [mods wizards]; spell skill_tree_rpgs:fire_tier_2_spell_1_modifier_1
+  - Fire Breath hits have {trigger_chance} chance to explode a target, dealing {damage} damage to nearby enemies.
+- `fire_tier_2_spell_1_modifier_2`: Flame Throwing [mods wizards]; spell skill_tree_rpgs:fire_tier_2_spell_1_modifier_2
+  - Increased the range of Fire Breath by {range_add}.
+- `fire_tier_3_passive_1`: Eruption [mods wizards]; spell skill_tree_rpgs:fire_tier_3_passive_1
+  - Taking damage has {trigger_chance} chance to cause a strong explosion, dealing {damage} damage to nearby enemies.
+- `fire_tier_3_passive_2`: Flame Ward [mods wizards]; spell skill_tree_rpgs:fire_tier_3_passive_2
+  - Fire spells have {trigger_chance_1} chance, to grant you Flame Ward, absorbing damage and dealing {damage} damage to attackers, lasts {stash_duration} sec.
+- `fire_tier_3_spell_1_modifier_1`: Meteor Shower [mods wizards]; spell skill_tree_rpgs:fire_tier_3_spell_1_modifier_1
+  - Meteor launches {extra_launch} extra projectile.
+- `fire_tier_3_spell_1_modifier_2`: Meteor Splash [mods wizards]; spell skill_tree_rpgs:fire_tier_3_spell_1_modifier_2
+  - Meteor impacts leave a fiery area behind, lasting {cloud_duration} sec.
+- `fire_tier_4_spell_1_modifier_1`: Great Wall [mods wizards]; spell skill_tree_rpgs:fire_tier_4_spell_1_modifier_1
+  - Wall of Flames spawns 2 additional columns.
+- `fire_tier_4_spell_1_modifier_2`: Healing Flames [mods wizards]; spell skill_tree_rpgs:fire_tier_4_spell_1_modifier_2
+  - Wall of Flames heals you and allies for {heal}.
+- `fireball`: Fireball [mods wizards]; spell wizards:fireball
+  - Unlock Fireball
+- `frost_boost`: Frost Attunement [x3, mods wizards]; attr spell_power:frost multiply_base 0.01
+- `frost_root`: Path of Frost [root, mods wizards]; attr spell_power:frost multiply_base 0.01
+- `frost_tier_1_passive_1`: Winter's Chill [mods wizards]; spell skill_tree_rpgs:frost_tier_1_passive_1
+  - Frost spell impacts have {trigger_chance} chance to apply Winter's Chill effect. Increasing damage taken from frost spell critical strikes by {bonus}, stacking up to {effect_amplifier_cap} times, lasting {effect_duration} sec.
+- `frost_tier_1_passive_2`: Frostbite [mods wizards]; spell skill_tree_rpgs:frost_tier_1_passive_2
+  - Frost spell impacts have {trigger_chance} chance, to freeze the target for {effect_duration} sec.
+- `frost_tier_2_passive_1`: Frost Trap [mods wizards]; spell skill_tree_rpgs:frost_tier_2_passive_1
+  - Upon rolling, you leave behind a Frost Trap, lasting {cloud_duration} sec, applying Freeze effect to entering enemies.
+- `frost_tier_2_passive_2`: Arctic Reflex [mods wizards]; spell skill_tree_rpgs:frost_tier_2_passive_2
+  - Upon rolling, you have {trigger_chance_1} chance to instantly cast a spell, within the next {stash_duration} sec.
+- `frost_tier_2_spell_1_modifier_1`: Frost Splinters [mods wizards]; spell skill_tree_rpgs:frost_tier_2_spell_1_modifier_1
+  - Frost Nova causes secondary explosions, dealing {damage} damage to nearby enemies.
+- `frost_tier_2_spell_1_modifier_2`: Deep Freeze [mods wizards]; spell skill_tree_rpgs:frost_tier_2_spell_1_modifier_2
+  - Frost Nova applies {effect_amplifier_add} more stack of Freeze effect.
+- `frost_tier_3_passive_1`: Cold Snap [mods wizards]; spell skill_tree_rpgs:frost_tier_3_passive_1
+  - Taking damage has {trigger_chance} chance to reset cooldowns of Frost spells.
+- `frost_tier_3_passive_2`: Frost Ward [mods wizards]; spell skill_tree_rpgs:frost_tier_3_passive_2
+  - Frost spells have {trigger_chance_1} chance, to grant you Frost Ward, absorbing damage and slowing attackers, lasts {stash_duration} sec.
+- `frost_tier_3_spell_1_modifier_1`: Nimble Shield [mods wizards]; spell skill_tree_rpgs:frost_tier_3_spell_1_modifier_1
+  - Allows normal movement speed during the effect of Frost Shield.
+- `frost_tier_3_spell_1_modifier_2`: Durable Shield [mods wizards]; spell skill_tree_rpgs:frost_tier_3_spell_1_modifier_2
+  - Increases the duration of Frost Shield by {effect_duration_add} sec.
+- `frost_tier_4_spell_1_modifier_1`: Hail Storm [mods wizards]; spell skill_tree_rpgs:frost_tier_4_spell_1_modifier_1
+  - Blizzard damage increased by {power_multiplier}.
+- `frost_tier_4_spell_1_modifier_2`: Snow Storm [mods wizards]; spell skill_tree_rpgs:frost_tier_4_spell_1_modifier_2
+  - Blizzard applies Slowness for {effect_duration} sec, stacking up to {effect_amplifier_cap} times.
+- `paladin_boost`: Paladin Empowerment [x3, mods paladins]; attr spell_power:healing addition 0.2
+- `paladin_root`: Path of the Paladin [root, mods paladins]; attr spell_power:healing addition 0.2
+- `paladin_tier_1_passive_1`: Seal of Righteousness [mods paladins]; spell skill_tree_rpgs:paladin_tier_1_passive_1
+  - Melee attacks have {trigger_chance_1} chance, to deal additional {damage} damage based on Healing Power.
+- `paladin_tier_1_passive_2`: Redoubt [mods paladins]; spell skill_tree_rpgs:paladin_tier_1_passive_2
+  - Blocking with shield grants {bonus} armor, stacking up to {effect_amplifier_cap} times, lasting {effect_duration} sec.
+- `paladin_tier_2_passive_1`: Crusader Strike [mods paladins]; spell skill_tree_rpgs:paladin_tier_2_passive_1
+  - Upon rolling, you have {trigger_chance_1} chance for your next melee attack to apply Crusader's Mark, increasing damage taken by {bonus}, for {effect_duration} sec.
+- `paladin_tier_2_passive_2`: Conviction [mods paladins]; spell skill_tree_rpgs:paladin_tier_2_passive_2
+  - Upon rolling, you have {trigger_chance} chance to reset the cooldown of Flash Heal.
+- `paladin_tier_2_spell_1_modifier_1`: Cleanse [mods paladins]; spell skill_tree_rpgs:paladin_tier_2_spell_1_modifier_1
+  - Flash Heal attempts to cure the target, by reducing the strength of a harmful effect.
+- `paladin_tier_2_spell_1_modifier_2`: Blessed Protection [mods paladins]; spell skill_tree_rpgs:paladin_tier_2_spell_1_modifier_2
+  - Divine Protection provides {effect_amplifier_add} extra effect stack.
+- `paladin_tier_3_passive_1`: Divine Hammer [mods paladins]; spell skill_tree_rpgs:paladin_tier_3_passive_1
+  - Melee attacks throw a hammer at the target, dealing {damage} damage, ricocheting {ricochet} to nearby enemies.
+- `paladin_tier_3_passive_2`: Ardent Defender [mods paladins]; spell skill_tree_rpgs:paladin_tier_3_passive_2
+  - Upon taking damage below {threshold} health, your max health is increased by {bonus}, for {effect_duration} sec.
+- `paladin_tier_3_spell_1_modifier_1`: Empowered Judgement [mods paladins]; spell skill_tree_rpgs:paladin_tier_3_spell_1_modifier_1
+  - Increases the damage of Judgement by {power_multiplier}.
+- `paladin_tier_3_spell_1_modifier_2`: Judgement of Command [mods paladins]; spell skill_tree_rpgs:paladin_tier_3_spell_1_modifier_2
+  - Judgement taunts enemies hit, forcing them to attack you.
+- `paladin_tier_4_spell_1_modifier_1`: Persistent Banner [mods paladins]; spell skill_tree_rpgs:paladin_tier_4_spell_1_modifier_1
+  - Increases the duration of Battle Banner by {spawn_duration_add} sec.
+- `paladin_tier_4_spell_1_modifier_2`: Protective Banner [mods paladins]; spell skill_tree_rpgs:paladin_tier_4_spell_1_modifier_2
+  - Battle Banner also reduces damage taken by {bonus}.
+- `priest_boost`: Holy Attunement [x3, mods paladins]; attr spell_power:healing multiply_base 0.01
+- `priest_root`: Path of the Light [root, mods paladins]; attr spell_power:healing multiply_base 0.01
+- `priest_tier_1_passive_1`: Healing Focus [mods paladins]; spell skill_tree_rpgs:priest_tier_1_passive_1
+  - Healing spells apply Healing Focus effect. Increasing healing received by {bonus}, stacking up to {effect_amplifier_cap} times, lasting {effect_duration} sec.
+- `priest_tier_1_passive_2`: Incanters' Cadence [mods paladins]; spell skill_tree_rpgs:priest_tier_1_passive_2
+  - Spell hits have {trigger_chance} chance to increase spell haste by {bonus}, stacking up to {effect_amplifier_cap} times, lasting {effect_duration} sec.
+- `priest_tier_2_passive_1`: Fade [mods paladins]; spell skill_tree_rpgs:priest_tier_2_passive_1
+  - Upon rolling, nearby mobs stop attacking you, allowing them to target your allies.
+- `priest_tier_2_passive_2`: Divine Favor [mods paladins]; spell skill_tree_rpgs:priest_tier_2_passive_2
+  - Upon rolling, you have {trigger_chance_1} chance to guarantee critical strike for your next spell cast.
+- `priest_tier_2_spell_1_modifier_1`: Graceful Channeling [mods paladins]; spell skill_tree_rpgs:priest_tier_2_spell_1_modifier_1
+  - Reduces the cooldown of Holy Light by {cooldown_duration_deduct} sec.
+- `priest_tier_2_spell_1_modifier_2`: Searing Light [mods paladins]; spell skill_tree_rpgs:priest_tier_2_spell_1_modifier_2
+  - Holy Light deals {power_multiplier} more damage, and lights enemies on fire.
+- `priest_tier_3_passive_1`: Pain Suppression [mods paladins]; spell skill_tree_rpgs:priest_tier_3_passive_1
+  - Healing targets under {threshold} health, grants them Pain Suppression, reducing damage taken by {bonus}, for {effect_duration} sec.
+- `priest_tier_3_passive_2`: Celestial Orbs [mods paladins]; spell skill_tree_rpgs:priest_tier_3_passive_2
+  - Spell critical strikes and heals grant you {stash_amplifier} Celestial Orbs. Orbs damage enemies attacking you, dealing {damage} spell damage.
+- `priest_tier_3_spell_1_modifier_1`: Mass Dispel [mods paladins]; spell skill_tree_rpgs:priest_tier_3_spell_1_modifier_1
+  - Circle of Healing removes {effect_amplifier} negative effect from allies.
+- `priest_tier_3_spell_1_modifier_2`: Consecration [mods paladins]; spell skill_tree_rpgs:priest_tier_3_spell_1_modifier_2
+  - Circle of Healing leaves a consecrated area behind, dealing {damage} damage to enemies, for {cloud_duration} sec.
+- `priest_tier_4_spell_1_modifier_1`: Barrier Recovery [mods paladins]; spell skill_tree_rpgs:priest_tier_4_spell_1_modifier_1
+  - Reduces the cooldown of Barrier by {cooldown_duration_deduct} sec.
+- `priest_tier_4_spell_1_modifier_2`: Barrier Duration [mods paladins]; spell skill_tree_rpgs:priest_tier_4_spell_1_modifier_2
+  - Increases the duration of Barrier by {spawn_duration_add} sec.
+- `rogue_boost`: Rogue Empowerment [x3, mods rogues]; attr minecraft:generic.attack_speed multiply_base 0.01
+- `rogue_root`: Path of the Rogue [root, mods rogues]; attr minecraft:generic.attack_speed multiply_base 0.01
+- `rogue_tier_1_passive_1`: Coated Blades [mods rogues]; spell skill_tree_rpgs:rogue_tier_1_passive_1
+  - Melee attacks have {trigger_chance_1} chance, to apply poison effect lasting {effect_duration} sec, stacking up based on your attack damage.
+- `rogue_tier_1_passive_2`: Fracture [mods rogues]; spell skill_tree_rpgs:rogue_tier_1_passive_2
+  - Melee attacks have {trigger_chance_1} chance to wound the enemy, dealing {damage} damage and reducing its armor by {bonus}, for {effect_duration} sec.
+- `rogue_tier_2_passive_1`: Sidestep [mods rogues]; spell skill_tree_rpgs:rogue_tier_2_passive_1
+  - Upon rolling, you gain a stack of Sidestep, increasing your Evasion Chance by {bonus}, stacking up to {stash_amplifier} times. Removed when taking damage.
+- `rogue_tier_2_passive_2`: Leeching Strike [mods rogues]; spell skill_tree_rpgs:rogue_tier_2_passive_2
+  - Upon rolling, you have {trigger_chance_1} chance for your next melee attack to heal you by {heal}.
+- `rogue_tier_2_spell_1_modifier_1`: Blade Fury [mods rogues]; spell skill_tree_rpgs:rogue_tier_2_spell_1_modifier_1
+  - Increases the maximum number of Slice and Dice stacks by {effect_amplifier_cap_add}.
+- `rogue_tier_2_spell_1_modifier_2`: Explosive Powder [mods rogues]; spell skill_tree_rpgs:rogue_tier_2_spell_1_modifier_2
+  - Shock Powder has {trigger_chance} chance to create secondary explosions, dealing {damage} damage.
+- `rogue_tier_3_passive_1`: Cheat Death [mods rogues]; spell skill_tree_rpgs:rogue_tier_3_passive_1
+  - When taking damage that would be fatal, you become invulnerable for {effect_duration} sec.
+- `rogue_tier_3_passive_2`: Preparation [mods rogues]; spell skill_tree_rpgs:rogue_tier_3_passive_2
+  - Upon evading an attack, you have {trigger_chance} chance for all your cooldowns to reset.
+- `rogue_tier_3_spell_1_modifier_1`: Cloak of Shadows [mods rogues]; spell skill_tree_rpgs:rogue_tier_3_spell_1_modifier_1
+  - Shadowstep grants you Cloak of Shadows effect, protecting your from {effect_amplifier} incoming attack for {effect_duration} sec.
+- `rogue_tier_3_spell_1_modifier_2`: Ambush [mods rogues]; spell skill_tree_rpgs:rogue_tier_3_spell_1_modifier_2
+  - Next attack after Shadowstep, within {effect_duration} sec, deals {bonus} extra damage.
+- `rogue_tier_4_spell_1_modifier_1`: Stealth Speed [mods rogues]; spell skill_tree_rpgs:rogue_tier_4_spell_1_modifier_1
+  - Stealth no longer slows you down.
+- `rogue_tier_4_spell_1_modifier_2`: Deep Stealth [mods rogues]; spell skill_tree_rpgs:rogue_tier_4_spell_1_modifier_2
+  - Increases the duration of Stealth by {effect_duration_add} sec.
+- `warrior_boost`: Warrior Empowerment [x3, mods rogues]; attr minecraft:generic.attack_damage multiply_base 0.01
+- `warrior_root`: Path of the Warrior [root, mods rogues]; attr minecraft:generic.attack_damage multiply_base 0.01
+- `warrior_tier_1_passive_1`: Killing Spree [mods rogues]; spell skill_tree_rpgs:warrior_tier_1_passive_1
+  - Killing an enemy increases Attack Damage by {bonus}, stacking up to {effect_amplifier_cap} times, lasting {effect_duration} sec.
+- `warrior_tier_1_passive_2`: Vitality [mods rogues]; spell skill_tree_rpgs:warrior_tier_1_passive_2
+  - Blocking with shield has {trigger_chance} chance to increase your Evasion Chance by {bonus}, stacking up to {effect_amplifier_cap} times, lasting {effect_duration} sec.
+- `warrior_tier_2_passive_1`: Intercept [mods rogues]; spell skill_tree_rpgs:warrior_tier_2_passive_1
+  - Upon rolling, you have {trigger_chance} chance to reset the cooldown of Charge.
+- `warrior_tier_2_passive_2`: Second Wind [mods rogues]; spell skill_tree_rpgs:warrior_tier_2_passive_2
+  - Upon rolling, you have {trigger_chance} chance to restore 10%% of your total health.
+- `warrior_tier_2_spell_1_modifier_1`: Bouncing Throw [mods rogues]; spell skill_tree_rpgs:warrior_tier_2_spell_1_modifier_1
+  - Shattering Throw ricochets to {ricochet} additional target.
+- `warrior_tier_2_spell_1_modifier_2`: Punching Throw [mods rogues]; spell skill_tree_rpgs:warrior_tier_2_spell_1_modifier_2
+  - Shattering Throw deals {knockback_multiply_base} more knockback.
+- `warrior_tier_3_passive_1`: Enrage [mods rogues]; spell skill_tree_rpgs:warrior_tier_3_passive_1
+  - Taking damage has {trigger_chance_1} chance to apply Enrage effect, increasing your Size and Attack Speed by {bonus} but also the damage you take, stacking up to {effect_amplifier_cap} times, lasting {stash_duration} sec.
+- `warrior_tier_3_passive_2`: Shockwave [mods rogues]; spell skill_tree_rpgs:warrior_tier_3_passive_2
+  - Taking damage below {threshold} causes a shockwave, stunning enemies nearby for {effect_duration} sec.
+- `warrior_tier_3_spell_1_modifier_1`: Battle Shout [mods rogues]; spell skill_tree_rpgs:warrior_tier_3_spell_1_modifier_1
+  - Shout increases Attack Damage of allies by {bonus}, lasting {effect_duration} sec.
+- `warrior_tier_3_spell_1_modifier_2`: Challenging Shout [mods rogues]; spell skill_tree_rpgs:warrior_tier_3_spell_1_modifier_2
+  - Shout taunts all affected enemies.
+- `warrior_tier_4_spell_1_modifier_1`: Endurance [mods rogues]; spell skill_tree_rpgs:warrior_tier_4_spell_1_modifier_1
+  - Charge lasts {effect_duration_add} sec longer.
+- `warrior_tier_4_spell_1_modifier_2`: Concussion Blow [mods rogues]; spell skill_tree_rpgs:warrior_tier_4_spell_1_modifier_2
+  - Next attack after using Charge, stuns the target for {effect_duration} sec.
+- `weapon_arcane_blast_modifier_1`: Conjured Arcane Charge [mods wizards]; spell skill_tree_rpgs:weapon_arcane_blast_modifier_1
+  - Increases the maximum number of Arcane Charges by {effect_amplifier_cap_add}.
+- `weapon_arcane_blast_modifier_2`: Arcane Endurance [mods wizards]; spell skill_tree_rpgs:weapon_arcane_blast_modifier_2
+  - Increases the duration of Arcane Charges by {effect_duration_add} sec.
+- `weapon_arcane_root`: Arcane Staff Specialisation [mods wizards]; spell skill_tree_rpgs:weapon_arcane_root
+  - Arcane Blast deals {power_multiplier} increased damage.
+- `weapon_axe_root`: Axe Specialisation; conditional_attribute attribute,condition,fallbackAttribute,operation,value
+- `weapon_bow_passive_1`: Dazing Arrow; spell skill_tree_rpgs:weapon_bow_passive_1
+  - Arrow hits have {trigger_chance} chance to slow the target for {effect_duration} sec.
+- `weapon_bow_passive_2`: Poison Arrow; spell skill_tree_rpgs:weapon_bow_passive_2
+  - Arrow hits have {trigger_chance} chance to apply Poison for {effect_duration} sec.
+- `weapon_bow_root`: Bow Specialisation; conditional_attribute attribute,condition,fallbackAttribute,operation,value
+- `weapon_claymore_root`: Claymore Specialisation [mods paladins]; conditional_attribute attribute,condition,operation,value
+- `weapon_cleave_modifier_1`: Wide Cleave; spell skill_tree_rpgs:weapon_cleave_modifier_1
+  - Extends the reach of Cleave by +0.5 blocks.
+- `weapon_cleave_modifier_2`: Hot Hatchet; spell skill_tree_rpgs:weapon_cleave_modifier_2
+  - Reduces the cooldown of Cleave by {cooldown_duration_deduct} sec.
+- `weapon_crossbow_passive_1`: Weakening Bolt; spell skill_tree_rpgs:weapon_crossbow_passive_1
+  - Crossbow shots have {trigger_chance} chance to apply Weakness to the target for {effect_duration} sec.
+- `weapon_crossbow_passive_2`: Fuse Bolt; spell skill_tree_rpgs:weapon_crossbow_passive_2
+  - Crossbow shots have {trigger_chance} chance to cause a small explosion on the target.
+- `weapon_crossbow_root`: Crossbow Specialisation; conditional_attribute attribute,condition,fallbackAttribute,operation,value
+- `weapon_dagger_root`: Dagger Specialisation [mods rogues]; conditional_attribute attribute,condition,operation,value
+- `weapon_double_axe_root`: Double Axe Specialisation [mods rogues]; conditional_attribute attribute,condition,fallbackAttribute,operation,value
+- `weapon_fan_of_knives_modifier_1`: Ricochet [mods rogues]; spell skill_tree_rpgs:weapon_fan_of_knives_modifier_1
+  - Fan of Knives daggers ricochet to {ricochet} additional targets.
+- `weapon_fan_of_knives_modifier_2`: Expanded Fan [mods rogues]; spell skill_tree_rpgs:weapon_fan_of_knives_modifier_2
+  - Fan of Knives launches {extra_launch} additional daggers.
+- `weapon_fire_blast_modifier_1`: Blast Radius [mods wizards]; spell skill_tree_rpgs:weapon_fire_blast_modifier_1
+  - Increases the area of effect of Pyroblast by {bonus}.
+- `weapon_fire_blast_modifier_2`: Blast Punch [mods wizards]; spell skill_tree_rpgs:weapon_fire_blast_modifier_2
+  - Increases the knockback of Pyroblast by {knockback_multiply_base}.
+- `weapon_fire_root`: Fire Staff Specialisation [mods wizards]; spell skill_tree_rpgs:weapon_fire_root
+  - Pyroblast has {bonus} increased critical strike chance.
+- `weapon_flurry_modifier_1`: Relentless Flurry [mods paladins]; spell skill_tree_rpgs:weapon_flurry_modifier_1
+  - Flurry performs 1 additional strike.
+- `weapon_flurry_modifier_2`: Frenzied Strikes [mods paladins]; spell skill_tree_rpgs:weapon_flurry_modifier_2
+  - Each strike of Flurry increases your Attack Damage by {bonus} for {effect_duration} sec, stacking up to {effect_amplifier_cap} times.
+- `weapon_frost_root`: Frost Staff Specialisation [mods wizards]; spell skill_tree_rpgs:weapon_frost_root
+  - Frostbolt deals {bonus} increased critical strike damage.
+- `weapon_frostbolt_modifier_1`: Frost Bounce [mods wizards]; spell skill_tree_rpgs:weapon_frostbolt_modifier_1
+  - Frostbolt ricochets to {ricochet} additional target.
+- `weapon_frostbolt_modifier_2`: Lingering Chill [mods wizards]; spell skill_tree_rpgs:weapon_frostbolt_modifier_2
+  - Frostbolt slow effect lasts {effect_duration_add} sec longer.
+- `weapon_glaive_root`: Glaive Specialisation [mods rogues]; conditional_attribute attribute,condition,fallbackAttribute,operation,value
+- `weapon_ground_slam_modifier_1`: Aftershock [mods paladins]; spell skill_tree_rpgs:weapon_ground_slam_modifier_1
+  - Ground Slam has {impact_chance} chance to stun the target for {effect_duration} sec.
+- `weapon_ground_slam_modifier_2`: Punishment [mods paladins]; spell skill_tree_rpgs:weapon_ground_slam_modifier_2
+  - Casting Ground Slam has {trigger_chance_1} chance to guarantee a critical strike for the next melee attack.
+- `weapon_hammer_root`: Hammer Specialisation [mods paladins]; conditional_attribute attribute,condition,fallbackAttribute,operation,value
+- `weapon_holy_root`: Holy Staff Specialisation [mods paladins]; spell skill_tree_rpgs:weapon_holy_root
+  - Reduces the cooldown of Holy Shock by {cooldown_duration_deduct} sec.
+- `weapon_holy_shock_modifier_1`: Improved Healing [mods paladins]; spell skill_tree_rpgs:weapon_holy_shock_modifier_1
+  - Holy Shock heals for {power_multiplier} more.
+- `weapon_holy_shock_modifier_2`: Holy Blast [mods paladins]; spell skill_tree_rpgs:weapon_holy_shock_modifier_2
+  - Damaging with Holy Shock causes small explosion, hitting enemies within {impact_range} blocks radius.
+- `weapon_impale_modifier_1`: Pierce [mods archers]; spell skill_tree_rpgs:weapon_impale_modifier_1
+  - Impale spear pierces through {pierce} targets.
+- `weapon_impale_modifier_2`: Pin Down [mods archers]; spell skill_tree_rpgs:weapon_impale_modifier_2
+  - Impale pins the target, applying Immobilize for {effect_duration} sec.
+- `weapon_mace_root`: Mace Specialisation [mods paladins]; conditional_attribute attribute,condition,fallbackAttribute,operation,value
+- `weapon_sickle_root`: Sickle Specialisation [mods rogues]; conditional_attribute attribute,condition,fallbackAttribute,operation,value
+- `weapon_smash_modifier_1`: Justice Served [mods paladins]; spell skill_tree_rpgs:weapon_smash_modifier_1
+  - Smash hits have {trigger_chance} chance to reset its own cooldown.
+- `weapon_smash_modifier_2`: Shatter [mods paladins]; spell skill_tree_rpgs:weapon_smash_modifier_2
+  - Smash reduces the target's armor by {bonus} for {effect_duration} sec.
+- `weapon_spear_root`: Spear Specialisation [mods archers]; conditional_attribute attribute,condition,operation,value
+- `weapon_swift_strikes_modifier_1`: Frequent Strikes; spell skill_tree_rpgs:weapon_swift_strikes_modifier_1
+  - Reduces the cooldown of Swift Strikes by {cooldown_duration_deduct} sec.
+- `weapon_swift_strikes_modifier_2`: Precision; spell skill_tree_rpgs:weapon_swift_strikes_modifier_2
+  - Swift Strikes deals {melee_damage_multiplier} more damage.
+- `weapon_swipe_modifier_1`: Evasive Swipe [mods rogues]; spell skill_tree_rpgs:weapon_swipe_modifier_1
+  - You are invulnerable when using Swipe.
+- `weapon_swipe_modifier_2`: Sequential Swipes [mods rogues]; spell skill_tree_rpgs:weapon_swipe_modifier_2
+  - Swipe hits have {trigger_chance} chance to reset the cooldown of Swipe.
+- `weapon_sword_root`: Sword Specialisation; conditional_attribute attribute,condition,operation,value
+- `weapon_thrust_modifier_1`: Full Thrust [mods rogues]; spell skill_tree_rpgs:weapon_thrust_modifier_1
+  - Thrust charges you further forward.
+- `weapon_thrust_modifier_2`: Impaling Thrust [mods rogues]; spell skill_tree_rpgs:weapon_thrust_modifier_2
+  - Thrust deals {melee_damage_multiplier} more damage.
+- `weapon_whirlwind_modifier_1`: Whirlwind Mastery [mods rogues]; spell skill_tree_rpgs:weapon_whirlwind_modifier_1
+  - Whirlwind deals {power_multiplier} more damage.
+- `weapon_whirlwind_modifier_2`: Hamstring [mods rogues]; spell skill_tree_rpgs:weapon_whirlwind_modifier_2
+  - Whirlwind has {impact_chance} chance to immobilize the target for {effect_duration} sec.
+#### skill_tree_rpgs:weapon_skills
+- `arcane_boost`: Arcane Attunement [mods wizards]; attr spell_power:arcane multiply_base 0.01
+- `arcane_root`: Path of Arcane [mods wizards]; attr spell_power:arcane multiply_base 0.01
+- `arcane_tier_1_passive_1`: Fissile Magic [mods wizards]; spell skill_tree_rpgs:arcane_tier_1_passive_1
+  - Arcane spell impacts have {trigger_chance} chance, to cause a small explosion, dealing {damage} damage.
+- `arcane_tier_1_passive_2`: Evocation Radiance [mods wizards]; spell skill_tree_rpgs:arcane_tier_1_passive_2
+  - Arcane spell impacts have {trigger_chance} chance, to heal the you for {heal}.
+- `arcane_tier_2_passive_1`: Arcane Trap [mods wizards]; spell skill_tree_rpgs:arcane_tier_2_passive_1
+  - Upon rolling, you leave behind an Arcane Trap, lasting {cloud_duration} sec, dealing {damage} damage to entering enemies.
+- `arcane_tier_2_passive_2`: Phase Shift [mods wizards]; spell skill_tree_rpgs:arcane_tier_2_passive_2
+  - Upon rolling, you become invulnerable for {effect_duration} sec.
+- `arcane_tier_2_spell_1_modifier_1`: Conjured Missile [mods wizards]; spell skill_tree_rpgs:arcane_tier_2_spell_1_modifier_1
+  - Arcane Missile shoots {extra_launch} additional missile per batch.
+- `arcane_tier_2_spell_1_modifier_2`: Crippling Barrage [mods wizards]; spell skill_tree_rpgs:arcane_tier_2_spell_1_modifier_2
+  - Arcane Missiles apply slowness, reducing movement speed by {bonus}, stacking up to {effect_amplifier_cap} times, lasting {effect_duration} sec.
+- `arcane_tier_3_passive_1`: Spell Riposte [mods wizards]; spell skill_tree_rpgs:arcane_tier_3_passive_1
+  - Upon taking damage, an Arcane Bolt is launched at the attacker, dealing {damage} damage.
+- `arcane_tier_3_passive_2`: Arcane Ward [mods wizards]; spell skill_tree_rpgs:arcane_tier_3_passive_2
+  - Arcane spells have {trigger_chance} chance, to grant you Arcane Ward, absorbing high amount of damage, lasting {effect_duration} sec.
+- `arcane_tier_3_spell_1_modifier_1`: Beam Exposure [mods wizards]; spell skill_tree_rpgs:arcane_tier_3_spell_1_modifier_1
+  - Arcane Beam applies Arcane Exposure increasing Arcane damage taken by {bonus}, stacking up to {effect_amplifier_cap} times, lasting {effect_duration} sec.
+- `arcane_tier_3_spell_1_modifier_2`: Beam Propulsion [mods wizards]; spell skill_tree_rpgs:arcane_tier_3_spell_1_modifier_2
+  - Arcane Beam hits increase your speed and jump strength by {bonus} for {effect_duration} sec, stacking up to {effect_amplifier_cap} times.
+- `arcane_tier_4_spell_1_modifier_1`: Presence of Mind [mods wizards]; spell skill_tree_rpgs:arcane_tier_4_spell_1_modifier_1
+  - Blink turns your next spell cast instant, within the next {stash_duration} sec.
+- `arcane_tier_4_spell_1_modifier_2`: Purge [mods wizards]; spell skill_tree_rpgs:arcane_tier_4_spell_1_modifier_2
+  - Blink attempts to remove 2 negative effects from you entirely.
+- `archer_boost`: Archer Empowerment [mods archers]; attr ranged_weapon:damage multiply_base 0.01
+- `archer_root`: Path of the Archer [mods archers]; attr ranged_weapon:damage multiply_base 0.01
+- `archer_tier_1_passive_1`: Rhythm [mods archers]; spell skill_tree_rpgs:archer_tier_1_passive_1
+  - Hitting Marked target increasing ranged attack speed by {bonus}, stacking up to {effect_amplifier_cap} times, lasting {effect_duration} sec.
+- `archer_tier_1_passive_2`: Concussive Shot [mods archers]; spell skill_tree_rpgs:archer_tier_1_passive_2
+  - Arrows have {trigger_chance} chance, to stun the target for {effect_duration} sec.
+- `archer_tier_2_passive_1`: Momentum [mods archers]; spell skill_tree_rpgs:archer_tier_2_passive_1
+  - Rolling grants you an additional stack of Rhythm.
+- `archer_tier_2_passive_2`: Tactical Maneuver [mods archers]; spell skill_tree_rpgs:archer_tier_2_passive_2
+  - Rolling has {trigger_chance} chance to increase your roll recharge speed by {bonus}, for {effect_duration} sec.
+- `archer_tier_2_spell_1_modifier_1`: Improved Hunter's Mark [mods archers]; spell skill_tree_rpgs:archer_tier_2_spell_1_modifier_1
+  - Power Shot applies {stash_amplifier_add} additional Hunter's Mark stack.
+- `archer_tier_2_spell_1_modifier_2`: Nature's Grasp [mods archers]; spell skill_tree_rpgs:archer_tier_2_spell_1_modifier_2
+  - Entangling Roots has {impact_chance} chance to immobilize the target for {effect_duration} sec.
+- `archer_tier_3_passive_1`: Supercharge [mods archers]; spell skill_tree_rpgs:archer_tier_3_passive_1
+  - Arrow hits have {trigger_chance_1} chance to Supercharge your next shot within {stash_duration} sec, taking longer to pull but dealing {bonus} damage with strong knockback.
+- `archer_tier_3_passive_2`: Deflection [mods archers]; spell skill_tree_rpgs:archer_tier_3_passive_2
+  - Upon taking damage below {threshold} health you gain Deflection effect, parrying the next {effect_amplifier} incoming melee attack, lasting {effect_duration} sec.
+- `archer_tier_3_spell_1_modifier_1`: Extensive Barrage [mods archers]; spell skill_tree_rpgs:archer_tier_3_spell_1_modifier_1
+  - Barrage fires {extra_launch} extra arrow.
+- `archer_tier_3_spell_1_modifier_2`: Blood Barrage [mods archers]; spell skill_tree_rpgs:archer_tier_3_spell_1_modifier_2
+  - Barrage arrow hits heal you by {heal}.
+- `archer_tier_4_spell_1_modifier_1`: Conjured Arrow [mods archers]; spell skill_tree_rpgs:archer_tier_4_spell_1_modifier_1
+  - Magic Arrow has {trigger_chance} chance to reset its own cooldown.
+- `archer_tier_4_spell_1_modifier_2`: Magic Punch [mods archers]; spell skill_tree_rpgs:archer_tier_4_spell_1_modifier_2
+  - Magic Arrow deals extra {knockback_multiply_base} knockback.
+- `fire_boost`: Fire Attunement [mods wizards]; attr spell_power:fire multiply_base 0.01
+- `fire_root`: Path of Fire [mods wizards]; attr spell_power:fire multiply_base 0.01
+- `fire_tier_1_passive_1`: Scorching Flames [mods wizards]; spell skill_tree_rpgs:fire_tier_1_passive_1
+  - Fire spell impacts have {trigger_chance} chance to apply Fire Vulnerability. Increasing damage taken from fire spells by {bonus}, stacking up to {effect_amplifier_cap} times, lasting {effect_duration} sec.
+- `fire_tier_1_passive_2`: Hot Impact [mods wizards]; spell skill_tree_rpgs:fire_tier_1_passive_2
+  - Fire spell impacts have {trigger_chance} chance to stun the target for {effect_duration} sec.
+- `fire_tier_2_passive_1`: Flame Trap [mods wizards]; spell skill_tree_rpgs:fire_tier_2_passive_1
+  - Upon rolling, you leave behind a Flame Trap, lasting {cloud_duration} sec, dealing {damage} damage and applying Fire Vulnerability to entering enemies.
+- `fire_tier_2_passive_2`: Blazing Speed [mods wizards]; spell skill_tree_rpgs:fire_tier_2_passive_2
+  - Upon rolling, you have {trigger_chance} chance to gain {bonus} movement speed for {effect_duration} sec.
+- `fire_tier_2_spell_1_modifier_1`: Explosive Breath [mods wizards]; spell skill_tree_rpgs:fire_tier_2_spell_1_modifier_1
+  - Fire Breath hits have {trigger_chance} chance to explode a target, dealing {damage} damage to nearby enemies.
+- `fire_tier_2_spell_1_modifier_2`: Flame Throwing [mods wizards]; spell skill_tree_rpgs:fire_tier_2_spell_1_modifier_2
+  - Increased the range of Fire Breath by {range_add}.
+- `fire_tier_3_passive_1`: Eruption [mods wizards]; spell skill_tree_rpgs:fire_tier_3_passive_1
+  - Taking damage has {trigger_chance} chance to cause a strong explosion, dealing {damage} damage to nearby enemies.
+- `fire_tier_3_passive_2`: Flame Ward [mods wizards]; spell skill_tree_rpgs:fire_tier_3_passive_2
+  - Fire spells have {trigger_chance_1} chance, to grant you Flame Ward, absorbing damage and dealing {damage} damage to attackers, lasts {stash_duration} sec.
+- `fire_tier_3_spell_1_modifier_1`: Meteor Shower [mods wizards]; spell skill_tree_rpgs:fire_tier_3_spell_1_modifier_1
+  - Meteor launches {extra_launch} extra projectile.
+- `fire_tier_3_spell_1_modifier_2`: Meteor Splash [mods wizards]; spell skill_tree_rpgs:fire_tier_3_spell_1_modifier_2
+  - Meteor impacts leave a fiery area behind, lasting {cloud_duration} sec.
+- `fire_tier_4_spell_1_modifier_1`: Great Wall [mods wizards]; spell skill_tree_rpgs:fire_tier_4_spell_1_modifier_1
+  - Wall of Flames spawns 2 additional columns.
+- `fire_tier_4_spell_1_modifier_2`: Healing Flames [mods wizards]; spell skill_tree_rpgs:fire_tier_4_spell_1_modifier_2
+  - Wall of Flames heals you and allies for {heal}.
+- `fireball`: Fireball [mods wizards]; spell wizards:fireball
+  - Unlock Fireball
+- `frost_boost`: Frost Attunement [mods wizards]; attr spell_power:frost multiply_base 0.01
+- `frost_root`: Path of Frost [mods wizards]; attr spell_power:frost multiply_base 0.01
+- `frost_tier_1_passive_1`: Winter's Chill [mods wizards]; spell skill_tree_rpgs:frost_tier_1_passive_1
+  - Frost spell impacts have {trigger_chance} chance to apply Winter's Chill effect. Increasing damage taken from frost spell critical strikes by {bonus}, stacking up to {effect_amplifier_cap} times, lasting {effect_duration} sec.
+- `frost_tier_1_passive_2`: Frostbite [mods wizards]; spell skill_tree_rpgs:frost_tier_1_passive_2
+  - Frost spell impacts have {trigger_chance} chance, to freeze the target for {effect_duration} sec.
+- `frost_tier_2_passive_1`: Frost Trap [mods wizards]; spell skill_tree_rpgs:frost_tier_2_passive_1
+  - Upon rolling, you leave behind a Frost Trap, lasting {cloud_duration} sec, applying Freeze effect to entering enemies.
+- `frost_tier_2_passive_2`: Arctic Reflex [mods wizards]; spell skill_tree_rpgs:frost_tier_2_passive_2
+  - Upon rolling, you have {trigger_chance_1} chance to instantly cast a spell, within the next {stash_duration} sec.
+- `frost_tier_2_spell_1_modifier_1`: Frost Splinters [mods wizards]; spell skill_tree_rpgs:frost_tier_2_spell_1_modifier_1
+  - Frost Nova causes secondary explosions, dealing {damage} damage to nearby enemies.
+- `frost_tier_2_spell_1_modifier_2`: Deep Freeze [mods wizards]; spell skill_tree_rpgs:frost_tier_2_spell_1_modifier_2
+  - Frost Nova applies {effect_amplifier_add} more stack of Freeze effect.
+- `frost_tier_3_passive_1`: Cold Snap [mods wizards]; spell skill_tree_rpgs:frost_tier_3_passive_1
+  - Taking damage has {trigger_chance} chance to reset cooldowns of Frost spells.
+- `frost_tier_3_passive_2`: Frost Ward [mods wizards]; spell skill_tree_rpgs:frost_tier_3_passive_2
+  - Frost spells have {trigger_chance_1} chance, to grant you Frost Ward, absorbing damage and slowing attackers, lasts {stash_duration} sec.
+- `frost_tier_3_spell_1_modifier_1`: Nimble Shield [mods wizards]; spell skill_tree_rpgs:frost_tier_3_spell_1_modifier_1
+  - Allows normal movement speed during the effect of Frost Shield.
+- `frost_tier_3_spell_1_modifier_2`: Durable Shield [mods wizards]; spell skill_tree_rpgs:frost_tier_3_spell_1_modifier_2
+  - Increases the duration of Frost Shield by {effect_duration_add} sec.
+- `frost_tier_4_spell_1_modifier_1`: Hail Storm [mods wizards]; spell skill_tree_rpgs:frost_tier_4_spell_1_modifier_1
+  - Blizzard damage increased by {power_multiplier}.
+- `frost_tier_4_spell_1_modifier_2`: Snow Storm [mods wizards]; spell skill_tree_rpgs:frost_tier_4_spell_1_modifier_2
+  - Blizzard applies Slowness for {effect_duration} sec, stacking up to {effect_amplifier_cap} times.
+- `paladin_boost`: Paladin Empowerment [mods paladins]; attr spell_power:healing addition 0.2
+- `paladin_root`: Path of the Paladin [mods paladins]; attr spell_power:healing addition 0.2
+- `paladin_tier_1_passive_1`: Seal of Righteousness [mods paladins]; spell skill_tree_rpgs:paladin_tier_1_passive_1
+  - Melee attacks have {trigger_chance_1} chance, to deal additional {damage} damage based on Healing Power.
+- `paladin_tier_1_passive_2`: Redoubt [mods paladins]; spell skill_tree_rpgs:paladin_tier_1_passive_2
+  - Blocking with shield grants {bonus} armor, stacking up to {effect_amplifier_cap} times, lasting {effect_duration} sec.
+- `paladin_tier_2_passive_1`: Crusader Strike [mods paladins]; spell skill_tree_rpgs:paladin_tier_2_passive_1
+  - Upon rolling, you have {trigger_chance_1} chance for your next melee attack to apply Crusader's Mark, increasing damage taken by {bonus}, for {effect_duration} sec.
+- `paladin_tier_2_passive_2`: Conviction [mods paladins]; spell skill_tree_rpgs:paladin_tier_2_passive_2
+  - Upon rolling, you have {trigger_chance} chance to reset the cooldown of Flash Heal.
+- `paladin_tier_2_spell_1_modifier_1`: Cleanse [mods paladins]; spell skill_tree_rpgs:paladin_tier_2_spell_1_modifier_1
+  - Flash Heal attempts to cure the target, by reducing the strength of a harmful effect.
+- `paladin_tier_2_spell_1_modifier_2`: Blessed Protection [mods paladins]; spell skill_tree_rpgs:paladin_tier_2_spell_1_modifier_2
+  - Divine Protection provides {effect_amplifier_add} extra effect stack.
+- `paladin_tier_3_passive_1`: Divine Hammer [mods paladins]; spell skill_tree_rpgs:paladin_tier_3_passive_1
+  - Melee attacks throw a hammer at the target, dealing {damage} damage, ricocheting {ricochet} to nearby enemies.
+- `paladin_tier_3_passive_2`: Ardent Defender [mods paladins]; spell skill_tree_rpgs:paladin_tier_3_passive_2
+  - Upon taking damage below {threshold} health, your max health is increased by {bonus}, for {effect_duration} sec.
+- `paladin_tier_3_spell_1_modifier_1`: Empowered Judgement [mods paladins]; spell skill_tree_rpgs:paladin_tier_3_spell_1_modifier_1
+  - Increases the damage of Judgement by {power_multiplier}.
+- `paladin_tier_3_spell_1_modifier_2`: Judgement of Command [mods paladins]; spell skill_tree_rpgs:paladin_tier_3_spell_1_modifier_2
+  - Judgement taunts enemies hit, forcing them to attack you.
+- `paladin_tier_4_spell_1_modifier_1`: Persistent Banner [mods paladins]; spell skill_tree_rpgs:paladin_tier_4_spell_1_modifier_1
+  - Increases the duration of Battle Banner by {spawn_duration_add} sec.
+- `paladin_tier_4_spell_1_modifier_2`: Protective Banner [mods paladins]; spell skill_tree_rpgs:paladin_tier_4_spell_1_modifier_2
+  - Battle Banner also reduces damage taken by {bonus}.
+- `priest_boost`: Holy Attunement [mods paladins]; attr spell_power:healing multiply_base 0.01
+- `priest_root`: Path of the Light [mods paladins]; attr spell_power:healing multiply_base 0.01
+- `priest_tier_1_passive_1`: Healing Focus [mods paladins]; spell skill_tree_rpgs:priest_tier_1_passive_1
+  - Healing spells apply Healing Focus effect. Increasing healing received by {bonus}, stacking up to {effect_amplifier_cap} times, lasting {effect_duration} sec.
+- `priest_tier_1_passive_2`: Incanters' Cadence [mods paladins]; spell skill_tree_rpgs:priest_tier_1_passive_2
+  - Spell hits have {trigger_chance} chance to increase spell haste by {bonus}, stacking up to {effect_amplifier_cap} times, lasting {effect_duration} sec.
+- `priest_tier_2_passive_1`: Fade [mods paladins]; spell skill_tree_rpgs:priest_tier_2_passive_1
+  - Upon rolling, nearby mobs stop attacking you, allowing them to target your allies.
+- `priest_tier_2_passive_2`: Divine Favor [mods paladins]; spell skill_tree_rpgs:priest_tier_2_passive_2
+  - Upon rolling, you have {trigger_chance_1} chance to guarantee critical strike for your next spell cast.
+- `priest_tier_2_spell_1_modifier_1`: Graceful Channeling [mods paladins]; spell skill_tree_rpgs:priest_tier_2_spell_1_modifier_1
+  - Reduces the cooldown of Holy Light by {cooldown_duration_deduct} sec.
+- `priest_tier_2_spell_1_modifier_2`: Searing Light [mods paladins]; spell skill_tree_rpgs:priest_tier_2_spell_1_modifier_2
+  - Holy Light deals {power_multiplier} more damage, and lights enemies on fire.
+- `priest_tier_3_passive_1`: Pain Suppression [mods paladins]; spell skill_tree_rpgs:priest_tier_3_passive_1
+  - Healing targets under {threshold} health, grants them Pain Suppression, reducing damage taken by {bonus}, for {effect_duration} sec.
+- `priest_tier_3_passive_2`: Celestial Orbs [mods paladins]; spell skill_tree_rpgs:priest_tier_3_passive_2
+  - Spell critical strikes and heals grant you {stash_amplifier} Celestial Orbs. Orbs damage enemies attacking you, dealing {damage} spell damage.
+- `priest_tier_3_spell_1_modifier_1`: Mass Dispel [mods paladins]; spell skill_tree_rpgs:priest_tier_3_spell_1_modifier_1
+  - Circle of Healing removes {effect_amplifier} negative effect from allies.
+- `priest_tier_3_spell_1_modifier_2`: Consecration [mods paladins]; spell skill_tree_rpgs:priest_tier_3_spell_1_modifier_2
+  - Circle of Healing leaves a consecrated area behind, dealing {damage} damage to enemies, for {cloud_duration} sec.
+- `priest_tier_4_spell_1_modifier_1`: Barrier Recovery [mods paladins]; spell skill_tree_rpgs:priest_tier_4_spell_1_modifier_1
+  - Reduces the cooldown of Barrier by {cooldown_duration_deduct} sec.
+- `priest_tier_4_spell_1_modifier_2`: Barrier Duration [mods paladins]; spell skill_tree_rpgs:priest_tier_4_spell_1_modifier_2
+  - Increases the duration of Barrier by {spawn_duration_add} sec.
+- `rogue_boost`: Rogue Empowerment [mods rogues]; attr minecraft:generic.attack_speed multiply_base 0.01
+- `rogue_root`: Path of the Rogue [mods rogues]; attr minecraft:generic.attack_speed multiply_base 0.01
+- `rogue_tier_1_passive_1`: Coated Blades [mods rogues]; spell skill_tree_rpgs:rogue_tier_1_passive_1
+  - Melee attacks have {trigger_chance_1} chance, to apply poison effect lasting {effect_duration} sec, stacking up based on your attack damage.
+- `rogue_tier_1_passive_2`: Fracture [mods rogues]; spell skill_tree_rpgs:rogue_tier_1_passive_2
+  - Melee attacks have {trigger_chance_1} chance to wound the enemy, dealing {damage} damage and reducing its armor by {bonus}, for {effect_duration} sec.
+- `rogue_tier_2_passive_1`: Sidestep [mods rogues]; spell skill_tree_rpgs:rogue_tier_2_passive_1
+  - Upon rolling, you gain a stack of Sidestep, increasing your Evasion Chance by {bonus}, stacking up to {stash_amplifier} times. Removed when taking damage.
+- `rogue_tier_2_passive_2`: Leeching Strike [mods rogues]; spell skill_tree_rpgs:rogue_tier_2_passive_2
+  - Upon rolling, you have {trigger_chance_1} chance for your next melee attack to heal you by {heal}.
+- `rogue_tier_2_spell_1_modifier_1`: Blade Fury [mods rogues]; spell skill_tree_rpgs:rogue_tier_2_spell_1_modifier_1
+  - Increases the maximum number of Slice and Dice stacks by {effect_amplifier_cap_add}.
+- `rogue_tier_2_spell_1_modifier_2`: Explosive Powder [mods rogues]; spell skill_tree_rpgs:rogue_tier_2_spell_1_modifier_2
+  - Shock Powder has {trigger_chance} chance to create secondary explosions, dealing {damage} damage.
+- `rogue_tier_3_passive_1`: Cheat Death [mods rogues]; spell skill_tree_rpgs:rogue_tier_3_passive_1
+  - When taking damage that would be fatal, you become invulnerable for {effect_duration} sec.
+- `rogue_tier_3_passive_2`: Preparation [mods rogues]; spell skill_tree_rpgs:rogue_tier_3_passive_2
+  - Upon evading an attack, you have {trigger_chance} chance for all your cooldowns to reset.
+- `rogue_tier_3_spell_1_modifier_1`: Cloak of Shadows [mods rogues]; spell skill_tree_rpgs:rogue_tier_3_spell_1_modifier_1
+  - Shadowstep grants you Cloak of Shadows effect, protecting your from {effect_amplifier} incoming attack for {effect_duration} sec.
+- `rogue_tier_3_spell_1_modifier_2`: Ambush [mods rogues]; spell skill_tree_rpgs:rogue_tier_3_spell_1_modifier_2
+  - Next attack after Shadowstep, within {effect_duration} sec, deals {bonus} extra damage.
+- `rogue_tier_4_spell_1_modifier_1`: Stealth Speed [mods rogues]; spell skill_tree_rpgs:rogue_tier_4_spell_1_modifier_1
+  - Stealth no longer slows you down.
+- `rogue_tier_4_spell_1_modifier_2`: Deep Stealth [mods rogues]; spell skill_tree_rpgs:rogue_tier_4_spell_1_modifier_2
+  - Increases the duration of Stealth by {effect_duration_add} sec.
+- `warrior_boost`: Warrior Empowerment [mods rogues]; attr minecraft:generic.attack_damage multiply_base 0.01
+- `warrior_root`: Path of the Warrior [mods rogues]; attr minecraft:generic.attack_damage multiply_base 0.01
+- `warrior_tier_1_passive_1`: Killing Spree [mods rogues]; spell skill_tree_rpgs:warrior_tier_1_passive_1
+  - Killing an enemy increases Attack Damage by {bonus}, stacking up to {effect_amplifier_cap} times, lasting {effect_duration} sec.
+- `warrior_tier_1_passive_2`: Vitality [mods rogues]; spell skill_tree_rpgs:warrior_tier_1_passive_2
+  - Blocking with shield has {trigger_chance} chance to increase your Evasion Chance by {bonus}, stacking up to {effect_amplifier_cap} times, lasting {effect_duration} sec.
+- `warrior_tier_2_passive_1`: Intercept [mods rogues]; spell skill_tree_rpgs:warrior_tier_2_passive_1
+  - Upon rolling, you have {trigger_chance} chance to reset the cooldown of Charge.
+- `warrior_tier_2_passive_2`: Second Wind [mods rogues]; spell skill_tree_rpgs:warrior_tier_2_passive_2
+  - Upon rolling, you have {trigger_chance} chance to restore 10%% of your total health.
+- `warrior_tier_2_spell_1_modifier_1`: Bouncing Throw [mods rogues]; spell skill_tree_rpgs:warrior_tier_2_spell_1_modifier_1
+  - Shattering Throw ricochets to {ricochet} additional target.
+- `warrior_tier_2_spell_1_modifier_2`: Punching Throw [mods rogues]; spell skill_tree_rpgs:warrior_tier_2_spell_1_modifier_2
+  - Shattering Throw deals {knockback_multiply_base} more knockback.
+- `warrior_tier_3_passive_1`: Enrage [mods rogues]; spell skill_tree_rpgs:warrior_tier_3_passive_1
+  - Taking damage has {trigger_chance_1} chance to apply Enrage effect, increasing your Size and Attack Speed by {bonus} but also the damage you take, stacking up to {effect_amplifier_cap} times, lasting {stash_duration} sec.
+- `warrior_tier_3_passive_2`: Shockwave [mods rogues]; spell skill_tree_rpgs:warrior_tier_3_passive_2
+  - Taking damage below {threshold} causes a shockwave, stunning enemies nearby for {effect_duration} sec.
+- `warrior_tier_3_spell_1_modifier_1`: Battle Shout [mods rogues]; spell skill_tree_rpgs:warrior_tier_3_spell_1_modifier_1
+  - Shout increases Attack Damage of allies by {bonus}, lasting {effect_duration} sec.
+- `warrior_tier_3_spell_1_modifier_2`: Challenging Shout [mods rogues]; spell skill_tree_rpgs:warrior_tier_3_spell_1_modifier_2
+  - Shout taunts all affected enemies.
+- `warrior_tier_4_spell_1_modifier_1`: Endurance [mods rogues]; spell skill_tree_rpgs:warrior_tier_4_spell_1_modifier_1
+  - Charge lasts {effect_duration_add} sec longer.
+- `warrior_tier_4_spell_1_modifier_2`: Concussion Blow [mods rogues]; spell skill_tree_rpgs:warrior_tier_4_spell_1_modifier_2
+  - Next attack after using Charge, stuns the target for {effect_duration} sec.
+- `weapon_arcane_blast_modifier_1`: Conjured Arcane Charge [mods wizards]; spell skill_tree_rpgs:weapon_arcane_blast_modifier_1
+  - Increases the maximum number of Arcane Charges by {effect_amplifier_cap_add}.
+- `weapon_arcane_blast_modifier_2`: Arcane Endurance [mods wizards]; spell skill_tree_rpgs:weapon_arcane_blast_modifier_2
+  - Increases the duration of Arcane Charges by {effect_duration_add} sec.
+- `weapon_arcane_root`: Arcane Staff Specialisation [root, mods wizards]; spell skill_tree_rpgs:weapon_arcane_root
+  - Arcane Blast deals {power_multiplier} increased damage.
+- `weapon_axe_root`: Axe Specialisation [root]; conditional_attribute attribute,condition,fallbackAttribute,operation,value
+- `weapon_bow_passive_1`: Dazing Arrow; spell skill_tree_rpgs:weapon_bow_passive_1
+  - Arrow hits have {trigger_chance} chance to slow the target for {effect_duration} sec.
+- `weapon_bow_passive_2`: Poison Arrow; spell skill_tree_rpgs:weapon_bow_passive_2
+  - Arrow hits have {trigger_chance} chance to apply Poison for {effect_duration} sec.
+- `weapon_bow_root`: Bow Specialisation [root]; conditional_attribute attribute,condition,fallbackAttribute,operation,value
+- `weapon_claymore_root`: Claymore Specialisation [root, mods paladins]; conditional_attribute attribute,condition,operation,value
+- `weapon_cleave_modifier_1`: Wide Cleave; spell skill_tree_rpgs:weapon_cleave_modifier_1
+  - Extends the reach of Cleave by +0.5 blocks.
+- `weapon_cleave_modifier_2`: Hot Hatchet; spell skill_tree_rpgs:weapon_cleave_modifier_2
+  - Reduces the cooldown of Cleave by {cooldown_duration_deduct} sec.
+- `weapon_crossbow_passive_1`: Weakening Bolt; spell skill_tree_rpgs:weapon_crossbow_passive_1
+  - Crossbow shots have {trigger_chance} chance to apply Weakness to the target for {effect_duration} sec.
+- `weapon_crossbow_passive_2`: Fuse Bolt; spell skill_tree_rpgs:weapon_crossbow_passive_2
+  - Crossbow shots have {trigger_chance} chance to cause a small explosion on the target.
+- `weapon_crossbow_root`: Crossbow Specialisation [root]; conditional_attribute attribute,condition,fallbackAttribute,operation,value
+- `weapon_dagger_root`: Dagger Specialisation [root, mods rogues]; conditional_attribute attribute,condition,operation,value
+- `weapon_double_axe_root`: Double Axe Specialisation [root, mods rogues]; conditional_attribute attribute,condition,fallbackAttribute,operation,value
+- `weapon_fan_of_knives_modifier_1`: Ricochet [mods rogues]; spell skill_tree_rpgs:weapon_fan_of_knives_modifier_1
+  - Fan of Knives daggers ricochet to {ricochet} additional targets.
+- `weapon_fan_of_knives_modifier_2`: Expanded Fan [mods rogues]; spell skill_tree_rpgs:weapon_fan_of_knives_modifier_2
+  - Fan of Knives launches {extra_launch} additional daggers.
+- `weapon_fire_blast_modifier_1`: Blast Radius [mods wizards]; spell skill_tree_rpgs:weapon_fire_blast_modifier_1
+  - Increases the area of effect of Pyroblast by {bonus}.
+- `weapon_fire_blast_modifier_2`: Blast Punch [mods wizards]; spell skill_tree_rpgs:weapon_fire_blast_modifier_2
+  - Increases the knockback of Pyroblast by {knockback_multiply_base}.
+- `weapon_fire_root`: Fire Staff Specialisation [root, mods wizards]; spell skill_tree_rpgs:weapon_fire_root
+  - Pyroblast has {bonus} increased critical strike chance.
+- `weapon_flurry_modifier_1`: Relentless Flurry [mods paladins]; spell skill_tree_rpgs:weapon_flurry_modifier_1
+  - Flurry performs 1 additional strike.
+- `weapon_flurry_modifier_2`: Frenzied Strikes [mods paladins]; spell skill_tree_rpgs:weapon_flurry_modifier_2
+  - Each strike of Flurry increases your Attack Damage by {bonus} for {effect_duration} sec, stacking up to {effect_amplifier_cap} times.
+- `weapon_frost_root`: Frost Staff Specialisation [root, mods wizards]; spell skill_tree_rpgs:weapon_frost_root
+  - Frostbolt deals {bonus} increased critical strike damage.
+- `weapon_frostbolt_modifier_1`: Frost Bounce [mods wizards]; spell skill_tree_rpgs:weapon_frostbolt_modifier_1
+  - Frostbolt ricochets to {ricochet} additional target.
+- `weapon_frostbolt_modifier_2`: Lingering Chill [mods wizards]; spell skill_tree_rpgs:weapon_frostbolt_modifier_2
+  - Frostbolt slow effect lasts {effect_duration_add} sec longer.
+- `weapon_glaive_root`: Glaive Specialisation [root, mods rogues]; conditional_attribute attribute,condition,fallbackAttribute,operation,value
+- `weapon_ground_slam_modifier_1`: Aftershock [mods paladins]; spell skill_tree_rpgs:weapon_ground_slam_modifier_1
+  - Ground Slam has {impact_chance} chance to stun the target for {effect_duration} sec.
+- `weapon_ground_slam_modifier_2`: Punishment [mods paladins]; spell skill_tree_rpgs:weapon_ground_slam_modifier_2
+  - Casting Ground Slam has {trigger_chance_1} chance to guarantee a critical strike for the next melee attack.
+- `weapon_hammer_root`: Hammer Specialisation [root, mods paladins]; conditional_attribute attribute,condition,fallbackAttribute,operation,value
+- `weapon_holy_root`: Holy Staff Specialisation [root, mods paladins]; spell skill_tree_rpgs:weapon_holy_root
+  - Reduces the cooldown of Holy Shock by {cooldown_duration_deduct} sec.
+- `weapon_holy_shock_modifier_1`: Improved Healing [mods paladins]; spell skill_tree_rpgs:weapon_holy_shock_modifier_1
+  - Holy Shock heals for {power_multiplier} more.
+- `weapon_holy_shock_modifier_2`: Holy Blast [mods paladins]; spell skill_tree_rpgs:weapon_holy_shock_modifier_2
+  - Damaging with Holy Shock causes small explosion, hitting enemies within {impact_range} blocks radius.
+- `weapon_impale_modifier_1`: Pierce [mods archers]; spell skill_tree_rpgs:weapon_impale_modifier_1
+  - Impale spear pierces through {pierce} targets.
+- `weapon_impale_modifier_2`: Pin Down [mods archers]; spell skill_tree_rpgs:weapon_impale_modifier_2
+  - Impale pins the target, applying Immobilize for {effect_duration} sec.
+- `weapon_mace_root`: Mace Specialisation [root, mods paladins]; conditional_attribute attribute,condition,fallbackAttribute,operation,value
+- `weapon_sickle_root`: Sickle Specialisation [root, mods rogues]; conditional_attribute attribute,condition,fallbackAttribute,operation,value
+- `weapon_smash_modifier_1`: Justice Served [mods paladins]; spell skill_tree_rpgs:weapon_smash_modifier_1
+  - Smash hits have {trigger_chance} chance to reset its own cooldown.
+- `weapon_smash_modifier_2`: Shatter [mods paladins]; spell skill_tree_rpgs:weapon_smash_modifier_2
+  - Smash reduces the target's armor by {bonus} for {effect_duration} sec.
+- `weapon_spear_root`: Spear Specialisation [root, mods archers]; conditional_attribute attribute,condition,operation,value
+- `weapon_swift_strikes_modifier_1`: Frequent Strikes; spell skill_tree_rpgs:weapon_swift_strikes_modifier_1
+  - Reduces the cooldown of Swift Strikes by {cooldown_duration_deduct} sec.
+- `weapon_swift_strikes_modifier_2`: Precision; spell skill_tree_rpgs:weapon_swift_strikes_modifier_2
+  - Swift Strikes deals {melee_damage_multiplier} more damage.
+- `weapon_swipe_modifier_1`: Evasive Swipe [mods rogues]; spell skill_tree_rpgs:weapon_swipe_modifier_1
+  - You are invulnerable when using Swipe.
+- `weapon_swipe_modifier_2`: Sequential Swipes [mods rogues]; spell skill_tree_rpgs:weapon_swipe_modifier_2
+  - Swipe hits have {trigger_chance} chance to reset the cooldown of Swipe.
+- `weapon_sword_root`: Sword Specialisation [root]; conditional_attribute attribute,condition,operation,value
+- `weapon_thrust_modifier_1`: Full Thrust [mods rogues]; spell skill_tree_rpgs:weapon_thrust_modifier_1
+  - Thrust charges you further forward.
+- `weapon_thrust_modifier_2`: Impaling Thrust [mods rogues]; spell skill_tree_rpgs:weapon_thrust_modifier_2
+  - Thrust deals {melee_damage_multiplier} more damage.
+- `weapon_whirlwind_modifier_1`: Whirlwind Mastery [mods rogues]; spell skill_tree_rpgs:weapon_whirlwind_modifier_1
+  - Whirlwind deals {power_multiplier} more damage.
+- `weapon_whirlwind_modifier_2`: Hamstring [mods rogues]; spell skill_tree_rpgs:weapon_whirlwind_modifier_2
+  - Whirlwind has {impact_chance} chance to immobilize the target for {effect_duration} sec.
+### mrpgc definitions only
+#### mrpgc_skill_tree:skill_tree_rpgs
+- `air_boost`: Air Attunement [mods elemental_wizards_rpg]; attr spell_power:air multiply_base 0.01
+- `air_root`: Path of Air [mods elemental_wizards_rpg]; attr spell_power:air multiply_base 0.01
+- `air_spec_a_modifier_1`: Fast Winds [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:air_spec_a_modifier_1
+  - Increases the knockback of Air Cutter by {knockback_multiply_base}.
+- `air_spec_a_modifier_2`: Slow Fall [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:air_spec_a_modifier_2
+  - Aeroblast has a {trigger_chance} to apply slow falling.
+- `air_spec_a_modifier_3`: Aerial Swiftness [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:air_spec_a_modifier_3
+  - Reduces the cooldown of Updraft by {cooldown_duration_deduct} sec.
+- `air_spec_a_modifier_4`: Wind shear [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:air_spec_a_modifier_4
+  - Increases the duration of Tornado by {spawn_duration_add} sec.
+- `air_spec_a_passive_1`: Impetus [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:air_spec_a_passive_1
+  - Air spell impacts have {trigger_chance} chance to increase the casters Spell Haste by {bonus} for {effect_duration} sec.
+- `air_spec_a_passive_2`: Tailwind [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:air_spec_a_passive_2
+  - {trigger_chance} chance upon rolling to leave tailwind behind for {cloud_duration} sec, increasing movement speed by {bonus} for {effect_duration} sec.
+- `air_spec_a_passive_3`: Air Bubble [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:air_spec_a_passive_3
+  - Air spells have {trigger_chance_1} chance, to grant you Air Bubble, absorbing damage and knocking attackers back, lasts {stash_duration} sec.
+- `air_spec_b_modifier_1`: Air Cutting Pressure [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:air_spec_b_modifier_1
+  - Air Cutter deals {power_multiplier} more damage.
+- `air_spec_b_modifier_2`: Aeroblast Field [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:air_spec_b_modifier_2
+  - Aeroblast now deals {damage} damage around the target.
+- `air_spec_b_modifier_3`: Aerial Precision [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:air_spec_b_modifier_3
+  - Updraft deals {critical_damage_bonus} critical damage bonus.
+- `air_spec_b_modifier_4`: Negative Pressure [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:air_spec_b_modifier_4
+  - Tornado critical damage hits are increased by {critical_damage_bonus}.
+- `air_spec_b_passive_1`: Eye of the Storm [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:air_spec_b_passive_1
+  - Air spell impacts on targets below {threshold} makes the target more vulnerable to spell crits.
+- `air_spec_b_passive_2`: Strongwind [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:air_spec_b_passive_2
+  - {trigger_chance} chance upon rolling to spawn a strongwind that deals {damage} damage to enemies.
+- `air_spec_b_passive_3`: Wind Flurry [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:air_spec_b_passive_3
+  - Casting Air spells shoot piercing winds at the target, dealing {damage} damage.
+- `berserker_boost`: Berserker Empowerment [mods berserker_rpg]; attr more_rpg_classes:rage_modifier multiply_base 0.01
+- `berserker_root`: Path of the Berserker [mods berserker_rpg]; attr more_rpg_classes:rage_modifier multiply_base 0.01
+- `berserker_spec_a_modifier_1`: Enraged [mods berserker_rpg]; spell mrpgc_skill_tree:berserker_spec_a_modifier_1
+  - Increases the maximum number of Wild Rage stacks by {effect_amplifier_cap_add}.
+- `berserker_spec_a_modifier_2`: Bloodflow [mods berserker_rpg]; spell mrpgc_skill_tree:berserker_spec_a_modifier_2
+  - Blood Reckoning increases attack damage by {bonus} for {effect_duration} sec.
+- `berserker_spec_a_modifier_3`: Deadly Precision [mods berserker_rpg]; spell mrpgc_skill_tree:berserker_spec_a_modifier_3
+  - Bloody Strike deals {power_multiplier} more damage.
+- `berserker_spec_a_modifier_4`: Savage Outrage [mods berserker_rpg]; spell mrpgc_skill_tree:berserker_spec_a_modifier_4
+  - Outrage now deals {damage} damage around the caster.
+- `berserker_spec_a_passive_1`: Cleave [mods berserker_rpg]; spell mrpgc_skill_tree:berserker_spec_a_passive_1
+  - Hitting enemies has {trigger_chance} to stack grievous wounds up to {effect_amplifier_cap} for {effect_duration} sec.
+- `berserker_spec_a_passive_2`: Spinning Slash [mods berserker_rpg]; spell mrpgc_skill_tree:berserker_spec_a_passive_2
+  - While rolling, you slash and deal {damage} damage to nearby enemies.
+- `berserker_spec_a_passive_3`: Ragnarok [mods berserker_rpg]; spell mrpgc_skill_tree:berserker_spec_a_passive_3
+  - Taking damage with a harmful effect grants you immunity to harmful effects and {bonus} increased movement speed for {effect_duration} sec.
+- `berserker_spec_b_modifier_1`: Blind with Rage [mods berserker_rpg]; spell mrpgc_skill_tree:berserker_spec_b_modifier_1
+  - Melee Hits with Wild Rage reduces incoming damage by {bonus} for {effect_duration} sec.
+- `berserker_spec_b_modifier_2`: Norse Blood Ritual [mods berserker_rpg]; spell mrpgc_skill_tree:berserker_spec_b_modifier_2
+  - Bleeding Targets near the caster now receive {damage} damage.
+- `berserker_spec_b_modifier_3`: Slicing Maelstorm [mods berserker_rpg]; spell mrpgc_skill_tree:berserker_spec_b_modifier_3
+  - Bloody Strike inflicts bleeding around the target for {effect_duration} seconds.
+- `berserker_spec_b_modifier_4`: Reckless Outrage [mods berserker_rpg]; spell mrpgc_skill_tree:berserker_spec_b_modifier_4
+  - Melee Hits grants Absorption in trade for reducing the players health.
+- `berserker_spec_b_passive_1`: Bloodfrenzy [mods berserker_rpg]; spell mrpgc_skill_tree:berserker_spec_b_passive_1
+  - Melee Hits have a {trigger_chance} to inflict bleeding and healing yourself for {heal} hearts.
+- `berserker_spec_b_passive_2`: Burst of Aggression [mods berserker_rpg]; spell mrpgc_skill_tree:berserker_spec_b_passive_2
+  - When the player is in rage and is rolling, you gain {bonus} movement speed and rage for {effect_duration} sec.
+- `berserker_spec_b_passive_3`: Undying Rage [mods berserker_rpg]; spell mrpgc_skill_tree:berserker_spec_b_passive_3
+  - When taking damage that would be fatal, you become invulnerable for {effect_duration} sec.
+- `deadeye_boost`: Deadeye Empowerment [mods archers_expansion]; attr ranged_weapon:haste multiply_base 0.01
+- `deadeye_root`: Path of the Deadeye [mods archers_expansion]; attr ranged_weapon:haste multiply_base 0.01
+- `deadeye_spec_a_modifier_1`: Poisonous Sting [mods archers_expansion]; spell mrpgc_skill_tree:deadeye_spec_a_modifier_1
+  - Fast Shot has {impact_chance} chance to apply stacking poison, lasting {effect_duration} sec.
+- `deadeye_spec_a_modifier_2`: Barbed Trick Arrows [mods archers_expansion]; spell mrpgc_skill_tree:deadeye_spec_a_modifier_2
+  - Trick Shot's bleeding effect lasts {effect_duration_add} sec longer.
+- `deadeye_spec_a_modifier_3`: Wounding Shot [mods archers_expansion]; spell mrpgc_skill_tree:deadeye_spec_a_modifier_3
+  - If the target has a bad effect Disabling Shot inflicts grievous wounds for {effect_duration} sec.
+- `deadeye_spec_a_modifier_4`: Persistent Gas Cloud [mods archers_expansion]; spell mrpgc_skill_tree:deadeye_spec_a_modifier_4
+  - Choking Gas leaves a gas cloud behind, poisoning and dealing {damage} damage to enemies for {cloud_duration} sec.
+- `deadeye_spec_a_passive_1`: Barbed Arrows [mods archers_expansion]; spell mrpgc_skill_tree:deadeye_spec_a_passive_1
+  - Arrows have {trigger_chance} chance, to stack bleeding to the target for {effect_duration} sec.
+- `deadeye_spec_a_passive_2`: Poison Bomb [mods archers_expansion]; spell mrpgc_skill_tree:deadeye_spec_a_passive_2
+  - {trigger_chance} chance upon rolling to leave behind Choking Gas for {cloud_duration} sec.
+- `deadeye_spec_a_passive_3`: Heartseeker [mods archers_expansion]; spell mrpgc_skill_tree:deadeye_spec_a_passive_3
+  - Arrows have {trigger_chance} chance, to deal more damage the less health the target has.
+- `deadeye_spec_b_modifier_1`: Fast Hands [mods archers_expansion]; spell mrpgc_skill_tree:deadeye_spec_b_modifier_1
+  - Fast Shot applies {effect_amplifier_cap_add} additional Fast Shot stack.
+- `deadeye_spec_b_modifier_2`: Bouncing Trick Shots [mods archers_expansion]; spell mrpgc_skill_tree:deadeye_spec_b_modifier_2
+  - Trick Shot now ricochets {ricochet} more times.
+- `deadeye_spec_b_modifier_3`: Leaping Swiftness [mods archers_expansion]; spell mrpgc_skill_tree:deadeye_spec_b_modifier_3
+  - Disabling Shot increases movement speed by {bonus} for {effect_duration} secs.
+- `deadeye_spec_b_modifier_4`: Bouncing Gas Arrow [mods archers_expansion]; spell mrpgc_skill_tree:deadeye_spec_b_modifier_4
+  - The Choking Gas Arrow now ricochets {ricochet} times.
+- `deadeye_spec_b_passive_1`: Withdraw [mods archers_expansion]; spell mrpgc_skill_tree:deadeye_spec_b_passive_1
+  - Arrows have {trigger_chance} chance, to cure a negative condition and heal for {heal} hearts.
+- `deadeye_spec_b_passive_2`: Smoke Bomb [mods archers_expansion]; spell mrpgc_skill_tree:deadeye_spec_b_passive_2
+  - {trigger_chance} chance upon rolling to leave behind a Smoke Bomb for {cloud_duration} sec. Blinding enemies and increasing Evasion for allies.
+- `deadeye_spec_b_passive_3`: Shadow Refuge [mods archers_expansion]; spell mrpgc_skill_tree:deadeye_spec_b_passive_3
+  - Upon taking damage below {threshold} health you create a area that heals you for {heal} hearts and gives you invisibility for {effect_duration} secs.
+- `earth_boost`: Earth Attunement [mods elemental_wizards_rpg]; attr spell_power:earth multiply_base 0.01
+- `earth_root`: Path of Earth [mods elemental_wizards_rpg]; attr spell_power:earth multiply_base 0.01
+- `earth_spec_a_modifier_1`: Sharpened Stone Spears [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:earth_spec_a_modifier_1
+  - Increases the duration of Bleeding by {effect_duration_add} sec.
+- `earth_spec_a_modifier_2`: Obsidian Skin [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:earth_spec_a_modifier_2
+  - Stone Flesh grants you Obsidian Skin, protecting you from {effect_amplifier} incoming attack for {effect_duration} sec.
+- `earth_spec_a_modifier_3`: Obstacle Dripstones [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:earth_spec_a_modifier_3
+  - Terra Circle applies slowness, reducing movement speed by {bonus}, stacking up to {effect_amplifier_cap} times, lasting {effect_duration} sec.
+- `earth_spec_a_modifier_4`: Earthquake Concussion [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:earth_spec_a_modifier_4
+  - Earthquake reduces offensive attributes by {bonus} for {effect_duration} sec.
+- `earth_spec_a_passive_1`: Earthen Blessing [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:earth_spec_a_passive_1
+  - Earth spell impacts have {trigger_chance} chance to apply Earthen Blessing effect. Increasing armor by {bonus}, stacking up to {effect_amplifier_cap} times, lasting {effect_duration} sec.
+- `earth_spec_a_passive_2`: Difficult Terrain [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:earth_spec_a_passive_2
+  -  {trigger_chance} chance upon rolling to leave difficult terrain behind for {cloud_duration} sec, slowing for {effect_duration} sec and dealing {damage} damage to enemies.
+- `earth_spec_a_passive_3`: Stone Heart [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:earth_spec_a_passive_3
+  - Earth Spells have {trigger_chance} chance to absorb a huge amount of damage.
+- `earth_spec_b_modifier_1`: Earthen Blast [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:earth_spec_b_modifier_1
+  - Increases the area of effect of Stone Spear by {bonus}.
+- `earth_spec_b_modifier_2`: Earthbender [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:earth_spec_b_modifier_2
+  - Stone Flesh grants you the Earthbender effect, increasing your earth spell power by {bonus} for {effect_duration} seconds.
+- `earth_spec_b_modifier_3`: Sharp Dripstones [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:earth_spec_b_modifier_3
+  - Terra Circle damage is increased by {power_multiplier}.
+- `earth_spec_b_modifier_4`: Magnitude 10 [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:earth_spec_b_modifier_4
+  - Increases the range of Earthquake by {range_add}.
+- `earth_spec_b_passive_1`: Serrated Stones [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:earth_spec_b_passive_1
+  - Earth spell impacts have {trigger_chance} chance to deal additional {damage} damage, if the target has a bad status effect.
+- `earth_spec_b_passive_2`: Seismic Entry [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:earth_spec_b_passive_2
+  -  {trigger_chance_1} chance while rolling, to deal {damage} damage and knock up nearby enemies.
+- `earth_spec_b_passive_3`: Aftershock [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:earth_spec_b_passive_3
+  - Taking damage has {trigger_chance} chance to deal {damage} to nearby targets.
+- `forcemaster_boost`: Forcemaster Empowerment [mods forcemaster_rpg]; attr minecraft:generic.attack_speed multiply_base 0.01
+- `forcemaster_root`: Path of the Forcemaster [mods forcemaster_rpg]; attr minecraft:generic.attack_speed multiply_base 0.01
+- `forcemaster_spec_a_modifier_1`: Extended Stonehand [mods forcemaster_rpg]; spell mrpgc_skill_tree:forcemaster_spec_a_modifier_1
+  - Increases the amplifier of Stonehand by {stash_amplifier_add}.
+- `forcemaster_spec_a_modifier_2`: Pumped Up [mods forcemaster_rpg]; spell mrpgc_skill_tree:forcemaster_spec_a_modifier_2
+  - Burstcrack increases your attack damage by {bonus} for {effect_duration} seconds.
+- `forcemaster_spec_a_modifier_3`: Powerful Belial Smashing [mods forcemaster_rpg]; spell mrpgc_skill_tree:forcemaster_spec_a_modifier_3
+  - Belial Smashing has {trigger_chance} chance to knock up the target.
+- `forcemaster_spec_a_modifier_4`: Powerful Asalraalaikum [mods forcemaster_rpg]; spell mrpgc_skill_tree:forcemaster_spec_a_modifier_4
+  -  Asalraalaikum damage increased by {power_multiplier}.
+- `forcemaster_spec_a_passive_1`: Blood Fists [mods forcemaster_rpg]; spell mrpgc_skill_tree:forcemaster_spec_a_passive_1
+  - Your melee hits have {trigger_chance} chance, to stack bleeding on the target for {effect_duration} sec.
+- `forcemaster_spec_a_passive_2`: Flying Fists [mods forcemaster_rpg]; spell mrpgc_skill_tree:forcemaster_spec_a_passive_2
+  - Upon rolling, attack speed gets increased by {bonus} for {effect_duration} sec.
+- `forcemaster_spec_a_passive_3`: Sury's Tenacity [mods forcemaster_rpg]; spell mrpgc_skill_tree:forcemaster_spec_a_passive_3
+  - When taking damage below {threshold}, attack & movement speed gets increased by {bonus} and the caster is immune to harmful effects for {effect_duration} sec.
+- `forcemaster_spec_b_modifier_1`: Arcane Fist [mods forcemaster_rpg]; spell mrpgc_skill_tree:forcemaster_spec_b_modifier_1
+  - Casting Stonehand deals {damage} damage around the caster.
+- `forcemaster_spec_b_modifier_2`: Powerful Burst [mods forcemaster_rpg]; spell mrpgc_skill_tree:forcemaster_spec_b_modifier_2
+  - Burst Crack deals {critical_chance_bonus} critical chance bonus.
+- `forcemaster_spec_b_modifier_3`: Explosive Belial Smashing [mods forcemaster_rpg]; spell mrpgc_skill_tree:forcemaster_spec_b_modifier_3
+  - Belial Smashing has {trigger_chance} chance create a arcane explosion, dealing {damage} damage.
+- `forcemaster_spec_b_modifier_4`: Arcane Regeneration [mods forcemaster_rpg]; spell mrpgc_skill_tree:forcemaster_spec_b_modifier_4
+  - Reduces the cooldown of Asalraalaikum  by {cooldown_duration_deduct} sec.
+- `forcemaster_spec_b_passive_1`: Force Release [mods forcemaster_rpg]; spell mrpgc_skill_tree:forcemaster_spec_b_passive_1
+  - Arcane spell impacts have {trigger_chance} chance, to increase spell haste & spell crit chance by {bonus} for {effect_duration} sec. The effect can be stacked {effect_amplifier_cap} times.
+- `forcemaster_spec_b_passive_2`: Calm Mind [mods forcemaster_rpg]; spell mrpgc_skill_tree:forcemaster_spec_b_passive_2
+  - Upon rolling, {trigger_chance} chance to slightly reduce active arcane cooldowns.
+- `forcemaster_spec_b_passive_3`: Sury's Grace [mods forcemaster_rpg]; spell mrpgc_skill_tree:forcemaster_spec_b_passive_3
+  - Casting Forcemaster Spells has a {trigger_chance} to increase arcane spell power & spell haste by {bonus} for {effect_duration} sec.
+- `tundra_hunter_boost`: Tundra Hunter Empowerment [mods archers_expansion]; attr spell_power:frost addition 0.2
+- `tundra_hunter_root`: Path of the Tundra Hunter [mods archers_expansion]; attr spell_power:frost addition 0.2
+- `tundra_hunter_spec_a_modifier_1`: Additional Frozen Shots [mods archers_expansion]; spell mrpgc_skill_tree:tundra_hunter_spec_a_modifier_1
+  - You gain {stash_amplifier_add} additional Frozen Shots.
+- `tundra_hunter_spec_a_modifier_2`: Extra Arctic Shots [mods archers_expansion]; spell mrpgc_skill_tree:tundra_hunter_spec_a_modifier_2
+  - Arctic Volley shoots {extra_launch} additional arctic arrows.
+- `tundra_hunter_spec_a_modifier_3`: Arctic Pact [mods archers_expansion]; spell mrpgc_skill_tree:tundra_hunter_spec_a_modifier_3
+  - Frozen Pact has a {trigger_chance} chance to freeze targets solid.
+- `tundra_hunter_spec_a_modifier_4`: Icicle Crystals [mods archers_expansion]; spell mrpgc_skill_tree:tundra_hunter_spec_a_modifier_4
+  - Increases the area of effect of Enchanted Crystal Arrow by {bonus}.
+- `tundra_hunter_spec_a_passive_1`: Hail [mods archers_expansion]; spell mrpgc_skill_tree:tundra_hunter_spec_a_passive_1
+  - Arrows have a {trigger_chance} chance to launch falling icicles dealing {damage} damage.
+- `tundra_hunter_spec_a_passive_2`: Winter's Cloak [mods archers_expansion]; spell mrpgc_skill_tree:tundra_hunter_spec_a_passive_2
+  - When rolling you have {trigger_chance_1} chance to freeze enemies solid that hit you for {effect_duration} sec.
+- `tundra_hunter_spec_a_passive_3`: Icy Rebirth [mods archers_expansion]; spell mrpgc_skill_tree:tundra_hunter_spec_a_passive_3
+  - When killing targets you have a {trigger_chance_1} chance to spawn icicles on the ground for {cloud_duration}, dealing {damage} damage.
+- `tundra_hunter_spec_b_modifier_1`: Frost Stalker [mods archers_expansion]; spell mrpgc_skill_tree:tundra_hunter_spec_b_modifier_1
+  - Increases the duration of Frosted by {effect_duration_add} sec.
+- `tundra_hunter_spec_b_modifier_2`: Arctic Blessing [mods archers_expansion]; spell mrpgc_skill_tree:tundra_hunter_spec_b_modifier_2
+  - Reduces the cooldown of Arctic Volley by {cooldown_duration_deduct} sec.
+- `tundra_hunter_spec_b_modifier_3`: Hunting Instincts [mods archers_expansion]; spell mrpgc_skill_tree:tundra_hunter_spec_b_modifier_3
+  - Frozen Pact increases Frost Power and Ranged Damage by {bonus} for {effect_duration} secs.
+- `tundra_hunter_spec_b_modifier_4`: Deep Crystallized Arrow [mods archers_expansion]; spell mrpgc_skill_tree:tundra_hunter_spec_b_modifier_4
+  - Enchanted Crystal Arrow deals {power_multiplier} more damage.
+- `tundra_hunter_spec_b_passive_1`: Frozen Prey [mods archers_expansion]; spell mrpgc_skill_tree:tundra_hunter_spec_b_passive_1
+  - If the target is frosted, you heal yourself for {heal} hearts.
+- `tundra_hunter_spec_b_passive_2`: Terrain Mastery [mods archers_expansion]; spell mrpgc_skill_tree:tundra_hunter_spec_b_passive_2
+  - When rolling you have a {trigger_chance} chance to stay immune from harmful effects for {effect_duration} sec.
+- `tundra_hunter_spec_b_passive_3`: Hunting Fever [mods archers_expansion]; spell mrpgc_skill_tree:tundra_hunter_spec_b_passive_3
+  - Arrow hits have a {trigger_chance} to apply Hunting Fever, increasing your Movement Speed & Ranged Haste by {bonus} for {effect_duration} sec.
+- `war_archer_boost`: War Archer Empowerment [mods archers_expansion]; attr ranged_weapon:damage multiply_base 0.01
+- `war_archer_root`: Path of the War Archer [mods archers_expansion]; attr ranged_weapon:damage multiply_base 0.01
+- `war_archer_spec_a_modifier_1`: Expanded Smoldering Arrow [mods archers_expansion]; spell mrpgc_skill_tree:war_archer_spec_a_modifier_1
+  - Increases the area of effect of Smoldering Arrow by {bonus}.
+- `war_archer_spec_a_modifier_2`: Flaming Double Shot [mods archers_expansion]; spell mrpgc_skill_tree:war_archer_spec_a_modifier_2
+  - Double Shot deals {power_multiplier} more damage and lights enemies on fire.
+- `war_archer_spec_a_modifier_3`: Explosive Point Blank Shot [mods archers_expansion]; spell mrpgc_skill_tree:war_archer_spec_a_modifier_3
+  - Damaging with Point Blank Shot causes small explosion, hitting enemies within {impact_range} blocks radius, dealing extra {damage} damage.
+- `war_archer_spec_a_modifier_4`: Combustive Shot [mods archers_expansion]; spell mrpgc_skill_tree:war_archer_spec_a_modifier_4
+  - Pin Down leaves a burning area behind, dealing {damage} damage to enemies, for {cloud_duration} sec.
+- `war_archer_spec_a_passive_1`: Bombardment [mods archers_expansion]; spell mrpgc_skill_tree:war_archer_spec_a_passive_1
+  - If the target is on fire, create a explosion dealing {damage} damage.
+- `war_archer_spec_a_passive_2`: Reloading [mods archers_expansion]; spell mrpgc_skill_tree:war_archer_spec_a_passive_2
+  - When rolling you recharge Smoldering Arrows, you can now stack up to {effect_amplifier_cap} times.
+- `war_archer_spec_a_passive_3`: Rapid Fire [mods archers_expansion]; spell mrpgc_skill_tree:war_archer_spec_a_passive_3
+  - {trigger_chance} chance to shoot 4 additional arrows.
+- `war_archer_spec_b_modifier_1`: Explosive Push [mods archers_expansion]; spell mrpgc_skill_tree:war_archer_spec_b_modifier_1
+  - Increases the knockback of Smoldering Arrow by {knockback_multiply_base}.
+- `war_archer_spec_b_modifier_2`: Heavy Arrow Tips [mods archers_expansion]; spell mrpgc_skill_tree:war_archer_spec_b_modifier_2
+  - Increases the knockback of Double Shot by {knockback_multiply_base}.
+- `war_archer_spec_b_modifier_3`: Heavy Point Blank Shot [mods archers_expansion]; spell mrpgc_skill_tree:war_archer_spec_b_modifier_3
+  - Point Blank Shot has {trigger_chance} chance to stun the target.
+- `war_archer_spec_b_modifier_4`: Increased Pin Down [mods archers_expansion]; spell mrpgc_skill_tree:war_archer_spec_b_modifier_4
+  - Increases the effect duration of Pin Down by {effect_duration_add}.
+- `war_archer_spec_b_passive_1`: Tower's Watch [mods archers_expansion]; spell mrpgc_skill_tree:war_archer_spec_b_passive_1
+  - Your arrow hits have {trigger_chance} to increase your armor and knockback resistance for {effect_duration} sec.
+- `war_archer_spec_b_passive_2`: Reposition [mods archers_expansion]; spell mrpgc_skill_tree:war_archer_spec_b_passive_2
+  - Rolling has {trigger_chance} chance to clear 1 negative effect.
+- `war_archer_spec_b_passive_3`: Last Stand [mods archers_expansion]; spell mrpgc_skill_tree:war_archer_spec_b_passive_3
+  - Upon taking damage below {threshold} health you gain Last Stand effect, increasing your size, ranged haste & decreasing incoming damage for {effect_duration} sec.
+- `water_boost`: Water Attunement [mods elemental_wizards_rpg]; attr spell_power:water multiply_base 0.01
+- `water_root`: Path of Water [mods elemental_wizards_rpg]; attr spell_power:water multiply_base 0.01
+- `water_spec_a_modifier_1`: Strong Water Whip [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:water_spec_a_modifier_1
+  - Water Whip deals {knockback_multiply_base} more knockback.
+- `water_spec_a_modifier_2`: Bubble Pop [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:water_spec_a_modifier_2
+  - Bubble Beam's healing & damage is increased by by {power_multiplier}.
+- `water_spec_a_modifier_3`: Holy Water Spring [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:water_spec_a_modifier_3
+  - Springwater removes {effect_amplifier} negative effect from allies and deals extra {damage} damage to undead.
+- `water_spec_a_modifier_4`: Hydro Boost [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:water_spec_a_modifier_4
+  - Hydro Beam increases the movement speed of allies by {bonus} for {effect_duration} seconds.
+- `water_spec_a_passive_1`: Hydration [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:water_spec_a_passive_1
+  - Healing spells applies Hydration regenerating health for {effect_duration} sec.
+- `water_spec_a_passive_2`: Soothing Mist [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:water_spec_a_passive_2
+  - {trigger_chance} chance upon rolling to leave Soothing Mist behind for {cloud_duration} sec, cleansing negative conditions.
+- `water_spec_a_passive_3`: Calming Flow [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:water_spec_a_passive_3
+  - Water Spell Hits and heals have {trigger_chance_1} chance to enter in a calming flow, reducing active water spell cooldowns while casting spells for a {stash_duration} sec.
+- `water_spec_b_modifier_1`: Splish Splash [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:water_spec_b_modifier_1
+  - Water Whip deals {damage} damage around the target.
+- `water_spec_b_modifier_2`: Persistant Bubbles [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:water_spec_b_modifier_2
+  - Bubble Beam hits have {trigger_chance} to decrease the movement- & attackspeed by {bonus} for {effect_duration} seconds.
+- `water_spec_b_modifier_3`: Bubbling Spring [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:water_spec_b_modifier_3
+  - Springwater leaves a bubbling area behind, dealing {damage} damage to enemies, for {cloud_duration} sec.
+- `water_spec_b_modifier_4`: High Water Pressure [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:water_spec_b_modifier_4
+  - Hydro Beam has {trigger_chance} chance to stun the target.
+- `water_spec_b_passive_1`: Second Wave [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:water_spec_b_passive_1
+  - Water Spells have {trigger_chance} to knock the target back.
+- `water_spec_b_passive_2`: Splashdown [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:water_spec_b_passive_2
+  - While rolling, you knockback nearby enemies.
+- `water_spec_b_passive_3`: Torrent [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:water_spec_b_passive_3
+  - Falling under {threshold} health, increases water spell power for {bonus2} and spell crit chance & spell haste for {bonus} for {effect_duration} sec.
+### mrpgc resourcepack overlay
+#### skill_tree_rpgs:skill_tree_rpgs
+- `air_boost`: Air Attunement [x3, mods elemental_wizards_rpg]; attr spell_power:air multiply_base 0.01
+- `air_root`: Path of Air [root, mods elemental_wizards_rpg]; attr spell_power:air multiply_base 0.01
+- `air_spec_a_modifier_1`: Fast Winds [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:air_spec_a_modifier_1
+  - Increases the knockback of Air Cutter by {knockback_multiply_base}.
+- `air_spec_a_modifier_2`: Slow Fall [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:air_spec_a_modifier_2
+  - Aeroblast has a {trigger_chance} to apply slow falling.
+- `air_spec_a_modifier_3`: Aerial Swiftness [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:air_spec_a_modifier_3
+  - Reduces the cooldown of Updraft by {cooldown_duration_deduct} sec.
+- `air_spec_a_modifier_4`: Wind shear [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:air_spec_a_modifier_4
+  - Increases the duration of Tornado by {spawn_duration_add} sec.
+- `air_spec_a_passive_1`: Impetus [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:air_spec_a_passive_1
+  - Air spell impacts have {trigger_chance} chance to increase the casters Spell Haste by {bonus} for {effect_duration} sec.
+- `air_spec_a_passive_2`: Tailwind [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:air_spec_a_passive_2
+  - {trigger_chance} chance upon rolling to leave tailwind behind for {cloud_duration} sec, increasing movement speed by {bonus} for {effect_duration} sec.
+- `air_spec_a_passive_3`: Air Bubble [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:air_spec_a_passive_3
+  - Air spells have {trigger_chance_1} chance, to grant you Air Bubble, absorbing damage and knocking attackers back, lasts {stash_duration} sec.
+- `air_spec_b_modifier_1`: Air Cutting Pressure [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:air_spec_b_modifier_1
+  - Air Cutter deals {power_multiplier} more damage.
+- `air_spec_b_modifier_2`: Aeroblast Field [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:air_spec_b_modifier_2
+  - Aeroblast now deals {damage} damage around the target.
+- `air_spec_b_modifier_3`: Aerial Precision [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:air_spec_b_modifier_3
+  - Updraft deals {critical_damage_bonus} critical damage bonus.
+- `air_spec_b_modifier_4`: Negative Pressure [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:air_spec_b_modifier_4
+  - Tornado critical damage hits are increased by {critical_damage_bonus}.
+- `air_spec_b_passive_1`: Eye of the Storm [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:air_spec_b_passive_1
+  - Air spell impacts on targets below {threshold} makes the target more vulnerable to spell crits.
+- `air_spec_b_passive_2`: Strongwind [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:air_spec_b_passive_2
+  - {trigger_chance} chance upon rolling to spawn a strongwind that deals {damage} damage to enemies.
+- `air_spec_b_passive_3`: Wind Flurry [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:air_spec_b_passive_3
+  - Casting Air spells shoot piercing winds at the target, dealing {damage} damage.
+- `arcane_boost`: Arcane Attunement [x3, mods wizards]; attr spell_power:arcane multiply_base 0.01
+- `arcane_root`: Path of Arcane [root, mods wizards]; attr spell_power:arcane multiply_base 0.01
+- `arcane_spec_a_modifier_1`: skill.skill_tree_rpgs.arcane_spec_a_modifier_1.title [mods wizards]; spell skill_tree_rpgs:arcane_spec_a_modifier_1
+- `arcane_spec_a_modifier_2`: skill.skill_tree_rpgs.arcane_spec_a_modifier_2.title [mods wizards]; spell skill_tree_rpgs:arcane_spec_a_modifier_2
+- `arcane_spec_a_modifier_3`: skill.skill_tree_rpgs.arcane_spec_a_modifier_3.title [mods wizards]; spell skill_tree_rpgs:arcane_spec_a_modifier_3
+- `arcane_spec_a_modifier_4`: skill.skill_tree_rpgs.arcane_spec_a_modifier_4.title [mods wizards]; spell skill_tree_rpgs:arcane_spec_a_modifier_4
+- `arcane_spec_a_passive_1`: skill.skill_tree_rpgs.arcane_spec_a_passive_1.title [mods wizards]; spell skill_tree_rpgs:arcane_spec_a_passive_1
+- `arcane_spec_a_passive_2`: skill.skill_tree_rpgs.arcane_spec_a_passive_2.title [mods wizards]; spell skill_tree_rpgs:arcane_spec_a_passive_2
+- `arcane_spec_a_passive_3`: skill.skill_tree_rpgs.arcane_spec_a_passive_3.title [mods wizards]; spell skill_tree_rpgs:arcane_spec_a_passive_3
+- `arcane_spec_b_modifier_1`: skill.skill_tree_rpgs.arcane_spec_b_modifier_1.title [mods wizards]; spell skill_tree_rpgs:arcane_spec_b_modifier_1
+- `arcane_spec_b_modifier_2`: skill.skill_tree_rpgs.arcane_spec_b_modifier_2.title [mods wizards]; spell skill_tree_rpgs:arcane_spec_b_modifier_2
+- `arcane_spec_b_modifier_3`: skill.skill_tree_rpgs.arcane_spec_b_modifier_3.title [mods wizards]; spell skill_tree_rpgs:arcane_spec_b_modifier_3
+- `arcane_spec_b_modifier_4`: skill.skill_tree_rpgs.arcane_spec_b_modifier_4.title [mods wizards]; spell skill_tree_rpgs:arcane_spec_b_modifier_4
+- `arcane_spec_b_passive_1`: skill.skill_tree_rpgs.arcane_spec_b_passive_1.title [mods wizards]; spell skill_tree_rpgs:arcane_spec_b_passive_1
+- `arcane_spec_b_passive_2`: skill.skill_tree_rpgs.arcane_spec_b_passive_2.title [mods wizards]; spell skill_tree_rpgs:arcane_spec_b_passive_2
+- `arcane_spec_b_passive_3`: skill.skill_tree_rpgs.arcane_spec_b_passive_3.title [mods wizards]; spell skill_tree_rpgs:arcane_spec_b_passive_3
+- `archer_boost`: Archer Empowerment [x3, mods archers]; attr ranged_weapon:damage multiply_base 0.01
+- `archer_root`: Path of the Archer [root, mods archers]; attr ranged_weapon:damage multiply_base 0.01
+- `archer_spec_a_modifier_1`: skill.skill_tree_rpgs.archer_spec_a_modifier_1.title [mods archers]; spell skill_tree_rpgs:archer_spec_a_modifier_1
+- `archer_spec_a_modifier_2`: skill.skill_tree_rpgs.archer_spec_a_modifier_2.title [mods archers]; spell skill_tree_rpgs:archer_spec_a_modifier_2
+- `archer_spec_a_modifier_3`: skill.skill_tree_rpgs.archer_spec_a_modifier_3.title [mods archers]; spell skill_tree_rpgs:archer_spec_a_modifier_3
+- `archer_spec_a_modifier_4`: skill.skill_tree_rpgs.archer_spec_a_modifier_4.title [mods archers]; spell skill_tree_rpgs:archer_spec_a_modifier_4
+- `archer_spec_a_passive_1`: skill.skill_tree_rpgs.archer_spec_a_passive_1.title [mods archers]; spell skill_tree_rpgs:archer_spec_a_passive_1
+- `archer_spec_a_passive_2`: skill.skill_tree_rpgs.archer_spec_a_passive_2.title [mods archers]; spell skill_tree_rpgs:archer_spec_a_passive_2
+- `archer_spec_a_passive_3`: skill.skill_tree_rpgs.archer_spec_a_passive_3.title [mods archers]; spell skill_tree_rpgs:archer_spec_a_passive_3
+- `archer_spec_b_modifier_1`: skill.skill_tree_rpgs.archer_spec_b_modifier_1.title [mods archers]; spell skill_tree_rpgs:archer_spec_b_modifier_1
+- `archer_spec_b_modifier_2`: skill.skill_tree_rpgs.archer_spec_b_modifier_2.title [mods archers]; spell skill_tree_rpgs:archer_spec_b_modifier_2
+- `archer_spec_b_modifier_3`: skill.skill_tree_rpgs.archer_spec_b_modifier_3.title [mods archers]; spell skill_tree_rpgs:archer_spec_b_modifier_3
+- `archer_spec_b_modifier_4`: skill.skill_tree_rpgs.archer_spec_b_modifier_4.title [mods archers]; spell skill_tree_rpgs:archer_spec_b_modifier_4
+- `archer_spec_b_passive_1`: skill.skill_tree_rpgs.archer_spec_b_passive_1.title [mods archers]; spell skill_tree_rpgs:archer_spec_b_passive_1
+- `archer_spec_b_passive_2`: skill.skill_tree_rpgs.archer_spec_b_passive_2.title [mods archers]; spell skill_tree_rpgs:archer_spec_b_passive_2
+- `archer_spec_b_passive_3`: skill.skill_tree_rpgs.archer_spec_b_passive_3.title [mods archers]; spell skill_tree_rpgs:archer_spec_b_passive_3
+- `berserker_boost`: Berserker Empowerment [x3, mods berserker_rpg]; attr more_rpg_classes:rage_modifier multiply_base 0.01
+- `berserker_root`: Path of the Berserker [root, mods berserker_rpg]; attr more_rpg_classes:rage_modifier multiply_base 0.01
+- `berserker_spec_a_modifier_1`: Enraged [mods berserker_rpg]; spell mrpgc_skill_tree:berserker_spec_a_modifier_1
+  - Increases the maximum number of Wild Rage stacks by {effect_amplifier_cap_add}.
+- `berserker_spec_a_modifier_2`: Bloodflow [mods berserker_rpg]; spell mrpgc_skill_tree:berserker_spec_a_modifier_2
+  - Blood Reckoning increases attack damage by {bonus} for {effect_duration} sec.
+- `berserker_spec_a_modifier_3`: Deadly Precision [mods berserker_rpg]; spell mrpgc_skill_tree:berserker_spec_a_modifier_3
+  - Bloody Strike deals {power_multiplier} more damage.
+- `berserker_spec_a_modifier_4`: Savage Outrage [mods berserker_rpg]; spell mrpgc_skill_tree:berserker_spec_a_modifier_4
+  - Outrage now deals {damage} damage around the caster.
+- `berserker_spec_a_passive_1`: Cleave [mods berserker_rpg]; spell mrpgc_skill_tree:berserker_spec_a_passive_1
+  - Hitting enemies has {trigger_chance} to stack grievous wounds up to {effect_amplifier_cap} for {effect_duration} sec.
+- `berserker_spec_a_passive_2`: Spinning Slash [mods berserker_rpg]; spell mrpgc_skill_tree:berserker_spec_a_passive_2
+  - While rolling, you slash and deal {damage} damage to nearby enemies.
+- `berserker_spec_a_passive_3`: Ragnarok [mods berserker_rpg]; spell mrpgc_skill_tree:berserker_spec_a_passive_3
+  - Taking damage with a harmful effect grants you immunity to harmful effects and {bonus} increased movement speed for {effect_duration} sec.
+- `berserker_spec_b_modifier_1`: Blind with Rage [mods berserker_rpg]; spell mrpgc_skill_tree:berserker_spec_b_modifier_1
+  - Melee Hits with Wild Rage reduces incoming damage by {bonus} for {effect_duration} sec.
+- `berserker_spec_b_modifier_2`: Norse Blood Ritual [mods berserker_rpg]; spell mrpgc_skill_tree:berserker_spec_b_modifier_2
+  - Bleeding Targets near the caster now receive {damage} damage.
+- `berserker_spec_b_modifier_3`: Slicing Maelstorm [mods berserker_rpg]; spell mrpgc_skill_tree:berserker_spec_b_modifier_3
+  - Bloody Strike inflicts bleeding around the target for {effect_duration} seconds.
+- `berserker_spec_b_modifier_4`: Reckless Outrage [mods berserker_rpg]; spell mrpgc_skill_tree:berserker_spec_b_modifier_4
+  - Melee Hits grants Absorption in trade for reducing the players health.
+- `berserker_spec_b_passive_1`: Bloodfrenzy [mods berserker_rpg]; spell mrpgc_skill_tree:berserker_spec_b_passive_1
+  - Melee Hits have a {trigger_chance} to inflict bleeding and healing yourself for {heal} hearts.
+- `berserker_spec_b_passive_2`: Burst of Aggression [mods berserker_rpg]; spell mrpgc_skill_tree:berserker_spec_b_passive_2
+  - When the player is in rage and is rolling, you gain {bonus} movement speed and rage for {effect_duration} sec.
+- `berserker_spec_b_passive_3`: Undying Rage [mods berserker_rpg]; spell mrpgc_skill_tree:berserker_spec_b_passive_3
+  - When taking damage that would be fatal, you become invulnerable for {effect_duration} sec.
+- `deadeye_boost`: Deadeye Empowerment [x3, mods archers_expansion]; attr ranged_weapon:haste multiply_base 0.01
+- `deadeye_root`: Path of the Deadeye [root, mods archers_expansion]; attr ranged_weapon:haste multiply_base 0.01
+- `deadeye_spec_a_modifier_1`: Poisonous Sting [mods archers_expansion]; spell mrpgc_skill_tree:deadeye_spec_a_modifier_1
+  - Fast Shot has {impact_chance} chance to apply stacking poison, lasting {effect_duration} sec.
+- `deadeye_spec_a_modifier_2`: Barbed Trick Arrows [mods archers_expansion]; spell mrpgc_skill_tree:deadeye_spec_a_modifier_2
+  - Trick Shot's bleeding effect lasts {effect_duration_add} sec longer.
+- `deadeye_spec_a_modifier_3`: Wounding Shot [mods archers_expansion]; spell mrpgc_skill_tree:deadeye_spec_a_modifier_3
+  - If the target has a bad effect Disabling Shot inflicts grievous wounds for {effect_duration} sec.
+- `deadeye_spec_a_modifier_4`: Persistent Gas Cloud [mods archers_expansion]; spell mrpgc_skill_tree:deadeye_spec_a_modifier_4
+  - Choking Gas leaves a gas cloud behind, poisoning and dealing {damage} damage to enemies for {cloud_duration} sec.
+- `deadeye_spec_a_passive_1`: Barbed Arrows [mods archers_expansion]; spell mrpgc_skill_tree:deadeye_spec_a_passive_1
+  - Arrows have {trigger_chance} chance, to stack bleeding to the target for {effect_duration} sec.
+- `deadeye_spec_a_passive_2`: Poison Bomb [mods archers_expansion]; spell mrpgc_skill_tree:deadeye_spec_a_passive_2
+  - {trigger_chance} chance upon rolling to leave behind Choking Gas for {cloud_duration} sec.
+- `deadeye_spec_a_passive_3`: Heartseeker [mods archers_expansion]; spell mrpgc_skill_tree:deadeye_spec_a_passive_3
+  - Arrows have {trigger_chance} chance, to deal more damage the less health the target has.
+- `deadeye_spec_b_modifier_1`: Fast Hands [mods archers_expansion]; spell mrpgc_skill_tree:deadeye_spec_b_modifier_1
+  - Fast Shot applies {effect_amplifier_cap_add} additional Fast Shot stack.
+- `deadeye_spec_b_modifier_2`: Bouncing Trick Shots [mods archers_expansion]; spell mrpgc_skill_tree:deadeye_spec_b_modifier_2
+  - Trick Shot now ricochets {ricochet} more times.
+- `deadeye_spec_b_modifier_3`: Leaping Swiftness [mods archers_expansion]; spell mrpgc_skill_tree:deadeye_spec_b_modifier_3
+  - Disabling Shot increases movement speed by {bonus} for {effect_duration} secs.
+- `deadeye_spec_b_modifier_4`: Bouncing Gas Arrow [mods archers_expansion]; spell mrpgc_skill_tree:deadeye_spec_b_modifier_4
+  - The Choking Gas Arrow now ricochets {ricochet} times.
+- `deadeye_spec_b_passive_1`: Withdraw [mods archers_expansion]; spell mrpgc_skill_tree:deadeye_spec_b_passive_1
+  - Arrows have {trigger_chance} chance, to cure a negative condition and heal for {heal} hearts.
+- `deadeye_spec_b_passive_2`: Smoke Bomb [mods archers_expansion]; spell mrpgc_skill_tree:deadeye_spec_b_passive_2
+  - {trigger_chance} chance upon rolling to leave behind a Smoke Bomb for {cloud_duration} sec. Blinding enemies and increasing Evasion for allies.
+- `deadeye_spec_b_passive_3`: Shadow Refuge [mods archers_expansion]; spell mrpgc_skill_tree:deadeye_spec_b_passive_3
+  - Upon taking damage below {threshold} health you create a area that heals you for {heal} hearts and gives you invisibility for {effect_duration} secs.
+- `earth_boost`: Earth Attunement [x3, mods elemental_wizards_rpg]; attr spell_power:earth multiply_base 0.01
+- `earth_root`: Path of Earth [root, mods elemental_wizards_rpg]; attr spell_power:earth multiply_base 0.01
+- `earth_spec_a_modifier_1`: Sharpened Stone Spears [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:earth_spec_a_modifier_1
+  - Increases the duration of Bleeding by {effect_duration_add} sec.
+- `earth_spec_a_modifier_2`: Obsidian Skin [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:earth_spec_a_modifier_2
+  - Stone Flesh grants you Obsidian Skin, protecting you from {effect_amplifier} incoming attack for {effect_duration} sec.
+- `earth_spec_a_modifier_3`: Obstacle Dripstones [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:earth_spec_a_modifier_3
+  - Terra Circle applies slowness, reducing movement speed by {bonus}, stacking up to {effect_amplifier_cap} times, lasting {effect_duration} sec.
+- `earth_spec_a_modifier_4`: Earthquake Concussion [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:earth_spec_a_modifier_4
+  - Earthquake reduces offensive attributes by {bonus} for {effect_duration} sec.
+- `earth_spec_a_passive_1`: Earthen Blessing [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:earth_spec_a_passive_1
+  - Earth spell impacts have {trigger_chance} chance to apply Earthen Blessing effect. Increasing armor by {bonus}, stacking up to {effect_amplifier_cap} times, lasting {effect_duration} sec.
+- `earth_spec_a_passive_2`: Difficult Terrain [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:earth_spec_a_passive_2
+  -  {trigger_chance} chance upon rolling to leave difficult terrain behind for {cloud_duration} sec, slowing for {effect_duration} sec and dealing {damage} damage to enemies.
+- `earth_spec_a_passive_3`: Stone Heart [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:earth_spec_a_passive_3
+  - Earth Spells have {trigger_chance} chance to absorb a huge amount of damage.
+- `earth_spec_b_modifier_1`: Earthen Blast [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:earth_spec_b_modifier_1
+  - Increases the area of effect of Stone Spear by {bonus}.
+- `earth_spec_b_modifier_2`: Earthbender [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:earth_spec_b_modifier_2
+  - Stone Flesh grants you the Earthbender effect, increasing your earth spell power by {bonus} for {effect_duration} seconds.
+- `earth_spec_b_modifier_3`: Sharp Dripstones [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:earth_spec_b_modifier_3
+  - Terra Circle damage is increased by {power_multiplier}.
+- `earth_spec_b_modifier_4`: Magnitude 10 [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:earth_spec_b_modifier_4
+  - Increases the range of Earthquake by {range_add}.
+- `earth_spec_b_passive_1`: Serrated Stones [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:earth_spec_b_passive_1
+  - Earth spell impacts have {trigger_chance} chance to deal additional {damage} damage, if the target has a bad status effect.
+- `earth_spec_b_passive_2`: Seismic Entry [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:earth_spec_b_passive_2
+  -  {trigger_chance_1} chance while rolling, to deal {damage} damage and knock up nearby enemies.
+- `earth_spec_b_passive_3`: Aftershock [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:earth_spec_b_passive_3
+  - Taking damage has {trigger_chance} chance to deal {damage} to nearby targets.
+- `fire_boost`: Fire Attunement [x3, mods wizards]; attr spell_power:fire multiply_base 0.01
+- `fire_root`: Path of Fire [root, mods wizards]; attr spell_power:fire multiply_base 0.01
+- `fire_spec_a_modifier_1`: skill.skill_tree_rpgs.fire_spec_a_modifier_1.title [mods wizards]; spell skill_tree_rpgs:fire_spec_a_modifier_1
+- `fire_spec_a_modifier_2`: skill.skill_tree_rpgs.fire_spec_a_modifier_2.title [mods wizards]; spell skill_tree_rpgs:fire_spec_a_modifier_2
+- `fire_spec_a_modifier_3`: skill.skill_tree_rpgs.fire_spec_a_modifier_3.title [mods wizards]; spell skill_tree_rpgs:fire_spec_a_modifier_3
+- `fire_spec_a_modifier_4`: skill.skill_tree_rpgs.fire_spec_a_modifier_4.title [mods wizards]; spell skill_tree_rpgs:fire_spec_a_modifier_4
+- `fire_spec_a_passive_1`: skill.skill_tree_rpgs.fire_spec_a_passive_1.title [mods wizards]; spell skill_tree_rpgs:fire_spec_a_passive_1
+- `fire_spec_a_passive_2`: skill.skill_tree_rpgs.fire_spec_a_passive_2.title [mods wizards]; spell skill_tree_rpgs:fire_spec_a_passive_2
+- `fire_spec_a_passive_3`: skill.skill_tree_rpgs.fire_spec_a_passive_3.title [mods wizards]; spell skill_tree_rpgs:fire_spec_a_passive_3
+- `fire_spec_b_modifier_1`: skill.skill_tree_rpgs.fire_spec_b_modifier_1.title [mods wizards]; spell skill_tree_rpgs:fire_spec_b_modifier_1
+- `fire_spec_b_modifier_2`: skill.skill_tree_rpgs.fire_spec_b_modifier_2.title [mods wizards]; spell skill_tree_rpgs:fire_spec_b_modifier_2
+- `fire_spec_b_modifier_3`: skill.skill_tree_rpgs.fire_spec_b_modifier_3.title [mods wizards]; spell skill_tree_rpgs:fire_spec_b_modifier_3
+- `fire_spec_b_modifier_4`: skill.skill_tree_rpgs.fire_spec_b_modifier_4.title [mods wizards]; spell skill_tree_rpgs:fire_spec_b_modifier_4
+- `fire_spec_b_passive_1`: skill.skill_tree_rpgs.fire_spec_b_passive_1.title [mods wizards]; spell skill_tree_rpgs:fire_spec_b_passive_1
+- `fire_spec_b_passive_2`: skill.skill_tree_rpgs.fire_spec_b_passive_2.title [mods wizards]; spell skill_tree_rpgs:fire_spec_b_passive_2
+- `fire_spec_b_passive_3`: skill.skill_tree_rpgs.fire_spec_b_passive_3.title [mods wizards]; spell skill_tree_rpgs:fire_spec_b_passive_3
+- `fireball`: Fireball [mods wizards]; spell wizards:fireball
+  - Unlock Fireball
+- `forcemaster_boost`: Forcemaster Empowerment [x3, mods forcemaster_rpg]; attr minecraft:generic.attack_speed multiply_base 0.01
+- `forcemaster_root`: Path of the Forcemaster [root, mods forcemaster_rpg]; attr minecraft:generic.attack_speed multiply_base 0.01
+- `forcemaster_spec_a_modifier_1`: Extended Stonehand [mods forcemaster_rpg]; spell mrpgc_skill_tree:forcemaster_spec_a_modifier_1
+  - Increases the amplifier of Stonehand by {stash_amplifier_add}.
+- `forcemaster_spec_a_modifier_2`: Pumped Up [mods forcemaster_rpg]; spell mrpgc_skill_tree:forcemaster_spec_a_modifier_2
+  - Burstcrack increases your attack damage by {bonus} for {effect_duration} seconds.
+- `forcemaster_spec_a_modifier_3`: Powerful Belial Smashing [mods forcemaster_rpg]; spell mrpgc_skill_tree:forcemaster_spec_a_modifier_3
+  - Belial Smashing has {trigger_chance} chance to knock up the target.
+- `forcemaster_spec_a_modifier_4`: Powerful Asalraalaikum [mods forcemaster_rpg]; spell mrpgc_skill_tree:forcemaster_spec_a_modifier_4
+  -  Asalraalaikum damage increased by {power_multiplier}.
+- `forcemaster_spec_a_passive_1`: Blood Fists [mods forcemaster_rpg]; spell mrpgc_skill_tree:forcemaster_spec_a_passive_1
+  - Your melee hits have {trigger_chance} chance, to stack bleeding on the target for {effect_duration} sec.
+- `forcemaster_spec_a_passive_2`: Flying Fists [mods forcemaster_rpg]; spell mrpgc_skill_tree:forcemaster_spec_a_passive_2
+  - Upon rolling, attack speed gets increased by {bonus} for {effect_duration} sec.
+- `forcemaster_spec_a_passive_3`: Sury's Tenacity [mods forcemaster_rpg]; spell mrpgc_skill_tree:forcemaster_spec_a_passive_3
+  - When taking damage below {threshold}, attack & movement speed gets increased by {bonus} and the caster is immune to harmful effects for {effect_duration} sec.
+- `forcemaster_spec_b_modifier_1`: Arcane Fist [mods forcemaster_rpg]; spell mrpgc_skill_tree:forcemaster_spec_b_modifier_1
+  - Casting Stonehand deals {damage} damage around the caster.
+- `forcemaster_spec_b_modifier_2`: Powerful Burst [mods forcemaster_rpg]; spell mrpgc_skill_tree:forcemaster_spec_b_modifier_2
+  - Burst Crack deals {critical_chance_bonus} critical chance bonus.
+- `forcemaster_spec_b_modifier_3`: Explosive Belial Smashing [mods forcemaster_rpg]; spell mrpgc_skill_tree:forcemaster_spec_b_modifier_3
+  - Belial Smashing has {trigger_chance} chance create a arcane explosion, dealing {damage} damage.
+- `forcemaster_spec_b_modifier_4`: Arcane Regeneration [mods forcemaster_rpg]; spell mrpgc_skill_tree:forcemaster_spec_b_modifier_4
+  - Reduces the cooldown of Asalraalaikum  by {cooldown_duration_deduct} sec.
+- `forcemaster_spec_b_passive_1`: Force Release [mods forcemaster_rpg]; spell mrpgc_skill_tree:forcemaster_spec_b_passive_1
+  - Arcane spell impacts have {trigger_chance} chance, to increase spell haste & spell crit chance by {bonus} for {effect_duration} sec. The effect can be stacked {effect_amplifier_cap} times.
+- `forcemaster_spec_b_passive_2`: Calm Mind [mods forcemaster_rpg]; spell mrpgc_skill_tree:forcemaster_spec_b_passive_2
+  - Upon rolling, {trigger_chance} chance to slightly reduce active arcane cooldowns.
+- `forcemaster_spec_b_passive_3`: Sury's Grace [mods forcemaster_rpg]; spell mrpgc_skill_tree:forcemaster_spec_b_passive_3
+  - Casting Forcemaster Spells has a {trigger_chance} to increase arcane spell power & spell haste by {bonus} for {effect_duration} sec.
+- `frost_boost`: Frost Attunement [x3, mods wizards]; attr spell_power:frost multiply_base 0.01
+- `frost_root`: Path of Frost [root, mods wizards]; attr spell_power:frost multiply_base 0.01
+- `frost_spec_a_modifier_1`: skill.skill_tree_rpgs.frost_spec_a_modifier_1.title [mods wizards]; spell skill_tree_rpgs:frost_spec_a_modifier_1
+- `frost_spec_a_modifier_2`: skill.skill_tree_rpgs.frost_spec_a_modifier_2.title [mods wizards]; spell skill_tree_rpgs:frost_spec_a_modifier_2
+- `frost_spec_a_modifier_3`: skill.skill_tree_rpgs.frost_spec_a_modifier_3.title [mods wizards]; spell skill_tree_rpgs:frost_spec_a_modifier_3
+- `frost_spec_a_modifier_4`: skill.skill_tree_rpgs.frost_spec_a_modifier_4.title [mods wizards]; spell skill_tree_rpgs:frost_spec_a_modifier_4
+- `frost_spec_a_passive_1`: skill.skill_tree_rpgs.frost_spec_a_passive_1.title [mods wizards]; spell skill_tree_rpgs:frost_spec_a_passive_1
+- `frost_spec_a_passive_2`: skill.skill_tree_rpgs.frost_spec_a_passive_2.title [mods wizards]; spell skill_tree_rpgs:frost_spec_a_passive_2
+- `frost_spec_a_passive_3`: skill.skill_tree_rpgs.frost_spec_a_passive_3.title [mods wizards]; spell skill_tree_rpgs:frost_spec_a_passive_3
+- `frost_spec_b_modifier_1`: skill.skill_tree_rpgs.frost_spec_b_modifier_1.title [mods wizards]; spell skill_tree_rpgs:frost_spec_b_modifier_1
+- `frost_spec_b_modifier_2`: skill.skill_tree_rpgs.frost_spec_b_modifier_2.title [mods wizards]; spell skill_tree_rpgs:frost_spec_b_modifier_2
+- `frost_spec_b_modifier_3`: skill.skill_tree_rpgs.frost_spec_b_modifier_3.title [mods wizards]; spell skill_tree_rpgs:frost_spec_b_modifier_3
+- `frost_spec_b_modifier_4`: skill.skill_tree_rpgs.frost_spec_b_modifier_4.title [mods wizards]; spell skill_tree_rpgs:frost_spec_b_modifier_4
+- `frost_spec_b_passive_1`: skill.skill_tree_rpgs.frost_spec_b_passive_1.title [mods wizards]; spell skill_tree_rpgs:frost_spec_b_passive_1
+- `frost_spec_b_passive_2`: skill.skill_tree_rpgs.frost_spec_b_passive_2.title [mods wizards]; spell skill_tree_rpgs:frost_spec_b_passive_2
+- `frost_spec_b_passive_3`: skill.skill_tree_rpgs.frost_spec_b_passive_3.title [mods wizards]; spell skill_tree_rpgs:frost_spec_b_passive_3
+- `paladin_boost`: Paladin Empowerment [x3, mods paladins]; attr spell_power:healing addition 0.2
+- `paladin_root`: Path of the Paladin [root, mods paladins]; attr spell_power:healing addition 0.2
+- `paladin_spec_a_modifier_1`: skill.skill_tree_rpgs.paladin_spec_a_modifier_1.title [mods paladins]; spell skill_tree_rpgs:paladin_spec_a_modifier_1
+- `paladin_spec_a_modifier_2`: skill.skill_tree_rpgs.paladin_spec_a_modifier_2.title [mods paladins]; spell skill_tree_rpgs:paladin_spec_a_modifier_2
+- `paladin_spec_a_modifier_3`: skill.skill_tree_rpgs.paladin_spec_a_modifier_3.title [mods paladins]; spell skill_tree_rpgs:paladin_spec_a_modifier_3
+- `paladin_spec_a_modifier_4`: skill.skill_tree_rpgs.paladin_spec_a_modifier_4.title [mods paladins]; spell skill_tree_rpgs:paladin_spec_a_modifier_4
+- `paladin_spec_a_passive_1`: skill.skill_tree_rpgs.paladin_spec_a_passive_1.title [mods paladins]; spell skill_tree_rpgs:paladin_spec_a_passive_1
+- `paladin_spec_a_passive_2`: skill.skill_tree_rpgs.paladin_spec_a_passive_2.title [mods paladins]; spell skill_tree_rpgs:paladin_spec_a_passive_2
+- `paladin_spec_a_passive_3`: skill.skill_tree_rpgs.paladin_spec_a_passive_3.title [mods paladins]; spell skill_tree_rpgs:paladin_spec_a_passive_3
+- `paladin_spec_b_modifier_1`: skill.skill_tree_rpgs.paladin_spec_b_modifier_1.title [mods paladins]; spell skill_tree_rpgs:paladin_spec_b_modifier_1
+- `paladin_spec_b_modifier_2`: skill.skill_tree_rpgs.paladin_spec_b_modifier_2.title [mods paladins]; spell skill_tree_rpgs:paladin_spec_b_modifier_2
+- `paladin_spec_b_modifier_3`: skill.skill_tree_rpgs.paladin_spec_b_modifier_3.title [mods paladins]; spell skill_tree_rpgs:paladin_spec_b_modifier_3
+- `paladin_spec_b_modifier_4`: skill.skill_tree_rpgs.paladin_spec_b_modifier_4.title [mods paladins]; spell skill_tree_rpgs:paladin_spec_b_modifier_4
+- `paladin_spec_b_passive_1`: skill.skill_tree_rpgs.paladin_spec_b_passive_1.title [mods paladins]; spell skill_tree_rpgs:paladin_spec_b_passive_1
+- `paladin_spec_b_passive_2`: skill.skill_tree_rpgs.paladin_spec_b_passive_2.title [mods paladins]; spell skill_tree_rpgs:paladin_spec_b_passive_2
+- `paladin_spec_b_passive_3`: skill.skill_tree_rpgs.paladin_spec_b_passive_3.title [mods paladins]; spell skill_tree_rpgs:paladin_spec_b_passive_3
+- `priest_boost`: Holy Attunement [x3, mods paladins]; attr spell_power:healing multiply_base 0.01
+- `priest_root`: Path of the Light [root, mods paladins]; attr spell_power:healing multiply_base 0.01
+- `priest_spec_a_modifier_1`: skill.skill_tree_rpgs.priest_spec_a_modifier_1.title [mods paladins]; spell skill_tree_rpgs:priest_spec_a_modifier_1
+- `priest_spec_a_modifier_2`: skill.skill_tree_rpgs.priest_spec_a_modifier_2.title [mods paladins]; spell skill_tree_rpgs:priest_spec_a_modifier_2
+- `priest_spec_a_modifier_3`: skill.skill_tree_rpgs.priest_spec_a_modifier_3.title [mods paladins]; spell skill_tree_rpgs:priest_spec_a_modifier_3
+- `priest_spec_a_modifier_4`: skill.skill_tree_rpgs.priest_spec_a_modifier_4.title [mods paladins]; spell skill_tree_rpgs:priest_spec_a_modifier_4
+- `priest_spec_a_passive_1`: skill.skill_tree_rpgs.priest_spec_a_passive_1.title [mods paladins]; spell skill_tree_rpgs:priest_spec_a_passive_1
+- `priest_spec_a_passive_2`: skill.skill_tree_rpgs.priest_spec_a_passive_2.title [mods paladins]; spell skill_tree_rpgs:priest_spec_a_passive_2
+- `priest_spec_a_passive_3`: skill.skill_tree_rpgs.priest_spec_a_passive_3.title [mods paladins]; spell skill_tree_rpgs:priest_spec_a_passive_3
+- `priest_spec_b_modifier_1`: skill.skill_tree_rpgs.priest_spec_b_modifier_1.title [mods paladins]; spell skill_tree_rpgs:priest_spec_b_modifier_1
+- `priest_spec_b_modifier_2`: skill.skill_tree_rpgs.priest_spec_b_modifier_2.title [mods paladins]; spell skill_tree_rpgs:priest_spec_b_modifier_2
+- `priest_spec_b_modifier_3`: skill.skill_tree_rpgs.priest_spec_b_modifier_3.title [mods paladins]; spell skill_tree_rpgs:priest_spec_b_modifier_3
+- `priest_spec_b_modifier_4`: skill.skill_tree_rpgs.priest_spec_b_modifier_4.title [mods paladins]; spell skill_tree_rpgs:priest_spec_b_modifier_4
+- `priest_spec_b_passive_1`: skill.skill_tree_rpgs.priest_spec_b_passive_1.title [mods paladins]; spell skill_tree_rpgs:priest_spec_b_passive_1
+- `priest_spec_b_passive_2`: skill.skill_tree_rpgs.priest_spec_b_passive_2.title [mods paladins]; spell skill_tree_rpgs:priest_spec_b_passive_2
+- `priest_spec_b_passive_3`: skill.skill_tree_rpgs.priest_spec_b_passive_3.title [mods paladins]; spell skill_tree_rpgs:priest_spec_b_passive_3
+- `rogue_boost`: Rogue Empowerment [x3, mods rogues]; attr minecraft:generic.attack_speed multiply_base 0.01
+- `rogue_root`: Path of the Rogue [root, mods rogues]; attr minecraft:generic.attack_speed multiply_base 0.01
+- `rogue_spec_a_modifier_1`: skill.skill_tree_rpgs.rogue_spec_a_modifier_1.title [mods rogues]; spell skill_tree_rpgs:rogue_spec_a_modifier_1
+- `rogue_spec_a_modifier_2`: skill.skill_tree_rpgs.rogue_spec_a_modifier_2.title [mods rogues]; spell skill_tree_rpgs:rogue_spec_a_modifier_2
+- `rogue_spec_a_modifier_3`: skill.skill_tree_rpgs.rogue_spec_a_modifier_3.title [mods rogues]; spell skill_tree_rpgs:rogue_spec_a_modifier_3
+- `rogue_spec_a_modifier_4`: skill.skill_tree_rpgs.rogue_spec_a_modifier_4.title [mods rogues]; spell skill_tree_rpgs:rogue_spec_a_modifier_4
+- `rogue_spec_a_passive_1`: skill.skill_tree_rpgs.rogue_spec_a_passive_1.title [mods rogues]; spell skill_tree_rpgs:rogue_spec_a_passive_1
+- `rogue_spec_a_passive_2`: skill.skill_tree_rpgs.rogue_spec_a_passive_2.title [mods rogues]; spell skill_tree_rpgs:rogue_spec_a_passive_2
+- `rogue_spec_a_passive_3`: skill.skill_tree_rpgs.rogue_spec_a_passive_3.title [mods rogues]; spell skill_tree_rpgs:rogue_spec_a_passive_3
+- `rogue_spec_b_modifier_1`: skill.skill_tree_rpgs.rogue_spec_b_modifier_1.title [mods rogues]; spell skill_tree_rpgs:rogue_spec_b_modifier_1
+- `rogue_spec_b_modifier_2`: skill.skill_tree_rpgs.rogue_spec_b_modifier_2.title [mods rogues]; spell skill_tree_rpgs:rogue_spec_b_modifier_2
+- `rogue_spec_b_modifier_3`: skill.skill_tree_rpgs.rogue_spec_b_modifier_3.title [mods rogues]; spell skill_tree_rpgs:rogue_spec_b_modifier_3
+- `rogue_spec_b_modifier_4`: skill.skill_tree_rpgs.rogue_spec_b_modifier_4.title [mods rogues]; spell skill_tree_rpgs:rogue_spec_b_modifier_4
+- `rogue_spec_b_passive_1`: skill.skill_tree_rpgs.rogue_spec_b_passive_1.title [mods rogues]; spell skill_tree_rpgs:rogue_spec_b_passive_1
+- `rogue_spec_b_passive_2`: skill.skill_tree_rpgs.rogue_spec_b_passive_2.title [mods rogues]; spell skill_tree_rpgs:rogue_spec_b_passive_2
+- `rogue_spec_b_passive_3`: skill.skill_tree_rpgs.rogue_spec_b_passive_3.title [mods rogues]; spell skill_tree_rpgs:rogue_spec_b_passive_3
+- `tundra_hunter_boost`: Tundra Hunter Empowerment [x3, mods archers_expansion]; attr spell_power:frost addition 0.2
+- `tundra_hunter_root`: Path of the Tundra Hunter [root, mods archers_expansion]; attr spell_power:frost addition 0.2
+- `tundra_hunter_spec_a_modifier_1`: Additional Frozen Shots [mods archers_expansion]; spell mrpgc_skill_tree:tundra_hunter_spec_a_modifier_1
+  - You gain {stash_amplifier_add} additional Frozen Shots.
+- `tundra_hunter_spec_a_modifier_2`: Extra Arctic Shots [mods archers_expansion]; spell mrpgc_skill_tree:tundra_hunter_spec_a_modifier_2
+  - Arctic Volley shoots {extra_launch} additional arctic arrows.
+- `tundra_hunter_spec_a_modifier_3`: Arctic Pact [mods archers_expansion]; spell mrpgc_skill_tree:tundra_hunter_spec_a_modifier_3
+  - Frozen Pact has a {trigger_chance} chance to freeze targets solid.
+- `tundra_hunter_spec_a_modifier_4`: Icicle Crystals [mods archers_expansion]; spell mrpgc_skill_tree:tundra_hunter_spec_a_modifier_4
+  - Increases the area of effect of Enchanted Crystal Arrow by {bonus}.
+- `tundra_hunter_spec_a_passive_1`: Hail [mods archers_expansion]; spell mrpgc_skill_tree:tundra_hunter_spec_a_passive_1
+  - Arrows have a {trigger_chance} chance to launch falling icicles dealing {damage} damage.
+- `tundra_hunter_spec_a_passive_2`: Winter's Cloak [mods archers_expansion]; spell mrpgc_skill_tree:tundra_hunter_spec_a_passive_2
+  - When rolling you have {trigger_chance_1} chance to freeze enemies solid that hit you for {effect_duration} sec.
+- `tundra_hunter_spec_a_passive_3`: Icy Rebirth [mods archers_expansion]; spell mrpgc_skill_tree:tundra_hunter_spec_a_passive_3
+  - When killing targets you have a {trigger_chance_1} chance to spawn icicles on the ground for {cloud_duration}, dealing {damage} damage.
+- `tundra_hunter_spec_b_modifier_1`: Frost Stalker [mods archers_expansion]; spell mrpgc_skill_tree:tundra_hunter_spec_b_modifier_1
+  - Increases the duration of Frosted by {effect_duration_add} sec.
+- `tundra_hunter_spec_b_modifier_2`: Arctic Blessing [mods archers_expansion]; spell mrpgc_skill_tree:tundra_hunter_spec_b_modifier_2
+  - Reduces the cooldown of Arctic Volley by {cooldown_duration_deduct} sec.
+- `tundra_hunter_spec_b_modifier_3`: Hunting Instincts [mods archers_expansion]; spell mrpgc_skill_tree:tundra_hunter_spec_b_modifier_3
+  - Frozen Pact increases Frost Power and Ranged Damage by {bonus} for {effect_duration} secs.
+- `tundra_hunter_spec_b_modifier_4`: Deep Crystallized Arrow [mods archers_expansion]; spell mrpgc_skill_tree:tundra_hunter_spec_b_modifier_4
+  - Enchanted Crystal Arrow deals {power_multiplier} more damage.
+- `tundra_hunter_spec_b_passive_1`: Frozen Prey [mods archers_expansion]; spell mrpgc_skill_tree:tundra_hunter_spec_b_passive_1
+  - If the target is frosted, you heal yourself for {heal} hearts.
+- `tundra_hunter_spec_b_passive_2`: Terrain Mastery [mods archers_expansion]; spell mrpgc_skill_tree:tundra_hunter_spec_b_passive_2
+  - When rolling you have a {trigger_chance} chance to stay immune from harmful effects for {effect_duration} sec.
+- `tundra_hunter_spec_b_passive_3`: Hunting Fever [mods archers_expansion]; spell mrpgc_skill_tree:tundra_hunter_spec_b_passive_3
+  - Arrow hits have a {trigger_chance} to apply Hunting Fever, increasing your Movement Speed & Ranged Haste by {bonus} for {effect_duration} sec.
+- `war_archer_boost`: War Archer Empowerment [x3, mods archers_expansion]; attr ranged_weapon:damage multiply_base 0.01
+- `war_archer_root`: Path of the War Archer [root, mods archers_expansion]; attr ranged_weapon:damage multiply_base 0.01
+- `war_archer_spec_a_modifier_1`: Expanded Smoldering Arrow [mods archers_expansion]; spell mrpgc_skill_tree:war_archer_spec_a_modifier_1
+  - Increases the area of effect of Smoldering Arrow by {bonus}.
+- `war_archer_spec_a_modifier_2`: Flaming Double Shot [mods archers_expansion]; spell mrpgc_skill_tree:war_archer_spec_a_modifier_2
+  - Double Shot deals {power_multiplier} more damage and lights enemies on fire.
+- `war_archer_spec_a_modifier_3`: Explosive Point Blank Shot [mods archers_expansion]; spell mrpgc_skill_tree:war_archer_spec_a_modifier_3
+  - Damaging with Point Blank Shot causes small explosion, hitting enemies within {impact_range} blocks radius, dealing extra {damage} damage.
+- `war_archer_spec_a_modifier_4`: Combustive Shot [mods archers_expansion]; spell mrpgc_skill_tree:war_archer_spec_a_modifier_4
+  - Pin Down leaves a burning area behind, dealing {damage} damage to enemies, for {cloud_duration} sec.
+- `war_archer_spec_a_passive_1`: Bombardment [mods archers_expansion]; spell mrpgc_skill_tree:war_archer_spec_a_passive_1
+  - If the target is on fire, create a explosion dealing {damage} damage.
+- `war_archer_spec_a_passive_2`: Reloading [mods archers_expansion]; spell mrpgc_skill_tree:war_archer_spec_a_passive_2
+  - When rolling you recharge Smoldering Arrows, you can now stack up to {effect_amplifier_cap} times.
+- `war_archer_spec_a_passive_3`: Rapid Fire [mods archers_expansion]; spell mrpgc_skill_tree:war_archer_spec_a_passive_3
+  - {trigger_chance} chance to shoot 4 additional arrows.
+- `war_archer_spec_b_modifier_1`: Explosive Push [mods archers_expansion]; spell mrpgc_skill_tree:war_archer_spec_b_modifier_1
+  - Increases the knockback of Smoldering Arrow by {knockback_multiply_base}.
+- `war_archer_spec_b_modifier_2`: Heavy Arrow Tips [mods archers_expansion]; spell mrpgc_skill_tree:war_archer_spec_b_modifier_2
+  - Increases the knockback of Double Shot by {knockback_multiply_base}.
+- `war_archer_spec_b_modifier_3`: Heavy Point Blank Shot [mods archers_expansion]; spell mrpgc_skill_tree:war_archer_spec_b_modifier_3
+  - Point Blank Shot has {trigger_chance} chance to stun the target.
+- `war_archer_spec_b_modifier_4`: Increased Pin Down [mods archers_expansion]; spell mrpgc_skill_tree:war_archer_spec_b_modifier_4
+  - Increases the effect duration of Pin Down by {effect_duration_add}.
+- `war_archer_spec_b_passive_1`: Tower's Watch [mods archers_expansion]; spell mrpgc_skill_tree:war_archer_spec_b_passive_1
+  - Your arrow hits have {trigger_chance} to increase your armor and knockback resistance for {effect_duration} sec.
+- `war_archer_spec_b_passive_2`: Reposition [mods archers_expansion]; spell mrpgc_skill_tree:war_archer_spec_b_passive_2
+  - Rolling has {trigger_chance} chance to clear 1 negative effect.
+- `war_archer_spec_b_passive_3`: Last Stand [mods archers_expansion]; spell mrpgc_skill_tree:war_archer_spec_b_passive_3
+  - Upon taking damage below {threshold} health you gain Last Stand effect, increasing your size, ranged haste & decreasing incoming damage for {effect_duration} sec.
+- `warrior_boost`: Warrior Empowerment [x3, mods rogues]; attr minecraft:generic.attack_damage multiply_base 0.01
+- `warrior_root`: Path of the Warrior [root, mods rogues]; attr minecraft:generic.attack_damage multiply_base 0.01
+- `warrior_spec_a_modifier_1`: skill.skill_tree_rpgs.warrior_spec_a_modifier_1.title [mods rogues]; spell skill_tree_rpgs:warrior_spec_a_modifier_1
+- `warrior_spec_a_modifier_2`: skill.skill_tree_rpgs.warrior_spec_a_modifier_2.title [mods rogues]; spell skill_tree_rpgs:warrior_spec_a_modifier_2
+- `warrior_spec_a_modifier_3`: skill.skill_tree_rpgs.warrior_spec_a_modifier_3.title [mods rogues]; spell skill_tree_rpgs:warrior_spec_a_modifier_3
+- `warrior_spec_a_modifier_4`: skill.skill_tree_rpgs.warrior_spec_a_modifier_4.title [mods rogues]; spell skill_tree_rpgs:warrior_spec_a_modifier_4
+- `warrior_spec_a_passive_1`: skill.skill_tree_rpgs.warrior_spec_a_passive_1.title [mods rogues]; spell skill_tree_rpgs:warrior_spec_a_passive_1
+- `warrior_spec_a_passive_2`: skill.skill_tree_rpgs.warrior_spec_a_passive_2.title [mods rogues]; spell skill_tree_rpgs:warrior_spec_a_passive_2
+- `warrior_spec_a_passive_3`: skill.skill_tree_rpgs.warrior_spec_a_passive_3.title [mods rogues]; spell skill_tree_rpgs:warrior_spec_a_passive_3
+- `warrior_spec_b_modifier_1`: skill.skill_tree_rpgs.warrior_spec_b_modifier_1.title [mods rogues]; spell skill_tree_rpgs:warrior_spec_b_modifier_1
+- `warrior_spec_b_modifier_2`: skill.skill_tree_rpgs.warrior_spec_b_modifier_2.title [mods rogues]; spell skill_tree_rpgs:warrior_spec_b_modifier_2
+- `warrior_spec_b_modifier_3`: skill.skill_tree_rpgs.warrior_spec_b_modifier_3.title [mods rogues]; spell skill_tree_rpgs:warrior_spec_b_modifier_3
+- `warrior_spec_b_modifier_4`: skill.skill_tree_rpgs.warrior_spec_b_modifier_4.title [mods rogues]; spell skill_tree_rpgs:warrior_spec_b_modifier_4
+- `warrior_spec_b_passive_1`: skill.skill_tree_rpgs.warrior_spec_b_passive_1.title [mods rogues]; spell skill_tree_rpgs:warrior_spec_b_passive_1
+- `warrior_spec_b_passive_2`: skill.skill_tree_rpgs.warrior_spec_b_passive_2.title [mods rogues]; spell skill_tree_rpgs:warrior_spec_b_passive_2
+- `warrior_spec_b_passive_3`: skill.skill_tree_rpgs.warrior_spec_b_passive_3.title [mods rogues]; spell skill_tree_rpgs:warrior_spec_b_passive_3
+- `water_boost`: Water Attunement [x3, mods elemental_wizards_rpg]; attr spell_power:water multiply_base 0.01
+- `water_root`: Path of Water [root, mods elemental_wizards_rpg]; attr spell_power:water multiply_base 0.01
+- `water_spec_a_modifier_1`: Strong Water Whip [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:water_spec_a_modifier_1
+  - Water Whip deals {knockback_multiply_base} more knockback.
+- `water_spec_a_modifier_2`: Bubble Pop [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:water_spec_a_modifier_2
+  - Bubble Beam's healing & damage is increased by by {power_multiplier}.
+- `water_spec_a_modifier_3`: Holy Water Spring [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:water_spec_a_modifier_3
+  - Springwater removes {effect_amplifier} negative effect from allies and deals extra {damage} damage to undead.
+- `water_spec_a_modifier_4`: Hydro Boost [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:water_spec_a_modifier_4
+  - Hydro Beam increases the movement speed of allies by {bonus} for {effect_duration} seconds.
+- `water_spec_a_passive_1`: Hydration [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:water_spec_a_passive_1
+  - Healing spells applies Hydration regenerating health for {effect_duration} sec.
+- `water_spec_a_passive_2`: Soothing Mist [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:water_spec_a_passive_2
+  - {trigger_chance} chance upon rolling to leave Soothing Mist behind for {cloud_duration} sec, cleansing negative conditions.
+- `water_spec_a_passive_3`: Calming Flow [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:water_spec_a_passive_3
+  - Water Spell Hits and heals have {trigger_chance_1} chance to enter in a calming flow, reducing active water spell cooldowns while casting spells for a {stash_duration} sec.
+- `water_spec_b_modifier_1`: Splish Splash [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:water_spec_b_modifier_1
+  - Water Whip deals {damage} damage around the target.
+- `water_spec_b_modifier_2`: Persistant Bubbles [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:water_spec_b_modifier_2
+  - Bubble Beam hits have {trigger_chance} to decrease the movement- & attackspeed by {bonus} for {effect_duration} seconds.
+- `water_spec_b_modifier_3`: Bubbling Spring [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:water_spec_b_modifier_3
+  - Springwater leaves a bubbling area behind, dealing {damage} damage to enemies, for {cloud_duration} sec.
+- `water_spec_b_modifier_4`: High Water Pressure [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:water_spec_b_modifier_4
+  - Hydro Beam has {trigger_chance} chance to stun the target.
+- `water_spec_b_passive_1`: Second Wave [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:water_spec_b_passive_1
+  - Water Spells have {trigger_chance} to knock the target back.
+- `water_spec_b_passive_2`: Splashdown [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:water_spec_b_passive_2
+  - While rolling, you knockback nearby enemies.
+- `water_spec_b_passive_3`: Torrent [mods elemental_wizards_rpg]; spell mrpgc_skill_tree:water_spec_b_passive_3
+  - Falling under {threshold} health, increases water spell power for {bonus2} and spell crit chance & spell haste for {bonus} for {effect_duration} sec.

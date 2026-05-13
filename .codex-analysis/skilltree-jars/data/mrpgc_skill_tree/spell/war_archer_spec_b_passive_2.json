@@ -1,0 +1,44 @@
+{
+  "school": "spell_power:fire_ranged",
+  "range": 0.0,
+  "tier": 1,
+  "type": "PASSIVE",
+  "passive": {
+    "triggers": [
+      {
+        "type": "ROLL",
+        "chance": 0.5
+      }
+    ]
+  },
+  "impacts": [
+    {
+      "action": {
+        "type": "STATUS_EFFECT",
+        "status_effect": {
+          "apply_mode": "REMOVE",
+          "remove": {
+            "id": "!minecraft:trial_omen"
+          }
+        }
+      },
+      "particles": [
+        {
+          "particle_id": "spell_engine:magic_spark_ascend",
+          "origin": "CENTER",
+          "shape": "PIPE",
+          "count": 20.0,
+          "min_speed": 0.2,
+          "max_speed": 0.4,
+          "color_rgba": 4278190335
+        }
+      ],
+      "sound": {
+        "id": "spell_engine:generic_dispel_1"
+      }
+    }
+  ],
+  "cost": {
+    "durability": 0
+  }
+}

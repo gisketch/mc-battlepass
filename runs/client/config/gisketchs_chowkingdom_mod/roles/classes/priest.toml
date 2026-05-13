@@ -8,7 +8,7 @@ description = "Starter holy support class for players who want healing, protecti
 preview_items = ["paladins:wand_holy", "minecraft:golden_carrot", "minecraft:blaze_rod"]
 classification = "starter"
 starter_class_ids = []
-upgrade_class_ids = ["paladin", "bard", "elemental_wizard"]
+upgrade_class_ids = ["paladin", "bard"]
 [mentor_quest]
 mentor_npc_id = "katara"
 title = "Water Mercy Path"

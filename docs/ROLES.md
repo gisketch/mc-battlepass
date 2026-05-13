@@ -29,8 +29,11 @@ The source defaults create editable job/class TOML, but they no longer auto-assi
 - `/ck roles list`
 - `/weapons`
 - `/ck roles weapons`
+- `/spells`
 - `/ck roles spells`
 - `/unconfigured`
+- `/unconfigured_spells`
+- `/ck roles unconfigured_spells`
 - `/ck roles get <player>`
 - `/ck roles starter_licenses set <player> <licenses>`
 - `/ck roles upgrade_licenses set <player> <licenses>`
@@ -78,7 +81,7 @@ Onboarding only allows starter classes. Upgrade classes still render for visibil
 
 The class onboarding inspector shows starter/upgrade status, lock path, mentor, unlock cost, loaded weapon/armor match counts, starter-kit count, allowed-equipment examples, and wrong-equipment penalties. The center paperdoll holds the selected or hovered class preview item when configured.
 
-Built-in upgrade paths are: Warrior -> Berserker, Paladin, Witcher; Rogue -> Forcemaster, Bounty Hunter, Bard, Witcher; Archer -> War Archer, Tundra Archer, Bounty Hunter, Bard; Wizard -> Elemental Wizard, Priest, Witcher; Priest -> Paladin, Bard, Elemental Wizard.
+Built-in upgrade paths are: Warrior -> Berserker, Paladin, Witcher; Rogue -> Forcemaster, Bounty Hunter, Bard, Witcher; Archer -> War Archer, Tundra Archer, Bounty Hunter, Bard; Wizard -> Arcane Wizard, Fire Wizard, Frost Wizard, Water Wizard, Earth Wizard, Wind Wizard, Witcher; Priest -> Paladin, Bard.
 
 Nametags render active job icons before the player name and active class icons after it. Multiple active roles append multiple icons on their side.
 
@@ -108,7 +111,7 @@ Use `/unconfigured` or `/ck roles unconfigured` as an operator to scan loaded it
 
 Use `/weapons` or `/ck roles weapons` as an operator to list the opposite report: every loaded concrete weapon and armor item matched by each class. The command reloads role config first, resolves tags and glob patterns into item ids, prints sections such as `rogue:`, `weapons:`, and `armor:` in game, and posts the same codeblocks to Discord through the configured webhook.
 
-Spell Engine class locks use `spell_affinity` perks with `spell_id`, `spell_ids`, `spell_tags`, `spell_patterns`, and matching `spell_exclude_*` deny fields. Access is unioned across active classes: if any active class or `spell_whitelist.toml` allows a spell, the player can cast and bind it. Wrong-class Spell Engine casts and binding-table learning are rejected server-side; unbinding an already bound spell stays allowed. `/unconfigured` also prints `unconfigured_spells:` for loaded RPG Series spells not owned by any class and not globally whitelisted. `/ck roles spells` lists resolved loaded spell ids per class.
+Spell Engine class locks use `spell_affinity` perks with `spell_id`, `spell_ids`, `spell_tags`, `spell_patterns`, and matching `spell_exclude_*` deny fields. Access is unioned across active classes: if any active class or `spell_whitelist.toml` allows a spell, the player can cast and bind it. Wrong-class Spell Engine casts and binding-table learning are rejected server-side; unbinding an already bound spell stays allowed. `/unconfigured` also prints `unconfigured_spells:` for loaded RPG Series spells not owned by any class and not globally whitelisted. `/spells` or `/ck roles spells` lists resolved loaded spell ids per class. `/unconfigured_spells` or `/ck roles unconfigured_spells` prints only left-out loaded RPG Series spells without writing the weapon datapack tag.
 
 Spell book and spell scroll items are also derived from `spell_affinity` `spell_book/*` and `spell_scroll/*` tags at role-config load time. Do not use broad equipment tags such as `accessories:spell_book` for one class; that would make every RPG spell book or scroll look owned by that class.
 

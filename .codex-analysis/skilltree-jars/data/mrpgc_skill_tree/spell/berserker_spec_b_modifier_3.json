@@ -1,0 +1,51 @@
+{
+  "school": "spell_power:rage_melee",
+  "range": 0.0,
+  "tier": 1,
+  "type": "MODIFIER",
+  "modifiers": [
+    {
+      "spell_pattern": "berserker_rpg:bloody_strike",
+      "mutate_impacts": "APPEND",
+      "impacts": [
+        {
+          "target_modifiers": [
+            {
+              "conditions": [
+                {
+                  "entity_type": "#more_rpg_classes:bleeding_immune"
+                }
+              ],
+              "execute": "DENY"
+            }
+          ],
+          "action": {
+            "type": "STATUS_EFFECT",
+            "status_effect": {
+              "effect_id": "more_rpg_classes:bleeding",
+              "duration": 6.0,
+              "amplifier_power_multiplier": 0.2
+            }
+          }
+        }
+      ],
+      "replacing_area_impact": {
+        "execute_action_type": "STATUS_EFFECT",
+        "radius": 2.5,
+        "area": {
+          "distance_dropoff": "SQUARED"
+        },
+        "particles": [
+          {
+            "particle_id": "spell_engine:dripping_blood",
+            "origin": "CENTER",
+            "shape": "SPHERE",
+            "count": 20.0,
+            "min_speed": 0.15,
+            "max_speed": 0.15
+          }
+        ]
+      }
+    }
+  ]
+}

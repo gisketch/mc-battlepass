@@ -1,0 +1,31 @@
+# CKDM class config: fire_wizard.toml
+
+id = "fire_wizard"
+display_name = "Fire Wizard"
+icon = "textures/gui/classes/wizard.png"
+description = "Upgrade magic path for explosive fire, burning zones, breath attacks, and high-risk burst damage."
+preview_items = ["wizards:staff_fire", "minecraft:blaze_rod"]
+classification = "upgrade"
+starter_class_ids = ["wizard"]
+upgrade_class_ids = []
+
+perks = [
+  { type = "equipment_affinity", multiplier = 1.0, weapon_tags = ["rpg_series:weapon_type/damage_staff", "rpg_series:loot_theme/fiery", "wizards:staves", "wizards:wands", "wizards:wizard_runes", "runes:runes", "runes:pouches"], armor_tags = ["rpg_series:armor_type/magic"], weapon_patterns = ["wizards:spell_book/fire", "wizards:*fire*", "arsenal:unique_staff_damage_*", "simplyswords:emberlash", "simplyswords:flamewind", "simplyswords:molten_edge"], weapon_exclude_patterns = ["*spawn_egg"], armor_patterns = ["minecraft:leather_*", "wizards:*wizard*", "wizards:*robe*", "wizards:*fire*", "armory_rpgs:*scarlet*"], armor_exclude_patterns = [], wrong_weapon_damage_multiplier = 0.35, wrong_weapon_cooldown_ticks = 12, wrong_weapon_attack_speed_multiplier = 0.55, wrong_armor_disables_sprint = true, starting_items = [], reward_pool = [] },
+  { type = "spell_affinity", spell_ids = ["wizards:fire_blast", "wizards:fireball", "wizards:fire_scorch"], spell_tags = ["wizards:spell_book/fire", "wizards:spell_scroll/fire", "wizards:weapon/fire_staff"] },
+]
+
+
+[mentor_quest]
+mentor_npc_id = "invoker"
+title = "Exort Flame Exam"
+intro_message = "Invoker tests whether the apprentice can turn flame into syntax instead of tantrum."
+unlock_title = "Exort Adept"
+announcement = "{player} completed Invokers flame exam and unlocked Fire Wizard as {title}."
+steps = [
+  { id = "fire_wizard_vow", skeleton = "vow", kind = "dialogue", title = "Vow", objective = "Vow to command fire with aim, timing, and restraint.", goal = 1, start_message = "Vow to command fire with aim, timing, and restraint.", complete_message = "", llm_prompt = "Invoker should sound arrogant, brilliant, and theatrical but concise." },
+  { id = "fire_wizard_offering", skeleton = "offering", kind = "fetch", title = "Blaze Rod Focus", objective = "Bring 4 blaze rods.", item = "minecraft:blaze_rod", qty = 4, goal = 4, start_message = "Bring <b>4 blaze rods</b>. Exort requires a spine of fire.", complete_message = "Acceptable. Try not to look proud.", llm_prompt = "Tie blaze rods to Exort and disciplined flame." },
+  { id = "fire_wizard_discipline", skeleton = "discipline", kind = "task", title = "Glass Tempering", objective = "Smelt 24 glass.", event = "minecraft:item_smelted", item = "minecraft:glass", goal = 24, start_message = "Smelt <b>24 glass</b>. Heat without clarity is merely arson.", complete_message = "Transparent. Hot. Almost educational.", llm_prompt = "Make smelting glass a lesson in heat and clarity." },
+  { id = "fire_wizard_signature_trial", skeleton = "signature_trial", kind = "timed", title = "Blaze Dominion", objective = "Defeat 5 blazes in the Nether within 60 seconds.", event = "minecraft:entity_killed", goal = 5, time_window_seconds = 60, filters = { entity = "minecraft:blaze", dimension = "minecraft:the_nether" }, start_message = "Defeat <b>5 blazes in {seconds} seconds</b>. Fire respects only superior instruction.", complete_message = "The flame took notes.", llm_prompt = "Frame the trial as controlling fire where fire is native." },
+  { id = "fire_wizard_license", skeleton = "payment", kind = "payment", title = "License Seal", objective = "Pay the mentor license fee for fire_wizard.", goal = 1, start_message = "The license seal is next. A new {classification} {class} unlock costs {cost} chowcoins.", complete_message = "The license is sealed. Only the mentor duel remains for {class}.", llm_prompt = "Treat payment as a formal license seal, not a bribe." },
+  { id = "fire_wizard_duel", skeleton = "mentor_duel", kind = "duel", title = "Mentor Duel", objective = "Win a non-lethal 1v1 mentor duel.", goal = 1, start_message = "Draw breath. The {class} mentor duel starts now.", complete_message = "The duel is won. {class} is yours.", llm_prompt = "Invoker starts a sharp duel test." },
+]

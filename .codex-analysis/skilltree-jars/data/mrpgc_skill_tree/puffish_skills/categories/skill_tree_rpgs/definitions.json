@@ -1,0 +1,4602 @@
+{
+  "air_boost": {
+    "description": {
+      "skill_definition_id": "air_boost"
+    },
+    "icon": {
+      "type": "item",
+      "data": {
+        "item": "elemental_wizards_rpg:wand_wind"
+      }
+    },
+    "required_mods": [
+      "elemental_wizards_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "puffish_skills:attribute",
+        "data": {
+          "attribute": "spell_power:air",
+          "operation": "multiply_base",
+          "value": 0.01
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.air_boost.title"
+    }
+  },
+  "air_root": {
+    "description": {
+      "skill_definition_id": "air_root"
+    },
+    "icon": {
+      "type": "item",
+      "data": {
+        "components": {
+          "spell_engine:item_model": "elemental_wizards_rpg:item/spell_book/wind"
+        },
+        "item": "spell_engine:spell_book"
+      }
+    },
+    "required_mods": [
+      "elemental_wizards_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "puffish_skills:attribute",
+        "data": {
+          "attribute": "spell_power:air",
+          "operation": "multiply_base",
+          "value": 0.01
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.air_root.title"
+    }
+  },
+  "air_spec_a_modifier_1": {
+    "description": {
+      "skill_definition_id": "air_spec_a_modifier_1"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "elemental_wizards_rpg:textures/spell/wind_air_cutter.png"
+      }
+    },
+    "required_mods": [
+      "elemental_wizards_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "NONE",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:air_spec_a_modifier_1"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.air_spec_a_modifier_1.title"
+    }
+  },
+  "air_spec_a_modifier_2": {
+    "description": {
+      "skill_definition_id": "air_spec_a_modifier_2"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "elemental_wizards_rpg:textures/spell/wind_aeroblast.png"
+      }
+    },
+    "required_mods": [
+      "elemental_wizards_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "MAGIC",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:air_spec_a_modifier_2"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.air_spec_a_modifier_2.title"
+    }
+  },
+  "air_spec_a_modifier_3": {
+    "description": {
+      "skill_definition_id": "air_spec_a_modifier_3"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "elemental_wizards_rpg:textures/spell/wind_updraft.png"
+      }
+    },
+    "required_mods": [
+      "elemental_wizards_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "NONE",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:air_spec_a_modifier_3"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.air_spec_a_modifier_3.title"
+    }
+  },
+  "air_spec_a_modifier_4": {
+    "description": {
+      "skill_definition_id": "air_spec_a_modifier_4"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "elemental_wizards_rpg:textures/spell/wind_tornado.png"
+      }
+    },
+    "required_mods": [
+      "elemental_wizards_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "NONE",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:air_spec_a_modifier_4"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.air_spec_a_modifier_4.title"
+    }
+  },
+  "air_spec_a_passive_1": {
+    "description": {
+      "skill_definition_id": "air_spec_a_passive_1"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "mrpgc_skill_tree:textures/spell/air_spec_a_passive_1.png"
+      }
+    },
+    "required_mods": [
+      "elemental_wizards_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "MAGIC",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:air_spec_a_passive_1"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.air_spec_a_passive_1.title"
+    }
+  },
+  "air_spec_a_passive_2": {
+    "description": {
+      "skill_definition_id": "air_spec_a_passive_2"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "mrpgc_skill_tree:textures/spell/air_spec_a_passive_2.png"
+      }
+    },
+    "required_mods": [
+      "elemental_wizards_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "MAGIC",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:air_spec_a_passive_2"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.air_spec_a_passive_2.title"
+    }
+  },
+  "air_spec_a_passive_3": {
+    "description": {
+      "skill_definition_id": "air_spec_a_passive_3"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "mrpgc_skill_tree:textures/spell/air_spec_a_passive_3.png"
+      }
+    },
+    "required_mods": [
+      "elemental_wizards_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "MAGIC",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:air_spec_a_passive_3"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.air_spec_a_passive_3.title"
+    }
+  },
+  "air_spec_b_modifier_1": {
+    "description": {
+      "skill_definition_id": "air_spec_b_modifier_1"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "elemental_wizards_rpg:textures/spell/wind_air_cutter.png"
+      }
+    },
+    "required_mods": [
+      "elemental_wizards_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "NONE",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:air_spec_b_modifier_1"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.air_spec_b_modifier_1.title"
+    }
+  },
+  "air_spec_b_modifier_2": {
+    "description": {
+      "skill_definition_id": "air_spec_b_modifier_2"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "elemental_wizards_rpg:textures/spell/wind_aeroblast.png"
+      }
+    },
+    "required_mods": [
+      "elemental_wizards_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "NONE",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:air_spec_b_modifier_2"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.air_spec_b_modifier_2.title"
+    }
+  },
+  "air_spec_b_modifier_3": {
+    "description": {
+      "skill_definition_id": "air_spec_b_modifier_3"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "elemental_wizards_rpg:textures/spell/wind_updraft.png"
+      }
+    },
+    "required_mods": [
+      "elemental_wizards_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "NONE",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:air_spec_b_modifier_3"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.air_spec_b_modifier_3.title"
+    }
+  },
+  "air_spec_b_modifier_4": {
+    "description": {
+      "skill_definition_id": "air_spec_b_modifier_4"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "elemental_wizards_rpg:textures/spell/wind_tornado.png"
+      }
+    },
+    "required_mods": [
+      "elemental_wizards_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "NONE",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:air_spec_b_modifier_4"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.air_spec_b_modifier_4.title"
+    }
+  },
+  "air_spec_b_passive_1": {
+    "description": {
+      "skill_definition_id": "air_spec_b_passive_1"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "mrpgc_skill_tree:textures/spell/air_spec_b_passive_1.png"
+      }
+    },
+    "required_mods": [
+      "elemental_wizards_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "MAGIC",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:air_spec_b_passive_1"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.air_spec_b_passive_1.title"
+    }
+  },
+  "air_spec_b_passive_2": {
+    "description": {
+      "skill_definition_id": "air_spec_b_passive_2"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "mrpgc_skill_tree:textures/spell/air_spec_b_passive_2.png"
+      }
+    },
+    "required_mods": [
+      "elemental_wizards_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "MAGIC",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:air_spec_b_passive_2"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.air_spec_b_passive_2.title"
+    }
+  },
+  "air_spec_b_passive_3": {
+    "description": {
+      "skill_definition_id": "air_spec_b_passive_3"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "mrpgc_skill_tree:textures/spell/air_spec_b_passive_3.png"
+      }
+    },
+    "required_mods": [
+      "elemental_wizards_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "MAGIC",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:air_spec_b_passive_3"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.air_spec_b_passive_3.title"
+    }
+  },
+  "berserker_boost": {
+    "description": {
+      "skill_definition_id": "berserker_boost"
+    },
+    "icon": {
+      "type": "item",
+      "data": {
+        "item": "berserker_rpg:iron_berserker_axe"
+      }
+    },
+    "required_mods": [
+      "berserker_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "puffish_skills:attribute",
+        "data": {
+          "attribute": "more_rpg_classes:rage_modifier",
+          "operation": "multiply_base",
+          "value": 0.01
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.berserker_boost.title"
+    }
+  },
+  "berserker_root": {
+    "description": {
+      "skill_definition_id": "berserker_root"
+    },
+    "icon": {
+      "type": "item",
+      "data": {
+        "components": {
+          "spell_engine:item_model": "berserker_rpg:item/spell_book/berserker"
+        },
+        "item": "spell_engine:spell_book"
+      }
+    },
+    "required_mods": [
+      "berserker_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "puffish_skills:attribute",
+        "data": {
+          "attribute": "more_rpg_classes:rage_modifier",
+          "operation": "multiply_base",
+          "value": 0.01
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.berserker_root.title"
+    }
+  },
+  "berserker_spec_a_modifier_1": {
+    "description": {
+      "skill_definition_id": "berserker_spec_a_modifier_1"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "berserker_rpg:textures/spell/wild_rage.png"
+      }
+    },
+    "required_mods": [
+      "berserker_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "NONE",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:berserker_spec_a_modifier_1"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.berserker_spec_a_modifier_1.title"
+    }
+  },
+  "berserker_spec_a_modifier_2": {
+    "description": {
+      "skill_definition_id": "berserker_spec_a_modifier_2"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "berserker_rpg:textures/spell/blood_reckoning.png"
+      }
+    },
+    "required_mods": [
+      "berserker_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "NONE",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:berserker_spec_a_modifier_2"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.berserker_spec_a_modifier_2.title"
+    }
+  },
+  "berserker_spec_a_modifier_3": {
+    "description": {
+      "skill_definition_id": "berserker_spec_a_modifier_3"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "berserker_rpg:textures/spell/bloody_strike.png"
+      }
+    },
+    "required_mods": [
+      "berserker_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "NONE",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:berserker_spec_a_modifier_3"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.berserker_spec_a_modifier_3.title"
+    }
+  },
+  "berserker_spec_a_modifier_4": {
+    "description": {
+      "skill_definition_id": "berserker_spec_a_modifier_4"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "berserker_rpg:textures/spell/outrage.png"
+      }
+    },
+    "required_mods": [
+      "berserker_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "MAGIC",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:berserker_spec_a_modifier_4"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.berserker_spec_a_modifier_4.title"
+    }
+  },
+  "berserker_spec_a_passive_1": {
+    "description": {
+      "skill_definition_id": "berserker_spec_a_passive_1"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "mrpgc_skill_tree:textures/spell/berserker_spec_a_passive_1.png"
+      }
+    },
+    "required_mods": [
+      "berserker_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "MAGIC",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:berserker_spec_a_passive_1"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.berserker_spec_a_passive_1.title"
+    }
+  },
+  "berserker_spec_a_passive_2": {
+    "description": {
+      "skill_definition_id": "berserker_spec_a_passive_2"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "mrpgc_skill_tree:textures/spell/berserker_spec_a_passive_2.png"
+      }
+    },
+    "required_mods": [
+      "berserker_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "MAGIC",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:berserker_spec_a_passive_2"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.berserker_spec_a_passive_2.title"
+    }
+  },
+  "berserker_spec_a_passive_3": {
+    "description": {
+      "skill_definition_id": "berserker_spec_a_passive_3"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "mrpgc_skill_tree:textures/spell/berserker_spec_a_passive_3.png"
+      }
+    },
+    "required_mods": [
+      "berserker_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "MAGIC",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:berserker_spec_a_passive_3"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.berserker_spec_a_passive_3.title"
+    }
+  },
+  "berserker_spec_b_modifier_1": {
+    "description": {
+      "skill_definition_id": "berserker_spec_b_modifier_1"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "berserker_rpg:textures/spell/wild_rage.png"
+      }
+    },
+    "required_mods": [
+      "berserker_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "NONE",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:berserker_spec_b_modifier_1"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.berserker_spec_b_modifier_1.title"
+    }
+  },
+  "berserker_spec_b_modifier_2": {
+    "description": {
+      "skill_definition_id": "berserker_spec_b_modifier_2"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "berserker_rpg:textures/spell/blood_reckoning.png"
+      }
+    },
+    "required_mods": [
+      "berserker_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "MAGIC",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:berserker_spec_b_modifier_2"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.berserker_spec_b_modifier_2.title"
+    }
+  },
+  "berserker_spec_b_modifier_3": {
+    "description": {
+      "skill_definition_id": "berserker_spec_b_modifier_3"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "berserker_rpg:textures/spell/bloody_strike.png"
+      }
+    },
+    "required_mods": [
+      "berserker_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "NONE",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:berserker_spec_b_modifier_3"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.berserker_spec_b_modifier_3.title"
+    }
+  },
+  "berserker_spec_b_modifier_4": {
+    "description": {
+      "skill_definition_id": "berserker_spec_b_modifier_4"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "berserker_rpg:textures/spell/outrage.png"
+      }
+    },
+    "required_mods": [
+      "berserker_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "MAGIC",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:berserker_spec_b_modifier_4"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.berserker_spec_b_modifier_4.title"
+    }
+  },
+  "berserker_spec_b_passive_1": {
+    "description": {
+      "skill_definition_id": "berserker_spec_b_passive_1"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "mrpgc_skill_tree:textures/spell/berserker_spec_b_passive_1.png"
+      }
+    },
+    "required_mods": [
+      "berserker_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "MAGIC",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:berserker_spec_b_passive_1"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.berserker_spec_b_passive_1.title"
+    }
+  },
+  "berserker_spec_b_passive_2": {
+    "description": {
+      "skill_definition_id": "berserker_spec_b_passive_2"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "mrpgc_skill_tree:textures/spell/berserker_spec_b_passive_2.png"
+      }
+    },
+    "required_mods": [
+      "berserker_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "MAGIC",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:berserker_spec_b_passive_2"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.berserker_spec_b_passive_2.title"
+    }
+  },
+  "berserker_spec_b_passive_3": {
+    "description": {
+      "skill_definition_id": "berserker_spec_b_passive_3"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "mrpgc_skill_tree:textures/spell/berserker_spec_b_passive_3.png"
+      }
+    },
+    "required_mods": [
+      "berserker_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "MAGIC",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:berserker_spec_b_passive_3"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.berserker_spec_b_passive_3.title"
+    }
+  },
+  "deadeye_boost": {
+    "description": {
+      "skill_definition_id": "deadeye_boost"
+    },
+    "icon": {
+      "type": "item",
+      "data": {
+        "item": "archers:mechanic_shortbow"
+      }
+    },
+    "required_mods": [
+      "archers_expansion"
+    ],
+    "rewards": [
+      {
+        "type": "puffish_skills:attribute",
+        "data": {
+          "attribute": "ranged_weapon:haste",
+          "operation": "multiply_base",
+          "value": 0.01
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.deadeye_boost.title"
+    }
+  },
+  "deadeye_root": {
+    "description": {
+      "skill_definition_id": "deadeye_root"
+    },
+    "icon": {
+      "type": "item",
+      "data": {
+        "components": {
+          "spell_engine:item_model": "archers_expansion:item/spell_book/deadeye"
+        },
+        "item": "spell_engine:spell_book"
+      }
+    },
+    "required_mods": [
+      "archers_expansion"
+    ],
+    "rewards": [
+      {
+        "type": "puffish_skills:attribute",
+        "data": {
+          "attribute": "ranged_weapon:haste",
+          "operation": "multiply_base",
+          "value": 0.01
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.deadeye_root.title"
+    }
+  },
+  "deadeye_spec_a_modifier_1": {
+    "description": {
+      "skill_definition_id": "deadeye_spec_a_modifier_1"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "archers_expansion:textures/spell/fast_shot.png"
+      }
+    },
+    "required_mods": [
+      "archers_expansion"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "NONE",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:deadeye_spec_a_modifier_1"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.deadeye_spec_a_modifier_1.title"
+    }
+  },
+  "deadeye_spec_a_modifier_2": {
+    "description": {
+      "skill_definition_id": "deadeye_spec_a_modifier_2"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "archers_expansion:textures/spell/trick_shot.png"
+      }
+    },
+    "required_mods": [
+      "archers_expansion"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "NONE",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:deadeye_spec_a_modifier_2"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.deadeye_spec_a_modifier_2.title"
+    }
+  },
+  "deadeye_spec_a_modifier_3": {
+    "description": {
+      "skill_definition_id": "deadeye_spec_a_modifier_3"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "archers_expansion:textures/spell/disabling_shot.png"
+      }
+    },
+    "required_mods": [
+      "archers_expansion"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "MAGIC",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:deadeye_spec_a_modifier_3"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.deadeye_spec_a_modifier_3.title"
+    }
+  },
+  "deadeye_spec_a_modifier_4": {
+    "description": {
+      "skill_definition_id": "deadeye_spec_a_modifier_4"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "archers_expansion:textures/spell/choking_gas.png"
+      }
+    },
+    "required_mods": [
+      "archers_expansion"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "MAGIC",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:deadeye_spec_a_modifier_4"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.deadeye_spec_a_modifier_4.title"
+    }
+  },
+  "deadeye_spec_a_passive_1": {
+    "description": {
+      "skill_definition_id": "deadeye_spec_a_passive_1"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "mrpgc_skill_tree:textures/spell/deadeye_spec_a_passive_1.png"
+      }
+    },
+    "required_mods": [
+      "archers_expansion"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "MAGIC",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:deadeye_spec_a_passive_1"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.deadeye_spec_a_passive_1.title"
+    }
+  },
+  "deadeye_spec_a_passive_2": {
+    "description": {
+      "skill_definition_id": "deadeye_spec_a_passive_2"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "mrpgc_skill_tree:textures/spell/deadeye_spec_a_passive_2.png"
+      }
+    },
+    "required_mods": [
+      "archers_expansion"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "MAGIC",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:deadeye_spec_a_passive_2"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.deadeye_spec_a_passive_2.title"
+    }
+  },
+  "deadeye_spec_a_passive_3": {
+    "description": {
+      "skill_definition_id": "deadeye_spec_a_passive_3"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "mrpgc_skill_tree:textures/spell/deadeye_spec_a_passive_3.png"
+      }
+    },
+    "required_mods": [
+      "archers_expansion"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "MAGIC",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:deadeye_spec_a_passive_3"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.deadeye_spec_a_passive_3.title"
+    }
+  },
+  "deadeye_spec_b_modifier_1": {
+    "description": {
+      "skill_definition_id": "deadeye_spec_b_modifier_1"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "archers_expansion:textures/spell/fast_shot.png"
+      }
+    },
+    "required_mods": [
+      "archers_expansion"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "NONE",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:deadeye_spec_b_modifier_1"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.deadeye_spec_b_modifier_1.title"
+    }
+  },
+  "deadeye_spec_b_modifier_2": {
+    "description": {
+      "skill_definition_id": "deadeye_spec_b_modifier_2"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "archers_expansion:textures/spell/trick_shot.png"
+      }
+    },
+    "required_mods": [
+      "archers_expansion"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "NONE",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:deadeye_spec_b_modifier_2"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.deadeye_spec_b_modifier_2.title"
+    }
+  },
+  "deadeye_spec_b_modifier_3": {
+    "description": {
+      "skill_definition_id": "deadeye_spec_b_modifier_3"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "archers_expansion:textures/spell/disabling_shot.png"
+      }
+    },
+    "required_mods": [
+      "archers_expansion"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "MAGIC",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:deadeye_spec_b_modifier_3"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.deadeye_spec_b_modifier_3.title"
+    }
+  },
+  "deadeye_spec_b_modifier_4": {
+    "description": {
+      "skill_definition_id": "deadeye_spec_b_modifier_4"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "archers_expansion:textures/spell/choking_gas.png"
+      }
+    },
+    "required_mods": [
+      "archers_expansion"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "NONE",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:deadeye_spec_b_modifier_4"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.deadeye_spec_b_modifier_4.title"
+    }
+  },
+  "deadeye_spec_b_passive_1": {
+    "description": {
+      "skill_definition_id": "deadeye_spec_b_passive_1"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "mrpgc_skill_tree:textures/spell/deadeye_spec_b_passive_1.png"
+      }
+    },
+    "required_mods": [
+      "archers_expansion"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "MAGIC",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:deadeye_spec_b_passive_1"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.deadeye_spec_b_passive_1.title"
+    }
+  },
+  "deadeye_spec_b_passive_2": {
+    "description": {
+      "skill_definition_id": "deadeye_spec_b_passive_2"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "mrpgc_skill_tree:textures/spell/deadeye_spec_b_passive_2.png"
+      }
+    },
+    "required_mods": [
+      "archers_expansion"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "MAGIC",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:deadeye_spec_b_passive_2"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.deadeye_spec_b_passive_2.title"
+    }
+  },
+  "deadeye_spec_b_passive_3": {
+    "description": {
+      "skill_definition_id": "deadeye_spec_b_passive_3"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "mrpgc_skill_tree:textures/spell/deadeye_spec_b_passive_3.png"
+      }
+    },
+    "required_mods": [
+      "archers_expansion"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "MAGIC",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:deadeye_spec_b_passive_3"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.deadeye_spec_b_passive_3.title"
+    }
+  },
+  "earth_boost": {
+    "description": {
+      "skill_definition_id": "earth_boost"
+    },
+    "icon": {
+      "type": "item",
+      "data": {
+        "item": "elemental_wizards_rpg:wand_terra"
+      }
+    },
+    "required_mods": [
+      "elemental_wizards_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "puffish_skills:attribute",
+        "data": {
+          "attribute": "spell_power:earth",
+          "operation": "multiply_base",
+          "value": 0.01
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.earth_boost.title"
+    }
+  },
+  "earth_root": {
+    "description": {
+      "skill_definition_id": "earth_root"
+    },
+    "icon": {
+      "type": "item",
+      "data": {
+        "components": {
+          "spell_engine:item_model": "elemental_wizards_rpg:item/spell_book/terra"
+        },
+        "item": "spell_engine:spell_book"
+      }
+    },
+    "required_mods": [
+      "elemental_wizards_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "puffish_skills:attribute",
+        "data": {
+          "attribute": "spell_power:earth",
+          "operation": "multiply_base",
+          "value": 0.01
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.earth_root.title"
+    }
+  },
+  "earth_spec_a_modifier_1": {
+    "description": {
+      "skill_definition_id": "earth_spec_a_modifier_1"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "elemental_wizards_rpg:textures/spell/terra_stone_spear.png"
+      }
+    },
+    "required_mods": [
+      "elemental_wizards_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "NONE",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:earth_spec_a_modifier_1"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.earth_spec_a_modifier_1.title"
+    }
+  },
+  "earth_spec_a_modifier_2": {
+    "description": {
+      "skill_definition_id": "earth_spec_a_modifier_2"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "elemental_wizards_rpg:textures/spell/terra_stone_flesh.png"
+      }
+    },
+    "required_mods": [
+      "elemental_wizards_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "NONE",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:earth_spec_a_modifier_2"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.earth_spec_a_modifier_2.title"
+    }
+  },
+  "earth_spec_a_modifier_3": {
+    "description": {
+      "skill_definition_id": "earth_spec_a_modifier_3"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "elemental_wizards_rpg:textures/spell/terra_drip_circle.png"
+      }
+    },
+    "required_mods": [
+      "elemental_wizards_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "NONE",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:earth_spec_a_modifier_3"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.earth_spec_a_modifier_3.title"
+    }
+  },
+  "earth_spec_a_modifier_4": {
+    "description": {
+      "skill_definition_id": "earth_spec_a_modifier_4"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "elemental_wizards_rpg:textures/spell/terra_earthquake.png"
+      }
+    },
+    "required_mods": [
+      "elemental_wizards_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "NONE",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:earth_spec_a_modifier_4"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.earth_spec_a_modifier_4.title"
+    }
+  },
+  "earth_spec_a_passive_1": {
+    "description": {
+      "skill_definition_id": "earth_spec_a_passive_1"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "mrpgc_skill_tree:textures/spell/earth_spec_a_passive_1.png"
+      }
+    },
+    "required_mods": [
+      "elemental_wizards_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "MAGIC",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:earth_spec_a_passive_1"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.earth_spec_a_passive_1.title"
+    }
+  },
+  "earth_spec_a_passive_2": {
+    "description": {
+      "skill_definition_id": "earth_spec_a_passive_2"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "mrpgc_skill_tree:textures/spell/earth_spec_a_passive_2.png"
+      }
+    },
+    "required_mods": [
+      "elemental_wizards_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "MAGIC",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:earth_spec_a_passive_2"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.earth_spec_a_passive_2.title"
+    }
+  },
+  "earth_spec_a_passive_3": {
+    "description": {
+      "skill_definition_id": "earth_spec_a_passive_3"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "mrpgc_skill_tree:textures/spell/earth_spec_a_passive_3.png"
+      }
+    },
+    "required_mods": [
+      "elemental_wizards_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "MAGIC",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:earth_spec_a_passive_3"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.earth_spec_a_passive_3.title"
+    }
+  },
+  "earth_spec_b_modifier_1": {
+    "description": {
+      "skill_definition_id": "earth_spec_b_modifier_1"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "elemental_wizards_rpg:textures/spell/terra_stone_spear.png"
+      }
+    },
+    "required_mods": [
+      "elemental_wizards_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "NONE",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:earth_spec_b_modifier_1"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.earth_spec_b_modifier_1.title"
+    }
+  },
+  "earth_spec_b_modifier_2": {
+    "description": {
+      "skill_definition_id": "earth_spec_b_modifier_2"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "elemental_wizards_rpg:textures/spell/terra_stone_flesh.png"
+      }
+    },
+    "required_mods": [
+      "elemental_wizards_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "NONE",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:earth_spec_b_modifier_2"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.earth_spec_b_modifier_2.title"
+    }
+  },
+  "earth_spec_b_modifier_3": {
+    "description": {
+      "skill_definition_id": "earth_spec_b_modifier_3"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "elemental_wizards_rpg:textures/spell/terra_drip_circle.png"
+      }
+    },
+    "required_mods": [
+      "elemental_wizards_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "NONE",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:earth_spec_b_modifier_3"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.earth_spec_b_modifier_3.title"
+    }
+  },
+  "earth_spec_b_modifier_4": {
+    "description": {
+      "skill_definition_id": "earth_spec_b_modifier_4"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "elemental_wizards_rpg:textures/spell/terra_earthquake.png"
+      }
+    },
+    "required_mods": [
+      "elemental_wizards_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "NONE",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:earth_spec_b_modifier_4"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.earth_spec_b_modifier_4.title"
+    }
+  },
+  "earth_spec_b_passive_1": {
+    "description": {
+      "skill_definition_id": "earth_spec_b_passive_1"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "mrpgc_skill_tree:textures/spell/earth_spec_b_passive_1.png"
+      }
+    },
+    "required_mods": [
+      "elemental_wizards_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "MAGIC",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:earth_spec_b_passive_1"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.earth_spec_b_passive_1.title"
+    }
+  },
+  "earth_spec_b_passive_2": {
+    "description": {
+      "skill_definition_id": "earth_spec_b_passive_2"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "mrpgc_skill_tree:textures/spell/earth_spec_b_passive_2.png"
+      }
+    },
+    "required_mods": [
+      "elemental_wizards_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "MAGIC",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:earth_spec_b_passive_2"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.earth_spec_b_passive_2.title"
+    }
+  },
+  "earth_spec_b_passive_3": {
+    "description": {
+      "skill_definition_id": "earth_spec_b_passive_3"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "mrpgc_skill_tree:textures/spell/earth_spec_b_passive_3.png"
+      }
+    },
+    "required_mods": [
+      "elemental_wizards_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "MAGIC",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:earth_spec_b_passive_3"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.earth_spec_b_passive_3.title"
+    }
+  },
+  "forcemaster_boost": {
+    "description": {
+      "skill_definition_id": "forcemaster_boost"
+    },
+    "icon": {
+      "type": "item",
+      "data": {
+        "item": "forcemaster_rpg:iron_knuckle"
+      }
+    },
+    "required_mods": [
+      "forcemaster_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "puffish_skills:attribute",
+        "data": {
+          "attribute": "minecraft:generic.attack_speed",
+          "operation": "multiply_base",
+          "value": 0.01
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.forcemaster_boost.title"
+    }
+  },
+  "forcemaster_root": {
+    "description": {
+      "skill_definition_id": "forcemaster_root"
+    },
+    "icon": {
+      "type": "item",
+      "data": {
+        "components": {
+          "spell_engine:item_model": "forcemaster_rpg:item/spell_book/forcemaster"
+        },
+        "item": "spell_engine:spell_book"
+      }
+    },
+    "required_mods": [
+      "forcemaster_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "puffish_skills:attribute",
+        "data": {
+          "attribute": "minecraft:generic.attack_speed",
+          "operation": "multiply_base",
+          "value": 0.01
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.forcemaster_root.title"
+    }
+  },
+  "forcemaster_spec_a_modifier_1": {
+    "description": {
+      "skill_definition_id": "forcemaster_spec_a_modifier_1"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "forcemaster_rpg:textures/spell/stonehand.png"
+      }
+    },
+    "required_mods": [
+      "forcemaster_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "NONE",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:forcemaster_spec_a_modifier_1"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.forcemaster_spec_a_modifier_1.title"
+    }
+  },
+  "forcemaster_spec_a_modifier_2": {
+    "description": {
+      "skill_definition_id": "forcemaster_spec_a_modifier_2"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "forcemaster_rpg:textures/spell/burstcrack.png"
+      }
+    },
+    "required_mods": [
+      "forcemaster_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "NONE",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:forcemaster_spec_a_modifier_2"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.forcemaster_spec_a_modifier_2.title"
+    }
+  },
+  "forcemaster_spec_a_modifier_3": {
+    "description": {
+      "skill_definition_id": "forcemaster_spec_a_modifier_3"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "forcemaster_rpg:textures/spell/belial_smashing.png"
+      }
+    },
+    "required_mods": [
+      "forcemaster_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "MAGIC",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:forcemaster_spec_a_modifier_3"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.forcemaster_spec_a_modifier_3.title"
+    }
+  },
+  "forcemaster_spec_a_modifier_4": {
+    "description": {
+      "skill_definition_id": "forcemaster_spec_a_modifier_4"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "forcemaster_rpg:textures/spell/asal.png"
+      }
+    },
+    "required_mods": [
+      "forcemaster_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "NONE",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:forcemaster_spec_a_modifier_4"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.forcemaster_spec_a_modifier_4.title"
+    }
+  },
+  "forcemaster_spec_a_passive_1": {
+    "description": {
+      "skill_definition_id": "forcemaster_spec_a_passive_1"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "mrpgc_skill_tree:textures/spell/forcemaster_spec_a_passive_1.png"
+      }
+    },
+    "required_mods": [
+      "forcemaster_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "MAGIC",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:forcemaster_spec_a_passive_1"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.forcemaster_spec_a_passive_1.title"
+    }
+  },
+  "forcemaster_spec_a_passive_2": {
+    "description": {
+      "skill_definition_id": "forcemaster_spec_a_passive_2"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "mrpgc_skill_tree:textures/spell/forcemaster_spec_a_passive_2.png"
+      }
+    },
+    "required_mods": [
+      "forcemaster_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "MAGIC",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:forcemaster_spec_a_passive_2"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.forcemaster_spec_a_passive_2.title"
+    }
+  },
+  "forcemaster_spec_a_passive_3": {
+    "description": {
+      "skill_definition_id": "forcemaster_spec_a_passive_3"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "mrpgc_skill_tree:textures/spell/forcemaster_spec_a_passive_3.png"
+      }
+    },
+    "required_mods": [
+      "forcemaster_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "MAGIC",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:forcemaster_spec_a_passive_3"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.forcemaster_spec_a_passive_3.title"
+    }
+  },
+  "forcemaster_spec_b_modifier_1": {
+    "description": {
+      "skill_definition_id": "forcemaster_spec_b_modifier_1"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "forcemaster_rpg:textures/spell/stonehand.png"
+      }
+    },
+    "required_mods": [
+      "forcemaster_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "MAGIC",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:forcemaster_spec_b_modifier_1"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.forcemaster_spec_b_modifier_1.title"
+    }
+  },
+  "forcemaster_spec_b_modifier_2": {
+    "description": {
+      "skill_definition_id": "forcemaster_spec_b_modifier_2"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "forcemaster_rpg:textures/spell/burstcrack.png"
+      }
+    },
+    "required_mods": [
+      "forcemaster_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "NONE",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:forcemaster_spec_b_modifier_2"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.forcemaster_spec_b_modifier_2.title"
+    }
+  },
+  "forcemaster_spec_b_modifier_3": {
+    "description": {
+      "skill_definition_id": "forcemaster_spec_b_modifier_3"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "forcemaster_rpg:textures/spell/belial_smashing.png"
+      }
+    },
+    "required_mods": [
+      "forcemaster_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "NONE",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:forcemaster_spec_b_modifier_3"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.forcemaster_spec_b_modifier_3.title"
+    }
+  },
+  "forcemaster_spec_b_modifier_4": {
+    "description": {
+      "skill_definition_id": "forcemaster_spec_b_modifier_4"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "forcemaster_rpg:textures/spell/asal.png"
+      }
+    },
+    "required_mods": [
+      "forcemaster_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "NONE",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:forcemaster_spec_b_modifier_4"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.forcemaster_spec_b_modifier_4.title"
+    }
+  },
+  "forcemaster_spec_b_passive_1": {
+    "description": {
+      "skill_definition_id": "forcemaster_spec_b_passive_1"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "mrpgc_skill_tree:textures/spell/forcemaster_spec_b_passive_1.png"
+      }
+    },
+    "required_mods": [
+      "forcemaster_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "MAGIC",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:forcemaster_spec_b_passive_1"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.forcemaster_spec_b_passive_1.title"
+    }
+  },
+  "forcemaster_spec_b_passive_2": {
+    "description": {
+      "skill_definition_id": "forcemaster_spec_b_passive_2"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "mrpgc_skill_tree:textures/spell/forcemaster_spec_b_passive_2.png"
+      }
+    },
+    "required_mods": [
+      "forcemaster_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "MAGIC",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:forcemaster_spec_b_passive_2"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.forcemaster_spec_b_passive_2.title"
+    }
+  },
+  "forcemaster_spec_b_passive_3": {
+    "description": {
+      "skill_definition_id": "forcemaster_spec_b_passive_3"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "mrpgc_skill_tree:textures/spell/forcemaster_spec_b_passive_3.png"
+      }
+    },
+    "required_mods": [
+      "forcemaster_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "MAGIC",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:forcemaster_spec_b_passive_3"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.forcemaster_spec_b_passive_3.title"
+    }
+  },
+  "tundra_hunter_boost": {
+    "description": {
+      "skill_definition_id": "tundra_hunter_boost"
+    },
+    "icon": {
+      "type": "item",
+      "data": {
+        "item": "archers:rapid_crossbow"
+      }
+    },
+    "required_mods": [
+      "archers_expansion"
+    ],
+    "rewards": [
+      {
+        "type": "puffish_skills:attribute",
+        "data": {
+          "attribute": "spell_power:frost",
+          "operation": "addition",
+          "value": 0.2
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.tundra_hunter_boost.title"
+    }
+  },
+  "tundra_hunter_root": {
+    "description": {
+      "skill_definition_id": "tundra_hunter_root"
+    },
+    "icon": {
+      "type": "item",
+      "data": {
+        "components": {
+          "spell_engine:item_model": "archers_expansion:item/spell_book/tundra_hunter"
+        },
+        "item": "spell_engine:spell_book"
+      }
+    },
+    "required_mods": [
+      "archers_expansion"
+    ],
+    "rewards": [
+      {
+        "type": "puffish_skills:attribute",
+        "data": {
+          "attribute": "spell_power:frost",
+          "operation": "addition",
+          "value": 0.2
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.tundra_hunter_root.title"
+    }
+  },
+  "tundra_hunter_spec_a_modifier_1": {
+    "description": {
+      "skill_definition_id": "tundra_hunter_spec_a_modifier_1"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "archers_expansion:textures/spell/frozen_shot.png"
+      }
+    },
+    "required_mods": [
+      "archers_expansion"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "NONE",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:tundra_hunter_spec_a_modifier_1"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.tundra_hunter_spec_a_modifier_1.title"
+    }
+  },
+  "tundra_hunter_spec_a_modifier_2": {
+    "description": {
+      "skill_definition_id": "tundra_hunter_spec_a_modifier_2"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "archers_expansion:textures/spell/arctic_volley.png"
+      }
+    },
+    "required_mods": [
+      "archers_expansion"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "NONE",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:tundra_hunter_spec_a_modifier_2"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.tundra_hunter_spec_a_modifier_2.title"
+    }
+  },
+  "tundra_hunter_spec_a_modifier_3": {
+    "description": {
+      "skill_definition_id": "tundra_hunter_spec_a_modifier_3"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "archers_expansion:textures/spell/frozen_pact.png"
+      }
+    },
+    "required_mods": [
+      "archers_expansion"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "MAGIC",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:tundra_hunter_spec_a_modifier_3"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.tundra_hunter_spec_a_modifier_3.title"
+    }
+  },
+  "tundra_hunter_spec_a_modifier_4": {
+    "description": {
+      "skill_definition_id": "tundra_hunter_spec_a_modifier_4"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "archers_expansion:textures/spell/enchanted_crystal_arrow.png"
+      }
+    },
+    "required_mods": [
+      "archers_expansion"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "NONE",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:tundra_hunter_spec_a_modifier_4"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.tundra_hunter_spec_a_modifier_4.title"
+    }
+  },
+  "tundra_hunter_spec_a_passive_1": {
+    "description": {
+      "skill_definition_id": "tundra_hunter_spec_a_passive_1"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "mrpgc_skill_tree:textures/spell/tundra_hunter_spec_a_passive_1.png"
+      }
+    },
+    "required_mods": [
+      "archers_expansion"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "MAGIC",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:tundra_hunter_spec_a_passive_1"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.tundra_hunter_spec_a_passive_1.title"
+    }
+  },
+  "tundra_hunter_spec_a_passive_2": {
+    "description": {
+      "skill_definition_id": "tundra_hunter_spec_a_passive_2"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "mrpgc_skill_tree:textures/spell/tundra_hunter_spec_a_passive_2.png"
+      }
+    },
+    "required_mods": [
+      "archers_expansion"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "MAGIC",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:tundra_hunter_spec_a_passive_2"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.tundra_hunter_spec_a_passive_2.title"
+    }
+  },
+  "tundra_hunter_spec_a_passive_3": {
+    "description": {
+      "skill_definition_id": "tundra_hunter_spec_a_passive_3"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "mrpgc_skill_tree:textures/spell/tundra_hunter_spec_a_passive_3.png"
+      }
+    },
+    "required_mods": [
+      "archers_expansion"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "MAGIC",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:tundra_hunter_spec_a_passive_3"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.tundra_hunter_spec_a_passive_3.title"
+    }
+  },
+  "tundra_hunter_spec_b_modifier_1": {
+    "description": {
+      "skill_definition_id": "tundra_hunter_spec_b_modifier_1"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "archers_expansion:textures/spell/frozen_shot.png"
+      }
+    },
+    "required_mods": [
+      "archers_expansion"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "NONE",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:tundra_hunter_spec_b_modifier_1"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.tundra_hunter_spec_b_modifier_1.title"
+    }
+  },
+  "tundra_hunter_spec_b_modifier_2": {
+    "description": {
+      "skill_definition_id": "tundra_hunter_spec_b_modifier_2"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "archers_expansion:textures/spell/arctic_volley.png"
+      }
+    },
+    "required_mods": [
+      "archers_expansion"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "NONE",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:tundra_hunter_spec_b_modifier_2"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.tundra_hunter_spec_b_modifier_2.title"
+    }
+  },
+  "tundra_hunter_spec_b_modifier_3": {
+    "description": {
+      "skill_definition_id": "tundra_hunter_spec_b_modifier_3"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "archers_expansion:textures/spell/frozen_pact.png"
+      }
+    },
+    "required_mods": [
+      "archers_expansion"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "NONE",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:tundra_hunter_spec_b_modifier_3"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.tundra_hunter_spec_b_modifier_3.title"
+    }
+  },
+  "tundra_hunter_spec_b_modifier_4": {
+    "description": {
+      "skill_definition_id": "tundra_hunter_spec_b_modifier_4"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "archers_expansion:textures/spell/enchanted_crystal_arrow.png"
+      }
+    },
+    "required_mods": [
+      "archers_expansion"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "NONE",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:tundra_hunter_spec_b_modifier_4"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.tundra_hunter_spec_b_modifier_4.title"
+    }
+  },
+  "tundra_hunter_spec_b_passive_1": {
+    "description": {
+      "skill_definition_id": "tundra_hunter_spec_b_passive_1"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "mrpgc_skill_tree:textures/spell/tundra_hunter_spec_b_passive_1.png"
+      }
+    },
+    "required_mods": [
+      "archers_expansion"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "MAGIC",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:tundra_hunter_spec_b_passive_1"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.tundra_hunter_spec_b_passive_1.title"
+    }
+  },
+  "tundra_hunter_spec_b_passive_2": {
+    "description": {
+      "skill_definition_id": "tundra_hunter_spec_b_passive_2"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "mrpgc_skill_tree:textures/spell/tundra_hunter_spec_b_passive_2.png"
+      }
+    },
+    "required_mods": [
+      "archers_expansion"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "MAGIC",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:tundra_hunter_spec_b_passive_2"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.tundra_hunter_spec_b_passive_2.title"
+    }
+  },
+  "tundra_hunter_spec_b_passive_3": {
+    "description": {
+      "skill_definition_id": "tundra_hunter_spec_b_passive_3"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "mrpgc_skill_tree:textures/spell/tundra_hunter_spec_b_passive_3.png"
+      }
+    },
+    "required_mods": [
+      "archers_expansion"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "MAGIC",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:tundra_hunter_spec_b_passive_3"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.tundra_hunter_spec_b_passive_3.title"
+    }
+  },
+  "war_archer_boost": {
+    "description": {
+      "skill_definition_id": "war_archer_boost"
+    },
+    "icon": {
+      "type": "item",
+      "data": {
+        "item": "archers:heavy_crossbow"
+      }
+    },
+    "required_mods": [
+      "archers_expansion"
+    ],
+    "rewards": [
+      {
+        "type": "puffish_skills:attribute",
+        "data": {
+          "attribute": "ranged_weapon:damage",
+          "operation": "multiply_base",
+          "value": 0.01
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.war_archer_boost.title"
+    }
+  },
+  "war_archer_root": {
+    "description": {
+      "skill_definition_id": "war_archer_root"
+    },
+    "icon": {
+      "type": "item",
+      "data": {
+        "components": {
+          "spell_engine:item_model": "archers_expansion:item/spell_book/war_archer"
+        },
+        "item": "spell_engine:spell_book"
+      }
+    },
+    "required_mods": [
+      "archers_expansion"
+    ],
+    "rewards": [
+      {
+        "type": "puffish_skills:attribute",
+        "data": {
+          "attribute": "ranged_weapon:damage",
+          "operation": "multiply_base",
+          "value": 0.01
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.war_archer_root.title"
+    }
+  },
+  "war_archer_spec_a_modifier_1": {
+    "description": {
+      "skill_definition_id": "war_archer_spec_a_modifier_1"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "archers_expansion:textures/spell/smoldering_arrow.png"
+      }
+    },
+    "required_mods": [
+      "archers_expansion"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "NONE",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:war_archer_spec_a_modifier_1"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.war_archer_spec_a_modifier_1.title"
+    }
+  },
+  "war_archer_spec_a_modifier_2": {
+    "description": {
+      "skill_definition_id": "war_archer_spec_a_modifier_2"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "archers_expansion:textures/spell/dual_shot.png"
+      }
+    },
+    "required_mods": [
+      "archers_expansion"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "NONE",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:war_archer_spec_a_modifier_2"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.war_archer_spec_a_modifier_2.title"
+    }
+  },
+  "war_archer_spec_a_modifier_3": {
+    "description": {
+      "skill_definition_id": "war_archer_spec_a_modifier_3"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "archers_expansion:textures/spell/point_blank_shot.png"
+      }
+    },
+    "required_mods": [
+      "archers_expansion"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "NONE",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:war_archer_spec_a_modifier_3"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.war_archer_spec_a_modifier_3.title"
+    }
+  },
+  "war_archer_spec_a_modifier_4": {
+    "description": {
+      "skill_definition_id": "war_archer_spec_a_modifier_4"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "archers_expansion:textures/spell/pin_down.png"
+      }
+    },
+    "required_mods": [
+      "archers_expansion"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "MAGIC",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:war_archer_spec_a_modifier_4"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.war_archer_spec_a_modifier_4.title"
+    }
+  },
+  "war_archer_spec_a_passive_1": {
+    "description": {
+      "skill_definition_id": "war_archer_spec_a_passive_1"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "mrpgc_skill_tree:textures/spell/war_archer_spec_a_passive_1.png"
+      }
+    },
+    "required_mods": [
+      "archers_expansion"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "MAGIC",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:war_archer_spec_a_passive_1"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.war_archer_spec_a_passive_1.title"
+    }
+  },
+  "war_archer_spec_a_passive_2": {
+    "description": {
+      "skill_definition_id": "war_archer_spec_a_passive_2"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "mrpgc_skill_tree:textures/spell/war_archer_spec_a_passive_2.png"
+      }
+    },
+    "required_mods": [
+      "archers_expansion"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "MAGIC",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:war_archer_spec_a_passive_2"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.war_archer_spec_a_passive_2.title"
+    }
+  },
+  "war_archer_spec_a_passive_3": {
+    "description": {
+      "skill_definition_id": "war_archer_spec_a_passive_3"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "mrpgc_skill_tree:textures/spell/war_archer_spec_a_passive_3.png"
+      }
+    },
+    "required_mods": [
+      "archers_expansion"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "MAGIC",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:war_archer_spec_a_passive_3"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.war_archer_spec_a_passive_3.title"
+    }
+  },
+  "war_archer_spec_b_modifier_1": {
+    "description": {
+      "skill_definition_id": "war_archer_spec_b_modifier_1"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "archers_expansion:textures/spell/smoldering_arrow.png"
+      }
+    },
+    "required_mods": [
+      "archers_expansion"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "NONE",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:war_archer_spec_b_modifier_1"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.war_archer_spec_b_modifier_1.title"
+    }
+  },
+  "war_archer_spec_b_modifier_2": {
+    "description": {
+      "skill_definition_id": "war_archer_spec_b_modifier_2"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "archers_expansion:textures/spell/dual_shot.png"
+      }
+    },
+    "required_mods": [
+      "archers_expansion"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "NONE",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:war_archer_spec_b_modifier_2"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.war_archer_spec_b_modifier_2.title"
+    }
+  },
+  "war_archer_spec_b_modifier_3": {
+    "description": {
+      "skill_definition_id": "war_archer_spec_b_modifier_3"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "archers_expansion:textures/spell/point_blank_shot.png"
+      }
+    },
+    "required_mods": [
+      "archers_expansion"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "MAGIC",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:war_archer_spec_b_modifier_3"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.war_archer_spec_b_modifier_3.title"
+    }
+  },
+  "war_archer_spec_b_modifier_4": {
+    "description": {
+      "skill_definition_id": "war_archer_spec_b_modifier_4"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "archers_expansion:textures/spell/pin_down.png"
+      }
+    },
+    "required_mods": [
+      "archers_expansion"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "NONE",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:war_archer_spec_b_modifier_4"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.war_archer_spec_b_modifier_4.title"
+    }
+  },
+  "war_archer_spec_b_passive_1": {
+    "description": {
+      "skill_definition_id": "war_archer_spec_b_passive_1"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "mrpgc_skill_tree:textures/spell/war_archer_spec_b_passive_1.png"
+      }
+    },
+    "required_mods": [
+      "archers_expansion"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "MAGIC",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:war_archer_spec_b_passive_1"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.war_archer_spec_b_passive_1.title"
+    }
+  },
+  "war_archer_spec_b_passive_2": {
+    "description": {
+      "skill_definition_id": "war_archer_spec_b_passive_2"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "mrpgc_skill_tree:textures/spell/war_archer_spec_b_passive_2.png"
+      }
+    },
+    "required_mods": [
+      "archers_expansion"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "MAGIC",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:war_archer_spec_b_passive_2"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.war_archer_spec_b_passive_2.title"
+    }
+  },
+  "war_archer_spec_b_passive_3": {
+    "description": {
+      "skill_definition_id": "war_archer_spec_b_passive_3"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "mrpgc_skill_tree:textures/spell/war_archer_spec_b_passive_3.png"
+      }
+    },
+    "required_mods": [
+      "archers_expansion"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "MAGIC",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:war_archer_spec_b_passive_3"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.war_archer_spec_b_passive_3.title"
+    }
+  },
+  "water_boost": {
+    "description": {
+      "skill_definition_id": "water_boost"
+    },
+    "icon": {
+      "type": "item",
+      "data": {
+        "item": "elemental_wizards_rpg:wand_aqua"
+      }
+    },
+    "required_mods": [
+      "elemental_wizards_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "puffish_skills:attribute",
+        "data": {
+          "attribute": "spell_power:water",
+          "operation": "multiply_base",
+          "value": 0.01
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.water_boost.title"
+    }
+  },
+  "water_root": {
+    "description": {
+      "skill_definition_id": "water_root"
+    },
+    "icon": {
+      "type": "item",
+      "data": {
+        "components": {
+          "spell_engine:item_model": "elemental_wizards_rpg:item/spell_book/aqua"
+        },
+        "item": "spell_engine:spell_book"
+      }
+    },
+    "required_mods": [
+      "elemental_wizards_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "puffish_skills:attribute",
+        "data": {
+          "attribute": "spell_power:water",
+          "operation": "multiply_base",
+          "value": 0.01
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.water_root.title"
+    }
+  },
+  "water_spec_a_modifier_1": {
+    "description": {
+      "skill_definition_id": "water_spec_a_modifier_1"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "elemental_wizards_rpg:textures/spell/aqua_water_whip.png"
+      }
+    },
+    "required_mods": [
+      "elemental_wizards_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "NONE",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:water_spec_a_modifier_1"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.water_spec_a_modifier_1.title"
+    }
+  },
+  "water_spec_a_modifier_2": {
+    "description": {
+      "skill_definition_id": "water_spec_a_modifier_2"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "elemental_wizards_rpg:textures/spell/aqua_bubble_beam.png"
+      }
+    },
+    "required_mods": [
+      "elemental_wizards_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "NONE",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:water_spec_a_modifier_2"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.water_spec_a_modifier_2.title"
+    }
+  },
+  "water_spec_a_modifier_3": {
+    "description": {
+      "skill_definition_id": "water_spec_a_modifier_3"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "elemental_wizards_rpg:textures/spell/aqua_springwater.png"
+      }
+    },
+    "required_mods": [
+      "elemental_wizards_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "NONE",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:water_spec_a_modifier_3"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.water_spec_a_modifier_3.title"
+    }
+  },
+  "water_spec_a_modifier_4": {
+    "description": {
+      "skill_definition_id": "water_spec_a_modifier_4"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "elemental_wizards_rpg:textures/spell/aqua_hydro_beam.png"
+      }
+    },
+    "required_mods": [
+      "elemental_wizards_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "NONE",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:water_spec_a_modifier_4"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.water_spec_a_modifier_4.title"
+    }
+  },
+  "water_spec_a_passive_1": {
+    "description": {
+      "skill_definition_id": "water_spec_a_passive_1"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "mrpgc_skill_tree:textures/spell/water_spec_a_passive_1.png"
+      }
+    },
+    "required_mods": [
+      "elemental_wizards_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "MAGIC",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:water_spec_a_passive_1"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.water_spec_a_passive_1.title"
+    }
+  },
+  "water_spec_a_passive_2": {
+    "description": {
+      "skill_definition_id": "water_spec_a_passive_2"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "mrpgc_skill_tree:textures/spell/water_spec_a_passive_2.png"
+      }
+    },
+    "required_mods": [
+      "elemental_wizards_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "MAGIC",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:water_spec_a_passive_2"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.water_spec_a_passive_2.title"
+    }
+  },
+  "water_spec_a_passive_3": {
+    "description": {
+      "skill_definition_id": "water_spec_a_passive_3"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "mrpgc_skill_tree:textures/spell/water_spec_a_passive_3.png"
+      }
+    },
+    "required_mods": [
+      "elemental_wizards_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "MAGIC",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:water_spec_a_passive_3"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.water_spec_a_passive_3.title"
+    }
+  },
+  "water_spec_b_modifier_1": {
+    "description": {
+      "skill_definition_id": "water_spec_b_modifier_1"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "elemental_wizards_rpg:textures/spell/aqua_water_whip.png"
+      }
+    },
+    "required_mods": [
+      "elemental_wizards_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "NONE",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:water_spec_b_modifier_1"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.water_spec_b_modifier_1.title"
+    }
+  },
+  "water_spec_b_modifier_2": {
+    "description": {
+      "skill_definition_id": "water_spec_b_modifier_2"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "elemental_wizards_rpg:textures/spell/aqua_bubble_beam.png"
+      }
+    },
+    "required_mods": [
+      "elemental_wizards_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "MAGIC",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:water_spec_b_modifier_2"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.water_spec_b_modifier_2.title"
+    }
+  },
+  "water_spec_b_modifier_3": {
+    "description": {
+      "skill_definition_id": "water_spec_b_modifier_3"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "elemental_wizards_rpg:textures/spell/aqua_springwater.png"
+      }
+    },
+    "required_mods": [
+      "elemental_wizards_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "MAGIC",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:water_spec_b_modifier_3"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.water_spec_b_modifier_3.title"
+    }
+  },
+  "water_spec_b_modifier_4": {
+    "description": {
+      "skill_definition_id": "water_spec_b_modifier_4"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "elemental_wizards_rpg:textures/spell/aqua_hydro_beam.png"
+      }
+    },
+    "required_mods": [
+      "elemental_wizards_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "MAGIC",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:water_spec_b_modifier_4"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.water_spec_b_modifier_4.title"
+    }
+  },
+  "water_spec_b_passive_1": {
+    "description": {
+      "skill_definition_id": "water_spec_b_passive_1"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "mrpgc_skill_tree:textures/spell/water_spec_b_passive_1.png"
+      }
+    },
+    "required_mods": [
+      "elemental_wizards_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "MAGIC",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:water_spec_b_passive_1"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.water_spec_b_passive_1.title"
+    }
+  },
+  "water_spec_b_passive_2": {
+    "description": {
+      "skill_definition_id": "water_spec_b_passive_2"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "mrpgc_skill_tree:textures/spell/water_spec_b_passive_2.png"
+      }
+    },
+    "required_mods": [
+      "elemental_wizards_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "MAGIC",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:water_spec_b_passive_2"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.water_spec_b_passive_2.title"
+    }
+  },
+  "water_spec_b_passive_3": {
+    "description": {
+      "skill_definition_id": "water_spec_b_passive_3"
+    },
+    "icon": {
+      "type": "texture",
+      "data": {
+        "texture": "mrpgc_skill_tree:textures/spell/water_spec_b_passive_3.png"
+      }
+    },
+    "required_mods": [
+      "elemental_wizards_rpg"
+    ],
+    "rewards": [
+      {
+        "type": "skill_tree_rpgs:spell",
+        "data": {
+          "containers": [
+            {
+              "access": "MAGIC",
+              "access_param": "",
+              "extra_tier_binding": 0,
+              "max_spell_count": 0,
+              "pool": "",
+              "slot": "",
+              "spell_ids": [
+                "mrpgc_skill_tree:water_spec_b_passive_3"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "title": {
+      "translate": "skill.mrpgc_skill_tree.water_spec_b_passive_3.title"
+    }
+  }
+}

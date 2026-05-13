@@ -1,0 +1,65 @@
+{
+  "school": "spell_power:rage_melee",
+  "range": 0.0,
+  "tier": 1,
+  "type": "PASSIVE",
+  "passive": {
+    "triggers": [
+      {
+        "target_override": "CASTER",
+        "type": "DAMAGE_TAKEN",
+        "caster_conditions": [
+          {
+            "entity_predicate_id": "spell_engine:has_bad_effect"
+          }
+        ]
+      }
+    ]
+  },
+  "target": {
+    "type": "FROM_TRIGGER"
+  },
+  "impacts": [
+    {
+      "action": {
+        "type": "STATUS_EFFECT",
+        "apply_to_caster": true,
+        "status_effect": {
+          "effect_id": "mrpgc_skill_tree:ragnarok",
+          "duration": 5.0
+        }
+      },
+      "particles": [
+        {
+          "particle_id": "spell_engine:aura_effect_728",
+          "origin": "CENTER",
+          "shape": "LINE",
+          "count": 1.0,
+          "max_speed": 0.0,
+          "color_rgba": 3208659071,
+          "scale": 1.2,
+          "follow_entity": true
+        },
+        {
+          "particle_id": "spell_engine:magic_stripe_float",
+          "origin": "FEET",
+          "shape": "WIDE_PIPE",
+          "count": 25.0,
+          "min_speed": 0.2,
+          "max_speed": 0.6,
+          "extent": -0.2,
+          "color_rgba": 3208659199
+        }
+      ],
+      "sound": {
+        "id": "mrpgc_skill_tree:ragnarok_release"
+      }
+    }
+  ],
+  "cost": {
+    "durability": 0,
+    "cooldown": {
+      "duration": 60.0
+    }
+  }
+}

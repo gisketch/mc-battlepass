@@ -1,0 +1,77 @@
+{
+  "school": "spell_power:air",
+  "range": 16.0,
+  "tier": 1,
+  "type": "PASSIVE",
+  "passive": {
+    "triggers": [
+      {
+        "type": "SPELL_CAST",
+        "spell": {
+          "school": "spell_power:air",
+          "type": "ACTIVE"
+        }
+      }
+    ]
+  },
+  "target": {
+    "type": "FROM_TRIGGER"
+  },
+  "deliver": {
+    "type": "PROJECTILE",
+    "projectile": {
+      "direct_towards_target": true,
+      "launch_properties": {
+        "velocity": 1.3,
+        "extra_launch_count": 2,
+        "extra_launch_delay": 5,
+        "sound": {
+          "id": "mrpgc_skill_tree:air_wind_flurry_release"
+        }
+      },
+      "projectile": {
+        "perks": {
+          "ricochet_range": 0.0,
+          "pierce": 999
+        },
+        "client_data": {
+          "model": {
+            "model_id": "mrpgc_skill_tree:spell_projectile/wind_flurry",
+            "light_emission": "NONE",
+            "rotate_degrees_per_tick": 0.0
+          }
+        }
+      }
+    }
+  },
+  "impacts": [
+    {
+      "action": {
+        "type": "DAMAGE",
+        "damage": {
+          "spell_power_coefficient": 0.3,
+          "knockback": 0.0
+        }
+      },
+      "particles": [
+        {
+          "particle_id": "more_rpg_classes:small_gust",
+          "origin": "CENTER",
+          "shape": "SPHERE",
+          "count": 10.0,
+          "min_speed": 0.2,
+          "max_speed": 0.2
+        }
+      ],
+      "sound": {
+        "id": "more_rpg_classes:air_magic_impact3"
+      }
+    }
+  ],
+  "cost": {
+    "durability": 0,
+    "cooldown": {
+      "duration": 20.0
+    }
+  }
+}

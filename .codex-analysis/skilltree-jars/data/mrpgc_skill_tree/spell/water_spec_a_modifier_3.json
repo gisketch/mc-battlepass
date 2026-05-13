@@ -1,0 +1,60 @@
+{
+  "school": "spell_power:water",
+  "range": 0.0,
+  "tier": 1,
+  "type": "MODIFIER",
+  "modifiers": [
+    {
+      "spell_pattern": "elemental_wizards_rpg:aqua_springwater",
+      "mutate_impacts": "APPEND",
+      "impacts": [
+        {
+          "action": {
+            "type": "STATUS_EFFECT",
+            "status_effect": {
+              "apply_mode": "REMOVE",
+              "remove": {
+                "id": "!minecraft:trial_omen"
+              }
+            }
+          },
+          "particles": [
+            {
+              "particle_id": "spell_engine:magic_spell_burst",
+              "origin": "CENTER",
+              "shape": "SPHERE",
+              "count": 15.0,
+              "min_speed": 0.5,
+              "max_speed": 0.8,
+              "color_rgba": 4294967295
+            }
+          ],
+          "sound": {
+            "id": "spell_engine:generic_dispel_1"
+          }
+        },
+        {
+          "target_modifiers": [
+            {
+              "conditions": [
+                {
+                  "entity_type": "#minecraft:undead"
+                }
+              ],
+              "modifier": {
+                "critical_chance_bonus": 1.0
+              }
+            }
+          ],
+          "action": {
+            "type": "DAMAGE",
+            "damage": {
+              "spell_power_coefficient": 0.15,
+              "knockback": 0.0
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

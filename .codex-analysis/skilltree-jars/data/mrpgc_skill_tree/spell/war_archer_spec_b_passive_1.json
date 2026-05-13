@@ -1,0 +1,54 @@
+{
+  "school": "spell_power:fire_ranged",
+  "range": 0.0,
+  "tier": 1,
+  "type": "PASSIVE",
+  "passive": {
+    "triggers": [
+      {
+        "target_override": "CASTER",
+        "type": "ARROW_IMPACT",
+        "chance": 0.35
+      }
+    ]
+  },
+  "target": {
+    "type": "FROM_TRIGGER"
+  },
+  "impacts": [
+    {
+      "action": {
+        "type": "STATUS_EFFECT",
+        "status_effect": {
+          "effect_id": "mrpgc_skill_tree:tower_protector",
+          "duration": 8.0,
+          "amplifier": 1,
+          "amplifier_cap": 5,
+          "apply_mode": "ADD"
+        }
+      },
+      "particles": [
+        {
+          "particle_id": "spell_engine:sign_shield",
+          "origin": "CENTER",
+          "shape": "LINE_VERTICAL",
+          "count": 1.0,
+          "min_speed": 0.8,
+          "max_speed": 0.8,
+          "color_rgba": 4278190335,
+          "scale": 0.8,
+          "follow_entity": true
+        }
+      ],
+      "sound": {
+        "id": "mrpgc_skill_tree:protector_of_the_tower"
+      }
+    }
+  ],
+  "cost": {
+    "durability": 0,
+    "cooldown": {
+      "duration": 1.0
+    }
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "school": "spell_power:physical_melee",
+  "range": 0.0,
+  "tier": 1,
+  "tooltip": {
+    "show_activation": false
+  },
+  "type": "PASSIVE",
+  "passive": {
+    "triggers": [
+      {
+        "type": "SPELL_CAST",
+        "chance": 0.5,
+        "spell": {
+          "id": "rpg_series:ground_slam"
+        }
+      }
+    ]
+  },
+  "deliver": {
+    "type": "STASH_EFFECT",
+    "stash_effect": {
+      "id": "skill_tree_rpgs:punishment",
+      "duration": 5.0,
+      "triggers": [
+        {
+          "type": "MELEE_IMPACT"
+        }
+      ],
+      "consumed_next_tick": true
+    }
+  },
+  "cost": {
+    "durability": 0
+  }
+}

@@ -1,0 +1,71 @@
+{
+  "school": "spell_power:air",
+  "range": 0.0,
+  "tier": 1,
+  "type": "PASSIVE",
+  "passive": {
+    "triggers": [
+      {
+        "target_override": "CASTER",
+        "type": "SPELL_CAST",
+        "chance": 0.25,
+        "spell": {
+          "school": "spell_power:air",
+          "type": "ACTIVE"
+        }
+      }
+    ]
+  },
+  "release": {
+    "sound": {
+      "id": "mrpgc_skill_tree:air_impetus_buff"
+    }
+  },
+  "target": {
+    "type": "FROM_TRIGGER"
+  },
+  "deliver": {
+    "type": "STASH_EFFECT",
+    "stash_effect": {
+      "id": "mrpgc_skill_tree:air_bubble",
+      "amplifier_power_multiplier": 0.2,
+      "duration": 8.0,
+      "triggers": [
+        {
+          "type": "DAMAGE_TAKEN"
+        }
+      ],
+      "consume": 0
+    }
+  },
+  "impacts": [
+    {
+      "action": {
+        "type": "DAMAGE",
+        "damage": {
+          "spell_power_coefficient": 0.0,
+          "knockback": 1.5
+        }
+      },
+      "particles": [
+        {
+          "particle_id": "spell_engine:smoke_medium",
+          "origin": "CENTER",
+          "shape": "SPHERE",
+          "count": 10.0,
+          "min_speed": 0.2,
+          "max_speed": 0.2
+        }
+      ],
+      "sound": {
+        "id": "more_rpg_classes:air_magic_impact2"
+      }
+    }
+  ],
+  "cost": {
+    "durability": 0,
+    "cooldown": {
+      "duration": 16.0
+    }
+  }
+}

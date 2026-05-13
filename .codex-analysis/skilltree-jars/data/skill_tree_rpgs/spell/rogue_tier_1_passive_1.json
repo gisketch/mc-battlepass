@@ -1,0 +1,66 @@
+{
+  "school": "spell_power:physical_melee",
+  "range": 0.0,
+  "tier": 1,
+  "type": "PASSIVE",
+  "passive": {
+    "triggers": [
+      {
+        "type": "MELEE_IMPACT",
+        "chance": 0.2
+      },
+      {
+        "type": "SPELL_IMPACT_SPECIFIC",
+        "chance": 0.2,
+        "spell": {
+          "archetype": "MELEE",
+          "type": "ACTIVE"
+        }
+      }
+    ]
+  },
+  "target": {
+    "type": "FROM_TRIGGER"
+  },
+  "impacts": [
+    {
+      "action": {
+        "type": "STATUS_EFFECT",
+        "status_effect": {
+          "effect_id": "minecraft:poison",
+          "duration": 8.0,
+          "amplifier": 1,
+          "amplifier_cap": 1,
+          "amplifier_cap_power_multiplier": 0.5,
+          "apply_mode": "ADD"
+        }
+      },
+      "particles": [
+        {
+          "particle_id": "spell_engine:magic_spark_burst",
+          "origin": "CENTER",
+          "shape": "SPHERE",
+          "count": 10.0,
+          "min_speed": 0.5,
+          "max_speed": 0.8,
+          "color_rgba": 870134783
+        },
+        {
+          "particle_id": "spell_engine:magic_spark_burst",
+          "origin": "CENTER",
+          "shape": "SPHERE",
+          "count": 10.0,
+          "min_speed": 0.5,
+          "max_speed": 0.8,
+          "color_rgba": 10027263
+        }
+      ],
+      "sound": {
+        "id": "spell_engine:generic_poison_impact"
+      }
+    }
+  ],
+  "cost": {
+    "durability": 0
+  }
+}

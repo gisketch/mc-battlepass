@@ -1,0 +1,17 @@
+{
+  "school": "spell_power:physical_ranged",
+  "range": 0.0,
+  "tier": 1,
+  "type": "MODIFIER",
+  "modifiers": [
+    {
+      "spell_pattern": "archers_expansion:choking_gas",
+      "projectile_perks": {
+        "ricochet": 3,
+        "ricochet_range": 10.0,
+        "chain_reaction_triggers": 0,
+        "chain_reaction_increment": 0
+      }
+    }
+  ]
+}

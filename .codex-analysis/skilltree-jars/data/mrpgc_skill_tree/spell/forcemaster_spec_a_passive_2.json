@@ -1,0 +1,53 @@
+{
+  "school": "spell_power:physical_melee",
+  "range": 0.0,
+  "tier": 1,
+  "type": "PASSIVE",
+  "passive": {
+    "triggers": [
+      {
+        "type": "ROLL"
+      }
+    ]
+  },
+  "impacts": [
+    {
+      "action": {
+        "type": "STATUS_EFFECT",
+        "status_effect": {
+          "effect_id": "mrpgc_skill_tree:flying_fists",
+          "duration": 5.0,
+          "apply_mode": "ADD"
+        }
+      },
+      "particles": [
+        {
+          "particle_id": "spell_engine:magic_stripe_float",
+          "origin": "FEET",
+          "shape": "WIDE_PIPE",
+          "count": 20.0,
+          "min_speed": 0.05,
+          "max_speed": 0.1,
+          "color_rgba": 3439329279
+        },
+        {
+          "particle_id": "spell_engine:sign_fist",
+          "origin": "CENTER",
+          "shape": "LINE_VERTICAL",
+          "count": 1.0,
+          "min_speed": 0.8,
+          "max_speed": 0.8,
+          "color_rgba": 3439329279,
+          "scale": 0.8,
+          "follow_entity": true
+        }
+      ],
+      "sound": {
+        "id": "mrpgc_skill_tree:flying_fists"
+      }
+    }
+  ],
+  "cost": {
+    "durability": 0
+  }
+}

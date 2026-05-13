@@ -161,7 +161,9 @@ object RolesFeature {
 
     private fun onRegisterCommands(event: RegisterCommandsEvent) {
         event.dispatcher.register(Commands.literal("unconfigured").requires { source -> source.hasPermission(2) }.executes(::unconfiguredWeapons))
+        event.dispatcher.register(Commands.literal("unconfigured_spells").requires { source -> source.hasPermission(2) }.executes(::unconfiguredSpells))
         event.dispatcher.register(Commands.literal("weapons").requires { source -> source.hasPermission(2) }.executes(::configuredWeapons))
+        event.dispatcher.register(Commands.literal("spells").requires { source -> source.hasPermission(2) }.executes(::configuredSpells))
         event.dispatcher.register(
             Commands.literal("tag")
                 .requires { source -> source.hasPermission(2) }
@@ -175,6 +177,7 @@ object RolesFeature {
                         .requires { source -> source.hasPermission(2) }
                         .then(Commands.literal("reload").executes(::reloadRoles))
                         .then(Commands.literal("unconfigured").executes(::unconfiguredWeapons))
+                        .then(Commands.literal("unconfigured_spells").executes(::unconfiguredSpells))
                         .then(Commands.literal("weapons").executes(::configuredWeapons))
                         .then(Commands.literal("spells").executes(::configuredSpells))
                         .then(Commands.literal("list").executes(::listRoles))
@@ -328,6 +331,16 @@ object RolesFeature {
         return (weaponIds.size + spellIds.size).coerceAtLeast(1)
     }
 
+    private fun unconfiguredSpells(context: CommandContext<CommandSourceStack>): Int {
+        RolesConfig.load()
+        val spellIds = RoleClassSpellRules.unconfiguredSpellIds(context.source.level)
+        val chunks = codeblockChunks("Unconfigured spells", unconfiguredSpellReportLines(spellIds))
+        context.source.sendSuccess({ Component.literal("Unconfigured spells: ${spellIds.size}. Reloaded role config and sent to Discord.") }, true)
+        chunks.forEach { chunk -> context.source.sendSuccess({ Component.literal(chunk) }, false) }
+        chunks.forEach { chunk -> DiscordWebhookClient.send(chunk) }
+        return spellIds.size.coerceAtLeast(1)
+    }
+
     private fun configuredWeapons(context: CommandContext<CommandSourceStack>): Int {
         RolesConfig.load()
         val reports = RoleClassEquipmentRules.configuredEquipmentReport()
@@ -364,6 +377,11 @@ object RolesFeature {
         add("unconfigured_weapons:")
         addAll(weaponIds.ifEmpty { listOf("none") })
         add("")
+        add("unconfigured_spells:")
+        addAll(spellIds.ifEmpty { listOf("none") })
+    }
+
+    private fun unconfiguredSpellReportLines(spellIds: List<String>): List<String> = buildList {
         add("unconfigured_spells:")
         addAll(spellIds.ifEmpty { listOf("none") })
     }

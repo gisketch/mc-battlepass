@@ -1,0 +1,106 @@
+{
+  "school": "spell_power:physical_ranged",
+  "range": 0.0,
+  "tier": 1,
+  "type": "PASSIVE",
+  "passive": {
+    "triggers": [
+      {
+        "type": "ROLL",
+        "chance": 0.5
+      }
+    ]
+  },
+  "deliver": {
+    "type": "CLOUD",
+    "delay": 5,
+    "clouds": [
+      {
+        "volume": {
+          "radius": 2.5,
+          "area": {
+            "vertical_range_multiplier": 0.3
+          },
+          "sound": {
+            "id": "spell_engine:poison_cloud_tick"
+          }
+        },
+        "time_to_live_seconds": 5.0,
+        "impact_tick_interval": 8,
+        "client_data": {
+          "particles": [
+            {
+              "particle_id": "spell_engine:smoke_large",
+              "origin": "FEET",
+              "shape": "PILLAR",
+              "count": 1.0,
+              "min_speed": 0.01,
+              "max_speed": 0.02,
+              "color_rgba": 10027263
+            },
+            {
+              "particle_id": "spell_engine:smoke_large",
+              "origin": "FEET",
+              "shape": "PILLAR",
+              "count": 1.0,
+              "min_speed": 0.01,
+              "max_speed": 0.02,
+              "color_rgba": 10027263
+            }
+          ]
+        },
+        "spawn": {
+          "sound": {
+            "id": "spell_engine:poison_cloud_spawn"
+          }
+        }
+      }
+    ]
+  },
+  "impacts": [
+    {
+      "target_modifiers": [
+        {
+          "conditions": [
+            {
+              "entity_type": "#minecraft:ignores_poison_and_regen"
+            }
+          ],
+          "execute": "DENY"
+        }
+      ],
+      "action": {
+        "type": "STATUS_EFFECT",
+        "status_effect": {
+          "effect_id": "archers_expansion:choking_gas",
+          "duration": 1.0,
+          "amplifier": 1,
+          "amplifier_power_multiplier": 0.3
+        }
+      },
+      "particles": [
+        {
+          "particle_id": "spell_engine:smoke_large",
+          "origin": "CENTER",
+          "shape": "SPHERE",
+          "count": 1.5,
+          "min_speed": 0.01,
+          "max_speed": 0.02,
+          "color_rgba": 870134783
+        },
+        {
+          "particle_id": "spell_engine:magic_skull_decelerate",
+          "origin": "CENTER",
+          "shape": "SPHERE",
+          "count": 3.0,
+          "min_speed": 0.1,
+          "max_speed": 0.2,
+          "color_rgba": 870134783
+        }
+      ]
+    }
+  ],
+  "cost": {
+    "durability": 0
+  }
+}

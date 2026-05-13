@@ -1,0 +1,13 @@
+{
+  "school": "spell_power:frost_ranged",
+  "range": 0.0,
+  "tier": 1,
+  "type": "MODIFIER",
+  "modifiers": [
+    {
+      "spell_pattern": "archers_expansion:arctic_volley",
+      "power_modifier": {},
+      "cooldown_duration_deduct": 2.0
+    }
+  ]
+}

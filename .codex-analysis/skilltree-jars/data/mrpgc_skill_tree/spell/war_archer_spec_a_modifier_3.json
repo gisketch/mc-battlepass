@@ -1,0 +1,64 @@
+{
+  "school": "spell_power:fire_ranged",
+  "range": 0.0,
+  "tier": 1,
+  "type": "MODIFIER",
+  "modifiers": [
+    {
+      "spell_pattern": "archers_expansion:point_blank_shot",
+      "mutate_impacts": "APPEND",
+      "impacts": [
+        {
+          "action": {
+            "type": "DAMAGE",
+            "allow_on_center_target": false,
+            "damage": {
+              "spell_power_coefficient": 0.5,
+              "knockback": 0.0
+            }
+          }
+        }
+      ],
+      "replacing_area_impact": {
+        "execute_action_type": "DAMAGE",
+        "radius": 2.0,
+        "area": {
+          "distance_dropoff": "SQUARED"
+        },
+        "particles": [
+          {
+            "particle_id": "spell_engine:fire_explosion",
+            "origin": "CENTER",
+            "shape": "SPHERE",
+            "count": 1.0,
+            "max_speed": 0.0,
+            "scale": 2.0
+          },
+          {
+            "particle_id": "spell_engine:flame_medium_b",
+            "origin": "CENTER",
+            "shape": "SPHERE",
+            "count": 25.0,
+            "min_speed": 0.1,
+            "max_speed": 0.3,
+            "extent": 2.0,
+            "pre_spawn_travel": 2.0
+          },
+          {
+            "particle_id": "spell_engine:flame_medium_b",
+            "origin": "CENTER",
+            "shape": "SPHERE",
+            "count": 25.0,
+            "min_speed": 0.2,
+            "max_speed": 0.4,
+            "extent": 4.0,
+            "pre_spawn_travel": 4.0
+          }
+        ],
+        "sound": {
+          "id": "entity.generic.explode"
+        }
+      }
+    }
+  ]
+}

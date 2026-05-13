@@ -1,0 +1,83 @@
+{
+  "school": "spell_power:frost",
+  "range": 0.0,
+  "tier": 1,
+  "type": "PASSIVE",
+  "passive": {
+    "triggers": [
+      {
+        "target_override": "CASTER",
+        "type": "SPELL_CAST",
+        "chance": 0.25,
+        "spell": {
+          "school": "spell_power:frost",
+          "type": "ACTIVE"
+        }
+      }
+    ]
+  },
+  "release": {
+    "sound": {
+      "id": "skill_tree_rpgs:frost_ward_activate"
+    }
+  },
+  "target": {
+    "type": "FROM_TRIGGER"
+  },
+  "deliver": {
+    "type": "STASH_EFFECT",
+    "stash_effect": {
+      "id": "skill_tree_rpgs:frost_ward",
+      "amplifier_power_multiplier": 0.2,
+      "duration": 8.0,
+      "triggers": [
+        {
+          "type": "DAMAGE_TAKEN"
+        }
+      ],
+      "consume": 0
+    }
+  },
+  "impacts": [
+    {
+      "action": {
+        "type": "STATUS_EFFECT",
+        "status_effect": {
+          "effect_id": "wizards:frost_slowness",
+          "duration": 5.0,
+          "amplifier": 2,
+          "amplifier_cap": 9,
+          "apply_mode": "ADD"
+        }
+      },
+      "particles": [
+        {
+          "particle_id": "spell_engine:magic_frost_burst",
+          "origin": "CENTER",
+          "shape": "SPHERE",
+          "count": 15.0,
+          "min_speed": 0.25,
+          "max_speed": 0.3,
+          "color_rgba": 3439329279
+        },
+        {
+          "particle_id": "spell_engine:snowflake",
+          "origin": "CENTER",
+          "shape": "SPHERE",
+          "count": 10.0,
+          "min_speed": 0.25,
+          "max_speed": 0.3
+        }
+      ],
+      "sound": {
+        "id": "wizards:frost_nova_effect_impact"
+      }
+    }
+  ],
+  "cost": {
+    "durability": 0,
+    "cooldown": {
+      "duration": 16.0
+    }
+  }
+}

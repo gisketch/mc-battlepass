@@ -1,0 +1,41 @@
+{
+  "school": "spell_power:air",
+  "range": 0.0,
+  "tier": 1,
+  "type": "MODIFIER",
+  "modifiers": [
+    {
+      "spell_pattern": "elemental_wizards_rpg:wind_aeroblast",
+      "mutate_impacts": "APPEND",
+      "impacts": [
+        {
+          "action": {
+            "type": "DAMAGE",
+            "allow_on_center_target": false,
+            "damage": {
+              "spell_power_coefficient": 0.4,
+              "knockback": 0.0
+            }
+          }
+        }
+      ],
+      "replacing_area_impact": {
+        "execute_action_type": "DAMAGE",
+        "radius": 2.0,
+        "area": {
+          "distance_dropoff": "SQUARED"
+        },
+        "particles": [
+          {
+            "particle_id": "more_rpg_classes:small_gust",
+            "origin": "FEET",
+            "shape": "WIDE_PIPE",
+            "count": 25.0,
+            "min_speed": 0.2,
+            "extent": 2.0
+          }
+        ]
+      }
+    }
+  ]
+}

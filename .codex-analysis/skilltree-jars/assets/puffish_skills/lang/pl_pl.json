@@ -1,0 +1,64 @@
+{
+	"text.puffish_skills.skills": "Umiejętności",
+	"text.puffish_skills.points_left": "Pozostałe punkty: ",
+
+	"tooltip.puffish_skills.current_level": "Obecny poziom: %s",
+	"tooltip.puffish_skills.experience_progress": "Doświadczenie: %s/%s (%s%%)",
+	"tooltip.puffish_skills.to_next_level": "Do następnego poziomu: %s",
+	"tooltip.puffish_skills.earned_points": "Zdobyte punkty: %s",
+	"tooltip.puffish_skills.spent_points": "Wydane punkty: %s",
+
+	"category.puffish_skills.skills": "Umiejętności",
+	"key.puffish_skills.open": "Otwórz drzewko umiejętności",
+
+	"chat.puffish_skills.new_point": "Masz nowy punkt umiejętności. Naciśnij %s, aby otworzyć swoje drzewko umiejętności.",
+
+	"toast.puffish_skills.invalid_config.description": "Nieprawidłowa konfiguracja, sprawdź dzienniki gry.",
+	"toast.puffish_skills.missing_config.description": "Brak drzewek umiejętności, upewnij się, że zostały dodane.",
+
+	"gamerule.puffish_skills:announceNewPoints": "Ogłaszaj nowe punkty umiejętności",
+
+	"command.puffish_skills.no_such_category": "Nie istnieje kategoria z ID \"%s\"",
+	"command.puffish_skills.no_such_skill": "Nie istnieje umiejętność z ID \"%s\"",
+	"command.puffish_skills.no_experience": "Doświadczenie nie jest włączone dla tej kategorii",
+
+	"command.puffish_skills.category.lock.success.single": "Zablokowano kategorię %s dla %s",
+	"command.puffish_skills.category.lock.success.multiple": "Zablokowano kategorię %s dla %s graczy",
+
+	"command.puffish_skills.category.unlock.success.single": "Odblokowano kategorię %s dla %s",
+	"command.puffish_skills.category.unlock.success.multiple": "Odblokowano kategorię %s dla %s graczy",
+
+	"command.puffish_skills.category.erase.success.single": "Wymazano kategorię %s dla %s",
+	"command.puffish_skills.category.erase.success.multiple": "Wymazano kategorię %s dla %s graczy",
+
+	"command.puffish_skills.experience.add.success.single": "Dodano %s doświadczenia do kategorii %s dla %s",
+	"command.puffish_skills.experience.add.success.multiple": "Dodano %s doświadczenia do kategorii %s dla %s graczy",
+
+	"command.puffish_skills.experience.set.success.single": "Ustawiono %s doświadczenia w kategorii %s dla %s",
+	"command.puffish_skills.experience.set.success.multiple": "Ustawiono %s doświadczenia w kategorii %s dla %s graczy",
+
+	"command.puffish_skills.experience.get.success": "%3$s ma %1$s doświadczenia w kategorii %2$s",
+
+	"command.puffish_skills.points.add.success.single": "Dodano %s punktów w kategorii %s dla %s",
+	"command.puffish_skills.points.add.success.multiple": "Dodano %s punktów w kategorii %s dla %s graczy",
+
+	"command.puffish_skills.points.set.success.single": "Ustawiono %s punktów w kategorii %s dla %s",
+	"command.puffish_skills.points.set.success.multiple": "Ustawiono %s punktów w kategorii %s dla %s graczy",
+
+	"command.puffish_skills.points.get.success": "%3$s ma %1$s punktów w kategorii %2$s",
+
+	"command.puffish_skills.skills.unlock.success.single": "Odblokowano umiejętność %s w kategorii %s dla %s",
+	"command.puffish_skills.skills.unlock.success.multiple": "Odblokowano umiejętność %s w kategorii %s dla %s graczy",
+
+	"command.puffish_skills.skills.lock.success.single": "Zablokowano umiejętność %s w kategorii %s dla %s",
+	"command.puffish_skills.skills.lock.success.multiple": "Zablokowano umiejętność %s w kategorii %s dla %s graczy",
+
+	"command.puffish_skills.skills.reset.success.single": "Zresetowano wszystkie umiejętności w kategorii %s dla %s",
+	"command.puffish_skills.skills.reset.success.multiple": "Zresetowano wszystkie umiejętności w kategorii %s dla %s graczy",
+
+	"command.puffish_skills.category.open.success.single": "Otwarto ekran kategorii %s dla %s",
+	"command.puffish_skills.category.open.success.multiple": "Otwarto ekran kategorii %s dla %s graczy",
+
+	"command.puffish_skills.open.success.single": "Otwarto ekran drzewka umiejętności dla %s",
+	"command.puffish_skills.open.success.multiple": "Otwarto ekran drzewka umiejętności dla %s graczy"
+}
