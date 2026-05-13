@@ -2122,7 +2122,7 @@ object NpcFeature {
         .then(Commands.literal("idle").executes(::animationIdleCommand))
         .then(Commands.literal("walk").executes(::animationWalkCommand))
         .then(Commands.literal("attack").executes(::animationAttackCommand))
-        .then(Commands.argument("animation", StringArgumentType.word()).suggests(::suggestCustomAnimationIds).executes(::animationPlayCommand))
+        .then(Commands.argument("animation", StringArgumentType.greedyString()).suggests(::suggestCustomAnimationIds).executes(::animationPlayCommand))
 
     private fun suggestCustomAnimationIds(context: CommandContext<CommandSourceStack>, builder: com.mojang.brigadier.suggestion.SuggestionsBuilder) =
         SharedSuggestionProvider.suggest((NpcAnimationRegistry.ids() + NpcPlayerlikeAnimationRegistry.ids() + listOf("attack", "slash", "dagger", "stab")).distinct(), builder)
@@ -2700,7 +2700,7 @@ object NpcFeature {
                 context.source.sendFailure(Component.literal("Invalid playerlike NPC animation '${animation.id}'."))
                 return 0
             }
-            context.source.sendSuccess({ Component.literal("Playing ${animation.id} playerlike animation on ${animationTargetName(npc)}.").withStyle(ChatFormatting.AQUA) }, true)
+            context.source.sendSuccess({ Component.literal("Queued ${animation.id} playerlike animation on ${animationTargetName(npc)}. If it does not move, check client log for CKDM playerlike animation warnings.").withStyle(ChatFormatting.AQUA) }, true)
             return 1
         }
         val animation = NpcAnimationRegistry.resolve(animationId) ?: run {

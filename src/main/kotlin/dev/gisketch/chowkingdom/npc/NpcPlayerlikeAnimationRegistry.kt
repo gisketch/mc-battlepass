@@ -6,7 +6,10 @@ import java.nio.file.Path
 
 object NpcPlayerlikeAnimationRegistry {
     private const val BETTERCOMBAT_NAMESPACE = "bettercombat"
-    private const val RESOURCE_ROOT = "assets/bettercombat/player_animations"
+    private const val BETTERCOMBAT_ALIAS_NAMESPACE = "better_combat"
+    private const val ASSETS_ROOT = "assets"
+    private const val PLAYER_ANIMATIONS_DIR = "player_animations"
+    private const val DEV_MANIFEST_PATH = "build/playeranimator-clips/manifest.csv"
     private val fallbackIds = listOf(
         "bettercombat:one_handed_slash_horizontal_right",
         "bettercombat:one_handed_slash_horizontal_left",
@@ -35,7 +38,7 @@ object NpcPlayerlikeAnimationRegistry {
     private var animations: Map<String, NpcPlayerlikeAnimationDefinition> = fallbackIds.associate { id -> id to NpcPlayerlikeAnimationDefinition(id) }
 
     fun reload(): List<NpcPlayerlikeAnimationDefinition> {
-        animations = (scanClasspath() + fallbackIds)
+        animations = (scanClasspath() + readDevManifest() + fallbackIds)
             .map(::normalize)
             .filter(String::isNotBlank)
             .distinct()
@@ -57,6 +60,7 @@ object NpcPlayerlikeAnimationRegistry {
         val byId = animations.ifEmpty { reload().associateBy { animation -> animation.id } }
         return aliasCandidates(normalized).firstNotNullOfOrNull(byId::get)
             ?: reload().firstOrNull { animation -> animation.id == normalized }
+            ?: normalized.takeIf { ':' in it }?.let(::NpcPlayerlikeAnimationDefinition)
     }
 
     fun normalize(id: String): String {
@@ -65,17 +69,22 @@ object NpcPlayerlikeAnimationRegistry {
             .lowercase()
             .replace(Regex("[^a-z0-9_.:/-]"), "")
         if (clean.isBlank()) return ""
-        return if (":" in clean) clean else "$BETTERCOMBAT_NAMESPACE:$clean"
+        val namespaced = if (":" in clean) clean else "$BETTERCOMBAT_NAMESPACE:$clean"
+        return if (namespaced.startsWith("$BETTERCOMBAT_ALIAS_NAMESPACE:")) {
+            "$BETTERCOMBAT_NAMESPACE:${namespaced.substringAfter(':')}"
+        } else {
+            namespaced
+        }
     }
 
     private fun scanClasspath(): List<String> {
         val loader = Thread.currentThread().contextClassLoader ?: NpcPlayerlikeAnimationRegistry::class.java.classLoader
-        val resources = loader.getResources(RESOURCE_ROOT).toList()
+        val resources = loader.getResources(ASSETS_ROOT).toList()
         return resources.flatMap { url ->
             runCatching {
                 when (url.protocol) {
-                    "file" -> scanDirectory(Path.of(url.toURI()))
-                    "jar" -> scanJar(url.openConnection() as JarURLConnection)
+                    "file" -> scanAssetsDirectory(Path.of(url.toURI()))
+                    "jar" -> scanAssetsJar(url.openConnection() as JarURLConnection)
                     else -> emptyList()
                 }
             }.getOrDefault(emptyList())
@@ -98,23 +107,86 @@ object NpcPlayerlikeAnimationRegistry {
         else -> listOf(normalized)
     }
 
-    private fun scanDirectory(root: Path): List<String> {
+    private fun scanAssetsDirectory(root: Path): List<String> {
         if (!Files.isDirectory(root)) return emptyList()
-        return Files.list(root).use { stream ->
-            stream
-                .filter { path -> Files.isRegularFile(path) && path.fileName.toString().endsWith(".json") }
-                .map { path -> "$BETTERCOMBAT_NAMESPACE:${path.fileName.toString().removeSuffix(".json")}" }
+        return Files.list(root).use { namespaces ->
+            namespaces
+                .filter(Files::isDirectory)
+                .flatMap { namespaceRoot ->
+                    val namespace = namespaceRoot.fileName.toString()
+                    val animationsRoot = namespaceRoot.resolve(PLAYER_ANIMATIONS_DIR)
+                    if (!Files.isDirectory(animationsRoot)) {
+                        java.util.stream.Stream.empty()
+                    } else {
+                        Files.list(animationsRoot)
+                            .filter { path -> Files.isRegularFile(path) && path.fileName.toString().endsWith(".json") }
+                            .map { path -> "$namespace:${path.fileName.toString().removeSuffix(".json")}" }
+                    }
+                }
                 .toList()
         }
     }
 
-    private fun scanJar(connection: JarURLConnection): List<String> {
-        val prefix = "$RESOURCE_ROOT/"
+    private fun scanAssetsJar(connection: JarURLConnection): List<String> {
+        val pattern = Regex("""^assets/([^/]+)/player_animations/([^/]+)\.json$""")
         return connection.jarFile.entries().asSequence()
             .map { entry -> entry.name }
-            .filter { name -> name.startsWith(prefix) && name.endsWith(".json") && '/' !in name.removePrefix(prefix) }
-            .map { name -> "$BETTERCOMBAT_NAMESPACE:${name.substringAfterLast('/').removeSuffix(".json")}" }
+            .mapNotNull { name ->
+                val match = pattern.matchEntire(name) ?: return@mapNotNull null
+                "${match.groupValues[1]}:${match.groupValues[2]}"
+            }
             .toList()
+    }
+
+    private fun readDevManifest(): List<String> = candidateRoots()
+        .map { root -> root.resolve(DEV_MANIFEST_PATH).normalize() }
+        .distinct()
+        .firstOrNull(Files::isRegularFile)
+        ?.let { path ->
+            Files.readAllLines(path)
+                .asSequence()
+                .drop(1)
+                .mapNotNull(::clipIdFromCsvLine)
+                .toList()
+        }
+        .orEmpty()
+
+    private fun candidateRoots(): List<Path> {
+        val cwd = Path.of("").toAbsolutePath()
+        return generateSequence(cwd) { path -> path.parent }.take(5).toList()
+    }
+
+    private fun clipIdFromCsvLine(line: String): String? {
+        val columns = parseCsvLine(line)
+        if (columns.size < 5) return null
+        val namespace = columns[1].trim()
+        val clip = columns[4].trim()
+        return if (namespace.isBlank() || clip.isBlank()) null else "$namespace:$clip"
+    }
+
+    private fun parseCsvLine(line: String): List<String> {
+        val columns = mutableListOf<String>()
+        val current = StringBuilder()
+        var quoted = false
+        var index = 0
+        while (index < line.length) {
+            val char = line[index]
+            when {
+                char == '"' && quoted && index + 1 < line.length && line[index + 1] == '"' -> {
+                    current.append('"')
+                    index += 1
+                }
+                char == '"' -> quoted = !quoted
+                char == ',' && !quoted -> {
+                    columns += current.toString()
+                    current.setLength(0)
+                }
+                else -> current.append(char)
+            }
+            index += 1
+        }
+        columns += current.toString()
+        return columns
     }
 }
 

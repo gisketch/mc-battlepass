@@ -63,8 +63,10 @@ import net.neoforged.neoforge.common.NeoForge
 import com.mojang.datafixers.util.Either
 import dev.kosmx.playerAnim.api.layered.IAnimation
 import dev.kosmx.playerAnim.api.layered.ModifierLayer
+import dev.kosmx.playerAnim.core.data.KeyframeAnimation
 import dev.kosmx.playerAnim.minecraftApi.PlayerAnimationRegistry
-import me.Thelnfamous1.mobplayeranimator.api.MobAnimationFactory
+import me.Thelnfamous1.mobplayeranimator.api.MobAnimationAccess
+import net.bettercombat.client.animation.CustomAnimationPlayer
 import java.util.Locale
 import java.util.UUID
 import java.io.ByteArrayInputStream
@@ -91,7 +93,7 @@ object NpcClient {
     private val worldChatEntries = mutableListOf<NpcWorldChatEntry>()
     private val quickSkinChatTextures = mutableMapOf<UUID, ResourceLocation?>()
     private val skippedTalkResponses = mutableSetOf<Long>()
-    private var playerlikeAnimationFactoryRegistered = false
+    private val playerlikeAnimationLayers = mutableMapOf<Int, NpcPlayerlikeAnimationLayer>()
 
     @JvmStatic
     fun openDialog(payload: NpcDialogPayload) {
@@ -218,7 +220,6 @@ object NpcClient {
     }
 
     fun register(modBus: IEventBus) {
-        registerPlayerlikeAnimationFactory()
         modBus.addListener(::registerRenderers)
         modBus.addListener(::registerGuiLayers)
         modBus.addListener(::registerTooltipFactories)
@@ -234,11 +235,18 @@ object NpcClient {
         event.registerBlockEntityRenderer(NpcFeature.CAMPING_BLOCK_ENTITY.get()) { CampingBlockRenderer() }
     }
 
-    private fun registerPlayerlikeAnimationFactory() {
-        if (playerlikeAnimationFactoryRegistered) return
-        playerlikeAnimationFactoryRegistered = true
-        MobAnimationFactory.ANIMATION_DATA_FACTORY.registerFactory(ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "npc_playerlike_debug"), 2000) { mob ->
-            (mob as? ChowNpcEntity)?.let(::NpcPlayerlikeAnimationLayer)
+    fun ensurePlayerlikeAnimationLayer(entity: ChowNpcEntity) {
+        if (!entity.level().isClientSide) return
+        val existing = playerlikeAnimationLayers[entity.id]
+        if (existing?.entity === entity) return
+        playerlikeAnimationLayers.entries.removeIf { (_, layer) -> !layer.entity.isAlive || layer.entity.level() !== entity.level() || layer.entity.id == entity.id }
+        val layer = NpcPlayerlikeAnimationLayer(entity)
+        runCatching {
+            MobAnimationAccess.getMobAnimLayer(entity).addAnimLayer(2000, layer)
+            playerlikeAnimationLayers[entity.id] = layer
+            ChowKingdomMod.LOGGER.info("Attached NPC playerlike animation layer to {} ({})", entity.npcId, entity.id)
+        }.onFailure { error ->
+            ChowKingdomMod.LOGGER.warn("Failed to attach NPC playerlike animation layer to {} ({}).", entity.npcId, entity.id, error)
         }
     }
 
@@ -655,9 +663,9 @@ private class ChowNpcDelegatingRenderer(context: EntityRendererProvider.Context)
     }
 }
 
-private class ChowNpcBetterCombatPlayerlikeRenderer(context: EntityRendererProvider.Context) : HumanoidMobRenderer<ChowNpcEntity, PlayerModel<ChowNpcEntity>>(context, PlayerModel(context.bakeLayer(ModelLayers.PLAYER), false), 0.5f) {
-    private val normalModel = PlayerModel<ChowNpcEntity>(context.bakeLayer(ModelLayers.PLAYER), false)
-    private val slimModel = PlayerModel<ChowNpcEntity>(context.bakeLayer(ModelLayers.PLAYER_SLIM), true)
+private class ChowNpcBetterCombatPlayerlikeRenderer(context: EntityRendererProvider.Context) : HumanoidMobRenderer<ChowNpcEntity, HumanoidModel<ChowNpcEntity>>(context, HumanoidModel(context.bakeLayer(ModelLayers.PLAYER)), 0.5f) {
+    private val normalModel = HumanoidModel<ChowNpcEntity>(context.bakeLayer(ModelLayers.PLAYER))
+    private val slimModel = HumanoidModel<ChowNpcEntity>(context.bakeLayer(ModelLayers.PLAYER_SLIM))
 
     init {
         addLayer(
@@ -672,6 +680,7 @@ private class ChowNpcBetterCombatPlayerlikeRenderer(context: EntityRendererProvi
     }
 
     override fun render(entity: ChowNpcEntity, entityYaw: Float, partialTicks: Float, poseStack: PoseStack, buffer: MultiBufferSource, packedLight: Int) {
+        NpcClient.ensurePlayerlikeAnimationLayer(entity)
         model = if (entity.bodyType == NpcBodyTypes.SLIM) slimModel else normalModel
         model.rightArmPose = if (entity.mainHandItem.isEmpty) HumanoidModel.ArmPose.EMPTY else HumanoidModel.ArmPose.ITEM
         super.render(entity, entityYaw, partialTicks, poseStack, buffer, packedLight)
@@ -856,9 +865,18 @@ private class NpcGeoHeldItemLayer(renderer: GeoEntityRenderer<ChowNpcEntity>) : 
     }
 }
 
-private class NpcPlayerlikeAnimationLayer(private val entity: ChowNpcEntity) : ModifierLayer<IAnimation>() {
+private class NpcPlayerlikeAnimationLayer(val entity: ChowNpcEntity) : ModifierLayer<IAnimation>() {
     private var observedPlayId = Int.MIN_VALUE
     private var observedAnimationKey = ""
+    private var warnedMissingAnimationKey = ""
+
+    override fun isActive(): Boolean {
+        val pendingAnimation = entity.playerlikeAnimation &&
+            entity.playerlikeAnimationKey.isNotBlank() &&
+            (entity.playerlikeAnimationPlayId != observedPlayId || entity.playerlikeAnimationKey != observedAnimationKey)
+        val pendingClear = !entity.playerlikeAnimation && observedAnimationKey.isNotBlank()
+        return entity.isAlive && (pendingAnimation || pendingClear || super.isActive())
+    }
 
     override fun tick() {
         val playId = entity.playerlikeAnimationPlayId
@@ -873,7 +891,22 @@ private class NpcPlayerlikeAnimationLayer(private val entity: ChowNpcEntity) : M
         if (playId != observedPlayId || animationKey != observedAnimationKey) {
             val animationId = runCatching { ResourceLocation.parse(animationKey) }.getOrNull()
             val playable = animationId?.let(PlayerAnimationRegistry::getAnimation)
-            setAnimation(playable?.playAnimation() as? IAnimation)
+            val animation = when (playable) {
+                is KeyframeAnimation -> CustomAnimationPlayer(playable, 0)
+                else -> playable?.playAnimation() as? IAnimation
+            }
+            setAnimation(animation)
+            if (animation == null && warnedMissingAnimationKey != animationKey) {
+                warnedMissingAnimationKey = animationKey
+                ChowKingdomMod.LOGGER.warn(
+                    "No client PlayerAnimator animation found for NPC playerlike key {}. Loaded namespaces/ids sample: {}",
+                    animationKey,
+                    PlayerAnimationRegistry.getAnimations().keys.take(20).joinToString(", "),
+                )
+            } else if (animation != null) {
+                warnedMissingAnimationKey = ""
+                ChowKingdomMod.LOGGER.info("Playing NPC playerlike animation {} on {}", animationKey, entity.npcId)
+            }
             observedAnimationKey = animationKey
             observedPlayId = playId
         }
