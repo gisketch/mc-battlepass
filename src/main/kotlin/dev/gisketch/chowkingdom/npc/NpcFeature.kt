@@ -2080,6 +2080,11 @@ object NpcFeature {
             Commands.literal("custom_animation")
                 .then(Commands.argument("enabled", BoolArgumentType.bool()).executes(::animationCustomAnimationCommand)),
         )
+        .then(
+            Commands.literal("playerlike")
+                .then(Commands.argument("enabled", BoolArgumentType.bool()).executes(::animationPlayerlikeCommand)),
+        )
+        .then(Commands.literal("list").executes(::animationListCommand))
         .then(Commands.literal("reload").executes(::animationReloadCommand))
         .then(
             Commands.literal("wear")
@@ -2120,7 +2125,7 @@ object NpcFeature {
         .then(Commands.argument("animation", StringArgumentType.word()).suggests(::suggestCustomAnimationIds).executes(::animationPlayCommand))
 
     private fun suggestCustomAnimationIds(context: CommandContext<CommandSourceStack>, builder: com.mojang.brigadier.suggestion.SuggestionsBuilder) =
-        SharedSuggestionProvider.suggest(NpcAnimationRegistry.ids(), builder)
+        SharedSuggestionProvider.suggest((NpcAnimationRegistry.ids() + NpcPlayerlikeAnimationRegistry.ids() + listOf("attack", "slash", "dagger", "stab")).distinct(), builder)
 
     private fun suggestAnimationWearables(context: CommandContext<CommandSourceStack>, builder: com.mojang.brigadier.suggestion.SuggestionsBuilder): java.util.concurrent.CompletableFuture<com.mojang.brigadier.suggestion.Suggestions> {
         animationWearAliases.forEach(builder::suggest)
@@ -2476,22 +2481,40 @@ object NpcFeature {
         return 1
     }
 
+    private fun animationPlayerlikeCommand(context: CommandContext<CommandSourceStack>): Int {
+        val player = context.source.playerOrException
+        val enabled = BoolArgumentType.getBool(context, "enabled")
+        val npc = animationCommandTarget(player) ?: run {
+            context.source.sendFailure(Component.literal("No animation debug Steve or Chow Kingdom NPC under crosshair."))
+            return 0
+        }
+        npc.setPlayerlikeAnimationMode(enabled)
+        context.source.sendSuccess({ Component.literal("${animationTargetName(npc)} playerlike=$enabled. Use /npc animations list for Better Combat animation ids.").withStyle(if (enabled) ChatFormatting.AQUA else ChatFormatting.GRAY) }, true)
+        return 1
+    }
+
+    private fun animationListCommand(context: CommandContext<CommandSourceStack>): Int {
+        val player = context.source.playerOrException
+        val npc = animationCommandTarget(player)
+        val playerlike = npc?.playerlikeAnimation == true
+        val animations = if (playerlike) NpcPlayerlikeAnimationRegistry.ids() else NpcAnimationRegistry.ids()
+        val label = if (playerlike) "playerlike Better Combat" else "Gecko"
+        context.source.sendSuccess({ Component.literal("$label NPC animation id(s): ${animations.joinToString(", ")}").withStyle(if (playerlike) ChatFormatting.AQUA else ChatFormatting.GREEN) }, false)
+        return animations.size
+    }
+
     private fun animationReloadCommand(context: CommandContext<CommandSourceStack>): Int {
         val player = context.source.playerOrException
         val animations = NpcAnimationRegistry.reload()
+        val playerlikeAnimations = NpcPlayerlikeAnimationRegistry.reload()
         NpcNetwork.reloadAnimations(player)
-        context.source.sendSuccess({ Component.literal("Reloaded ${animations.size} NPC animation id(s): ${animations.joinToString(", ") { animation -> animation.id }}. Client resource reload requested.").withStyle(ChatFormatting.GREEN) }, true)
-        return animations.size
+        context.source.sendSuccess({ Component.literal("Reloaded ${animations.size} Gecko id(s) and ${playerlikeAnimations.size} playerlike id(s). Client resource reload requested.").withStyle(ChatFormatting.GREEN) }, true)
+        return animations.size + playerlikeAnimations.size
     }
 
     private fun animationPlayCommand(context: CommandContext<CommandSourceStack>): Int {
         val requested = StringArgumentType.getString(context, "animation")
-        val animation = NpcAnimationRegistry.resolve(requested)
-        if (animation == null) {
-            context.source.sendFailure(Component.literal("Unknown NPC animation '$requested'. Available: ${NpcAnimationRegistry.ids().joinToString(", ")}"))
-            return 0
-        }
-        return playAnimation(context, animation.id)
+        return playAnimation(context, requested)
     }
 
     private fun animationWearCommand(context: CommandContext<CommandSourceStack>): Int {
@@ -2667,6 +2690,18 @@ object NpcFeature {
         val npc = animationCommandTarget(player) ?: run {
             context.source.sendFailure(Component.literal("No animation debug Steve or Chow Kingdom NPC under crosshair."))
             return 0
+        }
+        if (npc.playerlikeAnimation) {
+            val animation = NpcPlayerlikeAnimationRegistry.resolve(animationId) ?: run {
+                context.source.sendFailure(Component.literal("Unknown playerlike NPC animation '$animationId'. Available: ${NpcPlayerlikeAnimationRegistry.ids().joinToString(", ")}"))
+                return 0
+            }
+            if (!npc.playPlayerlikeAnimation(animation.id)) {
+                context.source.sendFailure(Component.literal("Invalid playerlike NPC animation '${animation.id}'."))
+                return 0
+            }
+            context.source.sendSuccess({ Component.literal("Playing ${animation.id} playerlike animation on ${animationTargetName(npc)}.").withStyle(ChatFormatting.AQUA) }, true)
+            return 1
         }
         val animation = NpcAnimationRegistry.resolve(animationId) ?: run {
             context.source.sendFailure(Component.literal("Invalid NPC animation '$animationId'."))

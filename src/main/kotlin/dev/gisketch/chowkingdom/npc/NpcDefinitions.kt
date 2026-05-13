@@ -11,6 +11,7 @@ class NpcDefinition(
     @SerializedName("height") var height: Double = DEFAULT_NPC_BODY_SCALE,
     @SerializedName("weight") var weight: Double = DEFAULT_NPC_BODY_SCALE,
     @SerializedName("custom_animation") var customAnimation: Boolean = false,
+    @SerializedName("playerlike_animation") var playerlikeAnimation: Boolean = false,
     @SerializedName("main_pokemon") var mainPokemon: String = "",
     @SerializedName("class") var classId: String = "",
     @SerializedName("job_definition") var jobDefinition: NpcJobDefinition = NpcJobDefinition(),
@@ -183,6 +184,7 @@ class NpcSettingsDefinition(
 
 class NpcRenderingSettingsDefinition(
     @SerializedName("playerlike_renderer") var playerlikeRenderer: Boolean = false,
+    @SerializedName("bettercombat_playerlike_renderer") var betterCombatPlayerlikeRenderer: Boolean = false,
 ) {
     fun normalized(): NpcRenderingSettingsDefinition = apply {
     }

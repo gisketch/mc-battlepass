@@ -15,8 +15,8 @@ Custom Gecko animation AI planning lives in [NPC Custom Animation AI](NPC_CUSTOM
 - Default file: `finn.toml`, written if missing.
 - Global NPC settings: `settings.toml`, written if missing.
 - Shared generic NPC quests: `generic_quests.toml`, written if missing and merged into every NPC with `missions.enabled=true`.
-- Rendering experiment: `settings.toml` `[rendering].playerlike_renderer` switches NPCs to an RCT-style vanilla `PlayerModel`/`HumanoidMobRenderer` path for EMF/ETF animation pack testing. Restart the client after changing it. FA/Fresh may apply automatically if it hooks custom player-shaped mobs; otherwise a compat resource pack or deeper renderer adapter is needed.
-- Custom animation experiment: per-NPC `custom_animation = true` routes that entity to the GeckoLib playerlike model and bypasses the EMF-oriented playerlike renderer so CKDM owns the pose.
+- Rendering experiment: `settings.toml` `[rendering].playerlike_renderer` switches NPCs to an RCT-style vanilla `PlayerModel`/`HumanoidMobRenderer` path for EMF/ETF animation pack testing. `bettercombat_playerlike_renderer = true` switches the default render path to the Better Combat/Mob Player Animator-compatible playerlike renderer. Restart the client after changing renderer settings.
+- Custom animation experiment: per-NPC `custom_animation = true` routes that entity to the GeckoLib playerlike model and bypasses the EMF-oriented playerlike renderer so CKDM owns the pose. Per-NPC `playerlike_animation = true` routes that entity to the Better Combat-compatible PlayerModel path and disables Gecko custom animation mode.
 - Custom animation IDs are read from `assets/gisketchs_chowkingdom_mod/animations/npc/playerlike.animation.json`; `/npc animations reload` refreshes command suggestions and asks the caller's client to reload resources.
 - Shared friendship message fallback: `friendship_messages.toml`, written if missing and used by all NPCs unless a definition overrides `friendship_messages`.
 - Intro block: `gisketchs_chowkingdom_mod:camping_block`.
@@ -62,6 +62,7 @@ Each NPC is one TOML file:
 - `height`: Pehkui height scale. Default `1.0`, clamped from `0.6` to `1.4`.
 - `weight`: Pehkui width scale. Default `1.0`, clamped from `0.6` to `1.4`.
 - `custom_animation`: Uses the GeckoLib playerlike NPC renderer instead of the EMF-compatible renderer path. Default `false`.
+- `playerlike_animation`: Uses the Better Combat/Mob Player Animator-compatible playerlike renderer instead of Gecko custom animation. Default `false`.
 - `main_pokemon`: Optional Cobblemon species id, for example `main_pokemon = "cobblemon:growlithe"`. When Cobblemon is installed, CKDM keeps one tagged NPC-owned companion near the NPC. The companion follows the NPC, is not catchable, is not battleable, and is included in LLM prompt context so the NPC can sometimes talk about it.
 - `class`: Optional class id for Training dialog classification, for example `class = "rogue"`. Training starts the matching class mentor questline from that class TOML and unlocks the class only after payment and mentor duel victory.
 - `store`: Store template id, for example `store = "cosmetics"`. This selects the store TOML/pool only; runtime stock remains per NPC through `npc_<id>`.
@@ -425,9 +426,12 @@ Home beds are validated against live bed blocks. If the assigned bed is broken o
 - `/npc fight`: OP-only temporary boss duel with the Chow Kingdom NPC under the player's crosshair.
 - `/npc animation debug`: toggle a Steve-textured Chow Kingdom NPC debug entity for the command player.
 - `/npc animation custom_animation true|false`: toggle GeckoLib custom animation mode on the active debug Steve, or the NPC under the crosshair when no debug Steve is active.
+- `/npc animation playerlike true|false`: toggle the Better Combat-compatible playerlike animation renderer on the active debug Steve, or the NPC under the crosshair when no debug Steve is active.
+- `/npc animation list`: list Gecko animation ids normally; if the active animation target has `playerlike = true`, list Better Combat playerlike animation ids instead.
 - `/npc animation idle`: enable custom animation mode and run the idle alias on the active debug Steve, or the NPC under the crosshair when no debug Steve is active.
 - `/npc animation walk`: enable custom animation mode and run the walk alias on the active debug Steve, or the NPC under the crosshair when no debug Steve is active. The current weapon-socket reset file only defines `idle`, so this command is expected to fail until walk clips are re-authored.
 - `/npc animation attack`: enable custom animation mode and run the attack alias on the active debug Steve, or the NPC under the crosshair when no debug Steve is active. The current weapon-socket reset file only defines `idle`, so this command is expected to fail until attack clips are re-authored.
+- When `playerlike = true`, `/npc animations <animation>` plays Better Combat/PlayerAnimator ids such as `bettercombat:one_handed_slash_horizontal_right`, with default aliases `attack`, `slash`, `dagger`, and `stab`.
 - Replaying the same one-shot debug animation forces a GeckoLib controller reset, so repeated `/npc animation attack` calls restart the attack clip instead of holding the previous finished pose.
 - `/npc animation reload` or `/npc animations reload`: reload animation IDs from `playerlike.animation.json` and request a client resource reload. The resource reload sees files from the active client resource pack/classpath; in a dev run, source edits may still require Gradle resource processing if the client is serving `build/resources/main`.
 - `/npc animation wear <item>` or `/npc animations wear <item>`: equip the active debug Steve or looked-at NPC with `hat`, `chestplate`, `leggings`, `boots`, `sword`, `left_sword`, `left <item>`, any item id such as `minecraft:iron_sword`, or `clear`. Held items render directly on authored Gecko hand-item socket bones using raw item model context plus one fixed item-model-space adapter. Vanilla armor layers render on the normal/playerlike NPC renderers; the current Gecko custom renderer does not draw vanilla armor layers yet.
