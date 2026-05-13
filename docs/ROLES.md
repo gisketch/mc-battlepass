@@ -10,6 +10,7 @@ For step-by-step creation and tuning, see [Jobs And Classes Creation Guide](ROLE
 - Class definitions: `config/gisketchs_chowkingdom_mod/roles/classes/*.toml`
 - Onboarding copy: `config/gisketchs_chowkingdom_mod/roles/onboarding.toml`
 - Global equipment whitelist: `config/gisketchs_chowkingdom_mod/roles/equipment_whitelist.toml`
+- Global spell whitelist: `config/gisketchs_chowkingdom_mod/roles/spell_whitelist.toml`
 - Player state: `<world>/data/gisketchs_chowkingdom_mod/roles/players.json`
 - Class item tags: `src/main/resources/data/gisketchs_chowkingdom_mod/tags/item/class/`
 
@@ -28,6 +29,7 @@ The source defaults create editable job/class TOML, but they no longer auto-assi
 - `/ck roles list`
 - `/weapons`
 - `/ck roles weapons`
+- `/ck roles spells`
 - `/unconfigured`
 - `/ck roles get <player>`
 - `/ck roles starter_licenses set <player> <licenses>`
@@ -105,6 +107,10 @@ Equipment affinity supports deny patterns with `weapon_exclude_patterns` and `ar
 Use `/unconfigured` or `/ck roles unconfigured` as an operator to scan loaded items for unconfigured weapons. The command reloads role config first, prints codeblocks in game, posts them to Discord through the configured webhook, and writes a generated datapack tag at `#gisketchs_chowkingdom_mod:unconfigured`; run `/reload` before EMI sees the refreshed generated tag.
 
 Use `/weapons` or `/ck roles weapons` as an operator to list the opposite report: every loaded concrete weapon and armor item matched by each class. The command reloads role config first, resolves tags and glob patterns into item ids, prints sections such as `rogue:`, `weapons:`, and `armor:` in game, and posts the same codeblocks to Discord through the configured webhook.
+
+Spell Engine class locks use `spell_affinity` perks with `spell_id`, `spell_ids`, `spell_tags`, `spell_patterns`, and matching `spell_exclude_*` deny fields. Access is unioned across active classes: if any active class or `spell_whitelist.toml` allows a spell, the player can cast and bind it. Wrong-class Spell Engine casts and binding-table learning are rejected server-side; unbinding an already bound spell stays allowed. `/unconfigured` also prints `unconfigured_spells:` for loaded RPG Series spells not owned by any class and not globally whitelisted. `/ck roles spells` lists resolved loaded spell ids per class.
+
+Spell book and spell scroll items are also derived from `spell_affinity` `spell_book/*` and `spell_scroll/*` tags at role-config load time. Do not use broad equipment tags such as `accessories:spell_book` for one class; that would make every RPG spell book or scroll look owned by that class.
 
 Inventory slots render a grey overlay on weapon-like items and armor that none of the player's active classes can use. Global whitelist matches keep normal rendering.
 

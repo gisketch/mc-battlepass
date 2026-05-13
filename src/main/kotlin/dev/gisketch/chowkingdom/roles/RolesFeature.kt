@@ -176,6 +176,7 @@ object RolesFeature {
                         .then(Commands.literal("reload").executes(::reloadRoles))
                         .then(Commands.literal("unconfigured").executes(::unconfiguredWeapons))
                         .then(Commands.literal("weapons").executes(::configuredWeapons))
+                        .then(Commands.literal("spells").executes(::configuredSpells))
                         .then(Commands.literal("list").executes(::listRoles))
                         .then(starterLicensesCommand())
                         .then(upgradeLicensesCommand())
@@ -317,13 +318,14 @@ object RolesFeature {
 
     private fun unconfiguredWeapons(context: CommandContext<CommandSourceStack>): Int {
         RolesConfig.load()
-        val ids = RoleClassEquipmentRules.unconfiguredWeaponIds()
-        writeUnconfiguredTagDatapack(context.source.server, ids)
-        val chunks = codeblockChunks(ids)
-        context.source.sendSuccess({ Component.literal("Unconfigured weapons: ${ids.size}. Reloaded role config, wrote datapack tag #${ChowKingdomMod.MOD_ID}:unconfigured. Run /reload before EMI sees the refreshed tag.") }, true)
+        val weaponIds = RoleClassEquipmentRules.unconfiguredWeaponIds()
+        val spellIds = RoleClassSpellRules.unconfiguredSpellIds(context.source.level)
+        writeUnconfiguredTagDatapack(context.source.server, weaponIds)
+        val chunks = codeblockChunks("Unconfigured weapons and spells", unconfiguredReportLines(weaponIds, spellIds))
+        context.source.sendSuccess({ Component.literal("Unconfigured weapons: ${weaponIds.size}; spells: ${spellIds.size}. Reloaded role config, wrote datapack tag #${ChowKingdomMod.MOD_ID}:unconfigured for weapons. Run /reload before EMI sees the refreshed tag.") }, true)
         chunks.forEach { chunk -> context.source.sendSuccess({ Component.literal(chunk) }, false) }
         chunks.forEach { chunk -> DiscordWebhookClient.send(chunk) }
-        return ids.size.coerceAtLeast(1)
+        return (weaponIds.size + spellIds.size).coerceAtLeast(1)
     }
 
     private fun configuredWeapons(context: CommandContext<CommandSourceStack>): Int {
@@ -342,6 +344,30 @@ object RolesFeature {
         return itemCount.coerceAtLeast(1)
     }
 
+    private fun configuredSpells(context: CommandContext<CommandSourceStack>): Int {
+        RolesConfig.load()
+        val reports = RoleClassSpellRules.configuredSpellReport(context.source.level)
+        if (reports.isEmpty()) {
+            context.source.sendFailure(Component.literal("No class spell affinity loaded from ${RolesConfig.configRoot().resolve("classes")}. Check class TOMLs, then run /ck roles reload."))
+            return 0
+        }
+        val lines = classSpellReportLines(reports)
+        val chunks = codeblockChunks("Configured class spells", lines)
+        val spellCount = reports.sumOf { report -> report.spellIds.size }
+        context.source.sendSuccess({ Component.literal("Configured class spells: ${reports.size} class(es), $spellCount spell match(es). Reloaded role config and sent to Discord.") }, true)
+        chunks.forEach { chunk -> context.source.sendSuccess({ Component.literal(chunk) }, false) }
+        chunks.forEach { chunk -> DiscordWebhookClient.send(chunk) }
+        return spellCount.coerceAtLeast(1)
+    }
+
+    private fun unconfiguredReportLines(weaponIds: List<String>, spellIds: List<String>): List<String> = buildList {
+        add("unconfigured_weapons:")
+        addAll(weaponIds.ifEmpty { listOf("none") })
+        add("")
+        add("unconfigured_spells:")
+        addAll(spellIds.ifEmpty { listOf("none") })
+    }
+
     private fun classEquipmentReportLines(reports: List<RoleClassEquipmentRules.ClassEquipmentReport>): List<String> {
         if (reports.isEmpty()) return listOf("none")
         val lines = mutableListOf<String>()
@@ -352,6 +378,17 @@ object RolesFeature {
             lines += report.weaponIds.ifEmpty { listOf("none") }
             lines += "armor:"
             lines += report.armorIds.ifEmpty { listOf("none") }
+        }
+        return lines
+    }
+
+    private fun classSpellReportLines(reports: List<RoleClassSpellRules.ClassSpellReport>): List<String> {
+        if (reports.isEmpty()) return listOf("none")
+        val lines = mutableListOf<String>()
+        reports.forEachIndexed { index, report ->
+            if (index > 0) lines += ""
+            lines += "${report.classId}:"
+            lines += report.spellIds.ifEmpty { listOf("none") }
         }
         return lines
     }

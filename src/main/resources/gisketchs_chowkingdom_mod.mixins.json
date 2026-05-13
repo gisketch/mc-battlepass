@@ -6,7 +6,8 @@
   "mixins": [
     "BlockFactoryDodgeRollMessageMixin",
     "BlockFactoryRollAttachmentMixin",
-    "GameProfileMixin"
+    "GameProfileMixin",
+    "SpellBindingScreenHandlerClassLockMixin"
   ],
   "client": [
     "AbstractContainerScreenAccessor",

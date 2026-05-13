@@ -19,6 +19,7 @@ object RolesConfig {
     private var jobScalingDefinition = JobScalingDefinition()
     private var classLicenseDefinition = ClassLicenseDefinition()
     private var equipmentWhitelistDefinition = EquipmentWhitelistDefinition()
+    private var spellWhitelistDefinition = SpellWhitelistDefinition()
 
     private val root: Path
         get() = FMLPaths.CONFIGDIR.get().resolve(ChowKingdomMod.MOD_ID).resolve("roles")
@@ -30,6 +31,7 @@ object RolesConfig {
         writeDefaultIfMissing(root.resolve("job_scaling.toml"), defaultJobScaling())
         writeDefaultIfMissing(root.resolve("class_licenses.toml"), defaultClassLicenses())
         writeDefaultIfMissing(root.resolve("equipment_whitelist.toml"), EquipmentWhitelistDefinition())
+        writeDefaultIfMissing(root.resolve("spell_whitelist.toml"), SpellWhitelistDefinition())
         defaultJobs().forEach { definition -> writeDefaultIfMissing(root.resolve("jobs").resolve("${definition.id}.toml"), definition) }
         writeDefaultIfMissing(root.resolve("classes").resolve("rogue.toml"), defaultRogue())
         writeDefaultIfMissing(root.resolve("classes").resolve("warrior.toml"), defaultWarrior())
@@ -37,6 +39,7 @@ object RolesConfig {
         jobScalingDefinition = readJobScaling(root.resolve("job_scaling.toml"))
         classLicenseDefinition = readClassLicenses(root.resolve("class_licenses.toml"))
         equipmentWhitelistDefinition = readEquipmentWhitelist(root.resolve("equipment_whitelist.toml"))
+        spellWhitelistDefinition = readSpellWhitelist(root.resolve("spell_whitelist.toml"))
         jobsById = loadDefinitions(root.resolve("jobs"))
         classesById = loadDefinitions(root.resolve("classes"))
     }
@@ -86,6 +89,8 @@ object RolesConfig {
 
     fun equipmentWhitelist(): EquipmentWhitelistDefinition = equipmentWhitelistDefinition
 
+    fun spellWhitelist(): SpellWhitelistDefinition = spellWhitelistDefinition
+
     fun configRoot(): Path = root
 
     private fun roleByIdOrName(rolesById: Map<String, RoleDefinition>, rawId: String): RoleDefinition? {
@@ -98,12 +103,17 @@ object RolesConfig {
         stream.filter { path -> path.extension.equals("toml", ignoreCase = true) }
             .map { path -> readDefinition(path) }
             .map(::withBundledDefaultPerks)
+            .map(::withSpellEquipmentItemPatterns)
             .filter { definition -> definition.id.isNotBlank() }
             .toList()
             .associateBy { definition -> definition.id }
     }
 
     private fun withBundledDefaultPerks(definition: RoleDefinition): RoleDefinition {
+        val classSpellAffinity = defaultClassSpellAffinity(definition.id)
+        if (classSpellAffinity != null && definition.perks.none { perk -> perk.type == "spell_affinity" }) {
+            definition.perks += classSpellAffinity
+        }
         val bundled = defaultJobs().firstOrNull { job -> job.id == definition.id } ?: return definition
         definition.perks.forEach { existing ->
             val defaultPerk = bundled.perks.firstOrNull { perk -> perk.type == existing.type && perk.pokemonType == existing.pokemonType } ?: return@forEach
@@ -115,6 +125,20 @@ object RolesConfig {
             .forEach { perk -> definition.perks += perk.copy() }
         return definition
     }
+
+    private fun withSpellEquipmentItemPatterns(definition: RoleDefinition): RoleDefinition {
+        val spellItemPatterns = spellEquipmentItemPatterns(definition.perks)
+        val equipment = definition.perks.filter { perk -> perk.type == "equipment_affinity" }
+        equipment.forEach { perk ->
+            perk.weaponTags.removeAll { tag -> tag.equals("accessories:spell_book", ignoreCase = true) }
+            spellItemPatterns
+                .filterNot { pattern -> perk.weaponPatterns.any { existing -> existing.equals(pattern, ignoreCase = true) } }
+                .forEach { pattern -> perk.weaponPatterns += pattern }
+        }
+        return definition
+    }
+
+    private fun spellEquipmentItemPatterns(perks: List<RolePerkDefinition>): List<String> = RoleSpellEquipmentPatterns.fromPerks(perks)
 
     private fun classSortGroup(id: String): Int = when {
         isStarterClass(id) -> 0
@@ -166,6 +190,13 @@ object RolesConfig {
     } catch (exception: Exception) {
         ChowKingdomMod.LOGGER.warn("Failed to load role equipment whitelist config {}", path, exception)
         EquipmentWhitelistDefinition()
+    }
+
+    private fun readSpellWhitelist(path: Path): SpellWhitelistDefinition = try {
+        TomlConfigIO.read(path, SpellWhitelistDefinition::class.java, ::SpellWhitelistDefinition)
+    } catch (exception: Exception) {
+        ChowKingdomMod.LOGGER.warn("Failed to load role spell whitelist config {}", path, exception)
+        SpellWhitelistDefinition()
     }
 
     private fun writeDefaultIfMissing(file: Path, definition: Any) {
@@ -718,11 +749,13 @@ object RolesConfig {
                 type = "equipment_affinity",
                 weaponTag = "gisketchs_chowkingdom_mod:class/rogue_weapons",
                 armorTag = "gisketchs_chowkingdom_mod:class/rogue_armor",
+                weaponPatterns = mutableListOf("rogues:spell_book/rogue", "rogues:spell_scroll/rogue"),
                 wrongWeaponDamageMultiplier = 0.2,
                 wrongWeaponCooldownTicks = 12,
                 wrongWeaponAttackSpeedMultiplier = 0.1,
                 wrongArmorDisablesSprint = true,
             ),
+            defaultClassSpellAffinity("rogue") ?: RolePerkDefinition(type = "spell_affinity"),
         ),
     )
 
@@ -747,13 +780,84 @@ object RolesConfig {
                 type = "equipment_affinity",
                 weaponTag = "gisketchs_chowkingdom_mod:class/warrior_weapons",
                 armorTag = "gisketchs_chowkingdom_mod:class/warrior_armor",
+                weaponPatterns = mutableListOf("rogues:spell_book/warrior", "rogues:spell_scroll/warrior"),
                 wrongWeaponDamageMultiplier = 0.2,
                 wrongWeaponCooldownTicks = 12,
                 wrongWeaponAttackSpeedMultiplier = 0.1,
                 wrongArmorDisablesSprint = true,
             ),
+            defaultClassSpellAffinity("warrior") ?: RolePerkDefinition(type = "spell_affinity"),
         ),
     )
+
+    private fun defaultClassSpellAffinity(classId: String): RolePerkDefinition? {
+        val tagMap = mapOf(
+            "warrior" to listOf("rogues:spell_book/warrior"),
+            "rogue" to listOf("rogues:spell_book/rogue"),
+            "archer" to listOf("archers:spell_book/archer"),
+            "war_archer" to listOf("archers_expansion:spell_book/war_archer"),
+            "tundra_archer" to listOf("archers_expansion:spell_book/tundra_hunter"),
+            "bounty_hunter" to listOf("archers_expansion:spell_book/deadeye"),
+            "wizard" to listOf(
+                "wizards:spell_book/arcane",
+                "wizards:spell_book/fire",
+                "wizards:spell_book/frost",
+                "wizards:weapon/arcane_staff",
+                "wizards:weapon/fire_staff",
+                "wizards:weapon/frost_staff",
+            ),
+            "elemental_wizard" to listOf(
+                "elemental_wizards_rpg:spell_book/aqua",
+                "elemental_wizards_rpg:spell_book/terra",
+                "elemental_wizards_rpg:spell_book/wind",
+                "elemental_wizards_rpg:weapon/aqua_staff",
+                "elemental_wizards_rpg:weapon/terra_staff",
+                "elemental_wizards_rpg:weapon/wind_staff",
+            ),
+            "priest" to listOf(
+                "paladins:spell_book/priest",
+                "paladins:weapon/holy_staff",
+                "paladins:weapon/holy_wand",
+            ),
+            "paladin" to listOf("paladins:spell_book/paladin"),
+            "berserker" to listOf("berserker_rpg:spell_book/berserker"),
+            "forcemaster" to listOf("forcemaster_rpg:spell_book/forcemaster"),
+            "bard" to listOf(
+                "bards_rpg:spell_book/bard",
+                "bards_rpg:weapon/lute",
+                "bards_rpg:weapon/lyre",
+                "bards_rpg:songs",
+            ),
+            "witcher" to listOf(
+                "witcher_rpg:spell_book/fencing",
+                "witcher_rpg:spell_book/signs",
+            ),
+        )
+        val idMap = mapOf(
+            "warrior" to listOf("rogues:throw", "rogues:shout", "rogues:charge"),
+            "rogue" to listOf("rogues:slice_and_dice", "rogues:shock_powder", "rogues:shadow_step", "rogues:vanish"),
+            "archer" to listOf("archers:power_shot", "archers:entangling_roots", "archers:barrage", "archers:magic_arrow"),
+            "war_archer" to listOf("archers_expansion:dual_shot", "archers_expansion:smoldering_arrow", "archers_expansion:point_blank_shot", "archers_expansion:pin_down"),
+            "tundra_archer" to listOf("archers_expansion:frozen_shot", "archers_expansion:frozen_pact", "archers_expansion:arctic_volley", "archers_expansion:enchanted_crystal_arrow"),
+            "bounty_hunter" to listOf("archers_expansion:fast_shot", "archers_expansion:trick_shot", "archers_expansion:disabling_shot", "archers_expansion:choking_gas"),
+            "wizard" to listOf("wizards:arcane_blast", "wizards:fire_blast", "wizards:frostbolt"),
+            "elemental_wizard" to listOf("elemental_wizards_rpg:aqua_water_whip", "elemental_wizards_rpg:terra_stone_spear", "elemental_wizards_rpg:wind_air_cutter"),
+            "priest" to listOf("paladins:holy_shock", "paladins:heal"),
+        )
+        val tags = tagMap[classId].orEmpty().withSpellScrollTags()
+        val ids = idMap[classId].orEmpty()
+        if (tags.isEmpty() && ids.isEmpty()) return null
+        return RolePerkDefinition(
+            type = "spell_affinity",
+            spellIds = ids.toMutableList(),
+            spellTags = tags.toMutableList(),
+        )
+    }
+
+    private fun List<String>.withSpellScrollTags(): List<String> = (this + mapNotNull { tag ->
+        val path = tag.substringAfter(':', missingDelimiterValue = "")
+        if (!path.startsWith("spell_book/")) null else tag.replace(":spell_book/", ":spell_scroll/")
+    }).distinct()
 
     private fun defaultOnboarding(): RolesOnboardingDefinition = RolesOnboardingDefinition(
         welcomeContent = mutableListOf(

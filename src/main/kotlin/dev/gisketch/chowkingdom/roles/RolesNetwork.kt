@@ -34,7 +34,7 @@ object RolesNetwork {
     }
 
     private fun registerPayloads(event: RegisterPayloadHandlersEvent) {
-        val registrar = event.registrar("4")
+        val registrar = event.registrar("5")
         registrar.playToClient(RolesSyncPayload.TYPE, RolesSyncPayload.STREAM_CODEC, ::handleSyncClient)
         registrar.playToServer(RolesChoosePayload.TYPE, RolesChoosePayload.STREAM_CODEC, ::handleChoose)
     }
@@ -110,6 +110,13 @@ object RolesNetwork {
         weaponExcludePatterns = perk.weaponExcludePatterns.toList(),
         armorPatterns = perk.armorPatterns.toList(),
         armorExcludePatterns = perk.armorExcludePatterns.toList(),
+        spellId = perk.spellId.orEmpty(),
+        spellIds = perk.spellIds.toList(),
+        spellTags = perk.spellTags.toList(),
+        spellPatterns = perk.spellPatterns.toList(),
+        spellExcludeIds = perk.spellExcludeIds.toList(),
+        spellExcludeTags = perk.spellExcludeTags.toList(),
+        spellExcludePatterns = perk.spellExcludePatterns.toList(),
         wrongWeaponDamageMultiplier = perk.wrongWeaponDamageMultiplier,
         wrongWeaponAttackSpeedMultiplier = perk.wrongWeaponAttackSpeedMultiplier,
         wrongWeaponCooldownTicks = perk.wrongWeaponCooldownTicks,
@@ -258,6 +265,13 @@ data class RolePerkUiPayload(
     val weaponExcludePatterns: List<String>,
     val armorPatterns: List<String>,
     val armorExcludePatterns: List<String>,
+    val spellId: String = "",
+    val spellIds: List<String> = emptyList(),
+    val spellTags: List<String> = emptyList(),
+    val spellPatterns: List<String> = emptyList(),
+    val spellExcludeIds: List<String> = emptyList(),
+    val spellExcludeTags: List<String> = emptyList(),
+    val spellExcludePatterns: List<String> = emptyList(),
     val wrongWeaponDamageMultiplier: Double,
     val wrongWeaponAttackSpeedMultiplier: Double,
     val wrongWeaponCooldownTicks: Int,
@@ -277,6 +291,13 @@ data class RolePerkUiPayload(
         writeStringList(buffer, weaponExcludePatterns, MAX_PERK_VALUES, MAX_ICON_LENGTH)
         writeStringList(buffer, armorPatterns, MAX_PERK_VALUES, MAX_ICON_LENGTH)
         writeStringList(buffer, armorExcludePatterns, MAX_PERK_VALUES, MAX_ICON_LENGTH)
+        buffer.writeUtf(spellId.take(MAX_ICON_LENGTH), MAX_ICON_LENGTH)
+        writeStringList(buffer, spellIds, MAX_PERK_VALUES, MAX_ICON_LENGTH)
+        writeStringList(buffer, spellTags, MAX_PERK_VALUES, MAX_ICON_LENGTH)
+        writeStringList(buffer, spellPatterns, MAX_PERK_VALUES, MAX_ICON_LENGTH)
+        writeStringList(buffer, spellExcludeIds, MAX_PERK_VALUES, MAX_ICON_LENGTH)
+        writeStringList(buffer, spellExcludeTags, MAX_PERK_VALUES, MAX_ICON_LENGTH)
+        writeStringList(buffer, spellExcludePatterns, MAX_PERK_VALUES, MAX_ICON_LENGTH)
         buffer.writeDouble(wrongWeaponDamageMultiplier.coerceIn(0.0, 1.0))
         buffer.writeDouble(wrongWeaponAttackSpeedMultiplier.coerceIn(0.0, 1.0))
         buffer.writeVarInt(wrongWeaponCooldownTicks.coerceAtLeast(0))
@@ -298,6 +319,13 @@ data class RolePerkUiPayload(
             weaponExcludePatterns = readStringList(buffer, MAX_PERK_VALUES, MAX_ICON_LENGTH),
             armorPatterns = readStringList(buffer, MAX_PERK_VALUES, MAX_ICON_LENGTH),
             armorExcludePatterns = readStringList(buffer, MAX_PERK_VALUES, MAX_ICON_LENGTH),
+            spellId = buffer.readUtf(MAX_ICON_LENGTH),
+            spellIds = readStringList(buffer, MAX_PERK_VALUES, MAX_ICON_LENGTH),
+            spellTags = readStringList(buffer, MAX_PERK_VALUES, MAX_ICON_LENGTH),
+            spellPatterns = readStringList(buffer, MAX_PERK_VALUES, MAX_ICON_LENGTH),
+            spellExcludeIds = readStringList(buffer, MAX_PERK_VALUES, MAX_ICON_LENGTH),
+            spellExcludeTags = readStringList(buffer, MAX_PERK_VALUES, MAX_ICON_LENGTH),
+            spellExcludePatterns = readStringList(buffer, MAX_PERK_VALUES, MAX_ICON_LENGTH),
             wrongWeaponDamageMultiplier = buffer.readDouble().coerceIn(0.0, 1.0),
             wrongWeaponAttackSpeedMultiplier = buffer.readDouble().coerceIn(0.0, 1.0),
             wrongWeaponCooldownTicks = buffer.readVarInt().coerceAtLeast(0),

@@ -89,6 +89,23 @@ data class EquipmentWhitelistDefinition(
     var armorExcludePatterns: MutableList<String> = mutableListOf(),
 )
 
+data class SpellWhitelistDefinition(
+    @SerializedName(value = "spell_id", alternate = ["spellId"])
+    var spellId: String? = null,
+    @SerializedName(value = "spell_ids", alternate = ["spellIds"])
+    var spellIds: MutableList<String> = mutableListOf(),
+    @SerializedName(value = "spell_tags", alternate = ["spellTags"])
+    var spellTags: MutableList<String> = mutableListOf(),
+    @SerializedName(value = "spell_patterns", alternate = ["spellPatterns"])
+    var spellPatterns: MutableList<String> = mutableListOf(),
+    @SerializedName(value = "spell_exclude_ids", alternate = ["spellExcludeIds"])
+    var spellExcludeIds: MutableList<String> = mutableListOf(),
+    @SerializedName(value = "spell_exclude_tags", alternate = ["spellExcludeTags"])
+    var spellExcludeTags: MutableList<String> = mutableListOf(),
+    @SerializedName(value = "spell_exclude_patterns", alternate = ["spellExcludePatterns"])
+    var spellExcludePatterns: MutableList<String> = mutableListOf(),
+)
+
 data class RolePerkDefinition(
     var type: String = "",
     @SerializedName(value = "pokemon_type", alternate = ["pokemonType"])
@@ -112,6 +129,20 @@ data class RolePerkDefinition(
     var armorPatterns: MutableList<String> = mutableListOf(),
     @SerializedName(value = "armor_exclude_patterns", alternate = ["armorExcludePatterns"])
     var armorExcludePatterns: MutableList<String> = mutableListOf(),
+    @SerializedName(value = "spell_id", alternate = ["spellId"])
+    var spellId: String? = null,
+    @SerializedName(value = "spell_ids", alternate = ["spellIds"])
+    var spellIds: MutableList<String> = mutableListOf(),
+    @SerializedName(value = "spell_tags", alternate = ["spellTags"])
+    var spellTags: MutableList<String> = mutableListOf(),
+    @SerializedName(value = "spell_patterns", alternate = ["spellPatterns"])
+    var spellPatterns: MutableList<String> = mutableListOf(),
+    @SerializedName(value = "spell_exclude_ids", alternate = ["spellExcludeIds"])
+    var spellExcludeIds: MutableList<String> = mutableListOf(),
+    @SerializedName(value = "spell_exclude_tags", alternate = ["spellExcludeTags"])
+    var spellExcludeTags: MutableList<String> = mutableListOf(),
+    @SerializedName(value = "spell_exclude_patterns", alternate = ["spellExcludePatterns"])
+    var spellExcludePatterns: MutableList<String> = mutableListOf(),
     @SerializedName(value = "wrong_weapon_damage_multiplier", alternate = ["wrongWeaponDamageMultiplier"])
     var wrongWeaponDamageMultiplier: Double = 1.0,
     @SerializedName(value = "wrong_weapon_cooldown_ticks", alternate = ["wrongWeaponCooldownTicks"])

@@ -646,6 +646,12 @@ private fun rolePerkDisplay(role: RoleUiDefinitionPayload, perk: RolePerkUiPaylo
             detail = "Allowed weapon and armor tags/patterns reduce class penalties for ${role.displayName}.",
             group = RolePerkDisplayGroup.OTHER,
         )
+        "spell_affinity" -> RolePerkDisplay(
+            title = "Spell Affinity",
+            value = "Enabled",
+            detail = "Allowed spell IDs, tags, and patterns control Spell Engine access for ${role.displayName}.",
+            group = RolePerkDisplayGroup.OTHER,
+        )
         else -> RolePerkDisplay(
             title = prettyId(perk.type),
             value = "",
