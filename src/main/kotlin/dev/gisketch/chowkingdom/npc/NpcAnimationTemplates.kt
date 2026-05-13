@@ -7,12 +7,18 @@ import net.minecraft.world.item.Items
 data class NpcAnimationTemplate(
     val id: String,
     val animationId: String,
+    val animationSource: String = NpcBossAnimationSources.GECKO,
     val loop: Boolean,
     val durationTicks: Int,
     val weapon: ItemStack? = null,
     val speed: Float = 1.0f,
     val events: List<NpcAnimationEvent> = emptyList(),
 )
+
+object NpcBossAnimationSources {
+    const val GECKO = "gecko"
+    const val PLAYERLIKE = "playerlike"
+}
 
 data class NpcAnimationEvent(
     val tick: Int,
@@ -87,6 +93,8 @@ data class NpcAnimationSnapshot(
     val customAnimation: Boolean,
     val customAnimationKey: String,
     val customAnimationSpeed: Float,
+    val playerlikeAnimation: Boolean,
+    val playerlikeAnimationKey: String,
     val mainHand: ItemStack,
     val offHand: ItemStack,
 )
@@ -96,18 +104,29 @@ object NpcCustomAnimationController {
         customAnimation = entity.customAnimation,
         customAnimationKey = entity.customAnimationKey,
         customAnimationSpeed = entity.customAnimationSpeed,
+        playerlikeAnimation = entity.playerlikeAnimation,
+        playerlikeAnimationKey = entity.playerlikeAnimationKey,
         mainHand = entity.mainHandItem.copy(),
         offHand = entity.offhandItem.copy(),
     )
 
     fun play(entity: ChowNpcEntity, template: NpcAnimationTemplate, slot: EquipmentSlot = EquipmentSlot.MAINHAND): Boolean {
         template.weapon?.let { weapon -> entity.setItemSlot(slot, weapon.copy()) }
-        return entity.playCustomAnimation(template.animationId, template.speed)
+        return when (template.animationSource.trim().lowercase()) {
+            NpcBossAnimationSources.PLAYERLIKE -> entity.playPlayerlikeAnimation(template.animationId)
+            else -> entity.playCustomAnimation(template.animationId, template.speed)
+        }
     }
 
     fun restore(entity: ChowNpcEntity, snapshot: NpcAnimationSnapshot) {
         entity.setItemSlot(EquipmentSlot.MAINHAND, snapshot.mainHand.copy())
         entity.setItemSlot(EquipmentSlot.OFFHAND, snapshot.offHand.copy())
-        entity.restoreCustomAnimation(snapshot.customAnimation, snapshot.customAnimationKey, snapshot.customAnimationSpeed)
+        entity.restoreAnimationState(
+            snapshot.customAnimation,
+            snapshot.customAnimationKey,
+            snapshot.customAnimationSpeed,
+            snapshot.playerlikeAnimation,
+            snapshot.playerlikeAnimationKey,
+        )
     }
 }

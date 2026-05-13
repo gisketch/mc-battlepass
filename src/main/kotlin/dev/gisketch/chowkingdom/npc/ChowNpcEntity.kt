@@ -180,6 +180,17 @@ class ChowNpcEntity(entityType: EntityType<out PathfinderMob>, level: Level) : P
         setCustomAnimationMode(false)
     }
 
+    fun configureBossDebug(id: String, displayName: String, camp: BlockPos) {
+        npcId = id
+        bodyType = NpcBodyTypes.NORMAL
+        campPos = camp.immutable()
+        homePos = null
+        customName = Component.literal(displayName)
+        isCustomNameVisible = true
+        setCustomAnimationMode(false)
+        setPersistenceRequired()
+    }
+
     fun setCustomAnimationMode(enabled: Boolean) {
         customAnimation = enabled
         if (enabled) playerlikeAnimation = false
@@ -221,6 +232,24 @@ class ChowNpcEntity(entityType: EntityType<out PathfinderMob>, level: Level) : P
         customAnimationSpeed = if (enabled) speed else 1.0f
         customAnimationEndsAtTick = 0
         customAnimationPlayId = customAnimationPlayId + 1
+    }
+
+    fun restoreAnimationState(customEnabled: Boolean, customKey: String, customSpeed: Float, playerlikeEnabled: Boolean, playerlikeKey: String) {
+        if (playerlikeEnabled) {
+            customAnimation = false
+            customAnimationKey = ""
+            customAnimationSpeed = 1.0f
+            customAnimationEndsAtTick = 0
+            customAnimationPlayId = customAnimationPlayId + 1
+            playerlikeAnimation = true
+            playerlikeAnimationKey = playerlikeKey
+            playerlikeAnimationPlayId = playerlikeAnimationPlayId + 1
+            return
+        }
+        playerlikeAnimation = false
+        playerlikeAnimationKey = ""
+        playerlikeAnimationPlayId = playerlikeAnimationPlayId + 1
+        restoreCustomAnimation(customEnabled, customKey, customSpeed)
     }
 
     fun setPlayerlikeAnimationMode(enabled: Boolean) {

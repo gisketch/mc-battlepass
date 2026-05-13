@@ -25,11 +25,13 @@ object NpcBossFights {
     private val resultProtection: MutableMap<UUID, BossResultProtection> = linkedMapOf()
 
     fun start(player: ServerPlayer, entity: ChowNpcEntity, definition: NpcDefinition): NpcBossStartResult {
+        NpcBossMovesets.load()
         val boss = definition.boss.normalized()
         if (!boss.enabled) return NpcBossStartResult(false, "${definition.displayName()} has boss fights disabled.")
         if (boss.template != NpcBossDefinition.DEFAULT_BOSS_TEMPLATE) return NpcBossStartResult(false, "Unknown NPC boss template '${boss.template}'.")
         if (active.containsKey(entity.uuid)) return NpcBossStartResult(false, "${definition.displayName()} is already in a boss fight.")
         if (active.values.any { fight -> fight.targetId == player.uuid }) return NpcBossStartResult(false, "You are already in an NPC boss fight.")
+        val moveset = NpcBossMovesets.forDefinition(definition)
         if (entity.isSleeping) entity.stopSleeping()
         entity.navigation.stop()
         val health = boss.health.toFloat().coerceAtLeast(1.0f)
@@ -43,6 +45,7 @@ object NpcBossFights {
         val fight = ActiveBossFight(
             npcId = definition.id,
             displayName = definition.displayName(),
+            moveset = moveset,
             targetId = player.uuid,
             startPos = entity.position(),
             maxHealth = health,
@@ -62,6 +65,44 @@ object NpcBossFights {
         entity.updatePassThroughInteractions(true)
         SnackbarNetwork.send(player, SnackbarNotification.npc(definition.id, "BOSS FIGHT STARTED", definition.displayName(), SnackbarType.GENERIC, SnackbarSounds.GENERIC))
         return NpcBossStartResult(true, "Started boss fight with ${definition.displayName()}.")
+    }
+
+    fun startDebug(player: ServerPlayer, entity: ChowNpcEntity, moveset: NpcBossMovesetDefinition): NpcBossStartResult {
+        if (active.containsKey(entity.uuid)) return NpcBossStartResult(false, "${moveset.displayName} is already in a boss fight.")
+        if (active.values.any { fight -> fight.targetId == player.uuid }) return NpcBossStartResult(false, "You are already in an NPC boss fight.")
+        entity.navigation.stop()
+        val health = moveset.health.toFloat().coerceAtLeast(1.0f)
+        val bossBar = ServerBossEvent(
+            Component.literal("${moveset.displayName} | NPC mode: chase"),
+            BossEvent.BossBarColor.RED,
+            BossEvent.BossBarOverlay.PROGRESS,
+        )
+        bossBar.addPlayer(player)
+        bossBar.setProgress(1.0f)
+        val fight = ActiveBossFight(
+            npcId = entity.npcId,
+            displayName = moveset.displayName,
+            moveset = moveset.normalized(),
+            targetId = player.uuid,
+            startPos = entity.position(),
+            maxHealth = health,
+            health = health,
+            damage = moveset.damage.toFloat().coerceAtLeast(0.0f),
+            balloons = moveset.balloons,
+            animationSnapshot = NpcCustomAnimationController.snapshot(entity),
+            originalHealth = entity.health,
+            bossBar = bossBar,
+            startedTick = entity.tickCount,
+            nextActionTick = 0,
+            phaseStartedTick = entity.tickCount,
+            strafeSide = if (entity.random.nextBoolean()) 1 else -1,
+            debug = true,
+        )
+        active[entity.uuid] = fight
+        resultProtection.remove(entity.uuid)
+        entity.updatePassThroughInteractions(true)
+        SnackbarNetwork.send(player, SnackbarNotification.npc(entity.npcId, "BOSS TEST STARTED", moveset.displayName, SnackbarType.GENERIC, SnackbarSounds.GENERIC))
+        return NpcBossStartResult(true, "Spawned ${moveset.displayName} boss test Steve.")
     }
 
     fun tick(entity: ChowNpcEntity): Boolean {
@@ -111,6 +152,7 @@ object NpcBossFights {
         if (targetBoss != null) {
             if (isResultProtected(targetBoss)) return true
             val fight = active[targetBoss.uuid] ?: return false
+            if (targetBoss.tickCount <= fight.npcIframeUntilTick) return true
             val attacker = (sourceEntity as? ServerPlayer) ?: (directEntity as? ServerPlayer)
             return attacker?.uuid != fight.targetId
         }
@@ -120,6 +162,7 @@ object NpcBossFights {
             val fight = active.entries.firstOrNull { entry -> entry.value.targetId == targetPlayer.uuid }
             if (fight != null) {
                 if (sourceEntity == null && directEntity == null) return false
+                if (sourceEntity?.uuid == fight.key || directEntity?.uuid == fight.key) return NpcCombatRollBridge.isRolling(targetPlayer)
                 return sourceEntity?.uuid != fight.key && directEntity?.uuid != fight.key
             }
         }
@@ -139,9 +182,10 @@ object NpcBossFights {
         if (isResultProtected(entity)) return true
         val fight = active[entity.uuid] ?: return false
         val target = attacker?.takeIf { player -> player.uuid == fight.targetId } ?: return true
+        if (entity.tickCount <= fight.npcIframeUntilTick) return true
         return when (fight.phase) {
             BossFightPhase.RECOVERY -> {
-                if (fight.recoveryHitsTaken >= MAX_RECOVERY_HITS || fight.guardAfterHurtTick > 0) {
+                if (fight.recoveryHitsTaken >= fight.moveset.recoveryHitsAllowed || fight.guardAfterHurtTick > 0) {
                     startGuardReact(entity, target, fight)
                     true
                 } else {
@@ -166,10 +210,11 @@ object NpcBossFights {
         val fight = active[entity.uuid] ?: return false
         val target = attacker?.takeIf { player -> player.uuid == fight.targetId } ?: return true
         if (damage <= 0.0f) return true
+        if (entity.tickCount <= fight.npcIframeUntilTick) return true
 
         when (fight.phase) {
             BossFightPhase.RECOVERY -> {
-                if (fight.recoveryHitsTaken >= MAX_RECOVERY_HITS || fight.guardAfterHurtTick > 0) startGuardReact(entity, target, fight) else acceptRecoveryHit(entity, target, fight, damage)
+                if (fight.recoveryHitsTaken >= fight.moveset.recoveryHitsAllowed || fight.guardAfterHurtTick > 0) startGuardReact(entity, target, fight) else acceptRecoveryHit(entity, target, fight, damage)
             }
             BossFightPhase.GUARD_MODE -> startGuardReact(entity, target, fight)
             BossFightPhase.GUARD_REACT,
@@ -181,6 +226,7 @@ object NpcBossFights {
     }
 
     fun cancelForPlayer(player: ServerPlayer, reason: String = "Boss fight reset.") {
+        NpcCombatRollBridge.clear(player)
         active.values.filter { fight -> fight.targetId == player.uuid }.forEach { fight ->
             val entity = NpcFeature.existingNpc(player.server, fight.npcId)
             if (entity != null) cancel(entity, fight, reason) else {
@@ -221,9 +267,10 @@ object NpcBossFights {
         entity.debugTargetPos = target.blockPosition().immutable()
         updateStatus(entity, target, fight, "chase")
         faceTarget(entity, target)
-        playTemplate(entity, fight, NpcAnimationTemplates.BOSS_CHASE_SWORD)
-        if (entity.distanceToSqr(target) <= ATTACK_START_DISTANCE_SQR && targetInForwardCone(entity, target)) {
-            startAttack(entity, target, fight)
+        playTemplate(entity, fight, approachTemplate(fight))
+        val move = selectMove(entity, target, fight)
+        if (move != null) {
+            startMove(entity, target, fight, move)
             return true
         }
         entity.navigation.moveTo(target.x, target.y, target.z, BOSS_CHASE_SPEED)
@@ -231,41 +278,48 @@ object NpcBossFights {
         return true
     }
 
-    private fun startAttack(entity: ChowNpcEntity, target: ServerPlayer, fight: ActiveBossFight) {
+    private fun startMove(entity: ChowNpcEntity, target: ServerPlayer, fight: ActiveBossFight, move: NpcBossMoveDefinition) {
         setPhase(entity, fight, BossFightPhase.ATTACK)
-        fight.firedEvents.clear()
-        playTemplate(entity, fight, NpcAnimationTemplates.ATTACK_SWORD, forceRestart = true)
+        fight.activeMove = move
+        fight.firedHitTicks.clear()
+        fight.moveCooldowns[move.id] = entity.tickCount + move.cooldownTicks
+        playMoveAnimation(entity, fight, move, forceRestart = true)
         entity.navigation.stop()
-        showModeBalloon(entity, target, fight, "attacking")
+        if (move.kind == NpcBossMoveKinds.ROLL) performNpcRoll(entity, target, fight, move)
+        showModeBalloon(entity, target, fight, if (move.kind == NpcBossMoveKinds.ROLL) "rolling" else "attacking")
     }
 
     private fun tickAttack(entity: ChowNpcEntity, target: ServerPlayer, fight: ActiveBossFight): Boolean {
+        val move = fight.activeMove ?: run {
+            startChase(entity, target, fight)
+            return true
+        }
         entity.debugActivity = "boss"
-        entity.debugGoal = "attack"
+        entity.debugGoal = move.id
         entity.debugTargetPos = target.blockPosition().immutable()
-        updateStatus(entity, target, fight, "attacking")
+        updateStatus(entity, target, fight, if (move.kind == NpcBossMoveKinds.ROLL) "rolling" else "attacking")
         entity.navigation.stop()
+        if (move.kind != NpcBossMoveKinds.ROLL) faceTarget(entity, target)
         val elapsed = entity.tickCount - fight.phaseStartedTick
-        NpcAnimationTemplates.ATTACK_SWORD.events.forEach { event ->
-            if (elapsed >= event.tick && fight.firedEvents.add(event)) {
-                when (event.type) {
-                    NpcAnimationEventType.ATTACK_HIT -> attackHit(entity, target, fight)
-                }
+        move.hitTicks.forEach { hitTick ->
+            if (elapsed >= hitTick && fight.firedHitTicks.add(hitTick)) {
+                executeMoveHit(entity, target, fight, move)
             }
         }
-        if (elapsed < NpcAnimationTemplates.ATTACK_SWORD.durationTicks) return true
-        startRecovery(entity, target, fight)
+        if (elapsed < move.durationTicks) return true
+        if (move.kind == NpcBossMoveKinds.ROLL || move.recoveryTicks <= 0) startChase(entity, target, fight) else startRecovery(entity, target, fight, move.recoveryTicks)
         return true
     }
 
-    private fun startRecovery(entity: ChowNpcEntity, target: ServerPlayer, fight: ActiveBossFight) {
+    private fun startRecovery(entity: ChowNpcEntity, target: ServerPlayer, fight: ActiveBossFight, recoveryTicks: Int) {
         setPhase(entity, fight, BossFightPhase.RECOVERY)
-        fight.nextActionTick = entity.tickCount + RECOVERY_TICKS
+        fight.activeMove = null
+        fight.nextActionTick = entity.tickCount + recoveryTicks.coerceAtLeast(1)
         fight.recoveryHitsTaken = 0
         fight.hurtUntilTick = 0
         fight.guardAfterHurtTick = 0
         prepareStrafe(entity, fight)
-        playTemplate(entity, fight, NpcAnimationTemplates.BOSS_STRAFE_SWORD, forceRestart = true)
+        playTemplate(entity, fight, strafeTemplate(fight), forceRestart = true)
         showModeBalloon(entity, target, fight, "recovery")
     }
 
@@ -283,7 +337,7 @@ object NpcBossFights {
             entity.navigation.stop()
             return true
         }
-        playTemplate(entity, fight, NpcAnimationTemplates.BOSS_STRAFE_SWORD)
+        playTemplate(entity, fight, strafeTemplate(fight))
         if (entity.distanceToSqr(target) > STRAFE_RETURN_CHASE_DISTANCE_SQR || entity.tickCount >= fight.nextActionTick) {
             startGuardMode(entity, target, fight)
             return true
@@ -294,13 +348,14 @@ object NpcBossFights {
 
     private fun startGuardMode(entity: ChowNpcEntity, target: ServerPlayer, fight: ActiveBossFight) {
         setPhase(entity, fight, BossFightPhase.GUARD_MODE)
-        fight.nextActionTick = entity.tickCount + guardBaitDelay(entity)
-        fight.nextTauntTick = entity.tickCount + guardTauntDelay(entity)
+        fight.activeMove = null
+        fight.nextActionTick = entity.tickCount + guardBaitDelay(entity, fight)
+        fight.nextTauntTick = entity.tickCount + guardTauntDelay(entity, fight)
         fight.recoveryHitsTaken = 0
         fight.hurtUntilTick = 0
         fight.guardAfterHurtTick = 0
         prepareStrafe(entity, fight)
-        playTemplate(entity, fight, NpcAnimationTemplates.BOSS_STRAFE_SWORD, forceRestart = true)
+        playTemplate(entity, fight, strafeTemplate(fight), forceRestart = true)
         showModeBalloon(entity, target, fight, "guard")
     }
 
@@ -310,14 +365,14 @@ object NpcBossFights {
         entity.debugTargetPos = target.blockPosition().immutable()
         updateStatus(entity, target, fight, "guard")
         faceTarget(entity, target)
-        playTemplate(entity, fight, NpcAnimationTemplates.BOSS_STRAFE_SWORD)
+        playTemplate(entity, fight, strafeTemplate(fight))
         if (entity.distanceToSqr(target) > STRAFE_RETURN_CHASE_DISTANCE_SQR || entity.tickCount >= fight.nextActionTick) {
             startChase(entity, target, fight)
             return true
         }
         if (entity.tickCount >= fight.nextTauntTick) {
             showBossBalloon(entity, target, fight, fight.balloons.taunt, "taunt")
-            fight.nextTauntTick = entity.tickCount + guardTauntDelay(entity)
+            fight.nextTauntTick = entity.tickCount + guardTauntDelay(entity, fight)
         }
         strafeAroundTarget(entity, target, fight)
         return true
@@ -325,8 +380,9 @@ object NpcBossFights {
 
     private fun startGuardReact(entity: ChowNpcEntity, target: ServerPlayer, fight: ActiveBossFight) {
         setPhase(entity, fight, BossFightPhase.GUARD_REACT)
-        fight.nextActionTick = entity.tickCount + GUARD_REACT_TICKS
-        playTemplate(entity, fight, NpcAnimationTemplates.GUARD_SWORD, forceRestart = true)
+        fight.activeMove = null
+        fight.nextActionTick = entity.tickCount + fight.moveset.guardReactTicks
+        playTemplate(entity, fight, guardTemplate(fight), forceRestart = true)
         entity.navigation.stop()
         blockBossHit(entity)
         showBossBalloon(entity, target, fight, fight.balloons.guardReact, "guard_react")
@@ -347,11 +403,16 @@ object NpcBossFights {
 
     private fun startParry(entity: ChowNpcEntity, target: ServerPlayer, fight: ActiveBossFight) {
         setPhase(entity, fight, BossFightPhase.PARRY)
-        playTemplate(entity, fight, NpcAnimationTemplates.PARRY_SWORD, forceRestart = true)
+        playTemplate(entity, fight, parryTemplate(fight), forceRestart = true)
         entity.navigation.stop()
         blockBossHit(entity)
-        target.knockback(PARRY_KNOCKBACK, entity.x - target.x, entity.z - target.z)
-        target.hurtMarked = true
+        if (!NpcCombatRollBridge.isRolling(target)) {
+            if (fight.moveset.parryDamage > 0.0) target.hurt(entity.damageSources().mobAttack(entity), fight.moveset.parryDamage.toFloat())
+            target.knockback(fight.moveset.parryKnockback, entity.x - target.x, entity.z - target.z)
+            target.hurtMarked = true
+        } else {
+            entity.debugGoal = "parry_roll_whiff"
+        }
     }
 
     private fun tickParry(entity: ChowNpcEntity, target: ServerPlayer, fight: ActiveBossFight): Boolean {
@@ -366,17 +427,52 @@ object NpcBossFights {
         return true
     }
 
-    private fun attackHit(entity: ChowNpcEntity, target: ServerPlayer, fight: ActiveBossFight) {
-        if (entity.distanceToSqr(target) > HIT_DISTANCE_SQR || !targetInForwardCone(entity, target)) {
-            entity.debugGoal = "attack_miss"
-            return
+    private fun executeMoveHit(entity: ChowNpcEntity, target: ServerPlayer, fight: ActiveBossFight, move: NpcBossMoveDefinition) {
+        when (move.kind) {
+            NpcBossMoveKinds.AREA -> areaHit(entity, target, fight, move)
+            else -> attackHit(entity, target, fight, move)
         }
+    }
+
+    private fun attackHit(entity: ChowNpcEntity, target: ServerPlayer, fight: ActiveBossFight, move: NpcBossMoveDefinition) {
         val level = entity.level() as? ServerLevel ?: return
         entity.swing(InteractionHand.MAIN_HAND, true)
+        if (entity.distanceToSqr(target) > move.range * move.range || !targetInForwardCone(entity, target, move.arcDegrees)) {
+            entity.debugGoal = "${move.id}_miss"
+            return
+        }
+        if (NpcCombatRollBridge.isRolling(target)) {
+            entity.debugGoal = "${move.id}_roll_whiff"
+            level.playSound(null, entity.x, entity.y, entity.z, SoundEvents.PLAYER_ATTACK_WEAK, SoundSource.HOSTILE, 0.8f, 1.1f)
+            return
+        }
         level.playSound(null, entity.x, entity.y, entity.z, SoundEvents.PLAYER_ATTACK_STRONG, SoundSource.HOSTILE, 1.0f, 0.85f + entity.random.nextFloat() * 0.2f)
         target.invulnerableTime = 0
-        if (target.hurt(entity.damageSources().mobAttack(entity), fight.damage)) {
-            target.knockback(BOSS_KNOCKBACK, entity.x - target.x, entity.z - target.z)
+        if (target.hurt(entity.damageSources().mobAttack(entity), move.damage.toFloat().coerceAtLeast(0.0f))) {
+            target.knockback(move.knockback, entity.x - target.x, entity.z - target.z)
+            target.hurtMarked = true
+            showBossBalloon(entity, target, fight, fight.balloons.hitPlayer, "hit_player")
+        }
+    }
+
+    private fun areaHit(entity: ChowNpcEntity, target: ServerPlayer, fight: ActiveBossFight, move: NpcBossMoveDefinition) {
+        val level = entity.level() as? ServerLevel ?: return
+        entity.swing(InteractionHand.MAIN_HAND, true)
+        val radius = move.areaRadius.takeIf { value -> value > 0.0 } ?: move.range
+        if (entity.distanceToSqr(target) > radius * radius) {
+            entity.debugGoal = "${move.id}_miss"
+            return
+        }
+        if (NpcCombatRollBridge.isRolling(target)) {
+            entity.debugGoal = "${move.id}_roll_whiff"
+            level.playSound(null, entity.x, entity.y, entity.z, SoundEvents.PLAYER_ATTACK_WEAK, SoundSource.HOSTILE, 0.8f, 1.1f)
+            return
+        }
+        level.playSound(null, entity.x, entity.y, entity.z, SoundEvents.GENERIC_EXPLODE.value(), SoundSource.HOSTILE, 0.45f, 1.4f)
+        level.sendParticles(ParticleTypes.SWEEP_ATTACK, target.x, target.y + 1.0, target.z, 6, 0.8, 0.4, 0.8, 0.02)
+        target.invulnerableTime = 0
+        if (target.hurt(entity.damageSources().mobAttack(entity), move.damage.toFloat().coerceAtLeast(0.0f))) {
+            target.knockback(move.knockback, entity.x - target.x, entity.z - target.z)
             target.hurtMarked = true
             showBossBalloon(entity, target, fight, fight.balloons.hitPlayer, "hit_player")
         }
@@ -386,9 +482,9 @@ object NpcBossFights {
         fight.health = (fight.health - damage).coerceAtLeast(0.0f)
         fight.recoveryHitsTaken++
         fight.hurtUntilTick = entity.tickCount + NpcAnimationTemplates.HURT_SWORD.durationTicks
-        fight.guardAfterHurtTick = if (fight.recoveryHitsTaken >= MAX_RECOVERY_HITS) fight.hurtUntilTick else 0
+        fight.guardAfterHurtTick = if (fight.recoveryHitsTaken >= fight.moveset.recoveryHitsAllowed) fight.hurtUntilTick else 0
         updateBossBar(fight)
-        playTemplate(entity, fight, NpcAnimationTemplates.HURT_SWORD, forceRestart = true)
+        playTemplate(entity, fight, hurtTemplate(fight), forceRestart = true)
         entity.navigation.stop()
         entity.knockback(HURT_KNOCKBACK, target.x - entity.x, target.z - entity.z)
         entity.hurtMarked = true
@@ -410,8 +506,67 @@ object NpcBossFights {
         fight.recoveryHitsTaken = 0
         fight.hurtUntilTick = 0
         fight.guardAfterHurtTick = 0
-        playTemplate(entity, fight, NpcAnimationTemplates.BOSS_CHASE_SWORD, forceRestart = true)
+        fight.activeMove = null
+        playTemplate(entity, fight, approachTemplate(fight), forceRestart = true)
         showModeBalloon(entity, target, fight, "chase")
+    }
+
+    private fun selectMove(entity: ChowNpcEntity, target: ServerPlayer, fight: ActiveBossFight): NpcBossMoveDefinition? {
+        val distance = entity.distanceTo(target).toDouble()
+        if (distance > fight.moveset.attackStartDistance) return null
+        val candidates = fight.moveset.moves
+            .asSequence()
+            .filter { move -> move.weight > 0 }
+            .filter { move -> entity.tickCount >= (fight.moveCooldowns[move.id] ?: 0) }
+            .filter { move -> distance >= move.minDistance && distance <= move.maxDistance }
+            .filter { move -> move.kind == NpcBossMoveKinds.ROLL || targetInForwardCone(entity, target, move.arcDegrees) }
+            .toList()
+        if (candidates.isEmpty()) return null
+        val totalWeight = candidates.sumOf { move -> move.weight }.coerceAtLeast(1)
+        var roll = entity.random.nextInt(totalWeight)
+        for (move in candidates) {
+            roll -= move.weight
+            if (roll < 0) return move
+        }
+        return candidates.last()
+    }
+
+    private fun playMoveAnimation(entity: ChowNpcEntity, fight: ActiveBossFight, move: NpcBossMoveDefinition, forceRestart: Boolean = false) {
+        val template = NpcAnimationTemplate(
+            id = "boss_${fight.moveset.id}_${move.id}",
+            animationId = move.animationId,
+            animationSource = move.animationSource,
+            loop = false,
+            durationTicks = move.durationTicks,
+            weapon = NpcAnimationTemplates.ATTACK_SWORD.weapon,
+        )
+        if (!forceRestart && fight.activeTemplateId == template.id) return
+        if (!NpcCustomAnimationController.play(entity, template)) NpcCustomAnimationController.play(entity, NpcAnimationTemplates.ATTACK_SWORD)
+        fight.activeTemplateId = template.id
+    }
+
+    private fun performNpcRoll(entity: ChowNpcEntity, target: ServerPlayer, fight: ActiveBossFight, move: NpcBossMoveDefinition) {
+        val direction = rollDirection(entity, target, move)
+        val distance = move.rollDistance.coerceAtLeast(1.0)
+        val desired = entity.position().add(direction.scale(distance))
+        fight.npcIframeUntilTick = (fight.phaseStartedTick + move.iframeEndTick).coerceAtLeast(entity.tickCount)
+        NpcCombatRollBridge.applyNpcIframes(entity, move.iframeEndTick - move.iframeStartTick)
+        entity.deltaMovement = Vec3(direction.x * 0.55, entity.deltaMovement.y.coerceAtLeast(0.05), direction.z * 0.55)
+        entity.hurtMarked = true
+        entity.moveControl.setWantedPosition(desired.x, desired.y, desired.z, BOSS_CHASE_SPEED)
+    }
+
+    private fun rollDirection(entity: ChowNpcEntity, target: ServerPlayer, move: NpcBossMoveDefinition): Vec3 {
+        val toTargetRaw = Vec3(target.x - entity.x, 0.0, target.z - entity.z)
+        val toTarget = if (toTargetRaw.lengthSqr() > 0.0001) toTargetRaw.normalize() else Vec3(0.0, 0.0, 1.0)
+        return when (move.rollDirection) {
+            "forward" -> toTarget
+            "side" -> {
+                val side = Vec3(-toTarget.z, 0.0, toTarget.x)
+                side.scale(if (entity.random.nextBoolean()) 1.0 else -1.0)
+            }
+            else -> toTarget.scale(-1.0)
+        }
     }
 
     private fun prepareStrafe(entity: ChowNpcEntity, fight: ActiveBossFight) {
@@ -443,6 +598,11 @@ object NpcBossFights {
 
     private fun defeat(entity: ChowNpcEntity, target: ServerPlayer, fight: ActiveBossFight) {
         showBossBalloon(entity, target, fight, fight.balloons.defeat, "defeat")
+        if (fight.debug) {
+            SnackbarNetwork.send(target, SnackbarNotification.npc(fight.npcId, "BOSS TEST WON", fight.displayName, SnackbarType.SUCCESS, SnackbarSounds.REWARD))
+            finish(entity, fight)
+            return
+        }
         finish(entity, fight, protectResultDialog = true)
         val definition = NpcConfig.get(fight.npcId) ?: return
         if (ClassMentorQuestService.onMentorDuelWon(target, entity, definition)) return
@@ -452,6 +612,12 @@ object NpcBossFights {
 
     private fun bossVictory(entity: ChowNpcEntity, target: ServerPlayer, fight: ActiveBossFight) {
         showBossBalloon(entity, target, fight, fight.balloons.victory, "victory")
+        if (fight.debug) {
+            healDuelist(target)
+            SnackbarNetwork.send(target, SnackbarNotification.npc(fight.npcId, "BOSS TEST LOST", "${fight.displayName} healed you.", SnackbarType.GENERIC, SnackbarSounds.GENERIC))
+            finish(entity, fight)
+            return
+        }
         finish(entity, fight, protectResultDialog = true)
         healDuelist(target)
         val definition = NpcConfig.get(fight.npcId) ?: return
@@ -463,6 +629,7 @@ object NpcBossFights {
         finish(entity, fight)
         val player = (entity.level() as? ServerLevel)?.server?.playerList?.getPlayer(fight.targetId)
         if (player != null) SnackbarNetwork.send(player, SnackbarNotification.npc(fight.npcId, "BOSS FIGHT RESET", reason, SnackbarType.ERROR, SnackbarSounds.ERROR))
+        if (fight.debug) return
         entity.debugActivity = NpcFeature.smartBrainDefinition(entity)?.let { def -> NpcFeature.activityFor(entity, def) } ?: "idle"
         entity.debugGoal = "boss_reset"
     }
@@ -474,6 +641,12 @@ object NpcBossFights {
         NpcCustomAnimationController.restore(entity, fight.animationSnapshot)
         val restoredHealth = if (protectResultDialog) entity.maxHealth else fight.originalHealth.coerceIn(1.0f, entity.maxHealth)
         entity.setHealth(restoredHealth.coerceIn(1.0f, entity.maxHealth))
+        if (fight.debug) {
+            resultProtection.remove(entity.uuid)
+            entity.updatePassThroughInteractions(false)
+            entity.discard()
+            return
+        }
         if (protectResultDialog) {
             resultProtection[entity.uuid] = BossResultProtection(entity.tickCount + RESULT_DIALOG_PROTECTION_TICKS, restoredHealth)
             entity.updatePassThroughInteractions(true)
@@ -528,9 +701,55 @@ object NpcBossFights {
         return entity.tickCount - fight.tetherExceededSince <= TETHER_GRACE_TICKS
     }
 
+    private fun approachTemplate(fight: ActiveBossFight): NpcAnimationTemplate = NpcAnimationTemplate(
+        id = "boss_${fight.moveset.id}_approach",
+        animationId = fight.moveset.approachAnimationId,
+        animationSource = fight.moveset.approachAnimationSource,
+        loop = true,
+        durationTicks = NpcAnimationTemplates.BOSS_CHASE_SWORD.durationTicks,
+        weapon = NpcAnimationTemplates.BOSS_CHASE_SWORD.weapon,
+    )
+
+    private fun strafeTemplate(fight: ActiveBossFight): NpcAnimationTemplate = NpcAnimationTemplate(
+        id = "boss_${fight.moveset.id}_strafe",
+        animationId = fight.moveset.strafeAnimationId,
+        animationSource = fight.moveset.strafeAnimationSource,
+        loop = true,
+        durationTicks = NpcAnimationTemplates.BOSS_STRAFE_SWORD.durationTicks,
+        weapon = NpcAnimationTemplates.BOSS_STRAFE_SWORD.weapon,
+        speed = NpcAnimationTemplates.BOSS_STRAFE_SWORD.speed,
+    )
+
+    private fun guardTemplate(fight: ActiveBossFight): NpcAnimationTemplate = NpcAnimationTemplate(
+        id = "boss_${fight.moveset.id}_guard",
+        animationId = fight.moveset.guardAnimationId,
+        animationSource = fight.moveset.guardAnimationSource,
+        loop = true,
+        durationTicks = NpcAnimationTemplates.GUARD_SWORD.durationTicks,
+        weapon = NpcAnimationTemplates.GUARD_SWORD.weapon,
+    )
+
+    private fun parryTemplate(fight: ActiveBossFight): NpcAnimationTemplate = NpcAnimationTemplate(
+        id = "boss_${fight.moveset.id}_parry",
+        animationId = fight.moveset.parryAnimationId,
+        animationSource = fight.moveset.parryAnimationSource,
+        loop = false,
+        durationTicks = NpcAnimationTemplates.PARRY_SWORD.durationTicks,
+        weapon = NpcAnimationTemplates.PARRY_SWORD.weapon,
+    )
+
+    private fun hurtTemplate(fight: ActiveBossFight): NpcAnimationTemplate = NpcAnimationTemplate(
+        id = "boss_${fight.moveset.id}_hurt",
+        animationId = fight.moveset.hurtAnimationId,
+        animationSource = fight.moveset.hurtAnimationSource,
+        loop = false,
+        durationTicks = NpcAnimationTemplates.HURT_SWORD.durationTicks,
+        weapon = NpcAnimationTemplates.HURT_SWORD.weapon,
+    )
+
     private fun playTemplate(entity: ChowNpcEntity, fight: ActiveBossFight, template: NpcAnimationTemplate, forceRestart: Boolean = false) {
         if (!forceRestart && fight.activeTemplateId == template.id) return
-        NpcCustomAnimationController.play(entity, template)
+        if (!NpcCustomAnimationController.play(entity, template)) NpcCustomAnimationController.play(entity, NpcAnimationTemplates.BOSS_CHASE_SWORD)
         fight.activeTemplateId = template.id
     }
 
@@ -590,6 +809,7 @@ object NpcBossFights {
             "attacking" -> fight.balloons.attack
             "recovery" -> fight.balloons.recovery
             "guard" -> fight.balloons.taunt
+            "rolling" -> fight.balloons.recovery
             "parry" -> fight.balloons.parry
             else -> emptyList()
         }
@@ -628,13 +848,15 @@ object NpcBossFights {
         entity.lookAt(EntityAnchorArgument.Anchor.EYES, target.getEyePosition())
     }
 
-    private fun targetInForwardCone(entity: ChowNpcEntity, target: ServerPlayer): Boolean {
+    private fun targetInForwardCone(entity: ChowNpcEntity, target: ServerPlayer, arcDegrees: Double = 140.0): Boolean {
         val toTarget = Vec3(target.x - entity.x, 0.0, target.z - entity.z)
         if (toTarget.lengthSqr() <= 0.0001) return true
         val look = entity.lookAngle
         val forward = Vec3(look.x, 0.0, look.z)
         if (forward.lengthSqr() <= 0.0001) return true
-        return forward.normalize().dot(toTarget.normalize()) >= HIT_CONE_DOT
+        val dot = forward.normalize().dot(toTarget.normalize())
+        if (arcDegrees >= 359.0) return true
+        return dot >= kotlin.math.cos(Math.toRadians(arcDegrees.coerceIn(1.0, 360.0) * 0.5))
     }
 
     private fun updateBossBar(fight: ActiveBossFight) {
@@ -662,11 +884,13 @@ object NpcBossFights {
     private fun finiteNonNegative(value: Float, fallback: Float): Float =
         if (java.lang.Float.isFinite(value) && value >= 0.0f) value else fallback
 
-    private fun guardBaitDelay(entity: ChowNpcEntity): Int = GUARD_BAIT_MIN_TICKS + entity.random.nextInt(GUARD_BAIT_RANDOM_TICKS + 1)
+    private fun guardBaitDelay(entity: ChowNpcEntity, fight: ActiveBossFight): Int =
+        fight.moveset.guardMinTicks + entity.random.nextInt(fight.moveset.guardRandomTicks + 1)
 
     private class ActiveBossFight(
         val npcId: String,
         val displayName: String,
+        val moveset: NpcBossMovesetDefinition,
         val targetId: UUID,
         val startPos: Vec3,
         val maxHealth: Float,
@@ -691,8 +915,12 @@ object NpcBossFights {
         var modeLabel: String = "",
         var lastModeBalloon: String = "",
         var shownBossBalloons: Int = 0,
-        val firedEvents: MutableSet<NpcAnimationEvent> = mutableSetOf(),
+        var activeMove: NpcBossMoveDefinition? = null,
+        var npcIframeUntilTick: Int = 0,
+        val firedHitTicks: MutableSet<Int> = mutableSetOf(),
+        val moveCooldowns: MutableMap<String, Int> = linkedMapOf(),
         val lastBalloonByKey: MutableMap<String, String> = linkedMapOf(),
+        val debug: Boolean = false,
     )
 
     private data class BossResultProtection(val untilTick: Int, val healthFloor: Float)
@@ -737,7 +965,8 @@ object NpcBossFights {
     private const val STRAFE_RANDOM_FLIP_TICKS = 18
     private const val MAX_RECOVERY_HITS = 1
 
-    private fun guardTauntDelay(entity: ChowNpcEntity): Int = GUARD_TAUNT_MIN_TICKS + entity.random.nextInt(GUARD_TAUNT_RANDOM_TICKS + 1)
+    private fun guardTauntDelay(entity: ChowNpcEntity, fight: ActiveBossFight): Int =
+        fight.moveset.guardTauntMinTicks + entity.random.nextInt(fight.moveset.guardTauntRandomTicks + 1)
 
     private const val GUARD_TAUNT_MIN_TICKS = 40
     private const val GUARD_TAUNT_RANDOM_TICKS = 40

@@ -16,3 +16,13 @@ Implementation notes:
 - Keep CKDM boss/retaliation damage timing server-owned for now.
 - Use PlayerModel/HumanoidMobRenderer for the playerlike path so Mob Player Animator can apply PlayerAnimator layers.
 - Do not route Gecko socket transforms through the playerlike path.
+
+Boss fight follow-up:
+
+- Boss movesets now load from `config/gisketchs_chowkingdom_mod/npc_boss_movesets/*.toml`.
+- Default movesets are written for `warrior`, `rogue`, `wizard`, and `witcher`.
+- `/npc fight` still starts a duel with the NPC under crosshair.
+- `/npc fight <class_id>` spawns a transient Steve using that class moveset for debugging.
+- Attacks and dodges can use PlayerAnimator ids from Better Combat, Spell Engine, Combat Roll, or RPG class mods.
+- Guard, parry, and hurt can stay Gecko-backed per moveset, so old guard/parry behavior remains usable.
+- Combat Roll player-start events are tracked server-side so NPC hits whiff during player roll iframes; NPC roll moves also get an iframe window.

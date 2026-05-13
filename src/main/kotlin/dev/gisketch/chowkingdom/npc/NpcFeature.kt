@@ -107,6 +107,7 @@ object NpcFeature {
     private val npcAutoTaskCooldownUntil: MutableMap<UUID, Long> = linkedMapOf()
     private val pendingShopNpcs: MutableMap<UUID, String> = linkedMapOf()
     private val animationDebugTargets: MutableMap<UUID, UUID> = linkedMapOf()
+    private val bossFightDebugTargets: MutableMap<UUID, UUID> = linkedMapOf()
     private val animationWearAliases = listOf("clear", "none", "hat", "helmet", "chestplate", "leggings", "boots", "sword", "left_sword", "offhand_sword", "left sword", "left minecraft:iron_sword", "offhand minecraft:iron_sword")
     private var workBypassEnabled = false
     private var debugTimeMultiplier: Int = 1
@@ -139,6 +140,8 @@ object NpcFeature {
         BLOCK_ENTITIES.register(modBus)
         NpcNetwork.register(modBus)
         NpcConfig.load()
+        NpcBossMovesets.load()
+        NpcCombatRollBridge.register()
         NpcPokemonCompanions.registerEvents()
         modBus.addListener(::registerAttributes)
         NeoForge.EVENT_BUS.addListener(::onServerStarted)
@@ -1644,6 +1647,7 @@ object NpcFeature {
 
     private fun onServerStarted(event: ServerStartedEvent) {
         NpcConfig.load()
+        NpcBossMovesets.load()
         NpcStore.load()
     }
 
@@ -1755,6 +1759,7 @@ object NpcFeature {
 
     private fun onPlayerLoggedOut(event: PlayerEvent.PlayerLoggedOutEvent) {
         val player = event.entity as? ServerPlayer ?: return
+        removeBossFightDebugEntity(player)
         NpcBossFights.cancelForPlayer(player, "Opponent left.")
         NpcStore.recordGlobalEvent("player_leave", "${player.gameProfile.name} left the server")
         NpcConfig.all().forEach { definition -> NpcLlmService.cancel(player, definition.id) }
@@ -1763,6 +1768,7 @@ object NpcFeature {
 
     private fun onPlayerChangedDimension(event: PlayerEvent.PlayerChangedDimensionEvent) {
         val player = event.entity as? ServerPlayer ?: return
+        removeBossFightDebugEntity(player)
         NpcBossFights.cancelForPlayer(player, "Opponent left the arena.")
     }
 
@@ -1797,6 +1803,7 @@ object NpcFeature {
         }
         val player = event.entity as? ServerPlayer
         if (player != null) {
+            removeBossFightDebugEntity(player)
             NpcBossFights.cancelForPlayer(player, "Opponent fell.")
             val deathMessage = event.source.getLocalizedDeathMessage(player).string
             NpcStore.recordGlobalEvent("player_death", deathMessage)
@@ -1957,7 +1964,16 @@ object NpcFeature {
                         ),
                 ),
         )
-        .then(Commands.literal("fight").requires { source -> source.hasPermission(2) }.executes(::fightCommand))
+        .then(
+            Commands.literal("fight")
+                .requires { source -> source.hasPermission(2) }
+                .executes(::fightCommand)
+                .then(
+                    Commands.argument("class_id", StringArgumentType.word())
+                        .suggests(::suggestBossClassIds)
+                        .executes(::fightClassCommand),
+                ),
+        )
         .then(animationRoot("animation"))
         .then(animationRoot("animations"))
         .then(
@@ -2049,6 +2065,9 @@ object NpcFeature {
 
     private fun suggestNpcIds(context: CommandContext<CommandSourceStack>, builder: com.mojang.brigadier.suggestion.SuggestionsBuilder) =
         SharedSuggestionProvider.suggest(NpcConfig.all().map { definition -> definition.id }, builder)
+
+    private fun suggestBossClassIds(context: CommandContext<CommandSourceStack>, builder: com.mojang.brigadier.suggestion.SuggestionsBuilder) =
+        SharedSuggestionProvider.suggest((NpcBossMovesets.ids() + NpcConfig.all().map { definition -> definition.classId }.filter(String::isNotBlank)).distinct().sorted(), builder)
 
     private fun suggestLlmPresets(context: CommandContext<CommandSourceStack>, builder: com.mojang.brigadier.suggestion.SuggestionsBuilder) =
         SharedSuggestionProvider.suggest(NpcConfig.llmPresetNames(), builder)
@@ -2153,8 +2172,9 @@ object NpcFeature {
     private fun reloadCommand(context: CommandContext<CommandSourceStack>): Int {
         ChowClockConfig.load()
         NpcConfig.load()
-        context.source.sendSuccess({ Component.literal("Reloaded ${NpcConfig.all().size} NPC definition(s). Clock source: ${ChowClockConfig.sourceName()}.") }, true)
-        return NpcConfig.all().size
+        val movesets = NpcBossMovesets.load()
+        context.source.sendSuccess({ Component.literal("Reloaded ${NpcConfig.all().size} NPC definition(s), ${movesets.size} boss moveset(s). Clock source: ${ChowClockConfig.sourceName()}.") }, true)
+        return NpcConfig.all().size + movesets.size
     }
 
     private fun questFinishCommand(context: CommandContext<CommandSourceStack>): Int {
@@ -2205,6 +2225,7 @@ object NpcFeature {
 
     private fun fightCommand(context: CommandContext<CommandSourceStack>): Int {
         NpcConfig.load()
+        NpcBossMovesets.load()
         val player = context.source.playerOrException
         val npc = lookedAtNpc(player) ?: run {
             context.source.sendFailure(Component.literal("No Chow Kingdom NPC under crosshair."))
@@ -2217,6 +2238,36 @@ object NpcFeature {
         val result = NpcBossFights.start(player, npc, definition)
         if (result.success) context.source.sendSuccess({ Component.literal(result.message).withStyle(ChatFormatting.RED) }, true) else context.source.sendFailure(Component.literal(result.message))
         return if (result.success) 1 else 0
+    }
+
+    private fun fightClassCommand(context: CommandContext<CommandSourceStack>): Int {
+        NpcConfig.load()
+        NpcBossMovesets.load()
+        val player = context.source.playerOrException
+        val classId = StringArgumentType.getString(context, "class_id")
+        val moveset = NpcBossMovesets.get(classId) ?: run {
+            context.source.sendFailure(Component.literal("Unknown NPC boss class '$classId'. Available: ${NpcBossMovesets.ids().joinToString(", ")}"))
+            return 0
+        }
+        removeBossFightDebugEntity(player)
+        val level = player.level() as? ServerLevel ?: return 0
+        val spawnPos = animationDebugSpawnPos(level, player)
+        val npc = NPC_ENTITY.get().create(level) ?: return 0
+        val debugNpcId = bossFightDebugNpcId(player, moveset.id)
+        npc.configureBossDebug(debugNpcId, "${moveset.displayName} Test Steve", player.blockPosition())
+        npc.setNoAi(false)
+        npc.moveTo(spawnPos.x + 0.5, spawnPos.y.toDouble(), spawnPos.z + 0.5, player.yRot + 180.0f, 0.0f)
+        level.addFreshEntity(npc)
+        bossFightDebugTargets[player.uuid] = npc.uuid
+        val result = NpcBossFights.startDebug(player, npc, moveset)
+        if (!result.success) {
+            bossFightDebugTargets.remove(player.uuid)
+            npc.discard()
+            context.source.sendFailure(Component.literal(result.message))
+            return 0
+        }
+        context.source.sendSuccess({ Component.literal(result.message).withStyle(ChatFormatting.RED) }, true)
+        return 1
     }
 
     private fun debugCommand(context: CommandContext<CommandSourceStack>): Int {
@@ -2362,6 +2413,7 @@ object NpcFeature {
         realtimeDebugTargets.clear()
         greetingRadiusPlayers.clear()
         animationDebugTargets.clear()
+        bossFightDebugTargets.clear()
         context.source.sendSuccess({
             Component.literal("DANGER: cleared all NPC state, $removedEntities live NPC(s), and $removedContracts rent contract(s). Backup: $backup").withStyle(ChatFormatting.RED)
         }, true)
@@ -2382,6 +2434,7 @@ object NpcFeature {
         val backup = NpcStore.backupAndClearNpc(id)
         realtimeDebugTargets.clear()
         greetingRadiusPlayers.clear()
+        bossFightDebugTargets.clear()
         context.source.sendSuccess({
             Component.literal("DANGER: cleared ${definition.displayName()} state, $removedEntities live NPC(s), and $removedContracts rent contract(s). Backup: $backup").withStyle(ChatFormatting.RED)
         }, true)
@@ -2730,6 +2783,18 @@ object NpcFeature {
         npc.discard()
         return true
     }
+
+    private fun removeBossFightDebugEntity(player: ServerPlayer): Boolean {
+        val entityId = bossFightDebugTargets.remove(player.uuid) ?: return false
+        val npc = findNpc(player.server, entityId) ?: return false
+        NpcBossFights.clear(npc)
+        NpcSmartBrainOverrides.clear(npc)
+        npc.discard()
+        return true
+    }
+
+    private fun bossFightDebugNpcId(player: ServerPlayer, classId: String): String =
+        "boss_debug_${NpcBossMovesets.normalizeId(classId)}_${player.uuid.toString().take(8)}"
 
     private fun animationDebugSpawnPos(level: ServerLevel, player: ServerPlayer): BlockPos {
         val base = player.blockPosition().relative(player.direction, 2)
