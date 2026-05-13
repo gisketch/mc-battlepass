@@ -274,6 +274,9 @@ object ClassSkillTrees {
         val obj = element as? JsonObject
         val translate = obj?.get("translate")?.asString
         if (!translate.isNullOrBlank()) return translate
+        if (titleKey.startsWith("skill.") && titleKey.endsWith(".title")) {
+            return titleKey.removePrefix("skill.").removeSuffix(".title").let { "spell.$it.description" }
+        }
         if (titleKey.endsWith(".title")) return titleKey.removeSuffix(".title") + ".description"
         return "skill.${ChowKingdomMod.MOD_ID}.${definitionId}.description"
     }

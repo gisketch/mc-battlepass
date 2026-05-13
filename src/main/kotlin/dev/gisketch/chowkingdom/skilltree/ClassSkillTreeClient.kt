@@ -9,6 +9,7 @@ import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.gui.screens.inventory.InventoryScreen
+import net.minecraft.client.resources.language.I18n
 import net.minecraft.client.resources.sounds.SimpleSoundInstance
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
@@ -250,22 +251,27 @@ private class ClassSkillTreeScreen(private var payload: ClassSkillTreeSyncPayloa
         }
         renderNineSlice(guiGraphics, texture, slot.rect, CONTAINER_TEXTURE_WIDTH, CONTAINER_TEXTURE_HEIGHT, CONTAINER_SOURCE_CORNER, NODE_DEST_CORNER, 1.0f)
         renderRoleIcon(guiGraphics, node.icon, Rect(slot.rect.x + 5, slot.rect.y + 5, slot.rect.width - 10, slot.rect.height - 10))
-        if (node.blocked) renderLock(guiGraphics, slot.rect)
+        if (node.blocked) {
+            guiGraphics.fill(slot.rect.x, slot.rect.y, slot.rect.right, slot.rect.bottom, 0x88000000.toInt())
+            renderLock(guiGraphics, slot.rect)
+        }
         if (node.root) drawCenteredCkdm(guiGraphics, "ROOT", slot.rect.x - 4, slot.rect.bottom + 2, slot.rect.width + 8, GOLD, CKDM_SMALL)
         if (node.available) drawCenteredCkdm(guiGraphics, "+", slot.rect.right - 8, slot.rect.y - 2, 10, GOLD, CKDM_BOLD)
     }
 
     private fun renderLock(guiGraphics: GuiGraphics, rect: Rect) {
-        val size = 14
+        val size = 20
+        val x = rect.x + (rect.width - size) / 2
+        val y = rect.y + (rect.height - size) / 2
         RenderSystem.enableBlend()
         RenderSystem.defaultBlendFunc()
-        guiGraphics.blit(LOCKED_TEXTURE, rect.right - size - 2, rect.y + 2, size, size, 0.0f, 0.0f, 16, 16, 16, 16)
+        guiGraphics.blit(LOCKED_TEXTURE, x, y, size, size, 0.0f, 0.0f, 16, 16, 16, 16)
     }
 
     private fun renderNodeTooltip(guiGraphics: GuiGraphics, node: ClassSkillTreeNodePayload, mouseX: Int, mouseY: Int) {
         val lines = mutableListOf<Component>()
-        lines += Component.translatable(node.titleKey)
-        lines += Component.translatable(node.descriptionKey)
+        lines += nodeTitle(node)
+        lines += nodeDescription(node)
         lines += Component.literal(if (node.root) "Free class root" else "Cost: ${node.cost} point")
         lines += Component.literal(
             when {
@@ -275,6 +281,22 @@ private class ClassSkillTreeScreen(private var payload: ClassSkillTreeSyncPayloa
             },
         )
         guiGraphics.renderTooltip(fontRef, lines.flatMap { line -> fontRef.split(line, 220) }, mouseX, mouseY)
+    }
+
+    private fun nodeTitle(node: ClassSkillTreeNodePayload): Component =
+        if (I18n.exists(node.titleKey)) Component.literal(I18n.get(node.titleKey)) else Component.literal(titleCase(node.definitionId))
+
+    private fun nodeDescription(node: ClassSkillTreeNodePayload): Component {
+        val titleBase = node.titleKey.removeSuffix(".title")
+        val candidates = listOf(
+            node.descriptionKey,
+            "$titleBase.description",
+            titleBase.replaceFirst("skill.", "spell.") + ".description",
+        ).distinct()
+        val translated = candidates.firstOrNull(I18n::exists)
+        if (translated != null) return Component.literal(I18n.get(translated))
+        val title = if (I18n.exists(node.titleKey)) I18n.get(node.titleKey) else titleCase(node.definitionId)
+        return Component.literal(if (node.root) "Unlocks this class skill path." else "Unlocks $title.")
     }
 
     private fun selectedRoot(): ClassSkillTreeRootPayload? =
@@ -454,6 +476,9 @@ private class ClassSkillTreeScreen(private var payload: ClassSkillTreeSyncPayloa
         return "$value..."
     }
 
+    private fun titleCase(id: String): String =
+        id.replace('_', ' ').split(' ').joinToString(" ") { part -> part.replaceFirstChar { char -> char.titlecase(Locale.ROOT) } }
+
     private fun layout(): Layout {
         val margin = (width / 34).coerceIn(18, 28)
         val gap = 14
@@ -487,7 +512,7 @@ private class ClassSkillTreeScreen(private var payload: ClassSkillTreeSyncPayloa
 
     companion object {
         private const val NODE_SIZE = 34
-        private const val NODE_HORIZONTAL_GAP = 72
+        private const val NODE_HORIZONTAL_GAP = 104
         private const val NODE_VERTICAL_GAP = 64
         private const val NODE_DEST_CORNER = 8
         private const val WHITE = 0xFFFFFFFF.toInt()
