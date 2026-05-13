@@ -38,6 +38,7 @@ import dev.gisketch.chowkingdom.shops.ShopsClient
 import dev.gisketch.chowkingdom.shops.ShopsFeature
 import dev.gisketch.chowkingdom.snackbar.SnackbarClient
 import dev.gisketch.chowkingdom.snackbar.SnackbarFeature
+import dev.gisketch.chowkingdom.skilltree.ClassSkillTreeFeature
 import dev.gisketch.chowkingdom.trading.TradingClient
 import dev.gisketch.chowkingdom.trading.TradingFeature
 import dev.gisketch.chowkingdom.town.TownReturnFeature
@@ -82,6 +83,7 @@ class ChowKingdomMod(modBus: IEventBus, container: ModContainer) {
         RelicRouletteFeature.register(modBus)
         RecipeDisablerFeature.register(modBus)
         NpcFeature.register(modBus)
+        ClassSkillTreeFeature.register(modBus)
         TownReturnFeature.register(modBus)
         WorldsFeature.register()
         if (FMLEnvironment.dist == Dist.CLIENT) {

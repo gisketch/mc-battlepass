@@ -3,6 +3,7 @@ package dev.gisketch.chowkingdom.roles
 import com.google.gson.GsonBuilder
 import dev.gisketch.chowkingdom.ChowKingdomMod
 import dev.gisketch.chowkingdom.config.TomlConfigIO
+import dev.gisketch.chowkingdom.skilltree.ClassSkillTrees
 import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.level.storage.LevelResource
 import net.neoforged.fml.loading.FMLPaths
@@ -88,6 +89,52 @@ object RoleStore {
         return players[playerId.toString()]?.activeClassIds?.toSet().orEmpty()
     }
 
+    fun selectedClassSkillRoot(player: ServerPlayer): String = role(player).selectedClassSkillRoot
+
+    fun setSelectedClassSkillRoot(player: ServerPlayer, rootSkillId: String) {
+        val record = ensureRecord(player)
+        val id = rootSkillId.trim()
+        if (record.selectedClassSkillRoot == id) return
+        record.selectedClassSkillRoot = id
+        save()
+    }
+
+    fun classSkillIds(player: ServerPlayer, rootSkillId: String): Set<String> =
+        role(player).classSkillTrees[rootSkillId.trim()]?.unlockedSkillIds?.toSet().orEmpty()
+
+    fun unlockClassSkill(player: ServerPlayer, rootSkillId: String, skillId: String): Boolean {
+        val root = rootSkillId.trim()
+        val skill = skillId.trim()
+        if (root.isBlank() || skill.isBlank()) return false
+        val record = ensureRecord(player)
+        val state = record.classSkillTrees.getOrPut(root) { PlayerClassSkillTreeState() }
+        val changed = state.unlockedSkillIds.add(skill)
+        if (changed) save()
+        return changed
+    }
+
+    fun resetClassSkills(player: ServerPlayer, rootSkillId: String? = null) {
+        val record = ensureRecord(player)
+        if (rootSkillId.isNullOrBlank()) {
+            record.classSkillTrees.clear()
+            record.selectedClassSkillRoot = ""
+        } else {
+            record.classSkillTrees.remove(rootSkillId.trim())
+            if (record.selectedClassSkillRoot == rootSkillId.trim()) record.selectedClassSkillRoot = ""
+        }
+        save()
+    }
+
+    fun pruneClassSkillRoots(player: ServerPlayer, allowedRootSkillIds: Set<String>) {
+        val record = ensureRecord(player)
+        val allowed = allowedRootSkillIds.map(String::trim).filter(String::isNotBlank).toSet()
+        val before = record.classSkillTrees.size
+        val selectedBefore = record.selectedClassSkillRoot
+        record.classSkillTrees.keys.removeIf { root -> root !in allowed }
+        if (record.selectedClassSkillRoot !in allowed) record.selectedClassSkillRoot = allowed.firstOrNull().orEmpty()
+        if (record.classSkillTrees.size != before || record.selectedClassSkillRoot != selectedBefore) save()
+    }
+
     fun setJob(player: ServerPlayer, jobId: String) {
         val record = ensureRecord(player)
         record.jobId = jobId
@@ -104,6 +151,7 @@ object RoleStore {
         record.activeClassIds.add(classId)
         record.unlockedClasses.add(classId)
         save()
+        ClassSkillTrees.reconcile(player)
     }
 
     fun setPrimaryRoles(player: ServerPlayer, jobId: String, classId: String, height: Double = DEFAULT_BODY_SCALE, weight: Double = DEFAULT_BODY_SCALE) {
@@ -119,6 +167,7 @@ object RoleStore {
         record.unlockedJobs.add(jobId)
         record.unlockedClasses.add(classId)
         save()
+        ClassSkillTrees.reconcile(player)
     }
 
     fun setStarterLicenses(player: ServerPlayer, licenses: Int) {
@@ -152,6 +201,7 @@ object RoleStore {
         record.height = DEFAULT_BODY_SCALE
         record.weight = DEFAULT_BODY_SCALE
         save()
+        ClassSkillTrees.reconcile(player)
     }
 
     fun addJob(player: ServerPlayer, jobId: String): Boolean {
@@ -168,7 +218,10 @@ object RoleStore {
         if (record.classId.isBlank()) record.classId = classId
         val changed = record.activeClassIds.add(classId)
         record.unlockedClasses.add(classId)
-        if (changed) save()
+        if (changed) {
+            save()
+            ClassSkillTrees.reconcile(player)
+        }
         return changed
     }
 
@@ -186,6 +239,7 @@ object RoleStore {
         record.activeClassIds.add(newId)
         record.unlockedClasses.add(newId)
         save()
+        ClassSkillTrees.reconcile(player)
         return true
     }
 
@@ -202,6 +256,7 @@ object RoleStore {
         if (!record.activeClassIds.remove(classId)) return false
         if (record.classId == classId) record.classId = record.activeClassIds.firstOrNull().orEmpty()
         save()
+        ClassSkillTrees.reconcile(player)
         return true
     }
 
@@ -269,6 +324,8 @@ class PlayerRoleRecord(
     var grantedStartingItems: MutableSet<String> = linkedSetOf(),
     var classMentorQuests: MutableMap<String, PlayerClassMentorQuestState> = linkedMapOf(),
     var completedClassMentorQuests: MutableSet<String> = linkedSetOf(),
+    var selectedClassSkillRoot: String = "",
+    var classSkillTrees: MutableMap<String, PlayerClassSkillTreeState> = linkedMapOf(),
 )
 
 class PlayerClassMentorQuestState(
@@ -280,6 +337,10 @@ class PlayerClassMentorQuestState(
     var stepStartedAtTick: Long = 0L,
     var timedEventTicks: MutableList<Long> = mutableListOf(),
     var paid: Boolean = false,
+)
+
+class PlayerClassSkillTreeState(
+    var unlockedSkillIds: MutableSet<String> = linkedSetOf(),
 )
 
 data class BodyScaleChoice(val height: Double = DEFAULT_BODY_SCALE, val weight: Double = DEFAULT_BODY_SCALE)

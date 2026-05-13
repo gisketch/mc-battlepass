@@ -53,3 +53,6 @@ Add a CKDM-owned built-in datapack that extends the MRPGC Skill Tree RPGs catego
 - Added a generic Wizard tree above the elemental roots with 18 skills and 16 definitions: balanced control and power branches using the base Wizard starter spells.
 - Added Wizard skill title/description lang entries and Spell Engine tooltip lang entries for every CKDM Wizard modifier/passive.
 - Revalidated after Wizard addition: graph has 342 skills, 305 definitions, 54 CKDM skills, and 42 CKDM spell files; `./gradlew.bat build`, `bash ./scripts/check-sonata.sh`, and `.\scripts\run-client.ps1` passed.
+- Added CKDM class skill screen entry from the player menu and routed Puffish skill screen opens into CKDM's BP-owned class skill UI.
+- Replaced Puffish level-up skill point gain with CKDM BP budget mirroring: max 10 paid points, 1 point every 10 overall BP levels, first class path root mirrored free.
+- Updated the class skill UI to follow onboarding composition: class list left, paperdoll center, vertical skill path right. Node placement now uses graph prerequisites only, ignores Puffish x/y coordinates, clips inside the skill container, and shows translated upgrade tooltips.

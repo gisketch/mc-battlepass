@@ -8,6 +8,7 @@ import dev.gisketch.chowkingdom.battlepass.BattlepassPassDefinition
 import dev.gisketch.chowkingdom.battlepass.BattlepassPassRegistry
 import dev.gisketch.chowkingdom.battlepass.BattlepassXpStore
 import dev.gisketch.chowkingdom.npc.NpcFriendsClient
+import dev.gisketch.chowkingdom.skilltree.ClassSkillTreeClient
 import net.minecraft.Util
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
@@ -60,6 +61,7 @@ object InventoryMenuClient {
         when (action) {
             InventoryMenuAction.Profile -> PlayerProfileClient.openSelf()
             InventoryMenuAction.Friends -> NpcFriendsClient.open()
+            InventoryMenuAction.Skills -> ClassSkillTreeClient.open()
             InventoryMenuAction.Leaderboard -> Unit
             InventoryMenuAction.Battlepass -> showingPasses = true
             InventoryMenuAction.CozyPass -> BattlepassClient.openBattlepass("cozy")
@@ -111,7 +113,8 @@ object InventoryMenuClient {
             InventoryMenuButton(0, "Profile", PROFILE_ICON, InventoryMenuAction.Profile),
             InventoryMenuButton(1, "Friends", FRIENDS_ICON, InventoryMenuAction.Friends),
             InventoryMenuButton(2, "Battlepass", GIFT_ICON, InventoryMenuAction.Battlepass),
-            InventoryMenuButton(3, "Leaderboard", TROPHY_ICON, InventoryMenuAction.Leaderboard),
+            InventoryMenuButton(3, "Skills", SKILLS_ICON, InventoryMenuAction.Skills),
+            InventoryMenuButton(4, "Leaderboard", TROPHY_ICON, InventoryMenuAction.Leaderboard),
         )
     }
 
@@ -203,7 +206,7 @@ object InventoryMenuClient {
         InventoryMenuAction.Battlepass -> PASS_IDS.sumOf(::claimableCountForPass)
         InventoryMenuAction.CozyPass -> claimableCountForPass(COZY_PASS_ID)
         InventoryMenuAction.CombatPass -> claimableCountForPass(COMBAT_PASS_ID)
-        InventoryMenuAction.Profile, InventoryMenuAction.Friends, InventoryMenuAction.Leaderboard -> 0
+        InventoryMenuAction.Profile, InventoryMenuAction.Friends, InventoryMenuAction.Skills, InventoryMenuAction.Leaderboard -> 0
     }
 
     private fun claimableCountForPass(passId: String): Int {
@@ -243,7 +246,7 @@ object InventoryMenuClient {
 
     private data class InventoryMenuButton(val index: Int, val label: String, val icon: ResourceLocation, val action: InventoryMenuAction)
 
-    private enum class InventoryMenuAction { Profile, Friends, Battlepass, Leaderboard, CozyPass, CombatPass }
+    private enum class InventoryMenuAction { Profile, Friends, Battlepass, Skills, Leaderboard, CozyPass, CombatPass }
 
     private data class EntranceStyle(val delayMs: Int, val offsetX: Int = 0, val offsetY: Int = 0, val scaleFrom: Float = 1.0f)
 
@@ -279,6 +282,7 @@ object InventoryMenuClient {
     private val PROFILE_ICON = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/profile.png")
     private val FRIENDS_ICON = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/friends.png")
     private val GIFT_ICON = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/gift.png")
+    private val SKILLS_ICON = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/wisdom.png")
     private val TROPHY_ICON = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/trophy.png")
     private val HOME_ICON = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/home.png")
     private val DUNGEON_ICON = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/dungeon.png")

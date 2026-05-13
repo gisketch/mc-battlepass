@@ -3,6 +3,7 @@ package dev.gisketch.chowkingdom.battlepass
 import com.google.gson.GsonBuilder
 import dev.gisketch.chowkingdom.ChowKingdomMod
 import dev.gisketch.chowkingdom.config.TomlConfigIO
+import dev.gisketch.chowkingdom.skilltree.ClassSkillTrees
 import dev.gisketch.chowkingdom.snackbar.SnackbarNetwork
 import dev.gisketch.chowkingdom.snackbar.SnackbarNotification
 import net.minecraft.server.level.ServerPlayer
@@ -52,6 +53,7 @@ object BattlepassXpStore {
         playerPasses[passId] = total
         save()
         if (amount > 0 && total > previous) sendXpSnackbar(player, passId, amount, previous, total)
+        ClassSkillTrees.reconcile(player)
         return total
     }
 
