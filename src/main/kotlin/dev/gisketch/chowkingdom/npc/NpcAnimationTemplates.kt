@@ -11,6 +11,8 @@ data class NpcAnimationTemplate(
     val loop: Boolean,
     val durationTicks: Int,
     val weapon: ItemStack? = null,
+    val mainHand: ItemStack? = weapon,
+    val offHand: ItemStack? = null,
     val speed: Float = 1.0f,
     val events: List<NpcAnimationEvent> = emptyList(),
 )
@@ -18,6 +20,7 @@ data class NpcAnimationTemplate(
 object NpcBossAnimationSources {
     const val GECKO = "gecko"
     const val PLAYERLIKE = "playerlike"
+    const val NATURAL = "natural"
 }
 
 data class NpcAnimationEvent(
@@ -111,9 +114,15 @@ object NpcCustomAnimationController {
     )
 
     fun play(entity: ChowNpcEntity, template: NpcAnimationTemplate, slot: EquipmentSlot = EquipmentSlot.MAINHAND): Boolean {
-        template.weapon?.let { weapon -> entity.setItemSlot(slot, weapon.copy()) }
+        template.mainHand?.let { weapon -> entity.setItemSlot(slot, weapon.copy()) }
+        template.offHand?.let { weapon -> entity.setItemSlot(EquipmentSlot.OFFHAND, weapon.copy()) }
         return when (template.animationSource.trim().lowercase()) {
             NpcBossAnimationSources.PLAYERLIKE -> entity.playPlayerlikeAnimation(template.animationId)
+            NpcBossAnimationSources.NATURAL -> {
+                entity.setCustomAnimationMode(false)
+                entity.setPlayerlikeAnimationMode(false)
+                true
+            }
             else -> entity.playCustomAnimation(template.animationId, template.speed)
         }
     }

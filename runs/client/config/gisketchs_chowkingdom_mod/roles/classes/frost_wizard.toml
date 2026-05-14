@@ -16,16 +16,16 @@ perks = [
 
 
 [mentor_quest]
-mentor_npc_id = "invoker"
-title = "Quas Frost Exam"
-intro_message = "Invoker tests patience, pressure, and the unpleasant truth that stillness can be violent."
-unlock_title = "Quas Adept"
-announcement = "{player} completed Invokers frost exam and unlocked Frost Wizard as {title}."
+mentor_npc_id = "elsa"
+title = "Frozen Grace Exam"
+intro_message = "Elsa tests whether the apprentice can shape cold with calm, beauty, and control instead of fear."
+unlock_title = "Frostbound Adept"
+announcement = "{player} completed Elsas frozen grace exam and unlocked Frost Wizard as {title}."
 steps = [
-  { id = "frost_wizard_vow", skeleton = "vow", kind = "dialogue", title = "Vow", objective = "Vow to use cold as control, not cruelty.", goal = 1, start_message = "Vow to use cold as control, not cruelty.", complete_message = "", llm_prompt = "Invoker should sound arrogant, brilliant, and theatrical but concise." },
-  { id = "frost_wizard_offering", skeleton = "offering", kind = "fetch", title = "Blue Ice Focus", objective = "Bring 8 blue ice.", item = "minecraft:blue_ice", qty = 8, goal = 8, start_message = "Bring <b>8 blue ice</b>. Quas begins where motion regrets itself.", complete_message = "Cold enough to be useful. Barely.", llm_prompt = "Tie blue ice to Quas, endurance, and stillness." },
-  { id = "frost_wizard_discipline", skeleton = "discipline", kind = "task", title = "Snow Measure", objective = "Craft 8 snow blocks.", event = "minecraft:item_crafted", item = "minecraft:snow_block", goal = 8, start_message = "Craft <b>8 snow blocks</b>. Repetition teaches the wrist before the spell does.", complete_message = "A childish material, refined by a less childish purpose.", llm_prompt = "Make snow block crafting a control exercise." },
-  { id = "frost_wizard_signature_trial", skeleton = "signature_trial", kind = "task", title = "Frozen Hunt", objective = "Defeat 6 strays.", event = "minecraft:entity_killed", goal = 6, filters = { entity = "minecraft:stray" }, start_message = "Defeat <b>6 strays</b>. Study cold that has already learned to aim.", complete_message = "You outlasted the lesson.", llm_prompt = "Frame strays as hostile frost tutors." },
+  { id = "frost_wizard_vow", skeleton = "vow", kind = "dialogue", title = "Vow", objective = "Vow to use cold as control, shield, and beauty, never fear made sharp.", goal = 1, start_message = "Vow to use cold as control, shield, and beauty, never fear made sharp.", complete_message = "", llm_prompt = "Elsa should sound elegant, calm, compassionate, and focused on control over fear." },
+  { id = "frost_wizard_offering", skeleton = "offering", kind = "fetch", title = "Blue Ice Focus", objective = "Bring 8 blue ice.", item = "minecraft:blue_ice", qty = 8, goal = 8, start_message = "Bring <b>8 blue ice</b>. Clear cold teaches restraint better than panic does.", complete_message = "Beautiful. Stable. That is the kind of cold we can trust.", llm_prompt = "Tie blue ice to elegant frost control, clarity, and calm." },
+  { id = "frost_wizard_discipline", skeleton = "discipline", kind = "task", title = "Snow Measure", objective = "Craft 8 snow blocks.", event = "minecraft:item_crafted", item = "minecraft:snow_block", goal = 8, start_message = "Craft <b>8 snow blocks</b>. Repetition can quiet a storming hand.", complete_message = "Good. Your hands are calmer now.", llm_prompt = "Make snow block crafting a calm control exercise." },
+  { id = "frost_wizard_signature_trial", skeleton = "signature_trial", kind = "task", title = "Frozen Hunt", objective = "Defeat 6 strays.", event = "minecraft:entity_killed", goal = 6, filters = { entity = "minecraft:stray" }, start_message = "Defeat <b>6 strays</b>. Face hostile cold without becoming it.", complete_message = "You stayed warm inside the frost.", llm_prompt = "Frame strays as a trial in resisting fear and hostile cold." },
   { id = "frost_wizard_license", skeleton = "payment", kind = "payment", title = "License Seal", objective = "Pay the mentor license fee for frost_wizard.", goal = 1, start_message = "The license seal is next. A new {classification} {class} unlock costs {cost} chowcoins.", complete_message = "The license is sealed. Only the mentor duel remains for {class}.", llm_prompt = "Treat payment as a formal license seal, not a bribe." },
-  { id = "frost_wizard_duel", skeleton = "mentor_duel", kind = "duel", title = "Mentor Duel", objective = "Win a non-lethal 1v1 mentor duel.", goal = 1, start_message = "Draw breath. The {class} mentor duel starts now.", complete_message = "The duel is won. {class} is yours.", llm_prompt = "Invoker starts a sharp duel test." },
+  { id = "frost_wizard_duel", skeleton = "mentor_duel", kind = "duel", title = "Mentor Duel", objective = "Win a non-lethal 1v1 mentor duel.", goal = 1, start_message = "Draw breath. The {class} mentor duel starts now.", complete_message = "The duel is won. {class} is yours.", llm_prompt = "Elsa starts a graceful non-lethal duel test about frost, fear, and calm control." },
 ]

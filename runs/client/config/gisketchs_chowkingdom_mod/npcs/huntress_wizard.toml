@@ -24,6 +24,8 @@ enabled = true
 health = 78.0
 damage = 4.5
 template = "sword_user"
+main_hand = "archers:composite_longbow"
+off_hand = ""
 
 [boss.balloons]
 chase = ["Run, little root. I follow.", "The forest already heard you.", "Soft feet. The soil listens.", "Every leaf knows your path.", "Keep running. Roots are patient.", "The canopy sees all.", "Your trail sings to the moss.", "Flee, seedling. I grow closer.", "The woods do not lose track.", "Breathe. The trees already know."]

@@ -2256,12 +2256,12 @@ object NpcFeature {
         val npc = NPC_ENTITY.get().create(level) ?: return 0
         val debugNpcId = bossFightDebugNpcId(player, moveset.id)
         val debugSkin = bossFightDebugSkinDefinition(moveset.id)
-        npc.configureBossDebug(debugNpcId, "${moveset.displayName} Test NPC", player.blockPosition(), debugSkin?.bodyType ?: NpcBodyTypes.NORMAL)
+        npc.configureBossDebug(debugNpcId, "${debugSkin?.displayName() ?: moveset.displayName} Test NPC", player.blockPosition(), debugSkin?.bodyType ?: NpcBodyTypes.NORMAL)
         npc.setNoAi(false)
         npc.moveTo(spawnPos.x + 0.5, spawnPos.y.toDouble(), spawnPos.z + 0.5, player.yRot + 180.0f, 0.0f)
         level.addFreshEntity(npc)
         bossFightDebugTargets[player.uuid] = npc.uuid
-        val result = NpcBossFights.startDebug(player, npc, moveset)
+        val result = NpcBossFights.startDebug(player, npc, moveset, debugSkin)
         if (!result.success) {
             bossFightDebugTargets.remove(player.uuid)
             npc.discard()

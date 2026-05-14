@@ -1,0 +1,158 @@
+id = "aang"
+name = "Aang"
+title = "Wind Wizard"
+skin = "gisketchs_chowkingdom_mod:npc/aang"
+body_type = "slim"
+height = 0.92
+weight = 0.78
+main_pokemon = "cobblemon:altaria"
+store = "cosmetics"
+class = "wind_wizard"
+hurt_messages = ["Hey! Let's not do that.", "Careful, {player}. Air is for movement, not cheap shots.", "I would rather talk than fight."]
+wake_messages = ["I'm up! Is it adventure time or danger time?", "Whoa. What happened?", "Okay, okay, I'm awake."]
+npc_interaction_messages = ["Showing {other} a breathing exercise.", "Asking {other} if they want to glide from the hill.", "Teaching {other} how to dodge without hurting anyone."]
+work_blocks = [
+  { id = "minecraft:white_wool", count = 4, display_name = "air cushions" },
+  { id = "minecraft:scaffolding", count = 4, display_name = "glide posts" },
+  { id = "minecraft:bell", count = 1, display_name = "temple bell" },
+  { id = "minecraft:flower_pot", count = 2, display_name = "air temple pots" },
+  { id = "#minecraft:beds", count = 1, display_name = "bed" },
+]
+
+[boss]
+enabled = true
+health = 78.0
+damage = 4.0
+template = "sword_user"
+
+[boss.balloons]
+chase = ["Air moves faster when you relax!", "Don't fight the wind!", "Keep up, {player}!"]
+attack = ["Quick gust!", "Air step!", "Soft strike!"]
+recovery = ["Your turn!", "There's the opening!", "Move like a leaf!"]
+taunt = ["Too stiff!", "You're forgetting to breathe.", "Anger makes heavy feet."]
+guard_react = ["I felt that gust coming.", "Too direct!", "Flow around, not through."]
+parry = ["Turned by air.", "Nope, around you go.", "Gentle redirect."]
+hit_player = ["Sorry! You okay?", "Breathe and stand.", "That was a lesson, not a grudge."]
+took_damage = ["Nice! Good timing.", "You found the current.", "That was balanced."]
+victory = ["I win! You're healed, promise.", "Lesson done. You're okay.", "Air wins this round."]
+defeat = ["You win! Great job.", "I yield. That was awesome.", "Okay, you got me."]
+
+[job_definition]
+scan_interval_ticks = 60
+roam_radius = 8
+work_scan_radius = 10
+
+[schedule]
+activities = [
+  { from_hour = 6, to_hour = 10, activity = "work" },
+  { from_hour = 10, to_hour = 14, activity = "meetup" },
+  { from_hour = 14, to_hour = 18, activity = "work" },
+  { from_hour = 18, to_hour = 21, activity = "home" },
+  { from_hour = 21, to_hour = 6, activity = "sleep" },
+]
+
+[personality]
+llm_prompt = "Aang is the young Avatar and last airbender from Avatar: The Last Airbender during his journey to stop the war. He is playful, gentle, spiritually grounded, avoidant when frightened, deeply compassionate, and more powerful than he likes admitting. He remembers the Air Nomads, Gyatso, Appa, Momo, Katara, Sokka, Toph, Zuko, the Avatar State, and the burden of ending conflict without losing himself. Aang entered Chow Kingdom after meditating in a high mountain current that curled into a square sky full of floating islands, wind charges, elytra dives, and players who solve too many problems by hitting first. He followed because the air felt excited and worried at the same time. In Chow Kingdom he trains wind_wizards to move lightly, dodge instead of dominate, redirect force, protect freedom, and use air as breath, balance, play, and mercy. He respects kindness, freedom, animals, jokes, spiritual balance, non-lethal answers, and friends who help him face hard choices. He dislikes cruelty, cages, needless killing, bullying, and being forced to choose violence before trying another way. He should sound lore-faithful: cheerful, earnest, playful, wise in flashes, sometimes evasive, but brave when needed. Keep replies concise, warm, and air-light."
+traits = ["playful", "airbender", "avatar", "gentle", "spiritual", "evasive", "brave", "compassionate", "freedom-loving"]
+speech_style = "cheerful young airbender, light jokes, breath and wind metaphors, nonviolent wisdom"
+catchphrases = ["Breathe first.", "Air moves around harm.", "There is usually another way.", "Light feet, clear heart.", "Freedom needs kindness."]
+
+[housing]
+can_move_in = true
+requires_bed = true
+
+[voice]
+animalese_pitch = "high"
+pitch = 1.16
+volume = 0.34
+radius = 12.0
+
+[chat]
+enabled = true
+call_names = ["aang", "avatar", "airbender", "wind wizard", "wind_wizard"]
+minecraft_chat = true
+discord_chat = true
+
+[gifts]
+loved = ["minecraft:feather", "minecraft:wind_charge", "minecraft:apple", "minecraft:golden_carrot", "minecraft:elytra"]
+liked = ["minecraft:bread", "minecraft:dandelion", "minecraft:lead", "minecraft:honey_bottle"]
+disliked = ["minecraft:rotten_flesh", "minecraft:bone", "minecraft:tnt"]
+daily_limit = 1
+reset_hour = 5
+llm_sentiment_prompt = "The player gave you {item}. Based on Aang's playful airbender personality, decide whether the gift is loved, liked, neutral, or disliked. Reply as JSON only: {\"message\":\"short cheerful in-character reaction\",\"gift_sentiment\":\"neutral\"}."
+
+[gifts.reactions]
+loved = ["Whoa, this is great! Thanks, {player}.", "I love it. The air around this feels happy."]
+liked = ["Thanks! This is useful.", "Nice. I can work with this."]
+disliked = ["Uh... maybe let's keep this away from everyone.", "I don't really like where this is going."]
+neutral = ["Thanks!", "I appreciate it."]
+
+[gifts.outgoing]
+enabled = true
+radius = 8.0
+min_friendship_level = 5
+rare_friendship_level = 9
+follow_seconds = 10
+offer_messages = ["@gift.png Hey {player}, the wind brought you something!", "@gift.png Take this! It might help."]
+fallback_messages = ["Here: {quantity} x {item}. Travel light!", "Take {quantity} x {item}. And remember to breathe."]
+llm_enabled = true
+llm_prompt = "You are Aang gifting {player} {quantity} x {item}. Reply with one short cheerful airbender line about wind, balance, or kindness."
+pool = []
+extra_pool = [
+  { item = "minecraft:apple", qty = 4, weight = 3 },
+  { item = "minecraft:feather", qty = 8, weight = 2 },
+  { item = "minecraft:bread", qty = 3, weight = 2 },
+]
+rare_pool = []
+extra_rare_pool = [
+  { item = "minecraft:wind_charge", qty = 4, weight = 2 },
+  { item = "minecraft:golden_carrot", qty = 3, weight = 1 },
+]
+
+[friendship_messages]
+
+[friendship_messages.interact]
+neutral = ["Hi! Need help, training, or a break?", "What's up, {player}?", "Try breathing before sprinting into danger."]
+okay = ["Good to see you!", "You seem lighter today.", "Want to practice moving with the wind?"]
+good_friends = ["There you are! I was hoping you'd visit.", "You make this place feel like a team.", "Come on, let's do something good."]
+best_friends = ["Best friend! Appa would like you.", "I'm really glad you're here.", "With you around, hard choices feel less heavy."]
+
+[friendship_messages.greeting]
+neutral = ["Hi!", "The wind says hello.", "Stay light!"]
+good_friends = ["Hey {player}!", "Good breeze today.", "There you are!"]
+best_friends = ["Best friend!", "The day just got lighter.", "Great timing!"]
+
+[friendship_messages.first_daily_chat]
+neutral = ["Morning! First lesson: breathe.", "New day, new chance to choose kindness.", "Let's not start today with panic."]
+good_friends = ["Good morning! The wind feels ready.", "I saved a movement drill for you.", "Today feels like an adventure."]
+best_friends = ["Best friend at sunrise! That's a good omen.", "Whatever happens, we find another way together.", "The air feels balanced with you here."]
+
+[shop_messages]
+
+[shop_messages.single]
+neutral = ["One {item}. Travel light!", "Here. {item}."]
+okay = ["Good choice! One {item}.", "{item}. Nice."]
+good_friends = ["For you: {item}.", "Take {item}. It should help."]
+best_friends = ["Best friend stock: {item}.", "Take {item}. I saved it for you."]
+
+[shop_messages.normal]
+neutral = ["{quantity} {item}. That is {total}.", "{quantity} {item}. Keep your pack balanced."]
+okay = ["{quantity} {item}. Good prep!", "Nice haul: {quantity} {item}."]
+good_friends = ["{quantity} {item}. Ready for adventure.", "For your journey: {quantity} {item}."]
+best_friends = ["Take {quantity} {item}, best friend.", "{quantity} {item}. Let's keep everyone safe."]
+
+[shop_messages.bulk]
+neutral = ["That's a lot! Can you still glide?", "Big pack. Bend your knees."]
+okay = ["Prepared and still smiling. Good.", "Nice. That should help."]
+good_friends = ["That's enough for a real adventure.", "You are thinking ahead."]
+best_friends = ["Take what you need. Friends share.", "{quantity} {item}. We'll carry the rest together."]
+
+[missions]
+enabled = true
+offer_radius = 7.0
+offer_balloon_messages = ["@quest_log.png {player}, want to help without making things worse?", "@quest_log.png The wind found a quest."]
+pool = [
+  { id = "aang_hunt_mobs", category = "timed", event = "minecraft:monster_killed", event_desc = "Defeat {goal} Monsters In {seconds}s", quest_text = "Clear monsters from the road quickly, but keep your heart light.", pass_id = "combat", xp = 100, chowcoins = 50, goal = 3, time_window_seconds = 20, complete_messages = ["@quest_log.png Good! The road can breathe again.", "@quest_log.png Nice work. Fast, but not cruel."] },
+  { id = "aang_travel_blocks", category = "task", event = "minecraft:blocks_traveled", event_desc = "Travel {goal} Blocks", quest_text = "Travel the kingdom and listen to how the air changes.", pass_id = "cozy", xp = 80, chowcoins = 25, goal = 1000, complete_messages = ["@quest_log.png You heard it, right? Every place has a different wind.", "@quest_log.png Great travel. Your feet got lighter."] },
+  { id = "aang_fetch_feathers", category = "fetch", event_desc = "Bring {goal} Feathers", quest_text = "Bring feathers for air control practice.", pass_id = "cozy", xp = 80, chowcoins = 25, fetch_item = "minecraft:feather", fetch_count = 12, complete_messages = ["@quest_log.png Perfect. Light enough to teach control.", "@quest_log.png The feathers listened to the air. Good."] },
+]

@@ -1,0 +1,159 @@
+id = "pope_leo"
+name = "Pope Leo XIV"
+title = "Priest"
+skin = "gisketchs_chowkingdom_mod:npc/pope_leo"
+body_type = "normal"
+height = 1.02
+weight = 0.9
+main_pokemon = "cobblemon:blissey"
+store = "cosmetics"
+class = "priest"
+hurt_messages = ["Peace, {player}. Let us not answer confusion with harm.", "Careful. Mercy requires steady hands.", "I forgive the blow. Now choose better."]
+wake_messages = ["I am awake. Who needs prayer or care?", "Speak, child. Is someone in need?", "A shepherd sleeps lightly when the town is troubled."]
+npc_interaction_messages = ["Offering counsel to {other} about patience and unity.", "Asking {other} who in town needs comfort.", "Blessing {other}'s work with quiet encouragement."]
+work_blocks = [
+  { id = "minecraft:lectern", count = 1, display_name = "lectern" },
+  { id = "minecraft:bookshelf", count = 4, display_name = "study shelves" },
+  { id = "minecraft:candle", count = 4, display_name = "prayer candles" },
+  { id = "minecraft:bell", count = 1, display_name = "chapel bell" },
+  { id = "#minecraft:beds", count = 1, display_name = "bed" },
+]
+
+[boss]
+enabled = true
+health = 82.0
+damage = 3.5
+template = "sword_user"
+
+[boss.balloons]
+chase = ["Walk toward peace, {player}.", "A shepherd follows the wandering.", "Do not run from discipline."]
+attack = ["A firm lesson.", "Stand with courage.", "Mercy can still correct."]
+recovery = ["Now. Temper strength with charity.", "There is your opening. Use it without anger.", "Strike cleanly, not cruelly."]
+taunt = ["Impatience is a poor confessor.", "Will you listen before you swing?", "The proud heart trips first."]
+guard_react = ["Too eager.", "Your intent arrived before the blow.", "Peace starts with restraint."]
+parry = ["Turned aside.", "Denied without hatred.", "Strength redirected."]
+hit_player = ["Rise wiser.", "Pain passes. Mercy remains.", "You are not defeated if you learn."]
+took_damage = ["Good control.", "That was measured.", "Courage, with restraint."]
+victory = ["The lesson is mine. You are healed.", "Peace returns. Your wounds are mended.", "I win this round, and restore you."]
+defeat = ["I yield. You learned with mercy.", "Well fought. Let victory make you humble.", "You have earned this lesson."]
+
+[job_definition]
+scan_interval_ticks = 60
+roam_radius = 7
+work_scan_radius = 9
+
+[schedule]
+activities = [
+  { from_hour = 5, to_hour = 8, activity = "home" },
+  { from_hour = 8, to_hour = 13, activity = "work" },
+  { from_hour = 13, to_hour = 15, activity = "home" },
+  { from_hour = 15, to_hour = 20, activity = "meetup" },
+  { from_hour = 20, to_hour = 22, activity = "work" },
+  { from_hour = 22, to_hour = 5, activity = "sleep" },
+]
+
+[personality]
+llm_prompt = "Pope Leo XIV is Robert Francis Prevost, the first Pope from the United States and the first Augustinian pope, shaped by pastoral service, missionary experience in Peru, canon-law discipline, and a deep concern for unity in Christ. In Chow Kingdom he appears as a gentle but firm priest mentor, not a celebrity caricature. He treats the square world as a parish made of fragile homes, restless travelers, wounded fighters, lonely villagers, and builders who need conscience as much as courage. He trains priests to heal, bless, protect, reconcile, and serve without vanity. He values peace, humility, prayer, learning, community, education, mercy, and practical service. He dislikes cruelty, mockery of the weak, greed disguised as cleverness, and conflict fed by pride. He should sound pastoral, clear, calm, Augustinian, and wise, with simple spiritual language and no modern slang. Keep replies concise, warm, and morally grounded."
+traits = ["pastoral", "peaceful", "scholarly", "augustinian", "merciful", "humble", "firm", "teacher", "priest"]
+speech_style = "calm pastoral counsel, simple spiritual language, unity and mercy, firm when correcting harm"
+catchphrases = ["In the one Christ, many become one.", "Mercy is work, not decoration.", "Peace begins with a disciplined heart.", "Serve first. Speak after.", "The wounded are never an interruption."]
+
+[housing]
+can_move_in = true
+requires_bed = true
+
+[voice]
+animalese_pitch = "low"
+pitch = 0.9
+volume = 0.34
+radius = 12.0
+
+[chat]
+enabled = true
+call_names = ["pope leo", "pope_leo", "leo", "priest", "father"]
+minecraft_chat = true
+discord_chat = true
+
+[gifts]
+loved = ["minecraft:book", "minecraft:candle", "minecraft:lantern", "minecraft:golden_apple", "minecraft:glistering_melon_slice"]
+liked = ["minecraft:bread", "minecraft:writable_book", "minecraft:bell", "minecraft:flower_pot"]
+disliked = ["minecraft:rotten_flesh", "minecraft:poisonous_potato", "minecraft:tnt"]
+daily_limit = 1
+reset_hour = 5
+llm_sentiment_prompt = "The player gave you {item}. Based on Pope Leo XIV as a pastoral priest mentor, decide whether the gift is loved, liked, neutral, or disliked. Reply as JSON only: {\"message\":\"short pastoral in-character reaction\",\"gift_sentiment\":\"neutral\"}."
+
+[gifts.reactions]
+loved = ["This will serve others well. Thank you, {player}.", "A thoughtful gift. May it become mercy in someone else's hands."]
+liked = ["Thank you. Simple things often carry grace.", "This is useful, and kindly given."]
+disliked = ["Let us keep this far from those who are vulnerable.", "This does not serve peace, but I receive the intention."]
+neutral = ["Thank you, {player}.", "I receive it with gratitude."]
+
+[gifts.outgoing]
+enabled = true
+radius = 8.0
+min_friendship_level = 5
+rare_friendship_level = 9
+follow_seconds = 10
+offer_messages = ["@gift.png Take this for the road, {player}.", "@gift.png A small help, given freely."]
+fallback_messages = ["Take {quantity} x {item}. Use it to protect life.", "For your journey: {quantity} x {item}. Go in peace."]
+llm_enabled = true
+llm_prompt = "You are Pope Leo XIV gifting {player} {quantity} x {item}. Reply with one short pastoral line about mercy, peace, or service."
+pool = []
+extra_pool = [
+  { item = "minecraft:bread", qty = 4, weight = 3 },
+  { item = "minecraft:candle", qty = 4, weight = 2 },
+  { item = "minecraft:book", qty = 1, weight = 2 },
+]
+rare_pool = []
+extra_rare_pool = [
+  { item = "minecraft:golden_apple", qty = 1, weight = 1 },
+  { item = "minecraft:glistering_melon_slice", qty = 3, weight = 1 },
+]
+
+[friendship_messages]
+
+[friendship_messages.interact]
+neutral = ["Peace be with you.", "How may I serve today?", "Tell me who needs help."]
+okay = ["Good to see you, {player}.", "You look burdened. Speak plainly.", "Let us choose the good we can do now."]
+good_friends = ["Your service has not gone unnoticed.", "Come, friend. There is always mercy to practice.", "I am glad you came."]
+best_friends = ["My dear friend, your faithfulness strengthens this town.", "You bring peace with you.", "Let us serve together today."]
+
+[friendship_messages.greeting]
+neutral = ["Peace, {player}.", "Walk gently today.", "Serve someone before sunset."]
+good_friends = ["Welcome back, friend.", "Good. The day has work for kind hands.", "Your presence helps."]
+best_friends = ["My dear friend.", "The town is brighter with you here.", "Peace finds familiar footsteps."]
+
+[friendship_messages.first_daily_chat]
+neutral = ["Begin with mercy. The rest of the day will follow better.", "Morning. Ask who needs help before asking what you can gain.", "A new day is a new chance to repair."]
+good_friends = ["Good morning, {player}. Let us make this day useful.", "First counsel: patience before power.", "Serve quietly, and let peace grow."]
+best_friends = ["A blessed beginning, seeing you first.", "Today, we protect the vulnerable together.", "My friend, may your strength be gentle."]
+
+[shop_messages]
+
+[shop_messages.single]
+neutral = ["One {item}. Use it well.", "Here is {item}."]
+okay = ["A good choice. One {item}.", "{item}. May it serve peace."]
+good_friends = ["For you, {player}: {item}.", "Take {item}. Use it with care."]
+best_friends = ["For a trusted friend: {item}.", "Take {item}. I know you will use it kindly."]
+
+[shop_messages.normal]
+neutral = ["{quantity} {item}. That is {total}.", "Here are {quantity} {item}."]
+okay = ["{quantity} {item}. Practical preparation.", "Good. {quantity} {item}."]
+good_friends = ["{quantity} {item}. Keep others safe.", "For your work: {quantity} {item}."]
+best_friends = ["Take {quantity} {item}, my friend.", "{quantity} {item}. Let them become mercy."]
+
+[shop_messages.bulk]
+neutral = ["A heavy need, perhaps.", "That is much. Use it responsibly."]
+okay = ["Prepared hearts can serve quickly.", "Good planning protects people."]
+good_friends = ["You think beyond yourself. Good.", "This may help many."]
+best_friends = ["Take what service requires.", "{quantity} {item}. Let no one go without help."]
+
+[missions]
+enabled = true
+offer_radius = 7.0
+offer_balloon_messages = ["@quest_log.png {player}, someone needs help.", "@quest_log.png There is service to do."]
+pool = [
+  { id = "pope_leo_hunt_mobs", category = "timed", event = "minecraft:monster_killed", event_desc = "Defeat {goal} Monsters In {seconds}s", quest_text = "Protect the road so the vulnerable can pass safely.", pass_id = "combat", xp = 100, chowcoins = 50, goal = 3, time_window_seconds = 20, complete_messages = ["@quest_log.png Good. Protection is mercy in armor.", "@quest_log.png The road is safer now. Thank you."] },
+  { id = "pope_leo_travel_blocks", category = "task", event = "minecraft:blocks_traveled", event_desc = "Travel {goal} Blocks", quest_text = "Visit the roads and look for anyone alone or hurt.", pass_id = "cozy", xp = 80, chowcoins = 25, goal = 1000, complete_messages = ["@quest_log.png You checked the road. That matters.", "@quest_log.png No one should be forgotten. Well done."] },
+  { id = "pope_leo_fetch_bread", category = "fetch", event_desc = "Bring {goal} Bread", quest_text = "Bring bread for travelers who arrive hungry.", pass_id = "cozy", xp = 80, chowcoins = 25, fetch_item = "minecraft:bread", fetch_count = 6, complete_messages = ["@quest_log.png Bread becomes peace when shared.", "@quest_log.png Thank you. This will feed someone today."] },
+]

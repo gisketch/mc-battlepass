@@ -1,90 +1,65 @@
-# Chow Kingdom config: wizard.toml. Edit while the game is stopped, then run reload commands or restart.
-
-# Config value: id.
 id = "wizard"
-# Config value: display_name.
 display_name = "Wizard"
-# Config value: health.
-health = 65.0
-# Config value: damage.
+health = 80.0
 damage = 3.0
-# Config value: attack_start_distance.
-attack_start_distance = 5.5
-# Config value: approach_animation_id.
-approach_animation_id = "bettercombat:pose_two_handed_sword"
-# Config value: approach_animation_source.
-approach_animation_source = "playerlike"
-# Config value: strafe_animation_id.
-strafe_animation_id = "bettercombat:pose_two_handed_sword"
-# Config value: strafe_animation_source.
-strafe_animation_source = "playerlike"
-# Config value: guard_animation_id.
-guard_animation_id = "bettercombat:pose_two_handed_sword"
-# Config value: guard_animation_source.
-guard_animation_source = "playerlike"
-# Config value: parry_animation_id.
-parry_animation_id = "bettercombat:one_handed_slash_horizontal_right"
-# Config value: parry_animation_source.
+attack_start_distance = 10.0
+offense_chain_min = 1
+offense_chain_random = 0
+offense_chain_recovery_ticks = 8
+approach_animation_id = ""
+approach_animation_source = "natural"
+strafe_animation_id = ""
+strafe_animation_source = "natural"
+guard_animation_id = ""
+guard_animation_source = "natural"
+parry_animation_id = "spell_engine:one_handed_projectile_release"
 parry_animation_source = "playerlike"
-# Config value: hurt_animation_id.
 hurt_animation_id = "spell_engine:dodge"
-# Config value: hurt_animation_source.
 hurt_animation_source = "playerlike"
-# Config value: guard_react_ticks.
+recovery_animation_id = ""
+recovery_animation_source = "natural"
 guard_react_ticks = 6
-# Config value: guard_counter_ticks.
 guard_counter_ticks = 12
-# Config value: guard_roll_animation_id.
 guard_roll_animation_id = "combat_roll:roll"
-# Config value: guard_roll_animation_source.
 guard_roll_animation_source = "playerlike"
-# Config value: guard_roll_ticks.
 guard_roll_ticks = 14
-# Config value: guard_roll_iframe_ticks.
 guard_roll_iframe_ticks = 14
-# Config value: guard_roll_distance.
 guard_roll_distance = 3.0
-# Config value: guard_min_ticks.
-guard_min_ticks = 60
-# Config value: guard_random_ticks.
-guard_random_ticks = 60
-# Config value: guard_taunt_min_ticks.
+guard_dodge_animation_id = "spell_engine:dodge"
+guard_dodge_animation_source = "playerlike"
+guard_dodge_ticks = 12
+guard_dodge_iframe_ticks = 10
+guard_dodge_distance = 3.0
+guard_dodge_direction = "back"
+guard_min_ticks = 50
+guard_random_ticks = 45
 guard_taunt_min_ticks = 40
-# Config value: guard_taunt_random_ticks.
 guard_taunt_random_ticks = 40
-# Config value: recovery_hits_allowed.
-recovery_hits_allowed = 1
-# Config value: parry_damage.
+recovery_hits_allowed = 4
 parry_damage = 0.0
-# Config value: parry_knockback.
 parry_knockback = 0.6
-# Config value: moves.
-moves = [
-  { id = "projectile_release", kind = "area", animation_id = "spell_engine:one_handed_projectile_release", animation_source = "playerlike", spell_id = "spell_engine:projectile", duration_ticks = 22, hit_ticks = [12], cooldown_ticks = 34, recovery_ticks = 14, damage = 5.0, range = 1.4, arc_degrees = 360.0, area_radius = 1.4, knockback = 0.35, weight = 5, min_distance = 1.5, max_distance = 6.0, roll_distance = 0.0, roll_direction = "back", iframe_start_tick = 0, iframe_end_tick = 0 },
-  { id = "ground_area", kind = "area", animation_id = "spell_engine:one_handed_area_release_ground_left_to_right", animation_source = "playerlike", spell_id = "spell_engine:ground_area", duration_ticks = 27, hit_ticks = [15], cooldown_ticks = 64, recovery_ticks = 18, damage = 7.0, range = 3.4, arc_degrees = 360.0, area_radius = 3.4, knockback = 0.35, weight = 3, min_distance = 0.0, max_distance = 5.2, roll_distance = 0.0, roll_direction = "back", iframe_start_tick = 0, iframe_end_tick = 0 },
-  { id = "weapon_cleave", kind = "area", animation_id = "spell_engine:weapon_cleave", animation_source = "playerlike", spell_id = "", duration_ticks = 24, hit_ticks = [11], cooldown_ticks = 42, recovery_ticks = 14, damage = 4.5, range = 2.4, arc_degrees = 360.0, area_radius = 2.4, knockback = 0.35, weight = 2, min_distance = 0.0, max_distance = 3.6, roll_distance = 0.0, roll_direction = "back", iframe_start_tick = 0, iframe_end_tick = 0 },
-  { id = "blink_dodge", kind = "roll", animation_id = "spell_engine:dodge", animation_source = "playerlike", spell_id = "", duration_ticks = 12, hit_ticks = [], cooldown_ticks = 58, recovery_ticks = 0, damage = 0.0, range = 2.8, arc_degrees = 95.0, area_radius = 0.0, knockback = 0.35, weight = 2, min_distance = 0.0, max_distance = 3.5, roll_distance = 3.0, roll_direction = "back", iframe_start_tick = 0, iframe_end_tick = 12 },
+
+phases = [
+  { id = "phase_1", display_name = "Phase 1", starts_at_health_ratio = 1.0, damage_multiplier = 1.0, speed_multiplier = 1.0, offense_chain_min = 1, offense_chain_random = 0, offense_chain_recovery_ticks = 8, transition_fallback = "", transition_llm_prompt = "", music_id = "cataclysm:enderguardian_music_1", music_volume = 0.5, music_pitch = 1.0, music_repeat_ticks = 3000 },
+  { id = "phase_2", display_name = "Phase 2", starts_at_health_ratio = 0.5, damage_multiplier = 1.18, speed_multiplier = 1.18, offense_chain_min = 2, offense_chain_random = 1, offense_chain_recovery_ticks = 6, transition_fallback = "Now you must choose courage, not haste.", transition_llm_prompt = "The duel has reached half health and you are entering a faster, more aggressive starter wizard second phase. Reply as Gandalf with one short in-character battle line. Sound wise, stern, and encouraging, not hostile.", music_id = "cataclysm:maledictus_music", music_volume = 0.55, music_pitch = 1.0, music_repeat_ticks = 3000 },
 ]
 
-# Config value: balloons.
+moves = [
+  { id = "arcane_blast", kind = "projectile", animation_id = "spell_engine:one_handed_projectile_charge", animation_source = "playerlike", release_animation_id = "spell_engine:one_handed_projectile_release", release_animation_source = "playerlike", spell_id = "wizards:arcane_blast", duration_ticks = 24, hit_ticks = [15], cooldown_ticks = 24, recovery_ticks = 18, damage = 2.4, range = 11.0, arc_degrees = 80.0, area_radius = 0.0, knockback = 0.35, weight = 6, min_distance = 4.0, max_distance = 11.0, roll_distance = 0.0, roll_direction = "back", iframe_start_tick = 0, iframe_end_tick = 0, projectile_type = "magic", projectile_speed = 0.58, projectile_inaccuracy = 0.0, projectile_count = 1, projectile_spread_degrees = 0.0, projectile_particle = "minecraft:end_rod", impact_particle = "minecraft:poof", impact_radius = 0.55, status_effect_id = "", status_effect_ticks = 0, status_effect_amplifier = 0, min_phase_index = 0, max_phase_index = 99 },
+  { id = "fire_blast", kind = "projectile", animation_id = "spell_engine:one_handed_projectile_charge", animation_source = "playerlike", release_animation_id = "spell_engine:one_handed_projectile_release", release_animation_source = "playerlike", spell_id = "wizards:fire_blast", duration_ticks = 30, hit_ticks = [21], cooldown_ticks = 46, recovery_ticks = 24, damage = 3.4, range = 11.0, arc_degrees = 80.0, area_radius = 0.0, knockback = 0.35, weight = 3, min_distance = 5.0, max_distance = 11.0, roll_distance = 0.0, roll_direction = "back", iframe_start_tick = 0, iframe_end_tick = 0, projectile_type = "magic", projectile_speed = 0.44, projectile_inaccuracy = 0.0, projectile_count = 1, projectile_spread_degrees = 0.0, projectile_particle = "minecraft:flame", impact_particle = "minecraft:flame", impact_radius = 1.35, status_effect_id = "", status_effect_ticks = 0, status_effect_amplifier = 0, min_phase_index = 0, max_phase_index = 99 },
+  { id = "frostbolt", kind = "projectile", animation_id = "spell_engine:one_handed_projectile_charge", animation_source = "playerlike", release_animation_id = "spell_engine:one_handed_projectile_release", release_animation_source = "playerlike", spell_id = "wizards:frostbolt", duration_ticks = 26, hit_ticks = [17], cooldown_ticks = 34, recovery_ticks = 20, damage = 1.8, range = 10.5, arc_degrees = 80.0, area_radius = 0.0, knockback = 0.35, weight = 4, min_distance = 4.0, max_distance = 10.5, roll_distance = 0.0, roll_direction = "back", iframe_start_tick = 0, iframe_end_tick = 0, projectile_type = "magic", projectile_speed = 0.5, projectile_inaccuracy = 0.0, projectile_count = 1, projectile_spread_degrees = 0.0, projectile_particle = "minecraft:snowflake", impact_particle = "minecraft:poof", impact_radius = 0.7, status_effect_id = "minecraft:slowness", status_effect_ticks = 45, status_effect_amplifier = 0, min_phase_index = 0, max_phase_index = 99 },
+  { id = "frost_nova", kind = "area", animation_id = "spell_engine:one_handed_area_release", animation_source = "playerlike", release_animation_id = "", release_animation_source = "playerlike", spell_id = "wizards:frost_nova", duration_ticks = 24, hit_ticks = [14], cooldown_ticks = 56, recovery_ticks = 20, damage = 2.2, range = 3.0, arc_degrees = 360.0, area_radius = 3.0, knockback = 0.35, weight = 3, min_distance = 0.0, max_distance = 3.4, roll_distance = 0.0, roll_direction = "back", iframe_start_tick = 0, iframe_end_tick = 0, projectile_type = "arrow", projectile_speed = 2.2, projectile_inaccuracy = 0.5, projectile_count = 1, projectile_spread_degrees = 0.0, projectile_particle = "", impact_particle = "", impact_radius = 0.4, status_effect_id = "", status_effect_ticks = 0, status_effect_amplifier = 0, min_phase_index = 0, max_phase_index = 99 },
+  { id = "blink_dodge", kind = "roll", animation_id = "spell_engine:dodge", animation_source = "playerlike", release_animation_id = "", release_animation_source = "playerlike", spell_id = "", duration_ticks = 12, hit_ticks = [], cooldown_ticks = 36, recovery_ticks = 0, damage = 0.0, range = 2.8, arc_degrees = 95.0, area_radius = 0.0, knockback = 0.35, weight = 4, min_distance = 0.0, max_distance = 3.5, roll_distance = 3.6, roll_direction = "back", iframe_start_tick = 0, iframe_end_tick = 12, projectile_type = "arrow", projectile_speed = 2.2, projectile_inaccuracy = 0.5, projectile_count = 1, projectile_spread_degrees = 0.0, projectile_particle = "", impact_particle = "", impact_radius = 0.4, status_effect_id = "", status_effect_ticks = 0, status_effect_amplifier = 0, min_phase_index = 0, max_phase_index = 99 },
+]
+
 [balloons]
-# Config value: balloons.chase.
-chase = ["Keep moving, {player}."]
-# Config value: balloons.attack.
-attack = ["Here it comes."]
-# Config value: balloons.recovery.
-recovery = ["Your turn. Make it count."]
-# Config value: balloons.taunt.
-taunt = ["Take the bait, {player}."]
-# Config value: balloons.guard_react.
-guard_react = ["Too eager."]
-# Config value: balloons.parry.
-parry = ["Parried."]
-# Config value: balloons.hit_player.
-hit_player = ["Solid hit."]
-# Config value: balloons.took_damage.
-took_damage = ["Good hit."]
-# Config value: balloons.victory.
-victory = ["I win this round. You are healed."]
-# Config value: balloons.defeat.
-defeat = ["I yield. Good fight."]
+chase = ["Do not flee from the lesson."]
+attack = ["Stand and be tested.", "Light answers.", "A spell, plainly cast."]
+recovery = ["Now. Spend the moment well."]
+taunt = ["Haste has ruined greater warriors."]
+guard_react = ["Foolish haste."]
+parry = ["Turned aside."]
+hit_player = ["Remember this, and rise wiser."]
+took_damage = ["Well struck."]
+victory = ["The duel is mine. You are healed."]
+defeat = ["I yield. The lesson is yours."]

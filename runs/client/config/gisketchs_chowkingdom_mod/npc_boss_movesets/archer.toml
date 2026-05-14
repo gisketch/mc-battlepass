@@ -1,0 +1,66 @@
+id = "archer"
+display_name = "Archer"
+health = 72.0
+damage = 3.0
+attack_start_distance = 12.0
+offense_chain_min = 1
+offense_chain_random = 0
+offense_chain_recovery_ticks = 8
+approach_animation_id = "bettercombat:pose_two_handed_bow"
+approach_animation_source = "playerlike"
+strafe_animation_id = "bettercombat:pose_two_handed_bow"
+strafe_animation_source = "playerlike"
+guard_animation_id = "bettercombat:pose_two_handed_bow"
+guard_animation_source = "playerlike"
+parry_animation_id = "spell_engine:archery_release"
+parry_animation_source = "playerlike"
+hurt_animation_id = "spell_engine:dodge"
+hurt_animation_source = "playerlike"
+recovery_animation_id = "bettercombat:pose_two_handed_bow"
+recovery_animation_source = "playerlike"
+guard_react_ticks = 6
+guard_counter_ticks = 12
+guard_roll_animation_id = "combat_roll:roll"
+guard_roll_animation_source = "playerlike"
+guard_roll_ticks = 14
+guard_roll_iframe_ticks = 14
+guard_roll_distance = 3.0
+guard_dodge_animation_id = "spell_engine:dodge"
+guard_dodge_animation_source = "playerlike"
+guard_dodge_ticks = 12
+guard_dodge_iframe_ticks = 10
+guard_dodge_distance = 2.8
+guard_dodge_direction = "back"
+guard_min_ticks = 50
+guard_random_ticks = 45
+guard_taunt_min_ticks = 40
+guard_taunt_random_ticks = 40
+recovery_hits_allowed = 4
+parry_damage = 0.0
+parry_knockback = 0.6
+
+phases = [
+  { id = "phase_1", display_name = "Phase 1", starts_at_health_ratio = 1.0, damage_multiplier = 1.0, speed_multiplier = 1.0, offense_chain_min = 1, offense_chain_random = 0, offense_chain_recovery_ticks = 8, transition_fallback = "", transition_llm_prompt = "", music_id = "cataclysm:enderguardian_music_1", music_volume = 0.5, music_pitch = 1.0, music_repeat_ticks = 3000 },
+  { id = "phase_2", display_name = "Phase 2", starts_at_health_ratio = 0.5, damage_multiplier = 1.2, speed_multiplier = 1.25, offense_chain_min = 2, offense_chain_random = 1, offense_chain_recovery_ticks = 6, transition_fallback = "The forest narrows. Run cleaner.", transition_llm_prompt = "The duel has reached half health and you are entering a faster, more aggressive archer second phase. Reply as Huntress Wizard with one short in-character battle line. Sound dry, wild, and focused.", music_id = "cataclysm:maledictus_music", music_volume = 0.55, music_pitch = 1.0, music_repeat_ticks = 3000 },
+]
+
+moves = [
+  { id = "aimed_shot", kind = "projectile", animation_id = "spell_engine:archery_pull", animation_source = "playerlike", release_animation_id = "spell_engine:archery_release", release_animation_source = "playerlike", spell_id = "", duration_ticks = 26, hit_ticks = [18], cooldown_ticks = 24, recovery_ticks = 22, damage = 2.0, range = 13.0, arc_degrees = 80.0, area_radius = 0.0, knockback = 0.35, weight = 6, min_distance = 5.0, max_distance = 13.0, roll_distance = 0.0, roll_direction = "back", iframe_start_tick = 0, iframe_end_tick = 0, projectile_speed = 2.35, projectile_inaccuracy = 0.35, projectile_count = 1, projectile_spread_degrees = 0.0, min_phase_index = 0, max_phase_index = 99 },
+  { id = "quick_shot", kind = "projectile", animation_id = "spell_engine:archery_pull", animation_source = "playerlike", release_animation_id = "spell_engine:archery_release", release_animation_source = "playerlike", spell_id = "", duration_ticks = 18, hit_ticks = [11], cooldown_ticks = 18, recovery_ticks = 16, damage = 1.4, range = 10.0, arc_degrees = 80.0, area_radius = 0.0, knockback = 0.35, weight = 5, min_distance = 3.0, max_distance = 10.0, roll_distance = 0.0, roll_direction = "back", iframe_start_tick = 0, iframe_end_tick = 0, projectile_speed = 2.15, projectile_inaccuracy = 0.75, projectile_count = 1, projectile_spread_degrees = 0.0, min_phase_index = 0, max_phase_index = 99 },
+  { id = "power_shot", kind = "projectile", animation_id = "spell_engine:archery_pull", animation_source = "playerlike", release_animation_id = "spell_engine:archery_release", release_animation_source = "playerlike", spell_id = "", duration_ticks = 34, hit_ticks = [25], cooldown_ticks = 52, recovery_ticks = 30, damage = 3.0, range = 14.0, arc_degrees = 80.0, area_radius = 0.0, knockback = 1.0, weight = 2, min_distance = 6.0, max_distance = 14.0, roll_distance = 0.0, roll_direction = "back", iframe_start_tick = 0, iframe_end_tick = 0, projectile_speed = 2.75, projectile_inaccuracy = 0.2, projectile_count = 1, projectile_spread_degrees = 0.0, min_phase_index = 0, max_phase_index = 99 },
+  { id = "volley", kind = "projectile", animation_id = "spell_engine:archery_pull", animation_source = "playerlike", release_animation_id = "spell_engine:archery_release", release_animation_source = "playerlike", spell_id = "", duration_ticks = 36, hit_ticks = [22], cooldown_ticks = 66, recovery_ticks = 26, damage = 1.1, range = 13.0, arc_degrees = 80.0, area_radius = 0.0, knockback = 0.35, weight = 4, min_distance = 5.0, max_distance = 13.0, roll_distance = 0.0, roll_direction = "back", iframe_start_tick = 0, iframe_end_tick = 0, projectile_speed = 2.2, projectile_inaccuracy = 1.0, projectile_count = 3, projectile_spread_degrees = 9.0, min_phase_index = 1, max_phase_index = 99 },
+  { id = "backstep", kind = "roll", animation_id = "combat_roll:roll", animation_source = "playerlike", release_animation_id = "", release_animation_source = "playerlike", spell_id = "", duration_ticks = 14, hit_ticks = [], cooldown_ticks = 36, recovery_ticks = 0, damage = 0.0, range = 2.8, arc_degrees = 95.0, area_radius = 0.0, knockback = 0.35, weight = 3, min_distance = 0.0, max_distance = 3.5, roll_distance = 3.4, roll_direction = "back", iframe_start_tick = 0, iframe_end_tick = 14, projectile_speed = 2.2, projectile_inaccuracy = 0.5, projectile_count = 1, projectile_spread_degrees = 0.0, min_phase_index = 0, max_phase_index = 99 },
+  { id = "side_roll", kind = "roll", animation_id = "spell_engine:dodge", animation_source = "playerlike", release_animation_id = "", release_animation_source = "playerlike", spell_id = "", duration_ticks = 12, hit_ticks = [], cooldown_ticks = 34, recovery_ticks = 0, damage = 0.0, range = 2.8, arc_degrees = 95.0, area_radius = 0.0, knockback = 0.35, weight = 2, min_distance = 0.0, max_distance = 3.5, roll_distance = 2.7, roll_direction = "side", iframe_start_tick = 0, iframe_end_tick = 12, projectile_speed = 2.2, projectile_inaccuracy = 0.5, projectile_count = 1, projectile_spread_degrees = 0.0, min_phase_index = 0, max_phase_index = 99 },
+]
+
+[balloons]
+chase = ["Keep running. The trees already know."]
+attack = ["Loose.", "Thorn flies.", "The grove aims."]
+recovery = ["A gap. Use it."]
+taunt = ["Come closer. Bad idea."]
+guard_react = ["Too loud."]
+parry = ["Thorn caught you."]
+hit_player = ["That rooted deep."]
+took_damage = ["Good cut."]
+victory = ["The forest wins. You are healed."]
+defeat = ["I yield. Well rooted."]

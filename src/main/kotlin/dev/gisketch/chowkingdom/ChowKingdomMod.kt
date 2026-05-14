@@ -24,6 +24,7 @@ import dev.gisketch.chowkingdom.compat.UnifiedStaminaFeature
 import dev.gisketch.chowkingdom.config.TomlConfigIO
 import dev.gisketch.chowkingdom.discord.DiscordFeature
 import dev.gisketch.chowkingdom.discord.DiscordScreenshotClient
+import dev.gisketch.chowkingdom.npc.NpcBossBarClient
 import dev.gisketch.chowkingdom.npc.NpcClient
 import dev.gisketch.chowkingdom.npc.NpcFeature
 import dev.gisketch.chowkingdom.recipes.RecipeDisablerFeature
@@ -104,6 +105,7 @@ class ChowKingdomMod(modBus: IEventBus, container: ModContainer) {
             ReviveClient.register(modBus)
             TradingClient.register(modBus)
             SnackbarClient.register(modBus)
+            NpcBossBarClient.register(modBus)
             NpcClient.register(modBus)
         }
     }

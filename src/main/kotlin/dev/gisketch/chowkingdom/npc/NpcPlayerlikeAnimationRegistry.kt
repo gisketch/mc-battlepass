@@ -34,6 +34,13 @@ object NpcPlayerlikeAnimationRegistry {
         "bettercombat:pose_two_handed_katana",
         "bettercombat:pose_two_handed_heavy",
         "bettercombat:pose_two_handed_polearm",
+        "bettercombat:pose_two_handed_bow",
+        "spell_engine:archery_pull",
+        "spell_engine:archery_release",
+        "spell_engine:one_handed_projectile_charge",
+        "spell_engine:one_handed_projectile_release",
+        "spell_engine:one_handed_area_charge",
+        "spell_engine:one_handed_area_release",
     )
     private var animations: Map<String, NpcPlayerlikeAnimationDefinition> = fallbackIds.associate { id -> id to NpcPlayerlikeAnimationDefinition(id) }
 
@@ -109,22 +116,25 @@ object NpcPlayerlikeAnimationRegistry {
 
     private fun scanAssetsDirectory(root: Path): List<String> {
         if (!Files.isDirectory(root)) return emptyList()
-        return Files.list(root).use { namespaces ->
-            namespaces
-                .filter(Files::isDirectory)
-                .flatMap { namespaceRoot ->
+        val ids = mutableListOf<String>()
+        Files.list(root).use { namespaces ->
+            namespaces.forEach { namespaceRoot ->
+                if (Files.isDirectory(namespaceRoot)) {
                     val namespace = namespaceRoot.fileName.toString()
                     val animationsRoot = namespaceRoot.resolve(PLAYER_ANIMATIONS_DIR)
-                    if (!Files.isDirectory(animationsRoot)) {
-                        java.util.stream.Stream.empty()
-                    } else {
-                        Files.list(animationsRoot)
-                            .filter { path -> Files.isRegularFile(path) && path.fileName.toString().endsWith(".json") }
-                            .map { path -> "$namespace:${path.fileName.toString().removeSuffix(".json")}" }
+                    if (Files.isDirectory(animationsRoot)) {
+                        Files.list(animationsRoot).use { animations ->
+                            animations.forEach { path ->
+                                if (Files.isRegularFile(path) && path.fileName.toString().endsWith(".json")) {
+                                    ids.add("$namespace:${path.fileName.toString().removeSuffix(".json")}")
+                                }
+                            }
+                        }
                     }
                 }
-                .toList()
+            }
         }
+        return ids
     }
 
     private fun scanAssetsJar(connection: JarURLConnection): List<String> {

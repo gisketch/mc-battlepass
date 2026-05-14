@@ -24,6 +24,8 @@ enabled = true
 health = 75.0
 damage = 5.0
 template = "sword_user"
+main_hand = "simplyswords:iron_rapier"
+off_hand = "simplyswords:iron_rapier"
 
 [boss.balloons]
 chase = ["Move with purpose, {player}.", "The rooftops would not save you now.", "Swift feet. Disciplined path.", "Every shadow watches.", "Run, but do not panic.", "The Creed moves faster.", "You are not invisible, amico.", "Pace yourself. Then escape.", "Quiet steps. Quick turns.", "I know this alley better."]

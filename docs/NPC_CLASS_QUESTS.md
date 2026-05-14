@@ -25,7 +25,7 @@ Class mentor quests are separate from daily NPC quests. They are one-time, non-e
 | Rogue | Ezio | Bring 2 ender pearls for escape routes. | Travel 750 blocks on foot. | Timed: defeat 3 Overworld skeleton sentries in 20s. | Hidden Creedblade |
 | Archer | Huntress Wizard | Craft 32 arrows after the rite begins. | Travel 1000 blocks on foot to read terrain. | Timed: defeat 4 Overworld skeleton archers in 30s. | Greenwood Stringkeeper |
 | Wizard | Gandalf | Bring 6 amethyst shards for focus work. | Craft 3 fire charges. | Timed: defeat 3 Nether blazes in 45s. | Grey Sparkbearer |
-| Priest | Katara | Cook 1 fresh Farmer's Delight vegetable soup after the step begins. | Breed 3 animals. | Catch 8 fish. | Tidebound Carekeeper |
+| Priest | Pope Leo XIV | Cook 1 fresh Farmer's Delight vegetable soup after the step begins. | Breed 3 animals. | Catch 8 fish. | Tidebound Carekeeper |
 | Berserker | Zagreus | Bring 6 blaze powder for the red line. | Timed: defeat 6 monsters in 20s while keeping count. | Timed: defeat 3 Nether blazes in 35s. | Red Oath Breaker |
 | Paladin | Tarnished | Bring 8 gold ingots for oath weight. | Defeat 100 monsters as oath service. | Timed: defeat 2 Nether wither skeletons in 90s. | Gracebound Sentinel |
 | Bounty Hunter | Aloy | Craft 32 arrows as contract stock. | Catch 3 Pokemon as living trail work. | Timed: defeat 5 spiders in 25s for a target contract. | Redgrass Seeker |
@@ -35,11 +35,11 @@ Class mentor quests are separate from daily NPC quests. They are one-time, non-e
 | War Archer | Legolas | Bring 48 arrows for the company. | March 1200 blocks on foot. | Timed: defeat 5 Overworld skeleton archers in 35s. | White-Fletched Captain |
 | Tundra Archer | Traxex | Bring 16 snowballs for breath control. | Travel 1200 blocks on foot in silence. | Timed: defeat 3 strays in 45s. | Frost-Quiet Arrow |
 | Arcane Wizard | Invoker | Bring 12 amethyst shards for resonance focus. | Travel 800 blocks on foot for vector work. | Timed: defeat 3 endermen in 60s. | Arcane Sequencer |
-| Fire Wizard | Invoker | Bring 4 blaze rods for Exort focus. | Smelt 24 glass for heat and clarity. | Timed: defeat 5 Nether blazes in 60s. | Exort Adept |
-| Frost Wizard | Invoker | Bring 8 blue ice for Quas focus. | Craft 8 snow blocks for control drills. | Defeat 6 strays. | Quas Adept |
+| Fire Wizard | Zuko | Bring 4 blaze rods for controlled flame focus. | Smelt 24 glass for heat and clarity. | Timed: defeat 5 Nether blazes in 60s. | Dragonfire Adept |
+| Frost Wizard | Elsa | Bring 8 blue ice for frost focus. | Craft 8 snow blocks for control drills. | Defeat 6 strays. | Frostbound Adept |
 | Water Wizard | Katara | Bring 8 kelp for river study. | Catch 8 fish for current patience. | Catch 3 Water Pokemon. | Aqua Adept |
-| Earth Wizard | Invoker | Bring 32 deepslate for Terra focus. | Craft 16 stone bricks for structure work. | Smelt 12 iron ingots. | Terra Adept |
-| Wind Wizard | Venti | Bring 16 feathers for Wex focus. | Travel 1200 blocks on foot. | Catch 3 Flying Pokemon. | Wex Adept |
+| Earth Wizard | Toph | Bring 32 deepslate for seismic focus. | Craft 16 stone bricks for structure work. | Smelt 12 iron ingots. | Seismic Adept |
+| Wind Wizard | Aang | Bring 16 feathers for air focus. | Travel 1200 blocks on foot. | Catch 3 Flying Pokemon. | Air Nomad Adept |
 
 ## Config Surface
 

@@ -99,14 +99,23 @@ object RolesConfig {
             ?: rolesById.entries.firstOrNull { (key, role) -> key.equals(id, ignoreCase = true) || role.displayName.equals(id, ignoreCase = true) }?.value
     }
 
-    private fun loadDefinitions(directory: Path): Map<String, RoleDefinition> = Files.list(directory).use { stream ->
-        stream.filter { path -> path.extension.equals("toml", ignoreCase = true) }
+    private fun loadDefinitions(directory: Path): Map<String, RoleDefinition> =
+        roleDefinitionFiles(directory)
+            .asSequence()
             .map { path -> readDefinition(path) }
             .map(::withBundledDefaultPerks)
             .map(::withSpellEquipmentItemPatterns)
             .filter { definition -> definition.id.isNotBlank() }
-            .toList()
             .associateBy { definition -> definition.id }
+
+    private fun roleDefinitionFiles(directory: Path): List<Path> {
+        val paths = mutableListOf<Path>()
+        Files.list(directory).use { stream ->
+            stream.forEach { path ->
+                if (path.extension.equals("toml", ignoreCase = true)) paths.add(path)
+            }
+        }
+        return paths.sortedBy { path -> path.fileName.toString() }
     }
 
     private fun withBundledDefaultPerks(definition: RoleDefinition): RoleDefinition {

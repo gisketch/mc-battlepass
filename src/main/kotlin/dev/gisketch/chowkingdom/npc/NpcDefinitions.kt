@@ -94,12 +94,16 @@ class NpcBossDefinition(
     var health: Double = DEFAULT_BOSS_HEALTH,
     var damage: Double = DEFAULT_BOSS_DAMAGE,
     var template: String = DEFAULT_BOSS_TEMPLATE,
+    @SerializedName("main_hand") var mainHand: String = "",
+    @SerializedName("off_hand") var offHand: String = "",
     var balloons: NpcBossBalloonDefinition = NpcBossBalloonDefinition(),
 ) {
     fun normalized(): NpcBossDefinition = apply {
         health = health.coerceIn(MIN_BOSS_HEALTH, MAX_BOSS_HEALTH)
         damage = damage.coerceIn(MIN_BOSS_DAMAGE, MAX_BOSS_DAMAGE)
         template = template.trim().lowercase().replace(Regex("[^a-z0-9_.:-]+"), "_").trim('_').ifBlank { DEFAULT_BOSS_TEMPLATE }
+        mainHand = cleanItemId(mainHand)
+        offHand = cleanItemId(offHand)
         balloons = balloons.normalized()
     }
 
@@ -111,6 +115,10 @@ class NpcBossDefinition(
         private const val MAX_BOSS_HEALTH = 10000.0
         private const val MIN_BOSS_DAMAGE = 0.0
         private const val MAX_BOSS_DAMAGE = 1000.0
+
+        private fun cleanItemId(value: String): String = value.trim().lowercase()
+            .replace(Regex("[^a-z0-9_.:/-]+"), "_")
+            .trim('_')
     }
 }
 

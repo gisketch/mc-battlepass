@@ -20,12 +20,7 @@ object BattlepassPassRegistry {
         ensureDefaultPasses()
         passes.clear()
 
-        Files.list(passDirectory).use { files ->
-            files
-            .filter { Files.isRegularFile(it) && it.fileName.toString().endsWith(".toml") }
-                .sorted()
-                .forEach(::loadPass)
-        }
+        passFiles().forEach(::loadPass)
 
         ChowKingdomMod.LOGGER.info("Loaded {} battlepass definition(s)", passes.size)
         return passes.size
@@ -67,6 +62,16 @@ object BattlepassPassRegistry {
         passDirectory.createDirectories()
         writeDefault("cozy.toml", COZY_PASS)
         writeDefault("combat.toml", COMBAT_PASS)
+    }
+
+    private fun passFiles(): List<Path> {
+        val paths = mutableListOf<Path>()
+        Files.list(passDirectory).use { files ->
+            files.forEach { path ->
+                if (Files.isRegularFile(path) && path.fileName.toString().endsWith(".toml")) paths.add(path)
+            }
+        }
+        return paths.sorted()
     }
 
     private fun writeDefault(fileName: String, content: String) {

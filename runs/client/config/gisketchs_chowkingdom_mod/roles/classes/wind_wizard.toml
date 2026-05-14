@@ -16,16 +16,16 @@ perks = [
 
 
 [mentor_quest]
-mentor_npc_id = "venti"
-title = "Wex Sky Exam"
-intro_message = "Venti tests whether the apprentice can move with the wind without being carried away by ego."
-unlock_title = "Wex Adept"
-announcement = "{player} completed Ventis sky exam and unlocked Wind Wizard as {title}."
+mentor_npc_id = "aang"
+title = "Air Nomad Sky Exam"
+intro_message = "Aang tests whether the apprentice can move lightly, redirect force, and protect freedom without rushing to harm."
+unlock_title = "Air Nomad Adept"
+announcement = "{player} completed Aangs air nomad exam and unlocked Wind Wizard as {title}."
 steps = [
-  { id = "wind_wizard_vow", skeleton = "vow", kind = "dialogue", title = "Vow", objective = "Vow to move freely without abandoning control.", goal = 1, start_message = "Vow to move freely without abandoning control.", complete_message = "", llm_prompt = "Venti should sound playful, airy, poetic, and quietly wise." },
-  { id = "wind_wizard_offering", skeleton = "offering", kind = "fetch", title = "Feather Measure", objective = "Bring 16 feathers.", item = "minecraft:feather", qty = 16, goal = 16, start_message = "Bring <b>16 feathers</b>. A breeze loves proof that someone listened.", complete_message = "Light enough. Now try not to drift into a wall.", llm_prompt = "Tie feathers to wind and playful training." },
-  { id = "wind_wizard_discipline", skeleton = "discipline", kind = "task", title = "High Breath", objective = "Travel 1200 blocks on foot.", event = "minecraft:travel_on_foot", goal = 1200, start_message = "Travel <b>1200 blocks on foot</b>. Wind sounds different when you stop standing still.", complete_message = "You heard the moving air answer.", llm_prompt = "Make long travel a wind lesson." },
-  { id = "wind_wizard_signature_trial", skeleton = "signature_trial", kind = "task", title = "Sky Field Notes", objective = "Catch 3 Flying Pokemon.", event = "cobblemon:pokemon_caught", goal = 3, filters = { type = "flying" }, start_message = "Catch <b>3 Flying Pokemon</b>. Ask the sky what it teaches wings.", complete_message = "The sky lent you a page.", llm_prompt = "Connect flying Pokemon to wind study." },
+  { id = "wind_wizard_vow", skeleton = "vow", kind = "dialogue", title = "Vow", objective = "Vow to move freely, breathe first, and redirect force before choosing harm.", goal = 1, start_message = "Vow to move freely, breathe first, and redirect force before choosing harm.", complete_message = "", llm_prompt = "Aang should sound cheerful, earnest, air-light, and wise about nonviolent movement." },
+  { id = "wind_wizard_offering", skeleton = "offering", kind = "fetch", title = "Feather Measure", objective = "Bring 16 feathers.", item = "minecraft:feather", qty = 16, goal = 16, start_message = "Bring <b>16 feathers</b>. Airbending starts with being light enough to listen.", complete_message = "Great. Light, balanced, and not taking itself too seriously.", llm_prompt = "Tie feathers to airbending, lightness, and playful training." },
+  { id = "wind_wizard_discipline", skeleton = "discipline", kind = "task", title = "High Breath", objective = "Travel 1200 blocks on foot.", event = "minecraft:travel_on_foot", goal = 1200, start_message = "Travel <b>1200 blocks on foot</b>. Listen to how the air changes when you keep moving.", complete_message = "You heard the wind without trying to own it.", llm_prompt = "Make long travel a wind and breath lesson." },
+  { id = "wind_wizard_signature_trial", skeleton = "signature_trial", kind = "task", title = "Sky Field Notes", objective = "Catch 3 Flying Pokemon.", event = "cobblemon:pokemon_caught", goal = 3, filters = { type = "flying" }, start_message = "Catch <b>3 Flying Pokemon</b>. Learn from wings without taking their freedom lightly.", complete_message = "The sky trusted you with a lesson.", llm_prompt = "Connect flying Pokemon to airbending, freedom, and kindness." },
   { id = "wind_wizard_license", skeleton = "payment", kind = "payment", title = "License Seal", objective = "Pay the mentor license fee for wind_wizard.", goal = 1, start_message = "The license seal is next. A new {classification} {class} unlock costs {cost} chowcoins.", complete_message = "The license is sealed. Only the mentor duel remains for {class}.", llm_prompt = "Treat payment as a formal license seal, not a bribe." },
-  { id = "wind_wizard_duel", skeleton = "mentor_duel", kind = "duel", title = "Mentor Duel", objective = "Win a non-lethal 1v1 mentor duel.", goal = 1, start_message = "Draw breath. The {class} mentor duel starts now.", complete_message = "The duel is won. {class} is yours.", llm_prompt = "Venti starts a playful non-lethal duel test." },
+  { id = "wind_wizard_duel", skeleton = "mentor_duel", kind = "duel", title = "Mentor Duel", objective = "Win a non-lethal 1v1 mentor duel.", goal = 1, start_message = "Draw breath. The {class} mentor duel starts now.", complete_message = "The duel is won. {class} is yours.", llm_prompt = "Aang starts a playful non-lethal duel test about air, breath, and restraint." },
 ]

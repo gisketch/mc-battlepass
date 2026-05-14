@@ -114,13 +114,14 @@ object NpcLlmService {
         sendTalkResponse: Boolean = true,
         excludePlayerFromBalloon: Boolean = true,
         showBalloon: Boolean = true,
+        relayToNearby: Boolean = true,
         npcRecordType: String = "npc_llm_event",
         responseToken: Long = NpcDialogTokens.next(),
     ) {
         val settings = NpcConfig.settings().llm
         if (!startRequest(definition.id, player, responseToken)) {
             ChowKingdomMod.LOGGER.info("NPC LLM event busy npc={} player={}", definition.id, player.gameProfile.name)
-            return sendFinal(player, npc, definition, fallbackMessage, fallbackMessage = fallbackMessage, sendTalkResponse = sendTalkResponse, excludePlayerFromBalloon = excludePlayerFromBalloon, showBalloon = showBalloon, npcRecordType = npcRecordType, responseToken = responseToken)
+            return sendFinal(player, npc, definition, fallbackMessage, fallbackMessage = fallbackMessage, sendTalkResponse = sendTalkResponse, excludePlayerFromBalloon = excludePlayerFromBalloon, showBalloon = showBalloon, relayToNearby = relayToNearby, npcRecordType = npcRecordType, responseToken = responseToken)
         }
         if (showBalloon) NpcFeature.showBalloonToNearby(npc.level() as ServerLevel, npc, "...", NPC_LLM_PENDING_BALLOON_TICKS, if (excludePlayerFromBalloon) player.uuid else null)
         CompletableFuture.supplyAsync({ complete(player, definition, input, settings, fallbackMessage, inputLabel) { partial -> player.server.execute { NpcNetwork.sendTalkResponse(player, definition.id, partial, responseToken, partial = true) } } }, executor).whenComplete { result, throwable ->
@@ -129,7 +130,7 @@ object NpcLlmService {
                 val liveNpc = NpcFeature.existingNpc(player.server, definition.id) ?: return@execute NpcNetwork.sendTalkResponse(player, definition.id, fallbackMessage, responseToken)
                 if (throwable != null) ChowKingdomMod.LOGGER.warn("NPC LLM event request failed npc={} player={}", definition.id, player.gameProfile.name, throwable)
                 val completion = if (throwable == null) result else NpcLlmCompletion(fallbackMessage)
-                sendFinal(player, liveNpc, definition, completion.message, fallbackMessage = fallbackMessage, sendTalkResponse = sendTalkResponse, excludePlayerFromBalloon = excludePlayerFromBalloon, showBalloon = showBalloon, npcRecordType = npcRecordType, responseToken = responseToken, memorable = completion.memorable)
+                sendFinal(player, liveNpc, definition, completion.message, fallbackMessage = fallbackMessage, sendTalkResponse = sendTalkResponse, excludePlayerFromBalloon = excludePlayerFromBalloon, showBalloon = showBalloon, relayToNearby = relayToNearby, npcRecordType = npcRecordType, responseToken = responseToken, memorable = completion.memorable)
             }
         }
     }
@@ -774,6 +775,7 @@ object NpcLlmService {
         sendTalkResponse: Boolean = true,
         excludePlayerFromBalloon: Boolean = true,
         showBalloon: Boolean = true,
+        relayToNearby: Boolean = true,
         npcRecordType: String = "npc_llm_reply",
         responseToken: Long = 0L,
         memorable: String = "",
@@ -788,7 +790,7 @@ object NpcLlmService {
         NpcStore.recordConversation(definition.id, player, definition.name, publicReply, npcRecordType)
         if (memorable.isNotBlank()) NpcStore.recordPlayerMemory(player, "llm_memorable", memorable)
         if (sendTalkResponse && !detached) NpcNetwork.sendTalkResponse(player, definition.id, reply, responseToken)
-        relayNpcTalk(player, npc, definition, publicReply)
+        if (relayToNearby) relayNpcTalk(player, npc, definition, publicReply)
         val excludedPlayer = if (excludePlayerFromBalloon && !detached) player.uuid else null
         val balloonTicks = if (detached) NPC_LLM_DETACHED_REPLY_BALLOON_TICKS else NPC_LLM_REPLY_BALLOON_TICKS
         if (showBalloon) NpcFeature.showBalloonToNearby(npc.level() as ServerLevel, npc, publicReply, balloonTicks, excludedPlayer)

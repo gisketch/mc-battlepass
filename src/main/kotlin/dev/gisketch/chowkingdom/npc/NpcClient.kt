@@ -105,6 +105,9 @@ object NpcClient {
     }
 
     @JvmStatic
+    fun isBossDialogOpen(): Boolean = (Minecraft.getInstance().screen as? NpcDialogScreen)?.isBossMode() == true
+
+    @JvmStatic
     fun showBalloon(payload: NpcBalloonPayload) {
         val now = System.currentTimeMillis()
         val expiresAtMs = now + payload.durationTicks.coerceIn(20, 240) * 50L
@@ -714,6 +717,7 @@ private class ChowNpcBetterCombatPlayerlikeRenderer(context: EntityRendererProvi
         NpcClient.ensurePlayerlikeAnimationLayer(entity)
         model = if (entity.bodyType == NpcBodyTypes.SLIM) slimModel else normalModel
         model.rightArmPose = if (entity.mainHandItem.isEmpty) HumanoidModel.ArmPose.EMPTY else HumanoidModel.ArmPose.ITEM
+        model.leftArmPose = if (entity.offhandItem.isEmpty) HumanoidModel.ArmPose.EMPTY else HumanoidModel.ArmPose.ITEM
         super.render(entity, entityYaw, partialTicks, poseStack, buffer, packedLight)
     }
 
@@ -739,6 +743,7 @@ private class ChowNpcPlayerlikeRenderer(context: EntityRendererProvider.Context)
     override fun render(entity: ChowNpcEntity, entityYaw: Float, partialTicks: Float, poseStack: PoseStack, buffer: MultiBufferSource, packedLight: Int) {
         model = if (entity.bodyType == NpcBodyTypes.SLIM) slimModel else normalModel
         model.rightArmPose = if (entity.mainHandItem.isEmpty) HumanoidModel.ArmPose.EMPTY else HumanoidModel.ArmPose.ITEM
+        model.leftArmPose = if (entity.offhandItem.isEmpty) HumanoidModel.ArmPose.EMPTY else HumanoidModel.ArmPose.ITEM
         super.render(entity, entityYaw, partialTicks, poseStack, buffer, packedLight)
     }
 
@@ -764,6 +769,7 @@ private class ChowNpcRenderer(context: EntityRendererProvider.Context) : MobRend
     override fun render(entity: ChowNpcEntity, entityYaw: Float, partialTicks: Float, poseStack: PoseStack, buffer: MultiBufferSource, packedLight: Int) {
         model = if (entity.bodyType == NpcBodyTypes.SLIM) slimModel else normalModel
         model.rightArmPose = if (entity.mainHandItem.isEmpty) HumanoidModel.ArmPose.EMPTY else HumanoidModel.ArmPose.ITEM
+        model.leftArmPose = if (entity.offhandItem.isEmpty) HumanoidModel.ArmPose.EMPTY else HumanoidModel.ArmPose.ITEM
         super.render(entity, entityYaw, partialTicks, poseStack, buffer, packedLight)
     }
 
@@ -1090,6 +1096,8 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
     private var classChangePage = 0
 
     override fun isPauseScreen(): Boolean = false
+
+    fun isBossMode(): Boolean = payload.dialogMode == "boss"
 
     override fun renderBackground(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) = Unit
 

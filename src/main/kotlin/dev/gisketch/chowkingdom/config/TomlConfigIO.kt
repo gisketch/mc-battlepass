@@ -31,17 +31,19 @@ object TomlConfigIO {
     fun migrateModConfigTree() {
         val root = FMLPaths.CONFIGDIR.get().resolve(ChowKingdomMod.MOD_ID)
         if (!root.exists()) return
+        val paths = mutableListOf<Path>()
         Files.walk(root).use { stream ->
-            stream.toList().asSequence()
-                .filter { path -> Files.isRegularFile(path) }
-                .filter { path -> path.extension.equals("json", ignoreCase = true) }
-                .filterNot { path -> path.startsWith(root.resolve(BACKUP_DIR)) }
-                .sortedByDescending { path -> path.toString() }
-                .forEach { jsonPath ->
-                    val tomlPath = jsonPath.parent.resolve("${jsonPath.nameWithoutExtension}.toml")
-                    migrateJson(jsonPath, tomlPath, root, headerFor(tomlPath))
-                }
+            stream.forEach { path -> paths.add(path) }
         }
+        paths.asSequence()
+            .filter { path -> Files.isRegularFile(path) }
+            .filter { path -> path.extension.equals("json", ignoreCase = true) }
+            .filterNot { path -> path.startsWith(root.resolve(BACKUP_DIR)) }
+            .sortedByDescending { path -> path.toString() }
+            .forEach { jsonPath ->
+                val tomlPath = jsonPath.parent.resolve("${jsonPath.nameWithoutExtension}.toml")
+                migrateJson(jsonPath, tomlPath, root, headerFor(tomlPath))
+            }
     }
 
     fun <T> read(path: Path, type: Class<T>, fallback: () -> T, header: String = headerFor(path), comments: Map<String, String> = emptyMap()): T {

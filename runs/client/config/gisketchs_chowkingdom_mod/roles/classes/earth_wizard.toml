@@ -16,16 +16,16 @@ perks = [
 
 
 [mentor_quest]
-mentor_npc_id = "invoker"
-title = "Terra Foundation Exam"
-intro_message = "Invoker tests whether the apprentice can make stone obey without becoming as dull as stone."
-unlock_title = "Terra Adept"
-announcement = "{player} completed Invokers terra foundation exam and unlocked Earth Wizard as {title}."
+mentor_npc_id = "toph"
+title = "Seismic Foundation Exam"
+intro_message = "Toph tests whether the apprentice can listen through the ground, root their stance, and move stone without flinching."
+unlock_title = "Seismic Adept"
+announcement = "{player} completed Tophs seismic foundation exam and unlocked Earth Wizard as {title}."
 steps = [
-  { id = "earth_wizard_vow", skeleton = "vow", kind = "dialogue", title = "Vow", objective = "Vow to use earth as foundation, shield, and judgment.", goal = 1, start_message = "Vow to use earth as foundation, shield, and judgment.", complete_message = "", llm_prompt = "Invoker should sound arrogant, brilliant, and theatrical but concise." },
-  { id = "earth_wizard_offering", skeleton = "offering", kind = "fetch", title = "Deep Stone Focus", objective = "Bring 32 deepslate.", item = "minecraft:deepslate", qty = 32, goal = 32, start_message = "Bring <b>32 deepslate</b>. Terra prefers weight to optimism.", complete_message = "Dense enough to teach you humility.", llm_prompt = "Tie deepslate to earth magic and weight." },
-  { id = "earth_wizard_discipline", skeleton = "discipline", kind = "task", title = "Mason Line", objective = "Craft 16 stone bricks.", event = "minecraft:item_crafted", item = "minecraft:stone_bricks", goal = 16, start_message = "Craft <b>16 stone bricks</b>. Structure before spectacle.", complete_message = "You have discovered the revolutionary principle of straight lines.", llm_prompt = "Make stone bricks a lesson in structure." },
-  { id = "earth_wizard_signature_trial", skeleton = "signature_trial", kind = "task", title = "Iron Ground", objective = "Smelt 12 iron ingots.", event = "minecraft:item_smelted", item = "minecraft:iron_ingot", goal = 12, start_message = "Smelt <b>12 iron ingots</b>. Hear what the ground hides after pressure and heat.", complete_message = "The earth yielded because you asked correctly enough.", llm_prompt = "Frame smelting iron as listening to the earth." },
+  { id = "earth_wizard_vow", skeleton = "vow", kind = "dialogue", title = "Vow", objective = "Vow to listen through the ground, stand firm, and use earth as shield before weapon.", goal = 1, start_message = "Vow to listen through the ground, stand firm, and use earth as shield before weapon.", complete_message = "", llm_prompt = "Toph should sound blunt, funny, confident, and focused on stance and seismic sense." },
+  { id = "earth_wizard_offering", skeleton = "offering", kind = "fetch", title = "Deep Stone Focus", objective = "Bring 32 deepslate.", item = "minecraft:deepslate", qty = 32, goal = 32, start_message = "Bring <b>32 deepslate</b>. Real earth magic starts with something heavy enough to respect.", complete_message = "Good. This stone actually has a spine.", llm_prompt = "Tie deepslate to earthbending, weight, truth, and Toph's blunt standards." },
+  { id = "earth_wizard_discipline", skeleton = "discipline", kind = "task", title = "Mason Line", objective = "Craft 16 stone bricks.", event = "minecraft:item_crafted", item = "minecraft:stone_bricks", goal = 16, start_message = "Craft <b>16 stone bricks</b>. If your structure wobbles, so do you.", complete_message = "Straight lines. Solid corners. Almost like you listened.", llm_prompt = "Make stone bricks a lesson in rooted structure and practical earth control." },
+  { id = "earth_wizard_signature_trial", skeleton = "signature_trial", kind = "task", title = "Iron Ground", objective = "Smelt 12 iron ingots.", event = "minecraft:item_smelted", item = "minecraft:iron_ingot", goal = 12, start_message = "Smelt <b>12 iron ingots</b>. Metal is just earth that learned a new trick.", complete_message = "Good. You heard the metal under the noise.", llm_prompt = "Frame smelting iron as the first step toward metalbending awareness." },
   { id = "earth_wizard_license", skeleton = "payment", kind = "payment", title = "License Seal", objective = "Pay the mentor license fee for earth_wizard.", goal = 1, start_message = "The license seal is next. A new {classification} {class} unlock costs {cost} chowcoins.", complete_message = "The license is sealed. Only the mentor duel remains for {class}.", llm_prompt = "Treat payment as a formal license seal, not a bribe." },
-  { id = "earth_wizard_duel", skeleton = "mentor_duel", kind = "duel", title = "Mentor Duel", objective = "Win a non-lethal 1v1 mentor duel.", goal = 1, start_message = "Draw breath. The {class} mentor duel starts now.", complete_message = "The duel is won. {class} is yours.", llm_prompt = "Invoker starts a sharp duel test." },
+  { id = "earth_wizard_duel", skeleton = "mentor_duel", kind = "duel", title = "Mentor Duel", objective = "Win a non-lethal 1v1 mentor duel.", goal = 1, start_message = "Draw breath. The {class} mentor duel starts now.", complete_message = "The duel is won. {class} is yours.", llm_prompt = "Toph starts a blunt non-lethal duel test about stance, listening, and weight." },
 ]

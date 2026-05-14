@@ -35,6 +35,9 @@ private const val MAX_NPC_QUEST_DESCRIPTION_LENGTH = 160
 private const val MAX_NPC_QUEST_PASS_LENGTH = 32
 private const val MAX_NPC_FRIENDS = 128
 private const val MAX_NPC_FRIEND_STATUS_LENGTH = 160
+private const val MAX_NPC_BOSS_MODE_LENGTH = 32
+private const val MAX_NPC_BOSS_PHASE_LENGTH = 64
+private const val MAX_NPC_BOSS_MUSIC_ID_LENGTH = 128
 
 object NpcNetwork {
     fun register(modBus: IEventBus) {
@@ -77,12 +80,20 @@ object NpcNetwork {
         PacketDistributor.sendToPlayer(player, NpcAnimationReloadPayload)
     }
 
+    fun syncBossBar(player: ServerPlayer, payload: NpcBossBarPayload) {
+        PacketDistributor.sendToPlayer(player, payload)
+    }
+
+    fun clearBossBar(player: ServerPlayer, npcId: String) {
+        PacketDistributor.sendToPlayer(player, NpcBossBarClearPayload(npcId))
+    }
+
     fun broadcastWorldChat(server: MinecraftServer, payload: NpcWorldChatPayload) {
         server.playerList.players.forEach { player -> PacketDistributor.sendToPlayer(player, payload) }
     }
 
     private fun registerPayloads(event: RegisterPayloadHandlersEvent) {
-        val registrar = event.registrar("4")
+        val registrar = event.registrar("5")
         registrar.playToClient(NpcDialogPayload.TYPE, NpcDialogPayload.STREAM_CODEC, ::handleDialog)
         registrar.playToClient(NpcBalloonPayload.TYPE, NpcBalloonPayload.STREAM_CODEC, ::handleBalloon)
         registrar.playToClient(NpcTalkResponsePayload.TYPE, NpcTalkResponsePayload.STREAM_CODEC, ::handleTalkResponse)
@@ -90,6 +101,8 @@ object NpcNetwork {
         registrar.playToClient(NpcQuestSyncPayload.TYPE, NpcQuestSyncPayload.STREAM_CODEC, ::handleQuestSync)
         registrar.playToClient(NpcFriendsSyncPayload.TYPE, NpcFriendsSyncPayload.STREAM_CODEC, ::handleFriendsSync)
         registrar.playToClient(NpcAnimationReloadPayload.TYPE, NpcAnimationReloadPayload.STREAM_CODEC, ::handleAnimationReload)
+        registrar.playToClient(NpcBossBarPayload.TYPE, NpcBossBarPayload.STREAM_CODEC, ::handleBossBar)
+        registrar.playToClient(NpcBossBarClearPayload.TYPE, NpcBossBarClearPayload.STREAM_CODEC, ::handleBossBarClear)
         registrar.playToServer(NpcDialogActionPayload.TYPE, NpcDialogActionPayload.STREAM_CODEC, ::handleAction)
         registrar.playToServer(NpcTalkRequestPayload.TYPE, NpcTalkRequestPayload.STREAM_CODEC, ::handleTalkRequest)
         registrar.playToServer(NpcFriendsRequestPayload.TYPE, NpcFriendsRequestPayload.STREAM_CODEC, ::handleFriendsRequest)
@@ -106,6 +119,7 @@ object NpcNetwork {
 
     private fun handleAction(payload: NpcDialogActionPayload, context: IPayloadContext) {
         val player = context.player() as? ServerPlayer ?: return
+        if (NpcBossFights.handleDialogAction(player, payload.npcId, payload.action)) return
         NpcFeature.handleDialogAction(player, payload.npcId, payload.action)
     }
 
@@ -159,6 +173,24 @@ object NpcNetwork {
             context.enqueueWork {
                 val client = Class.forName("dev.gisketch.chowkingdom.npc.NpcClient")
                 client.getMethod("reloadAnimationResources").invoke(null)
+            }
+        }
+    }
+
+    private fun handleBossBar(payload: NpcBossBarPayload, context: IPayloadContext) {
+        if (FMLEnvironment.dist.isClient) {
+            context.enqueueWork {
+                val client = Class.forName("dev.gisketch.chowkingdom.npc.NpcBossBarClient")
+                client.getMethod("apply", NpcBossBarPayload::class.java).invoke(null, payload)
+            }
+        }
+    }
+
+    private fun handleBossBarClear(payload: NpcBossBarClearPayload, context: IPayloadContext) {
+        if (FMLEnvironment.dist.isClient) {
+            context.enqueueWork {
+                val client = Class.forName("dev.gisketch.chowkingdom.npc.NpcBossBarClient")
+                client.getMethod("clear", NpcBossBarClearPayload::class.java).invoke(null, payload)
             }
         }
     }
@@ -490,6 +522,78 @@ object NpcAnimationReloadPayload : CustomPacketPayload {
     val STREAM_CODEC: StreamCodec<RegistryFriendlyByteBuf, NpcAnimationReloadPayload> = object : StreamCodec<RegistryFriendlyByteBuf, NpcAnimationReloadPayload> {
         override fun decode(buffer: RegistryFriendlyByteBuf): NpcAnimationReloadPayload = NpcAnimationReloadPayload
         override fun encode(buffer: RegistryFriendlyByteBuf, value: NpcAnimationReloadPayload) = Unit
+    }
+}
+
+data class NpcBossBarPayload(
+    val npcId: String,
+    val name: String,
+    val mode: String,
+    val phaseName: String,
+    val phaseIndex: Int,
+    val phaseCount: Int,
+    val health: Float,
+    val maxHealth: Float,
+    val musicId: String,
+    val musicVolume: Float,
+    val musicPitch: Float,
+    val musicRepeatTicks: Int,
+    val forceMusic: Boolean = false,
+) : CustomPacketPayload {
+    override fun type(): CustomPacketPayload.Type<NpcBossBarPayload> = TYPE
+
+    companion object {
+        val TYPE: CustomPacketPayload.Type<NpcBossBarPayload> = CustomPacketPayload.Type(ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "npc/boss_bar"))
+        val STREAM_CODEC: StreamCodec<RegistryFriendlyByteBuf, NpcBossBarPayload> = object : StreamCodec<RegistryFriendlyByteBuf, NpcBossBarPayload> {
+            override fun decode(buffer: RegistryFriendlyByteBuf): NpcBossBarPayload = NpcBossBarPayload(
+                npcId = buffer.readUtf(MAX_NPC_ID_LENGTH),
+                name = buffer.readUtf(MAX_NPC_NAME_LENGTH),
+                mode = buffer.readUtf(MAX_NPC_BOSS_MODE_LENGTH),
+                phaseName = buffer.readUtf(MAX_NPC_BOSS_PHASE_LENGTH),
+                phaseIndex = buffer.readVarInt(),
+                phaseCount = buffer.readVarInt(),
+                health = buffer.readFloat(),
+                maxHealth = buffer.readFloat(),
+                musicId = buffer.readUtf(MAX_NPC_BOSS_MUSIC_ID_LENGTH),
+                musicVolume = buffer.readFloat(),
+                musicPitch = buffer.readFloat(),
+                musicRepeatTicks = buffer.readVarInt(),
+                forceMusic = buffer.readBoolean(),
+            )
+
+            override fun encode(buffer: RegistryFriendlyByteBuf, value: NpcBossBarPayload) {
+                buffer.writeUtf(value.npcId.take(MAX_NPC_ID_LENGTH), MAX_NPC_ID_LENGTH)
+                buffer.writeUtf(value.name.take(MAX_NPC_NAME_LENGTH), MAX_NPC_NAME_LENGTH)
+                buffer.writeUtf(value.mode.take(MAX_NPC_BOSS_MODE_LENGTH), MAX_NPC_BOSS_MODE_LENGTH)
+                buffer.writeUtf(value.phaseName.take(MAX_NPC_BOSS_PHASE_LENGTH), MAX_NPC_BOSS_PHASE_LENGTH)
+                buffer.writeVarInt(value.phaseIndex.coerceIn(0, 32))
+                buffer.writeVarInt(value.phaseCount.coerceIn(1, 32))
+                buffer.writeFloat(value.health.coerceAtLeast(0.0f))
+                buffer.writeFloat(value.maxHealth.coerceAtLeast(1.0f))
+                buffer.writeUtf(value.musicId.take(MAX_NPC_BOSS_MUSIC_ID_LENGTH), MAX_NPC_BOSS_MUSIC_ID_LENGTH)
+                buffer.writeFloat(value.musicVolume.coerceIn(0.0f, 1.0f))
+                buffer.writeFloat(value.musicPitch.coerceIn(0.25f, 4.0f))
+                buffer.writeVarInt(value.musicRepeatTicks.coerceIn(0, 20 * 60 * 10))
+                buffer.writeBoolean(value.forceMusic)
+            }
+        }
+    }
+}
+
+data class NpcBossBarClearPayload(
+    val npcId: String,
+) : CustomPacketPayload {
+    override fun type(): CustomPacketPayload.Type<NpcBossBarClearPayload> = TYPE
+
+    companion object {
+        val TYPE: CustomPacketPayload.Type<NpcBossBarClearPayload> = CustomPacketPayload.Type(ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "npc/boss_bar_clear"))
+        val STREAM_CODEC: StreamCodec<RegistryFriendlyByteBuf, NpcBossBarClearPayload> = object : StreamCodec<RegistryFriendlyByteBuf, NpcBossBarClearPayload> {
+            override fun decode(buffer: RegistryFriendlyByteBuf): NpcBossBarClearPayload = NpcBossBarClearPayload(buffer.readUtf(MAX_NPC_ID_LENGTH))
+
+            override fun encode(buffer: RegistryFriendlyByteBuf, value: NpcBossBarClearPayload) {
+                buffer.writeUtf(value.npcId.take(MAX_NPC_ID_LENGTH), MAX_NPC_ID_LENGTH)
+            }
+        }
     }
 }
 

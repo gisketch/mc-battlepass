@@ -165,9 +165,9 @@ Good boss moves:
 - Infiltrator arrow: `spell_id = "archers_expansion:infiltrators_arrow"`, animations `spell_engine:archery_pull`, `spell_engine:archery_release`
 - Decoy or reposition: `spell_id = "archers_expansion:alter_ego"`, animation `spell_engine:one_handed_area_release`
 
-### Invoker - Elemental Wizard Mentor
+### Invoker - Arcane Wizard Mentor
 
-NPC config currently uses class `elemental_wizard`, but there is no matching class TOML. Invoker mentors `arcane_wizard`, `earth_wizard`, `fire_wizard`, and `frost_wizard`.
+Class: `arcane_wizard`
 
 Arcane options:
 
@@ -177,6 +177,10 @@ Arcane options:
 - `wizards:arcane_missile`, animation `spell_engine:two_handed_channeling`
 - `wizards:arcane_blink`, animation `spell_engine:one_handed_area_release`
 
+### Zuko - Fire Wizard
+
+Class: `fire_wizard`
+
 Fire options:
 
 - `wizards:fire_blast`, animations `spell_engine:one_handed_projectile_charge`, `spell_engine:one_handed_projectile_release`
@@ -185,6 +189,10 @@ Fire options:
 - `wizards:fire_meteor`, animations `spell_engine:one_handed_projectile_charge`, `spell_engine:one_handed_area_release`
 - `wizards:fire_wall`, animation `spell_engine:one_handed_area_release_ground_left_to_right`
 
+### Elsa - Frost Wizard
+
+Class: `frost_wizard`
+
 Frost options:
 
 - `wizards:frostbolt`, animations `spell_engine:one_handed_projectile_charge`, `spell_engine:one_handed_projectile_release`
@@ -192,6 +200,10 @@ Frost options:
 - `wizards:frost_nova`, animations `spell_engine:one_handed_area_charge`, `spell_engine:one_handed_area_release`
 - `wizards:frost_blizzard`, animation `spell_engine:one_handed_sky_charge`
 - `wizards:frost_shield`, animation `spell_engine:one_handed_area_release`
+
+### Toph - Earth Wizard
+
+Class: `earth_wizard`
 
 Earth options:
 
@@ -235,7 +247,7 @@ Good boss moves:
 - Battle banner: `spell_id = "paladins:battle_banner"`, animation `spell_engine:one_handed_healing_release`
 - Sword punish: `animation_id = "bettercombat:two_handed_slash_vertical_right"` or `bettercombat:one_handed_slam`
 
-### Katara - Priest
+### Pope Leo XIV - Priest
 
 Class: `priest`
 
@@ -251,13 +263,29 @@ Good boss moves:
 - Flash heal: `spell_id = "paladins:flash_heal"`, animations `spell_engine:one_handed_healing_charge`, `spell_engine:one_handed_healing_release`
 - Healing circle: `spell_id = "paladins:circle_of_healing"`, animations `spell_engine:one_handed_area_charge`, `spell_engine:one_handed_area_release`
 
-Katara also mentors `water_wizard`, so water boss variants can use:
+### Katara - Water Wizard
+
+Class: `water_wizard`
+
+Good boss moves:
 
 - `elemental_wizards_rpg:aqua_water_whip`
 - `elemental_wizards_rpg:aqua_splash`
 - `elemental_wizards_rpg:aqua_waterball`
 - `elemental_wizards_rpg:aqua_hydro_beam`, animation `spell_engine:two_handed_channeling`
 - `elemental_wizards_rpg:aqua_springwater`, animations `more_rpg_classes:two_handed_ground_channeling`, `more_rpg_classes:two_handed_ground_release`
+
+### Aang - Wind Wizard
+
+Class: `wind_wizard`
+
+Good boss moves:
+
+- `elemental_wizards_rpg:wind_air_cutter`
+- `elemental_wizards_rpg:wind_gust`
+- `elemental_wizards_rpg:wind_tornado`
+- `elemental_wizards_rpg:wind_updraft`
+- Common wind animation family: `spell_engine:one_handed_area_release`, `spell_engine:one_handed_projectile_charge`, `spell_engine:one_handed_projectile_release`
 
 ### Ezio - Rogue
 
@@ -404,4 +432,3 @@ They can still get generic boss templates later, but class-derived movesets shou
 3. Extend `NpcAnimationTemplate` so it can play either GeckoLib custom animations or playerlike PlayerAnimator IDs.
 4. Implement CKDM executors for `melee`, `area`, `projectile`, `field`, `beam`, `dash`, `buff`, and `summon_marker`.
 5. Only after that, prototype an optional `NpcSpellEngineBridge` for direct Spell Engine casting.
-

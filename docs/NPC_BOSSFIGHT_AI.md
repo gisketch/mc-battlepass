@@ -13,10 +13,42 @@ Boss fights use PlayerAnimator clips only. Do not route boss fight chase, strafe
 - Better Combat attack clips such as `bettercombat:one_handed_slash_horizontal_right`: committed strikes and fast guard counters.
 - `spell_engine:dodge`: short hurt/reposition/guard dodge visual.
 - `combat_roll:roll`: guard dodge roll visual.
+- `spell_engine:archery_pull` / `spell_engine:archery_release`: archer draw and release visuals.
+
+## Boss Armory
+
+Each NPC can configure duel-only held items under `[boss]`:
+
+- `main_hand`: item id for the boss main hand. Blank or invalid values fall back to `minecraft:iron_sword`.
+- `off_hand`: optional item id for the boss offhand. Blank values leave the offhand empty.
+
+Boss armory is cosmetic for combat math; moveset damage and phase multipliers still own damage. The fight runtime equips both hands for every PlayerAnimator boss state and restores the NPC's previous hands when the duel ends. Playerlike NPC renderers must set both right and left arm item poses so dual-wield bosses visibly animate both weapons.
+
+## Template Phases
+
+Boss movesets can define ordered `phases`. The active phase is selected from `starts_at_health_ratio`; warrior, rogue, and archer use phase 1 from full health and phase 2 at `0.5` health.
+
+- Phase 1 is defensive: normal damage/speed and a 1-attack offense budget before returning to recovery and guard.
+- Phase 2 starts at half health: higher `damage_multiplier`, higher `speed_multiplier`, and a larger offense chain budget.
+- A phase can define `transition_llm_prompt` plus `transition_fallback`. When a health threshold advances, combat pauses, the local NPC dialog screen opens with animalese voice, and the boss resumes offense when the dialog closes. No phase-transition line is sent through world chat or boss balloons.
+- A phase can define `music_id`, `music_volume`, `music_pitch`, and `music_repeat_ticks`. These are sound-event hooks only; boss music assets are supplied by the modpack/mod owner. Warrior V1 references Cataclysm music sound events when that mod is loaded.
+
+Moves can define `min_phase_index` and `max_phase_index` to gate phase-specific attacks. Missing values mean the move is usable in every phase.
+
+## Projectile Moves
+
+The `projectile` move kind supports archer and wizard-style boss attacks:
+
+- `projectile_type = "arrow"` spawns real vanilla arrows. Draw/release normally use `spell_engine:archery_pull` and `spell_engine:archery_release`.
+- `projectile_type = "magic"` creates a server-ticked particle projectile. Charge/release normally use `spell_engine:one_handed_projectile_charge` and `spell_engine:one_handed_projectile_release`.
+- Hit ticks are release ticks. Projectile travel is dodgeable and can miss.
+- Magic projectiles stop on block collision, shield block, roll iframes, target impact, or lifetime expiry.
+- Projectile tuning lives on the move: `projectile_speed`, `projectile_inaccuracy`, `projectile_count`, `projectile_spread_degrees`, `impact_radius`, `knockback`, `damage`, and optional `status_effect_id` fields.
+- Damage still comes from the moveset move and active phase multiplier. Equipped bows/staves are cosmetic.
 
 ## Loop
 
-The V1 loop has two tactics phases:
+The V1 loop has moveset template phases plus two runtime tactics:
 
 ```text
 OFFENSE: CHASE/OFFENSE -> ATTACK -> SHORT_CHAIN_RECOVERY -> ATTACK
@@ -29,6 +61,8 @@ OFFENSE END -> TIMED_RECOVERY -> DEFENSE/GUARD_MODE
 
 DEFENSE: GUARD_MODE -- player attacks guard --> random PARRY or ROLL or DODGE -> OFFENSE
 DEFENSE: GUARD_MODE -- no hit in 3-6s --> OFFENSE
+
+PHASE THRESHOLD -> NPC_DIALOGUE_PAUSE -> OFFENSE
 ```
 
 ## States
@@ -41,7 +75,10 @@ Live label: `NPC mode: offense` while the boss is in the aggressive tactic, othe
 - Path toward the player.
 - Keep lock-on facing while moving.
 - Enter `ATTACK` when in range and forward cone is valid.
-- Warrior starts in offense and rolls an offense chain budget of 2-3 attacks.
+- Warrior starts in offense. Phase 1 rolls a 1-attack budget; phase 2 rolls a 3-5 attack budget.
+- Rogue/Ezio starts in offense. Phase 1 rolls a 1-attack budget at slightly higher speed; phase 2 rolls a 3-5 attack budget with faster movement and lighter damage than warrior.
+- Archer/Huntress Wizard starts in offense at range. Phase 1 fires one readable shot at a time; phase 2 chains 2-3 shots and unlocks volley.
+- Wizard/Gandalf starts in offense at mid range. Phase 1 casts one readable spell at a time; phase 2 chains 2-3 spells.
 - During offense, prefer real melee/area attacks over roll moves and avoid repeating the last move when another legal attack is available.
 
 ### Attack
@@ -52,6 +89,7 @@ Live label: `NPC mode: attacking`
 - Play the configured PlayerAnimator attack clip.
 - Damage only on the authored hit tick.
 - Damage only if range and forward cone pass.
+- Projectile attacks spawn arrows on the authored hit tick, then use real arrow travel for counterplay.
 - After the attack clip ends, enter `RECOVERY`.
 - If offense still has attacks left, use `offense_chain_recovery_ticks` as a short bridge and then return to offense.
 - If offense is spent, use the move's normal `recovery_ticks`, then enter defense guard.
@@ -74,6 +112,17 @@ Live label: `NPC mode: recovery`
 - When the hit cap is reached, enter `GUARD_MODE` after the hurt reaction.
 - If chain recovery times out while offense still has attacks left, return to offense.
 - If final recovery times out before the hit cap, enter `GUARD_MODE`.
+- If a health threshold advances the moveset phase during recovery, combat pauses immediately for the transition NPC dialog, then resumes in offense.
+
+### Phase Dialogue
+
+Live label: `NPC mode: dialogue`
+
+- Stop navigation and keep looking at the player.
+- Open the normal NPC dialog UI with the NPC voice/animalese settings.
+- Use the configured LLM transition prompt when enabled; otherwise use `transition_fallback`.
+- Do not show the transition line in world chat or as a world-space boss balloon.
+- Keep the fight paused until the dialog closes. Keepalive packets extend the pause; a short timeout resumes offense if the client disappears.
 
 ### Guard Mode
 
@@ -131,6 +180,7 @@ Live label: `NPC mode: dodging`
 - Only the duel player can reduce virtual boss health.
 - Player damage is accepted during `RECOVERY` only.
 - Player damage during `GUARD_MODE`, `GUARD_REACT`, `GUARD_ROLL`, `GUARD_DODGE`, or `PARRY` is blocked and answered by parry, roll, or dodge flow.
+- Player damage during `PHASE_DIALOGUE` is blocked silently while the fight is paused.
 - Player damage after the configured recovery hit cap is also blocked and answered by parry, roll, or dodge flow.
 - Player damage during `CHASE` or `ATTACK` should be ignored for V1 unless explicitly opened later.
 - Third-party damage into either participant stays blocked.
@@ -149,9 +199,20 @@ Boss barks are data-driven from each NPC's `[boss.balloons]` block:
 - `victory` fires when the NPC wins by landing a would-be lethal hit.
 - `defeat` fires before the NPC restores and opens the close-only defeat dialog.
 - Each boss bark has a 30% chance to show. The bossbar remains the reliable state readout.
-- The first phase bark in a duel is guaranteed; later bark triggers use the 30% chance.
+- The first bossfight bark in a duel is guaranteed; later bark triggers use the 30% chance.
 
 Lines support `{player}`, `{npc}`, `{boss}`, `{phase}`, `{health}`, and `{max_health}`. Keep these short because they render as world-space chat balloons above the moving NPC.
+
+## Boss Bar
+
+Boss fights use the custom CKDM HUD bar instead of the vanilla boss overlay.
+
+- Boss name renders in the CKDM bold font.
+- The bar uses `textures/gui/9slice_progress_empty.png` and `textures/gui/9slice_progress_fill.png`.
+- Client-side HP display lerps toward the server-synced virtual boss health.
+- The detail line shows the active moveset phase and current `NPC mode`.
+- The server still owns health, phase changes, and fight end cleanup.
+- Boss music is tied to the client boss bar lifecycle. It stops on victory, defeat, cancel, boss switch, logout/world unload, or if boss-bar sync goes stale for 5 seconds.
 
 ## Movement Rules
 
@@ -170,13 +231,37 @@ Guard mode must use lock-on strafing:
 - If too far, step forward or return to chase.
 - Always face the player while strafing.
 
+Archer neutral movement should hold range around 6-12 blocks:
+
+- Use a bow-ready PlayerAnimator pose while vanilla movement handles footwork.
+- Strafe while facing the player at range.
+- If the player closes to melee range, prefer backstep or side roll over standing still.
+- Draw windows should be readable enough for dodge, shield, line-of-sight break, or rush counterplay.
+
+Wizard neutral movement should hold range around 5-10 blocks:
+
+- Use normal NPC walking/strafe locomotion while moving; reserve PlayerAnimator staff charge/release clips for actual spell casts.
+- Use arcane, fire, and frost magic projectiles as the starter tri-spell kit.
+- If the player gets inside melee range, prefer blink dodge; if blink is unavailable, use frost nova as a close-range space reset.
+- Magic charges should be readable enough for dodge, shield, line-of-sight break, or rush counterplay.
+
 ## Implementation Notes
 
 - Replace current neutral/telegraph-heavy loop with the simpler chase-attack-recovery-guard loop above.
-- Two tactics phases are active: offense chains attacks proactively, defense uses the guard bait and guard response kit.
+- Moveset phases tune health thresholds, damage, speed, offense chain size, transition dialogue, and music hooks. Runtime tactics still alternate between offense and defense.
+- Phase transition dialogue is local NPC dialog only. It uses animalese and can use LLM, but it should not emit player-visible world chat or boss balloons.
 - Guard response should be reactive: random fast counter slash, side roll with iframes, or Spell Engine dodge with iframes.
 - Track per-recovery hit count in bossfight state. Warrior V1 cap is 4.
-- Warrior offense uses `offense_chain_min = 2`, `offense_chain_random = 1`, and `offense_chain_recovery_ticks = 10`.
+- Warrior phase 1 uses `offense_chain_min = 1`, `offense_chain_random = 0`, and `offense_chain_recovery_ticks = 10`.
+- Warrior phase 2 uses `damage_multiplier = 1.35`, `speed_multiplier = 1.25`, `offense_chain_min = 3`, `offense_chain_random = 2`, and `offense_chain_recovery_ticks = 8`.
+- Warrior move damage is tuned to half the first phase prototype values: fast slash 2.5, left slash 2.5, stab 3.0, uppercut 2.75, battle shout 1.5, and slam 4.0 before phase multipliers.
+- Rogue phase 1 uses `speed_multiplier = 1.08`, `offense_chain_min = 1`, `offense_chain_random = 0`, and `offense_chain_recovery_ticks = 9`.
+- Rogue phase 2 uses `damage_multiplier = 1.25`, `speed_multiplier = 1.35`, `offense_chain_min = 3`, `offense_chain_random = 2`, and `offense_chain_recovery_ticks = 7`.
+- Rogue attacks use dual-wield PlayerAnimator clips from Better Combat and Spell Engine, including `bettercombat:dual_handed_slash_cross`, `bettercombat:dual_handed_slash_uncross`, `bettercombat:dual_handed_stab`, `spell_engine:dual_handed_weapon_open`, `spell_engine:dual_handed_weapon_cross`, `spell_engine:weapon_slash_uncross_swipe`, and `spell_engine:weapon_dual_throw`.
+- Archer phase 1 uses `spell_engine:archery_pull`/`spell_engine:archery_release` with patient aimed, quick, and power shots. Phase 2 uses `damage_multiplier = 1.2`, `speed_multiplier = 1.25`, `offense_chain_min = 2`, `offense_chain_random = 1`, and unlocks `volley` through `min_phase_index = 1`.
+- Huntress Wizard uses the archer moveset and equips `archers:composite_longbow` during the duel.
+- Wizard phase 1 uses `spell_engine:one_handed_projectile_charge`/`spell_engine:one_handed_projectile_release` with `wizards:arcane_blast`, `wizards:fire_blast`, and `wizards:frostbolt` magic projectiles. Phase 2 uses `damage_multiplier = 1.18`, `speed_multiplier = 1.18`, `offense_chain_min = 2`, `offense_chain_random = 1`, and shorter chain recovery.
+- Gandalf uses the wizard moveset and equips `wizards:staff_wizard` during the duel.
 - Track a random guard-bait timeout between 60 and 120 ticks.
 - Keep the live status label aligned with these state names.
 - Keep this behavior inside the bossfight controller so future templates can swap the state graph without changing base NPC routines.

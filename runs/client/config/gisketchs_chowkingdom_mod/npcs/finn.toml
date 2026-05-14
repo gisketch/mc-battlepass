@@ -38,6 +38,8 @@ enabled = true
 health = 95.0
 damage = 5.0
 template = "sword_user"
+main_hand = "simplyswords:diamond_longsword"
+off_hand = ""
 
 [boss.balloons]
 chase = ["Adventure feet, {player}! Move!", "I am coming in hero-fast!", "Run like there is loot ahead!", "Leg day, hero style!", "You cannot outrun my enthusiasm!", "Quest sprint engaged!", "Faster! The dungeon waits!", "Hero speed! Very mathematical!", "Chase music is totally playing!", "Keep those adventure calves pumping!"]

@@ -26,23 +26,16 @@ object NpcConfig {
         genericQuests = loadGenericQuests()
         val friendshipDefaults = loadFriendshipDefaults()
         val loaded = linkedMapOf<String, NpcDefinition>()
-        Files.list(dir).use { files ->
-            files.filter { path -> path.extension.equals("toml", ignoreCase = true) }
-                .filter { path -> path.fileName.toString() != FRIENDSHIP_MESSAGES_FILE }
-                .filter { path -> path.fileName.toString() != NPC_SETTINGS_FILE }
-                .filter { path -> path.fileName.toString() != GENERIC_QUESTS_FILE }
-                .sorted(Comparator.comparing { path -> path.fileName.toString() })
-                .forEach { path ->
-                    val fallbackId = path.nameWithoutExtension
-                    val definition = try {
-                        TomlConfigIO.read(path, NpcDefinition::class.java, ::NpcDefinition)
-                    } catch (exception: Exception) {
-                        ChowKingdomMod.LOGGER.warn("Failed to load NPC definition {}", path, exception)
-                        NpcDefinition(id = fallbackId)
-                    }.normalized(fallbackId, friendshipDefaults)
-                    mergeQuestPools(definition)
-                    loaded[definition.id] = definition
-                }
+        npcDefinitionFiles().forEach { path ->
+            val fallbackId = path.nameWithoutExtension
+            val definition = try {
+                TomlConfigIO.read(path, NpcDefinition::class.java, ::NpcDefinition)
+            } catch (exception: Exception) {
+                ChowKingdomMod.LOGGER.warn("Failed to load NPC definition {}", path, exception)
+                NpcDefinition(id = fallbackId)
+            }.normalized(fallbackId, friendshipDefaults)
+            mergeQuestPools(definition)
+            loaded[definition.id] = definition
         }
         definitions = loaded
     }
@@ -100,6 +93,24 @@ object NpcConfig {
                 Files.move(temp, genericQuestsFile, StandardCopyOption.REPLACE_EXISTING)
             }
         }
+    }
+
+    private fun npcDefinitionFiles(): List<Path> {
+        val paths = mutableListOf<Path>()
+        Files.list(dir).use { files ->
+            files.forEach { path ->
+                val fileName = path.fileName.toString()
+                if (
+                    path.extension.equals("toml", ignoreCase = true) &&
+                    fileName != FRIENDSHIP_MESSAGES_FILE &&
+                    fileName != NPC_SETTINGS_FILE &&
+                    fileName != GENERIC_QUESTS_FILE
+                ) {
+                    paths.add(path)
+                }
+            }
+        }
+        return paths.sortedBy { path -> path.fileName.toString() }
     }
 
     private fun loadSettings(): NpcSettingsDefinition {

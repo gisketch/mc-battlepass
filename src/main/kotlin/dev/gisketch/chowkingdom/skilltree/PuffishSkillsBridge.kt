@@ -50,7 +50,9 @@ object PuffishSkillsBridge {
 
     private fun zeroForeignPointSources(category: Any, player: ServerPlayer) {
         val stream = category.javaClass.getMethod("streamPointsSources", ServerPlayer::class.java).invoke(category, player) as Stream<*>
-        stream.toList().filterIsInstance<ResourceLocation>().filter { source -> source != pointSourceId }.forEach { source ->
+        val sources = mutableListOf<Any?>()
+        stream.use { values -> values.forEach { source -> sources.add(source) } }
+        sources.filterIsInstance<ResourceLocation>().filter { source -> source != pointSourceId }.forEach { source ->
             category.javaClass.getMethod("setPointsSilently", ServerPlayer::class.java, ResourceLocation::class.java, Int::class.javaPrimitiveType)
                 .invoke(category, player, source, 0)
         }
