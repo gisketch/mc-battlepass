@@ -22,6 +22,7 @@ Add and evolve an extensible NPC bossfight prototype using the current SmartBrai
 - Rogue/Ezio has a templated two-phase dual-wield boss fight using PlayerAnimator-only Better Combat and Spell Engine clips.
 - Archer/Huntress Wizard has a templated two-phase ranged boss fight using PlayerAnimator-only Spell Engine archery clips and real arrow projectiles.
 - Wizard/Gandalf has a templated two-phase starter caster boss fight using PlayerAnimator-only Spell Engine charge/release clips and server-ticked magic projectiles.
+- Arcane Wizard/Invoker has a separate empty-hand floating caster boss fight using arcane projectile, beam, blink teleport, and ward-parry VFX; it has no melee, staff, sword, or combat roll.
 - Priest/Pope Leo has a templated two-phase support caster boss fight using PlayerAnimator-only Spell Engine healing clips, registry-backed Spell Engine / Paladins VFX ids, limited healing, and temporary virtual absorption.
 - Bard/Venti has a separate archer-style boss fight using real arrows, harp-crossbow PlayerAnimator clips, Bard spell ids, music-note/star VFX, and no melee/support/area moves.
 - Phase transitions pause combat and open the NPC dialog screen with animalese voice; they support an LLM-injected line with a configured fallback and do not use world chat.
@@ -66,6 +67,8 @@ Add and evolve an extensible NPC bossfight prototype using the current SmartBrai
 - Finn V1 uses `simplyswords:diamond_longsword`; Ezio V1 uses dual `simplyswords:iron_rapier`.
 - Projectile boss moves spawn real vanilla arrows at release ticks. `archer` uses `spell_engine:archery_pull`/`spell_engine:archery_release`, and Huntress Wizard equips `archers:composite_longbow`.
 - Magic projectile boss moves use particle travel, block collision, shield/roll counterplay, impact radius, and optional status effects. `wizard` uses arcane, fire, and frost starter spells, and Gandalf equips `wizards:staff_wizard`.
+- Beam boss moves trace line of sight, draw registry-backed line VFX, respect shield/roll counterplay, and can apply repeated small hits during a channel.
+- Floating caster movesets use `hover_height`, no-gravity during the duel, and gravity restoration on fight end. Empty hand armory uses `none` / `empty` / `air`.
 - Boss caster VFX fields are registry-backed and asset-neutral: particle/sound ids from Spell Engine, Wizards, Paladins, or other RPG mods are reused when loaded and safely fall back when absent.
 - Support boss moves can self-heal with per-phase use caps, heal caps, and temporary virtual absorption that is consumed before boss HP during accepted recovery hits. `priest` uses holy shock, judgement, mercy prayer, and barrier support; Pope Leo equips `paladins:holy_staff`.
 - Bard boss fights use a separate `bard` moveset that duplicates Archer health, spacing, shot timing, phase chains, backstep, side roll, and real arrow mechanics. Bard flavor comes from `bards_rpg:aether_harp_crossbow`, `bards_rpg:harp_channel`/`harp_release`, `starshots`, `vicious_mockery`, `magical_ballad`, `crescendo`, music-note/star particles, and Bard sounds.
@@ -103,3 +106,4 @@ Add and evolve an extensible NPC bossfight prototype using the current SmartBrai
 - 2026-05-14: Tried several Bard-specific boss prototypes, then removed them after instrument visuals still behaved like melee weapon swings.
 - 2026-05-14: Temporarily deleted the separate Bard boss moveset path while isolating the axe-like instrument animation issue.
 - 2026-05-14: Recreated Bard as its own Archer-style real-arrow moveset with harp crossbow armory, harp channel/release animations, Bard spell metadata, star/music arrow VFX, phase 2 crescendo volley, and no melee/support/area moves.
+- 2026-05-15: Added Arcane Wizard/Invoker as an empty-hand floating caster with arcane bolt/blast/missile/beam, blink teleport dodge, arcane parry VFX, and no melee/equipment/roll kit.

@@ -49,6 +49,10 @@ The `projectile` move kind supports archer and wizard-style boss attacks:
 - Visual and audio ids are registry-backed and safe to omit: `projectile_particle`, `cast_particle`, `release_particle`, `impact_particle`, `cast_sound_id`, `release_sound_id`, and `impact_sound_id` fall back to built-in particles/sounds if a referenced mod is not loaded.
 - Damage still comes from the moveset move and active phase multiplier. Equipped bows/staves are cosmetic.
 
+The `beam` move kind supports channeled caster hits. It uses the same cast/release/impact VFX fields as magic projectiles, traces line of sight, respects shield blocks and roll iframes, and can repeat small hit ticks during one channel.
+
+Movesets can set `hover_height` for floating casters. While active, the boss uses no-gravity, bobs lightly, moves toward the target plane plus that height, and restores its original gravity flag when the fight ends. Empty-hand casters use boss armory sentinels `main_hand = "none"` and `off_hand = "none"`.
+
 ## Support Moves
 
 The `support` move kind covers priest-style self sustain and barriers:
@@ -294,6 +298,7 @@ Bard neutral movement should hold range around 6-12 blocks:
 - Huntress Wizard uses the archer moveset and equips `archers:composite_longbow` during the duel.
 - Wizard phase 1 uses `spell_engine:one_handed_projectile_charge`/`spell_engine:one_handed_projectile_release` with `wizards:arcane_blast`, `wizards:fire_blast`, and `wizards:frostbolt` magic projectiles. Wizard spell visuals reuse Spell Engine particle/sound ids for arcane, fire, frost projectile travel, release, and impact when available. Phase 2 uses `damage_multiplier = 1.18`, `speed_multiplier = 1.18`, `offense_chain_min = 2`, `offense_chain_random = 1`, and shorter chain recovery.
 - Gandalf uses the wizard moveset and equips `wizards:staff_wizard` during the duel.
+- Arcane Wizard/Invoker is an empty-hand floating caster using `wizards:arcane_bolt`, `wizards:arcane_blast`, phase-2 `wizards:arcane_missile`, phase-2 `wizards:arcane_beam`, and `wizards:arcane_blink`. It has no melee, no held staff, no weapon parry, and no combat-roll move; guard dodge uses blink teleport effects.
 - Priest phase 1 uses `paladins:holy_shock`, `paladins:judgement`, limited self-heal, and absorption support with Spell Engine healing clips. Phase 2 uses `damage_multiplier = 1.1`, `speed_multiplier = 1.12`, `offense_chain_min = 2`, `offense_chain_random = 1`, and healing that cannot restore above roughly 45% health.
 - Pope Leo uses the priest moveset and equips `paladins:holy_staff` during the duel.
 - Bard phase 1 duplicates Archer shot timing with `starshot`, `mocking_shot`, and `ballad_shot`; phase 2 duplicates Archer 2-3 shot chains and unlocks `crescendo_volley`.

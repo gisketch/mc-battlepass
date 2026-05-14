@@ -70,6 +70,7 @@ object NpcBossFights {
             animationSnapshot = NpcCustomAnimationController.snapshot(entity),
             armory = armory,
             originalHealth = entity.health,
+            originalNoGravity = entity.isNoGravity,
             bossBar = bossBar,
             startedTick = entity.tickCount,
             nextActionTick = 0,
@@ -111,6 +112,7 @@ object NpcBossFights {
             animationSnapshot = NpcCustomAnimationController.snapshot(entity),
             armory = debugArmory(moveset, definition),
             originalHealth = entity.health,
+            originalNoGravity = entity.isNoGravity,
             bossBar = bossBar,
             startedTick = entity.tickCount,
             nextActionTick = 0,
@@ -295,6 +297,7 @@ object NpcBossFights {
         fight.bossBar.removeAllPlayers()
         clearBossBar(entity, fight)
         NpcCustomAnimationController.restore(entity, fight.animationSnapshot)
+        restoreBossGravity(entity, fight)
         entity.updatePassThroughInteractions(false)
     }
 
@@ -304,6 +307,7 @@ object NpcBossFights {
         val target = level.getPlayerByUUID(fight.targetId) as? ServerPlayer ?: return false
         if (!target.isAlive) return false
         if (!withinTether(entity, target, fight)) return false
+        tickBossHover(entity, target, fight)
         tickSupportEffects(entity, fight)
         tickBossHazards(entity, target, fight)
         tickMagicProjectiles(entity, target, fight)
@@ -321,6 +325,40 @@ object NpcBossFights {
             BossFightPhase.GUARD_DODGE -> tickGuardDodge(entity, target, fight)
             BossFightPhase.PARRY -> tickParry(entity, target, fight)
         }
+    }
+
+    private fun tickBossHover(entity: ChowNpcEntity, target: ServerPlayer, fight: ActiveBossFight) {
+        val hoverHeight = fight.moveset.hoverHeight
+        if (hoverHeight <= 0.0) return
+        if (!entity.isNoGravity) entity.setNoGravity(true)
+        entity.fallDistance = 0.0f
+        val bob = kotlin.math.sin((entity.tickCount - fight.startedTick).toDouble() * 0.16) * 0.08
+        val targetY = target.y + hoverHeight + bob
+        val vertical = (targetY - entity.y).coerceIn(-0.08, 0.08)
+        entity.deltaMovement = Vec3(entity.deltaMovement.x, vertical, entity.deltaMovement.z)
+        entity.hurtMarked = true
+    }
+
+    private fun restoreBossGravity(entity: ChowNpcEntity, fight: ActiveBossFight) {
+        if (fight.moveset.hoverHeight <= 0.0) return
+        entity.setNoGravity(fight.originalNoGravity)
+        entity.fallDistance = 0.0f
+        if (!fight.originalNoGravity) entity.deltaMovement = Vec3(entity.deltaMovement.x, 0.0, entity.deltaMovement.z)
+        entity.hurtMarked = true
+    }
+
+    private fun bossMoveY(fight: ActiveBossFight, baseY: Double): Double =
+        if (fight.moveset.hoverHeight > 0.0) baseY + fight.moveset.hoverHeight else baseY
+
+    private fun moveBossTo(entity: ChowNpcEntity, fight: ActiveBossFight, x: Double, baseY: Double, z: Double, speed: Double) {
+        val y = bossMoveY(fight, baseY)
+        if (fight.moveset.hoverHeight > 0.0) {
+            entity.navigation.stop()
+            entity.moveControl.setWantedPosition(x, y, z, speed)
+            return
+        }
+        entity.navigation.moveTo(x, y, z, speed)
+        if (entity.navigation.isDone) entity.moveControl.setWantedPosition(x, y, z, speed)
     }
 
     private fun tickChase(entity: ChowNpcEntity, target: ServerPlayer, fight: ActiveBossFight): Boolean {
@@ -345,8 +383,7 @@ object NpcBossFights {
             return true
         }
         val chaseSpeed = phaseSpeed(fight, BOSS_CHASE_SPEED)
-        entity.navigation.moveTo(target.x, target.y, target.z, chaseSpeed)
-        if (entity.navigation.isDone) entity.moveControl.setWantedPosition(target.x, target.y, target.z, chaseSpeed)
+        moveBossTo(entity, fight, target.x, target.y, target.z, chaseSpeed)
         return true
     }
 
@@ -355,7 +392,8 @@ object NpcBossFights {
         fight.activeMove = move
         fight.firedHitTicks.clear()
         fight.moveCooldowns[move.id] = entity.tickCount + move.cooldownTicks
-        if (move.kind != NpcBossMoveKinds.ROLL) {
+        val isMovementMove = move.kind == NpcBossMoveKinds.ROLL || move.kind == NpcBossMoveKinds.DODGE
+        if (!isMovementMove) {
             fight.lastMoveId = move.id
             if (fight.tacticPhase == BossTacticPhase.OFFENSE) {
                 fight.offenseAttacksRemaining = (fight.offenseAttacksRemaining - 1).coerceAtLeast(0)
@@ -365,7 +403,17 @@ object NpcBossFights {
         playMoveCastVfx(entity, move)
         entity.navigation.stop()
         if (move.kind == NpcBossMoveKinds.ROLL) performNpcRoll(entity, target, fight, move)
-        showModeBalloon(entity, target, fight, if (move.kind == NpcBossMoveKinds.ROLL) "rolling" else "attacking")
+        if (move.kind == NpcBossMoveKinds.DODGE) performNpcDodge(entity, target, fight, move)
+        showModeBalloon(
+            entity,
+            target,
+            fight,
+            when (move.kind) {
+                NpcBossMoveKinds.ROLL -> "rolling"
+                NpcBossMoveKinds.DODGE -> "dodging"
+                else -> "attacking"
+            },
+        )
     }
 
     private fun tickAttack(entity: ChowNpcEntity, target: ServerPlayer, fight: ActiveBossFight): Boolean {
@@ -376,9 +424,13 @@ object NpcBossFights {
         entity.debugActivity = "boss"
         entity.debugGoal = move.id
         entity.debugTargetPos = target.blockPosition().immutable()
-        updateStatus(entity, target, fight, if (move.kind == NpcBossMoveKinds.ROLL) "rolling" else "attacking")
+        updateStatus(entity, target, fight, when (move.kind) {
+            NpcBossMoveKinds.ROLL -> "rolling"
+            NpcBossMoveKinds.DODGE -> "dodging"
+            else -> "attacking"
+        })
         entity.navigation.stop()
-        if (move.kind != NpcBossMoveKinds.ROLL) faceTarget(entity, target)
+        if (move.kind != NpcBossMoveKinds.ROLL && move.kind != NpcBossMoveKinds.DODGE) faceTarget(entity, target)
         val elapsed = entity.tickCount - fight.phaseStartedTick
         move.hitTicks.forEach { hitTick ->
             if (elapsed >= hitTick && fight.firedHitTicks.add(hitTick)) {
@@ -387,7 +439,7 @@ object NpcBossFights {
         }
         if (elapsed < move.durationTicks) return true
         val continueOffense = fight.tacticPhase == BossTacticPhase.OFFENSE && fight.offenseAttacksRemaining > 0
-        if (move.kind == NpcBossMoveKinds.ROLL || move.recoveryTicks <= 0) {
+        if (move.kind == NpcBossMoveKinds.ROLL || move.kind == NpcBossMoveKinds.DODGE || move.recoveryTicks <= 0) {
             if (continueOffense) startChase(entity, target, fight) else startDefensePhase(entity, target, fight)
             return true
         }
@@ -519,13 +571,26 @@ object NpcBossFights {
 
     private fun startGuardReact(entity: ChowNpcEntity, target: ServerPlayer, fight: ActiveBossFight) {
         fight.activeMove = null
-        when (entity.random.nextInt(GUARD_RESPONSE_CHOICES)) {
-            0 -> startParry(entity, target, fight)
-            1 -> startGuardRoll(entity, target, fight)
-            else -> startGuardDodge(entity, target, fight)
+        when (selectGuardResponse(entity, fight)) {
+            GuardResponse.PARRY -> startParry(entity, target, fight)
+            GuardResponse.ROLL -> startGuardRoll(entity, target, fight)
+            GuardResponse.DODGE -> startGuardDodge(entity, target, fight)
         }
         showBossBalloon(entity, target, fight, fight.balloons.guardReact, "guard_react")
         fight.lastModeBalloon = "guard"
+    }
+
+    private fun selectGuardResponse(entity: ChowNpcEntity, fight: ActiveBossFight): GuardResponse {
+        val parryWeight = fight.moveset.guardParryWeight.coerceAtLeast(0)
+        val rollWeight = fight.moveset.guardRollWeight.coerceAtLeast(0)
+        val dodgeWeight = fight.moveset.guardDodgeWeight.coerceAtLeast(0)
+        val total = (parryWeight + rollWeight + dodgeWeight).coerceAtLeast(1)
+        var roll = entity.random.nextInt(total)
+        roll -= parryWeight
+        if (roll < 0) return GuardResponse.PARRY
+        roll -= rollWeight
+        if (roll < 0) return GuardResponse.ROLL
+        return GuardResponse.DODGE
     }
 
     private fun tickGuardReact(entity: ChowNpcEntity, target: ServerPlayer, fight: ActiveBossFight): Boolean {
@@ -546,12 +611,25 @@ object NpcBossFights {
         playTemplate(entity, fight, parryTemplate(fight), forceRestart = true)
         entity.navigation.stop()
         blockBossHit(entity)
+        playParryVfx(entity, target, fight)
         if (!NpcCombatRollBridge.isRolling(target)) {
             if (fight.moveset.parryDamage > 0.0) target.hurt(entity.damageSources().mobAttack(entity), fight.moveset.parryDamage.toFloat())
             target.knockback(fight.moveset.parryKnockback, entity.x - target.x, entity.z - target.z)
             target.hurtMarked = true
         } else {
             entity.debugGoal = "parry_roll_whiff"
+        }
+    }
+
+    private fun playParryVfx(entity: ChowNpcEntity, target: ServerPlayer, fight: ActiveBossFight) {
+        val level = entity.level() as? ServerLevel ?: return
+        val particleId = fight.moveset.parryParticle
+        if (particleId.isNotBlank()) {
+            level.sendParticles(bossParticle(particleId, ParticleTypes.END_ROD), entity.x, entity.y + 1.0, entity.z, 28, 0.55, 0.55, 0.55, 0.04)
+            level.sendParticles(bossParticle(particleId, ParticleTypes.END_ROD), target.x, target.y + 0.9, target.z, 16, 0.35, 0.45, 0.35, 0.03)
+        }
+        if (fight.moveset.parrySoundId.isNotBlank()) {
+            playBossSound(level, fight.moveset.parrySoundId, SoundEvents.EVOKER_CAST_SPELL, entity.x, entity.eyeY, entity.z, 0.85f, 1.05f)
         }
     }
 
@@ -613,6 +691,7 @@ object NpcBossFights {
         when (move.kind) {
             NpcBossMoveKinds.AREA -> areaHit(entity, target, fight, move)
             NpcBossMoveKinds.PROJECTILE -> projectileHit(entity, target, fight, move)
+            NpcBossMoveKinds.BEAM -> beamHit(entity, target, fight, move)
             NpcBossMoveKinds.SUPPORT -> supportHit(entity, target, fight, move)
             else -> attackHit(entity, target, fight, move)
         }
@@ -826,6 +905,64 @@ object NpcBossFights {
         }
     }
 
+    private fun beamHit(entity: ChowNpcEntity, target: ServerPlayer, fight: ActiveBossFight, move: NpcBossMoveDefinition) {
+        val level = entity.level() as? ServerLevel ?: return
+        faceTarget(entity, target)
+        if (move.releaseAnimationId != move.animationId) {
+            playTemplate(entity, fight, projectileReleaseTemplate(fight, move), forceRestart = true)
+        }
+        playBossSound(level, move.releaseSoundId, SoundEvents.EVOKER_CAST_SPELL, entity.x, entity.eyeY, entity.z, 0.85f, 1.0f)
+
+        val start = entity.getEyePosition().add(0.0, -0.05, 0.0)
+        val targetEye = target.getEyePosition().add(0.0, -0.08, 0.0)
+        val direction = targetEye.subtract(start).takeIf { vector -> vector.lengthSqr() > 0.0001 }?.normalize() ?: entity.lookAngle.normalize()
+        val maxEnd = start.add(direction.scale(move.range))
+        val blockHit = level.clip(ClipContext(start, maxEnd, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, entity))
+        val beamEnd = if (blockHit.type == HitResult.Type.MISS) maxEnd else blockHit.location
+        drawBossBeam(level, move, start, beamEnd)
+
+        val blockedBeforeTarget = blockHit.type != HitResult.Type.MISS && start.distanceToSqr(blockHit.location) + 0.25 < start.distanceToSqr(targetEye)
+        if (start.distanceToSqr(targetEye) > move.range * move.range || blockedBeforeTarget || !targetInForwardCone(entity, target, move.arcDegrees)) {
+            entity.debugGoal = "${move.id}_miss"
+            playMoveImpactVfx(level, move, beamEnd, move.impactRadius, SoundEvents.EVOKER_CAST_SPELL)
+            return
+        }
+        if (NpcCombatRollBridge.isRolling(target)) {
+            entity.debugGoal = "${move.id}_roll_whiff"
+            level.playSound(null, target.x, target.y, target.z, SoundEvents.PLAYER_ATTACK_WEAK, SoundSource.HOSTILE, 0.8f, 1.1f)
+            return
+        }
+        if (target.isBlocking) {
+            entity.debugGoal = "${move.id}_shield_block"
+            level.playSound(null, target.x, target.y, target.z, SoundEvents.SHIELD_BLOCK, SoundSource.PLAYERS, 0.9f, 1.0f)
+            playMoveImpactVfx(level, move, targetEye, move.impactRadius, SoundEvents.SHIELD_BLOCK)
+            return
+        }
+        playMoveImpactVfx(level, move, targetEye, move.impactRadius, SoundEvents.GENERIC_EXPLODE.value())
+        target.invulnerableTime = 0
+        if (target.hurt(entity.damageSources().mobAttack(entity), phaseDamage(fight, move.damage))) {
+            val knockback = move.knockback.coerceAtLeast(0.0)
+            if (knockback > 0.0) target.knockback(knockback, -direction.x, -direction.z)
+            target.hurtMarked = true
+            applyMoveEffects(target, move)
+            showBossBalloon(entity, target, fight, fight.balloons.hitPlayer, "hit_player")
+        }
+    }
+
+    private fun drawBossBeam(level: ServerLevel, move: NpcBossMoveDefinition, start: Vec3, end: Vec3) {
+        val delta = end.subtract(start)
+        val steps = (delta.length() / 0.42).toInt().coerceIn(1, 90)
+        val particle = bossParticle(move.projectileParticle, ParticleTypes.END_ROD)
+        for (step in 0..steps) {
+            val t = step.toDouble() / steps.toDouble()
+            val point = start.add(delta.scale(t))
+            level.sendParticles(particle, point.x, point.y, point.z, 2, 0.035, 0.035, 0.035, 0.0)
+        }
+        if (move.releaseParticle.isNotBlank()) {
+            level.sendParticles(bossParticle(move.releaseParticle, ParticleTypes.END_ROD), start.x, start.y, start.z, 10, 0.14, 0.14, 0.14, 0.02)
+        }
+    }
+
     private fun createBossHazard(entity: ChowNpcEntity, target: ServerPlayer, fight: ActiveBossFight, move: NpcBossMoveDefinition) {
         if (move.hazardTicks <= 0) return
         val level = entity.level() as? ServerLevel ?: return
@@ -975,10 +1112,10 @@ object NpcBossFights {
             .filter { move -> fight.bossPhaseIndex in move.minPhaseIndex..move.maxPhaseIndex }
             .filter { move -> entity.tickCount >= (fight.moveCooldowns[move.id] ?: 0) }
             .filter { move -> distance >= move.minDistance && distance <= move.maxDistance }
-            .filter { move -> move.kind == NpcBossMoveKinds.ROLL || targetInForwardCone(entity, target, move.arcDegrees) }
+            .filter { move -> move.kind == NpcBossMoveKinds.ROLL || move.kind == NpcBossMoveKinds.DODGE || targetInForwardCone(entity, target, move.arcDegrees) }
             .toList()
         val offenseCandidates = if (fight.tacticPhase == BossTacticPhase.OFFENSE) {
-            baseCandidates.filter { move -> move.kind != NpcBossMoveKinds.ROLL }.ifEmpty { baseCandidates }
+            baseCandidates.filter { move -> move.kind != NpcBossMoveKinds.ROLL && move.kind != NpcBossMoveKinds.DODGE }.ifEmpty { baseCandidates }
         } else {
             baseCandidates
         }
@@ -1043,8 +1180,23 @@ object NpcBossFights {
         val impulse = 0.55 * currentBossPhase(fight).speedMultiplier.coerceIn(0.75, 1.6)
         entity.deltaMovement = Vec3(direction.x * impulse, entity.deltaMovement.y.coerceAtLeast(0.05), direction.z * impulse)
         entity.hurtMarked = true
-        entity.moveControl.setWantedPosition(desired.x, desired.y, desired.z, phaseSpeed(fight, BOSS_CHASE_SPEED))
-        level?.let { sendMoveParticle(it, move.supportParticle, desired.x, desired.y + 0.65, desired.z, 10, 0.25, 0.25, 0.25, 0.02, ParticleTypes.POOF) }
+        val desiredY = if (fight.moveset.hoverHeight > 0.0) entity.y else desired.y
+        entity.moveControl.setWantedPosition(desired.x, desiredY, desired.z, phaseSpeed(fight, BOSS_CHASE_SPEED))
+        level?.let { sendMoveParticle(it, move.supportParticle, desired.x, desiredY + 0.65, desired.z, 10, 0.25, 0.25, 0.25, 0.02, ParticleTypes.POOF) }
+    }
+
+    private fun performNpcDodge(entity: ChowNpcEntity, target: ServerPlayer, fight: ActiveBossFight, move: NpcBossMoveDefinition) {
+        val direction = rollDirection(entity, target, move)
+        performBlinkTeleport(
+            entity = entity,
+            target = target,
+            fight = fight,
+            distance = move.rollDistance.coerceAtLeast(1.0),
+            direction = direction,
+            iframeTicks = move.iframeEndTick - move.iframeStartTick,
+            particleId = move.supportParticle.ifBlank { "minecraft:portal" },
+            soundId = move.releaseSoundId.ifBlank { "minecraft:entity.enderman.teleport" },
+        )
     }
 
     private fun performGuardRoll(entity: ChowNpcEntity, target: ServerPlayer, fight: ActiveBossFight) {
@@ -1057,11 +1209,25 @@ object NpcBossFights {
         val impulse = 0.55 * currentBossPhase(fight).speedMultiplier.coerceIn(0.75, 1.6)
         entity.deltaMovement = Vec3(direction.x * impulse, entity.deltaMovement.y.coerceAtLeast(0.05), direction.z * impulse)
         entity.hurtMarked = true
-        entity.moveControl.setWantedPosition(desired.x, desired.y, desired.z, phaseSpeed(fight, BOSS_CHASE_SPEED))
+        val desiredY = if (fight.moveset.hoverHeight > 0.0) entity.y else desired.y
+        entity.moveControl.setWantedPosition(desired.x, desiredY, desired.z, phaseSpeed(fight, BOSS_CHASE_SPEED))
     }
 
     private fun performGuardDodge(entity: ChowNpcEntity, target: ServerPlayer, fight: ActiveBossFight) {
         val direction = guardDodgeDirection(entity, target, fight)
+        if (fight.moveset.hoverHeight > 0.0) {
+            performBlinkTeleport(
+                entity = entity,
+                target = target,
+                fight = fight,
+                distance = fight.moveset.guardDodgeDistance.coerceAtLeast(1.0),
+                direction = direction,
+                iframeTicks = fight.moveset.guardDodgeIframeTicks,
+                particleId = "minecraft:portal",
+                soundId = "minecraft:entity.enderman.teleport",
+            )
+            return
+        }
         val distance = fight.moveset.guardDodgeDistance.coerceAtLeast(1.0) * currentBossPhase(fight).speedMultiplier.coerceIn(0.75, 1.6)
         val desired = entity.position().add(direction.scale(distance))
         val iframeTicks = fight.moveset.guardDodgeIframeTicks
@@ -1071,6 +1237,64 @@ object NpcBossFights {
         entity.deltaMovement = Vec3(direction.x * impulse, entity.deltaMovement.y.coerceAtLeast(0.04), direction.z * impulse)
         entity.hurtMarked = true
         entity.moveControl.setWantedPosition(desired.x, desired.y, desired.z, phaseSpeed(fight, BOSS_CHASE_SPEED))
+    }
+
+    private fun performBlinkTeleport(
+        entity: ChowNpcEntity,
+        target: ServerPlayer,
+        fight: ActiveBossFight,
+        distance: Double,
+        direction: Vec3,
+        iframeTicks: Int,
+        particleId: String,
+        soundId: String,
+    ) {
+        val level = entity.level() as? ServerLevel ?: return
+        val scaledDistance = distance * currentBossPhase(fight).speedMultiplier.coerceIn(0.75, 1.6)
+        val destination = blinkDestination(level, entity, target, fight, direction, scaledDistance)
+        val from = entity.position()
+        fight.npcIframeUntilTick = entity.tickCount + iframeTicks
+        if (iframeTicks > 0) NpcCombatRollBridge.applyNpcIframes(entity, iframeTicks)
+        sendBlinkVfx(level, from, particleId)
+        playBossSound(level, soundId, SoundEvents.ENDERMAN_TELEPORT, from.x, from.y + 0.8, from.z, 0.9f, 1.0f)
+        entity.navigation.stop()
+        entity.teleportTo(destination.x, destination.y, destination.z)
+        entity.deltaMovement = Vec3(0.0, 0.0, 0.0)
+        entity.hurtMarked = true
+        sendBlinkVfx(level, destination, particleId)
+        playBossSound(level, soundId, SoundEvents.ENDERMAN_TELEPORT, destination.x, destination.y + 0.8, destination.z, 0.9f, 1.15f)
+        faceTarget(entity, target)
+    }
+
+    private fun blinkDestination(
+        level: ServerLevel,
+        entity: ChowNpcEntity,
+        target: ServerPlayer,
+        fight: ActiveBossFight,
+        direction: Vec3,
+        distance: Double,
+    ): Vec3 {
+        val start = entity.position()
+        val targetY = bossMoveY(fight, target.y)
+        val eyeOffset = entity.eyeY - entity.y
+        val normalizedDirection = if (direction.lengthSqr() > 0.0001) direction.normalize() else Vec3(0.0, 0.0, -1.0)
+        val factors = listOf(1.0, 0.75, 0.5, 0.25)
+        for (factor in factors) {
+            val candidate = Vec3(start.x + normalizedDirection.x * distance * factor, targetY, start.z + normalizedDirection.z * distance * factor)
+            if (candidate.distanceToSqr(fight.startPos) > TETHER_DISTANCE_SQR * 0.92) continue
+            val offset = candidate.subtract(start)
+            if (!level.noCollision(entity, entity.boundingBox.move(offset))) continue
+            val line = level.clip(ClipContext(entity.getEyePosition(), candidate.add(0.0, eyeOffset, 0.0), ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, entity))
+            if (line.type != HitResult.Type.MISS) continue
+            return candidate
+        }
+        return Vec3(start.x, targetY, start.z)
+    }
+
+    private fun sendBlinkVfx(level: ServerLevel, position: Vec3, particleId: String) {
+        val particle = bossParticle(particleId, ParticleTypes.PORTAL)
+        level.sendParticles(particle, position.x, position.y + 0.8, position.z, 42, 0.45, 0.65, 0.45, 0.08)
+        level.sendParticles(ParticleTypes.END_ROD, position.x, position.y + 0.9, position.z, 16, 0.3, 0.4, 0.3, 0.03)
     }
 
     private fun rollDirection(entity: ChowNpcEntity, target: ServerPlayer, move: NpcBossMoveDefinition): Vec3 {
@@ -1139,8 +1363,7 @@ object NpcBossFights {
         }
         val desired = target.position().add(radial.scale(desiredRadius)).add(tangent.scale(step))
         val adjustedSpeed = phaseSpeed(fight, speed)
-        entity.navigation.moveTo(desired.x, target.y, desired.z, adjustedSpeed)
-        if (entity.navigation.isDone) entity.moveControl.setWantedPosition(desired.x, target.y, desired.z, adjustedSpeed)
+        moveBossTo(entity, fight, desired.x, target.y, desired.z, adjustedSpeed)
     }
 
     private fun holdRangedSpacing(entity: ChowNpcEntity, target: ServerPlayer, fight: ActiveBossFight) {
@@ -1163,12 +1386,11 @@ object NpcBossFights {
         }
         val desired = target.position().add(radial.scale(desiredRadius)).add(tangent.scale(RANGED_STRAFE_STEP))
         val adjustedSpeed = phaseSpeed(fight, BOSS_STRAFE_SPEED)
-        entity.navigation.moveTo(desired.x, target.y, desired.z, adjustedSpeed)
-        if (entity.navigation.isDone) entity.moveControl.setWantedPosition(desired.x, target.y, desired.z, adjustedSpeed)
+        moveBossTo(entity, fight, desired.x, target.y, desired.z, adjustedSpeed)
     }
 
     private fun usesRangedBossSpacing(fight: ActiveBossFight): Boolean =
-        fight.moveset.moves.any { move -> move.kind == NpcBossMoveKinds.PROJECTILE || move.kind == NpcBossMoveKinds.SUPPORT } &&
+        fight.moveset.moves.any { move -> move.kind == NpcBossMoveKinds.PROJECTILE || move.kind == NpcBossMoveKinds.BEAM || move.kind == NpcBossMoveKinds.SUPPORT } &&
             fight.moveset.moves.none { move -> move.kind == NpcBossMoveKinds.MELEE }
 
     private fun rangedSpacingBounds(fight: ActiveBossFight): Pair<Double, Double> {
@@ -1221,6 +1443,7 @@ object NpcBossFights {
         clearBossBar(entity, fight)
         entity.navigation.stop()
         NpcCustomAnimationController.restore(entity, fight.animationSnapshot)
+        restoreBossGravity(entity, fight)
         val restoredHealth = if (protectResultDialog) entity.maxHealth else fight.originalHealth.coerceIn(1.0f, entity.maxHealth)
         entity.setHealth(restoredHealth.coerceIn(1.0f, entity.maxHealth))
         if (fight.debug) {
@@ -1767,6 +1990,10 @@ object NpcBossFights {
                 bossItemStack("wizards:staff_wizard", ItemStack(Items.BLAZE_ROD)),
                 ItemStack.EMPTY,
             )
+            "arcane_wizard" -> NpcBossArmory(
+                ItemStack.EMPTY,
+                ItemStack.EMPTY,
+            )
             "priest" -> NpcBossArmory(
                 bossItemStack("paladins:holy_staff", ItemStack(Items.BLAZE_ROD)),
                 ItemStack.EMPTY,
@@ -1786,6 +2013,9 @@ object NpcBossFights {
     private fun bossItemStack(itemId: String, fallback: ItemStack): ItemStack {
         val raw = itemId.trim()
         if (raw.isBlank()) return fallback.copy()
+        if (raw.equals("none", ignoreCase = true) || raw.equals("empty", ignoreCase = true) || raw.equals("air", ignoreCase = true) || raw.equals("minecraft:air", ignoreCase = true)) {
+            return ItemStack.EMPTY
+        }
         val normalized = if (':' in raw) raw else "minecraft:$raw"
         val id = runCatching { ResourceLocation.parse(normalized) }.getOrNull() ?: return fallback.copy()
         val item = BuiltInRegistries.ITEM.getOptional(id).orElse(Items.AIR)
@@ -1829,6 +2059,7 @@ object NpcBossFights {
         val animationSnapshot: NpcAnimationSnapshot,
         val armory: NpcBossArmory,
         val originalHealth: Float,
+        val originalNoGravity: Boolean,
         val bossBar: ServerBossEvent,
         val startedTick: Int = 0,
         var nextActionTick: Int,
@@ -1885,12 +2116,17 @@ object NpcBossFights {
         DEFENSE,
     }
 
+    private enum class GuardResponse {
+        PARRY,
+        ROLL,
+        DODGE,
+    }
+
     private const val MAX_FIGHT_TICKS = 20 * 60 * 5
     private const val TETHER_DISTANCE_SQR = 40.0 * 40.0
     private const val TETHER_GRACE_TICKS = 60
     private const val RECOVERY_TICKS = 14
     private const val GUARD_REACT_TICKS = 6
-    private const val GUARD_RESPONSE_CHOICES = 3
     private const val GUARD_BAIT_MIN_TICKS = 60
     private const val GUARD_BAIT_RANDOM_TICKS = 60
     private const val STATUS_UPDATE_TICKS = 8

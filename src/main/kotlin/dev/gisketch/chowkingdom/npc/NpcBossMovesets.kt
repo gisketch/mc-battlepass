@@ -76,6 +76,7 @@ object NpcBossMovesets {
         defaultRogue(),
         defaultArcher(),
         defaultWizard(),
+        defaultArcaneWizard(),
         defaultPriest(),
         defaultBard(),
         defaultWitcher(),
@@ -357,6 +358,169 @@ object NpcBossMovesets {
         ),
     )
 
+    private fun defaultArcaneWizard(): NpcBossMovesetDefinition = NpcBossMovesetDefinition(
+        id = "arcane_wizard",
+        displayName = "Arcane Wizard",
+        health = 88.0,
+        damage = 3.0,
+        attackStartDistance = 13.0,
+        offenseChainMin = 2,
+        offenseChainRandom = 1,
+        offenseChainRecoveryTicks = 7,
+        approachAnimationId = "spell_engine:one_handed_projectile_charge",
+        strafeAnimationId = "spell_engine:one_handed_projectile_charge",
+        guardAnimationId = "spell_engine:two_handed_channeling",
+        parryAnimationId = "spell_engine:one_handed_area_release",
+        recoveryAnimationId = "spell_engine:one_handed_projectile_charge",
+        recoveryHitsAllowed = 4,
+        guardRollWeight = 0,
+        guardDodgeWeight = 3,
+        guardParryWeight = 2,
+        guardDodgeAnimationId = "spell_engine:one_handed_area_release",
+        guardDodgeTicks = 10,
+        guardDodgeIframeTicks = 10,
+        guardDodgeDistance = 5.0,
+        guardDodgeDirection = "back",
+        hoverHeight = 1.0,
+        parrySpellId = "wizards:arcane_blast",
+        parryParticle = "spell_engine:magic_arcane_burst",
+        parrySoundId = "wizards:arcane_blast_impact",
+        parryDamage = 0.8,
+        parryKnockback = 1.1,
+        phases = mutableListOf(
+            phase(
+                id = "arcane_sequence",
+                displayName = "Arcane Sequence",
+                startsAtHealthRatio = 1.0,
+                damageMultiplier = 1.0,
+                speedMultiplier = 1.0,
+                offenseChainMin = 2,
+                offenseChainRandom = 1,
+                offenseChainRecoveryTicks = 7,
+                musicId = "cataclysm:enderguardian_music_1",
+                musicVolume = 0.5,
+                musicRepeatTicks = 3000,
+            ),
+            phase(
+                id = "invoked_geometry",
+                displayName = "Invoked Geometry",
+                startsAtHealthRatio = 0.5,
+                damageMultiplier = 1.15,
+                speedMultiplier = 1.18,
+                offenseChainMin = 3,
+                offenseChainRandom = 1,
+                offenseChainRecoveryTicks = 6,
+                transitionFallback = "The pattern is complete. Now follow the light.",
+                transitionLlmPrompt = "The duel has reached half health and you are entering a faster arcane spellcaster second phase. Reply as Invoker with one short precise battle line about arcane geometry, spellcraft, or light.",
+                musicId = "cataclysm:maledictus_music",
+                musicVolume = 0.55,
+                musicRepeatTicks = 3000,
+            ),
+        ),
+        moves = mutableListOf(
+            magicProjectile(
+                "arcane_bolt",
+                spellId = "wizards:arcane_bolt",
+                duration = 18,
+                hitTick = 10,
+                damage = 1.4,
+                cooldown = 14,
+                recovery = 12,
+                weight = 8,
+                min = 4.0,
+                max = 14.0,
+                speed = 0.85,
+                impactRadius = 0.45,
+                particle = "spell_engine:magic_spell_ascend",
+                impactParticle = "spell_engine:magic_arcane_burst",
+                castParticle = "spell_engine:magic_spell_ascend",
+                releaseParticle = "spell_engine:magic_arcane_burst",
+                castSoundId = "spell_engine:generic_arcane_casting",
+                releaseSoundId = "wizards:arcane_shoot_small",
+                impactSoundId = "wizards:arcane_missile_impact",
+            ),
+            magicProjectile(
+                "arcane_blast",
+                spellId = "wizards:arcane_blast",
+                duration = 26,
+                hitTick = 16,
+                damage = 2.6,
+                cooldown = 28,
+                recovery = 18,
+                weight = 5,
+                min = 5.0,
+                max = 13.0,
+                speed = 0.62,
+                impactRadius = 0.8,
+                particle = "spell_engine:magic_arcane_float",
+                impactParticle = "spell_engine:magic_arcane_burst",
+                castParticle = "spell_engine:magic_arcane_float",
+                releaseParticle = "spell_engine:magic_arcane_burst",
+                releaseSoundId = "wizards:arcane_blast_release",
+                impactSoundId = "wizards:arcane_blast_impact",
+                knockback = 0.85,
+            ),
+            magicProjectile(
+                "arcane_missile",
+                spellId = "wizards:arcane_missile",
+                duration = 32,
+                hitTick = 20,
+                damage = 1.2,
+                cooldown = 44,
+                recovery = 22,
+                weight = 5,
+                min = 5.0,
+                max = 14.0,
+                speed = 0.72,
+                impactRadius = 0.55,
+                particle = "spell_engine:magic_arcane_float",
+                impactParticle = "spell_engine:magic_arcane_burst",
+                animationId = "spell_engine:two_handed_channeling",
+                releaseAnimationId = "spell_engine:one_handed_projectile_release",
+                castParticle = "spell_engine:magic_arcane_float",
+                releaseParticle = "spell_engine:magic_arcane_burst",
+                castSoundId = "wizards:arcane_beam_casting",
+                releaseSoundId = "wizards:arcane_missile_release",
+                impactSoundId = "wizards:arcane_missile_impact",
+                count = 3,
+                spreadDegrees = 8.0,
+                minPhaseIndex = 1,
+            ),
+            beam(
+                "arcane_beam",
+                spellId = "wizards:arcane_beam",
+                duration = 42,
+                hitTicks = listOf(20, 25, 30, 35),
+                damage = 0.8,
+                cooldown = 74,
+                recovery = 24,
+                weight = 4,
+                min = 5.0,
+                max = 14.0,
+                impactRadius = 0.8,
+                particle = "spell_engine:magic_arcane_float",
+                impactParticle = "spell_engine:magic_arcane_burst",
+                castParticle = "spell_engine:magic_arcane_float",
+                releaseParticle = "spell_engine:magic_arcane_burst",
+                castSoundId = "wizards:arcane_beam_start",
+                releaseSoundId = "wizards:arcane_beam_release",
+                impactSoundId = "wizards:arcane_beam_impact",
+                minPhaseIndex = 1,
+            ),
+            dodge(
+                "arcane_blink",
+                animationId = "spell_engine:one_handed_area_release",
+                duration = 10,
+                cooldown = 34,
+                distance = 5.0,
+                direction = "side",
+                weight = 3,
+                supportParticle = "minecraft:portal",
+                releaseSoundId = "minecraft:entity.enderman.teleport",
+            ),
+        ),
+    )
+
     private fun defaultPriest(): NpcBossMovesetDefinition = NpcBossMovesetDefinition(
         id = "priest",
         displayName = "Priest",
@@ -627,6 +791,7 @@ object NpcBossMovesets {
         castSoundId: String = "",
         releaseSoundId: String = "",
         impactSoundId: String = "",
+        knockback: Double = 0.35,
         count: Int = 1,
         spreadDegrees: Double = 0.0,
         minPhaseIndex: Int = 0,
@@ -663,6 +828,58 @@ object NpcBossMovesets {
         castSoundId = castSoundId,
         releaseSoundId = releaseSoundId,
         impactSoundId = impactSoundId,
+        knockback = knockback,
+        minPhaseIndex = minPhaseIndex,
+        maxPhaseIndex = maxPhaseIndex,
+    )
+
+    private fun beam(
+        id: String,
+        spellId: String,
+        duration: Int,
+        hitTicks: List<Int>,
+        damage: Double,
+        cooldown: Int,
+        recovery: Int,
+        weight: Int,
+        min: Double,
+        max: Double,
+        impactRadius: Double,
+        particle: String,
+        impactParticle: String,
+        castParticle: String = "",
+        releaseParticle: String = "",
+        castSoundId: String = "",
+        releaseSoundId: String = "",
+        impactSoundId: String = "",
+        minPhaseIndex: Int = 0,
+        maxPhaseIndex: Int = 99,
+    ): NpcBossMoveDefinition = NpcBossMoveDefinition(
+        id = id,
+        kind = NpcBossMoveKinds.BEAM,
+        animationId = "spell_engine:two_handed_channeling",
+        releaseAnimationId = "spell_engine:one_handed_projectile_release",
+        spellId = spellId,
+        durationTicks = duration,
+        hitTicks = hitTicks.toMutableList(),
+        damage = damage,
+        range = max,
+        arcDegrees = 70.0,
+        cooldownTicks = cooldown,
+        recoveryTicks = recovery,
+        weight = weight,
+        minDistance = min,
+        maxDistance = max,
+        projectileType = "magic",
+        projectileParticle = particle,
+        impactParticle = impactParticle,
+        impactRadius = impactRadius,
+        castParticle = castParticle,
+        releaseParticle = releaseParticle,
+        castSoundId = castSoundId,
+        releaseSoundId = releaseSoundId,
+        impactSoundId = impactSoundId,
+        knockback = 0.25,
         minPhaseIndex = minPhaseIndex,
         maxPhaseIndex = maxPhaseIndex,
     )
@@ -720,6 +937,9 @@ object NpcBossMovesets {
     private fun roll(id: String, animationId: String, duration: Int, cooldown: Int, distance: Double, direction: String, weight: Int, supportParticle: String = ""): NpcBossMoveDefinition =
         NpcBossMoveDefinition(id = id, kind = NpcBossMoveKinds.ROLL, animationId = animationId, durationTicks = duration, hitTicks = mutableListOf(), damage = 0.0, cooldownTicks = cooldown, recoveryTicks = 0, weight = weight, minDistance = 0.0, maxDistance = 3.5, rollDistance = distance, rollDirection = direction, iframeStartTick = 0, iframeEndTick = duration.coerceAtLeast(1), supportParticle = supportParticle)
 
+    private fun dodge(id: String, animationId: String, duration: Int, cooldown: Int, distance: Double, direction: String, weight: Int, supportParticle: String = "", releaseSoundId: String = ""): NpcBossMoveDefinition =
+        NpcBossMoveDefinition(id = id, kind = NpcBossMoveKinds.DODGE, animationId = animationId, releaseAnimationId = animationId, durationTicks = duration, hitTicks = mutableListOf(), damage = 0.0, cooldownTicks = cooldown, recoveryTicks = 0, weight = weight, minDistance = 0.0, maxDistance = 14.0, rollDistance = distance, rollDirection = direction, iframeStartTick = 0, iframeEndTick = duration.coerceAtLeast(1), supportParticle = supportParticle, releaseSoundId = releaseSoundId)
+
     private fun phase(
         id: String,
         displayName: String,
@@ -757,8 +977,10 @@ object NpcBossMoveKinds {
     const val MELEE = "melee"
     const val AREA = "area"
     const val PROJECTILE = "projectile"
+    const val BEAM = "beam"
     const val SUPPORT = "support"
     const val ROLL = "roll"
+    const val DODGE = "dodge"
 }
 
 class NpcBossMovesetDefinition(
@@ -789,17 +1011,24 @@ class NpcBossMovesetDefinition(
     @SerializedName("guard_roll_ticks") var guardRollTicks: Int = 14,
     @SerializedName("guard_roll_iframe_ticks") var guardRollIframeTicks: Int = 14,
     @SerializedName("guard_roll_distance") var guardRollDistance: Double = 3.0,
+    @SerializedName("guard_roll_weight") var guardRollWeight: Int = 1,
     @SerializedName("guard_dodge_animation_id") var guardDodgeAnimationId: String = DEFAULT_DODGE_ANIMATION,
     @SerializedName("guard_dodge_animation_source") var guardDodgeAnimationSource: String = NpcBossAnimationSources.PLAYERLIKE,
     @SerializedName("guard_dodge_ticks") var guardDodgeTicks: Int = 12,
     @SerializedName("guard_dodge_iframe_ticks") var guardDodgeIframeTicks: Int = 10,
     @SerializedName("guard_dodge_distance") var guardDodgeDistance: Double = 2.4,
     @SerializedName("guard_dodge_direction") var guardDodgeDirection: String = "back",
+    @SerializedName("guard_dodge_weight") var guardDodgeWeight: Int = 1,
+    @SerializedName("guard_parry_weight") var guardParryWeight: Int = 1,
+    @SerializedName("hover_height") var hoverHeight: Double = 0.0,
     @SerializedName("guard_min_ticks") var guardMinTicks: Int = 60,
     @SerializedName("guard_random_ticks") var guardRandomTicks: Int = 60,
     @SerializedName("guard_taunt_min_ticks") var guardTauntMinTicks: Int = 40,
     @SerializedName("guard_taunt_random_ticks") var guardTauntRandomTicks: Int = 40,
     @SerializedName("recovery_hits_allowed") var recoveryHitsAllowed: Int = 1,
+    @SerializedName("parry_spell_id") var parrySpellId: String = "",
+    @SerializedName("parry_particle") var parryParticle: String = "",
+    @SerializedName("parry_sound_id") var parrySoundId: String = "",
     @SerializedName("parry_damage") var parryDamage: Double = 0.0,
     @SerializedName("parry_knockback") var parryKnockback: Double = 0.6,
     var phases: MutableList<NpcBossPhaseDefinition> = mutableListOf(),
@@ -834,17 +1063,25 @@ class NpcBossMovesetDefinition(
         guardRollTicks = guardRollTicks.coerceIn(1, 40)
         guardRollIframeTicks = guardRollIframeTicks.coerceIn(0, guardRollTicks)
         guardRollDistance = guardRollDistance.coerceIn(0.0, 8.0)
+        guardRollWeight = guardRollWeight.coerceIn(0, 20)
         guardDodgeAnimationId = cleanBossPlayerlikeAnimation(guardDodgeAnimationId, DEFAULT_DODGE_ANIMATION)
         guardDodgeAnimationSource = NpcBossAnimationSources.PLAYERLIKE
         guardDodgeTicks = guardDodgeTicks.coerceIn(1, 40)
         guardDodgeIframeTicks = guardDodgeIframeTicks.coerceIn(0, guardDodgeTicks)
         guardDodgeDistance = guardDodgeDistance.coerceIn(0.0, 8.0)
         guardDodgeDirection = cleanEvadeDirection(guardDodgeDirection)
+        guardDodgeWeight = guardDodgeWeight.coerceIn(0, 20)
+        guardParryWeight = guardParryWeight.coerceIn(0, 20)
+        if (guardRollWeight + guardDodgeWeight + guardParryWeight <= 0) guardParryWeight = 1
+        hoverHeight = hoverHeight.coerceIn(0.0, 4.0)
         guardMinTicks = guardMinTicks.coerceIn(10, 20 * 30)
         guardRandomTicks = guardRandomTicks.coerceIn(0, 20 * 30)
         guardTauntMinTicks = guardTauntMinTicks.coerceIn(10, 20 * 30)
         guardTauntRandomTicks = guardTauntRandomTicks.coerceIn(0, 20 * 30)
         recoveryHitsAllowed = recoveryHitsAllowed.coerceIn(0, 10)
+        parrySpellId = cleanAnimation(parrySpellId, "")
+        parryParticle = cleanAnimation(parryParticle, "")
+        parrySoundId = cleanAnimation(parrySoundId, "")
         parryDamage = parryDamage.coerceIn(0.0, 1000.0)
         parryKnockback = parryKnockback.coerceIn(0.0, 4.0)
         phases = phases
@@ -1011,8 +1248,10 @@ class NpcBossMoveDefinition(
         kind = when (kind.trim().lowercase()) {
             NpcBossMoveKinds.AREA, "spell" -> NpcBossMoveKinds.AREA
             NpcBossMoveKinds.PROJECTILE, "ranged", "arrow", "bow" -> NpcBossMoveKinds.PROJECTILE
+            NpcBossMoveKinds.BEAM, "ray", "channel", "channeled" -> NpcBossMoveKinds.BEAM
             NpcBossMoveKinds.SUPPORT, "heal", "shield", "buff" -> NpcBossMoveKinds.SUPPORT
-            NpcBossMoveKinds.ROLL, "dodge", "evade" -> NpcBossMoveKinds.ROLL
+            NpcBossMoveKinds.DODGE, "blink", "teleport" -> NpcBossMoveKinds.DODGE
+            NpcBossMoveKinds.ROLL, "evade" -> NpcBossMoveKinds.ROLL
             else -> NpcBossMoveKinds.MELEE
         }
         animationId = animationId.trim().lowercase().replace(Regex("[^a-z0-9_.:/-]+"), "_").trim('_')
@@ -1033,18 +1272,27 @@ class NpcBossMoveDefinition(
         if (kind == NpcBossMoveKinds.PROJECTILE && animationId == NpcBossMovesetDefinition.DEFAULT_COUNTER_ANIMATION) {
             animationId = "spell_engine:archery_pull"
         }
+        if (kind == NpcBossMoveKinds.BEAM && animationId == NpcBossMovesetDefinition.DEFAULT_COUNTER_ANIMATION) {
+            animationId = "spell_engine:two_handed_channeling"
+        }
         animationSource = NpcBossAnimationSources.PLAYERLIKE
         releaseAnimationId = releaseAnimationId.trim().lowercase().replace(Regex("[^a-z0-9_.:/-]+"), "_").trim('_')
-            .ifBlank { if (kind == NpcBossMoveKinds.PROJECTILE) "spell_engine:archery_release" else animationId }
+            .ifBlank {
+                when (kind) {
+                    NpcBossMoveKinds.PROJECTILE -> "spell_engine:archery_release"
+                    NpcBossMoveKinds.BEAM -> "spell_engine:one_handed_projectile_release"
+                    else -> animationId
+                }
+            }
         releaseAnimationSource = NpcBossAnimationSources.PLAYERLIKE
         spellId = spellId.trim().lowercase().replace(Regex("[^a-z0-9_.:/-]+"), "_").trim('_')
         durationTicks = durationTicks.coerceIn(1, 20 * 10)
         hitTicks = hitTicks.map { tick -> tick.coerceIn(0, durationTicks) }.distinct().sorted().toMutableList()
-        if (kind != NpcBossMoveKinds.ROLL && hitTicks.isEmpty()) hitTicks = mutableListOf((durationTicks / 2).coerceAtLeast(1))
-        if (kind == NpcBossMoveKinds.ROLL) hitTicks = mutableListOf()
+        if (kind != NpcBossMoveKinds.ROLL && kind != NpcBossMoveKinds.DODGE && hitTicks.isEmpty()) hitTicks = mutableListOf((durationTicks / 2).coerceAtLeast(1))
+        if (kind == NpcBossMoveKinds.ROLL || kind == NpcBossMoveKinds.DODGE) hitTicks = mutableListOf()
         cooldownTicks = cooldownTicks.coerceIn(0, 20 * 60)
         recoveryTicks = recoveryTicks.coerceIn(0, 20 * 10)
-        damage = if (kind == NpcBossMoveKinds.ROLL || kind == NpcBossMoveKinds.SUPPORT) 0.0 else damage.takeIf { it > 0.0 }?.coerceIn(0.0, 1000.0) ?: baseDamage
+        damage = if (kind == NpcBossMoveKinds.ROLL || kind == NpcBossMoveKinds.DODGE || kind == NpcBossMoveKinds.SUPPORT) 0.0 else damage.takeIf { it > 0.0 }?.coerceIn(0.0, 1000.0) ?: baseDamage
         range = range.coerceIn(0.5, 16.0)
         arcDegrees = arcDegrees.coerceIn(1.0, 360.0)
         areaRadius = if (kind == NpcBossMoveKinds.AREA) areaRadius.takeIf { it > 0.0 }?.coerceIn(0.5, 16.0) ?: range else 0.0

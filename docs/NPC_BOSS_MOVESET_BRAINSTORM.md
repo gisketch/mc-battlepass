@@ -177,6 +177,8 @@ Arcane options:
 - `wizards:arcane_missile`, animation `spell_engine:two_handed_channeling`
 - `wizards:arcane_blink`, animation `spell_engine:one_handed_area_release`
 
+Implemented boss direction: `arcane_wizard` is an empty-hand floating caster. It uses CKDM magic projectile/beam simulation for arcane bolt, blast, missile, and beam, plus blink teleport dodges with portal/enderman effects. No staff, sword, melee move, weapon parry, or combat roll.
+
 ### Zuko - Fire Wizard
 
 Class: `fire_wizard`

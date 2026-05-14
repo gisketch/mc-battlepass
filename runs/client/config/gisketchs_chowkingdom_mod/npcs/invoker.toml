@@ -20,17 +20,19 @@ work_blocks = [
 
 [boss]
 enabled = true
-health = 90.0
-damage = 6.0
+health = 88.0
+damage = 3.0
 template = "sword_user"
+main_hand = "none"
+off_hand = "none"
 
 [boss.balloons]
-chase = ["Fleeing only prolongs your curriculum.", "Observe Wex converted into pursuit.", "Speed is a learnable variable.", "Your retreat is data.", "I have calculated your trajectory.", "Run. It amuses the quas element.", "Exort propels. You merely stumble.", "Your flight is being graded.", "Distance is irrelevant to the arcane.", "You cannot outrun quas-wex fusion."]
-attack = ["Exort demands punctuation.", "A demonstration of superior timing.", "Three elements. One lesson.", "Quas freezes. Exort burns. You lose.", "Arcane thesis: delivered.", "The invocation is complete.", "Wex guides the steel.", "Observe the elements obey.", "A minor display of dominance.", "Your defeat is formulaic."]
-recovery = ["There. Your microscopic opportunity.", "Strike, apprentice, before I grow bored.", "A gap. Statistically improbable.", "Even archmages breathe. Briefly.", "Your window. Minuscule but real.", "The elements pause. Exploit it.", "I have granted you a moment.", "Aperture detected. Act.", "Do not let the opening go unanalyzed.", "Now. Before I recalculate."]
+chase = ["Fleeing only prolongs your curriculum.", "Distance is a solvable variable.", "Your retreat is data.", "I have calculated your trajectory.", "Float, vector, release.", "Distance is irrelevant to the arcane.", "You cannot outrun geometry."]
+attack = ["Arcane vector released.", "A demonstration of superior timing.", "Force, made visible.", "Arcane thesis: delivered.", "The invocation is complete.", "Observe the equations obey.", "A minor display of dominance.", "Your defeat is formulaic."]
+recovery = ["There. Your microscopic opportunity.", "Strike, apprentice, before I grow bored.", "A gap. Statistically improbable.", "Even archmages breathe. Briefly.", "Your window. Minuscule but real.", "The pattern pauses. Exploit it.", "I have granted you a moment.", "Aperture detected. Act.", "Do not let the opening go unanalyzed.", "Now. Before I recalculate."]
 taunt = ["Take the bait. It is calibrated for you.", "Your impatience is practically visible.", "This opening is an academic trap.", "I left that gap like a footnote.", "Your curiosity will be your undoing.", "Peer review suggests you will fall for this.", "A lure so obvious even an apprentice...", "Come. The bait is beneath you. Literally.", "You see the opening? It sees you too.", "Temptation is the first failed exam."]
-guard_react = ["A crude thesis, elegantly refuted.", "Predictable. Painfully so.", "Your approach was reviewed and rejected.", "I anticipated that five minutes ago.", "Elementary. In both senses.", "Even quas saw that coming.", "Your combat theory needs revision.", "A swing so basic it offends.", "Grade: Insufficient.", "I could counter that while meditating."]
-parry = ["Parried by intellect made motion.", "Quas preserves. Wex redirects.", "Elements intercept.", "Your blade met my syllabus.", "Denied by elementary forces.", "Arcane calculus prevailed.", "Weapon diverted. Read a book.", "Quas-wex deflection complete.", "Your steel is philosophically inadequate.", "Redirected. Study harder."]
+guard_react = ["A crude thesis, elegantly refuted.", "Predictable. Painfully so.", "Your approach was reviewed and rejected.", "I anticipated that five minutes ago.", "Elementary. In both senses.", "Even the ward saw that coming.", "Your combat theory needs revision.", "A swing so basic it offends.", "Grade: Insufficient.", "I could counter that while meditating."]
+parry = ["Parried by intellect made motion.", "Arcane ward complete.", "Force intercepted.", "Your blade met my syllabus.", "Denied by spell geometry.", "Arcane calculus prevailed.", "Trajectory diverted. Read a book.", "Counterspell complete.", "Your angle is philosophically inadequate.", "Redirected. Study harder."]
 hit_player = ["A correction delivered with mercy.", "Your guard was a philosophical failure.", "Marked for improvement.", "That was remedial contact.", "A footnote of pain.", "Your defense received a failing grade.", "Corrective impact registered.", "Lesson learned via blunt trauma.", "A small amendment to your technique.", "You will cite this moment in your thesis."]
 took_damage = ["Marginal competence. Continue.", "A glimmer of aptitude. Do not celebrate.", "You exceeded expectations. Slightly.", "A passing grade. Barely.", "The elements acknowledge the strike.", "Adequate. Do not let it inflate you.", "Your thesis improves.", "Passable. For now.", "A data point of mild interest.", "You have earned a footnote."]
 victory = ["I triumph, naturally. Your vitals are restored.", "The lesson concludes. I healed you; do not squander it.", "Victory was inevitable. You are mended.", "My win. Health restored for remedial study.", "The archmage prevails. You are healed.", "I win. Your body is repaired. Your mind needs work.", "Triumph complete. Wounds erased.", "I have won and healed you. Gratitude optional.", "The elements say I win. Your health says restored.", "Curriculum delivered. Vitals normalized."]
