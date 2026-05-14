@@ -136,6 +136,8 @@ Live label: `NPC mode: recovery`
 - If final recovery times out before the hit cap, enter `GUARD_MODE`.
 - If a health threshold advances the moveset phase during recovery, combat pauses immediately for the transition NPC dialog, then resumes in offense.
 
+Attack-phase hits reduce virtual boss health but do not interrupt the current attack animation or scheduled hit ticks. If a health threshold is crossed during an attack, the phase transition waits until that attack finishes.
+
 ### Phase Dialogue
 
 Live label: `NPC mode: dialogue`
@@ -303,6 +305,7 @@ Bard neutral movement should hold range around 6-12 blocks:
 - Pope Leo uses the priest moveset and equips `paladins:holy_staff` during the duel.
 - Bard phase 1 duplicates Archer shot timing with `starshot`, `mocking_shot`, and `ballad_shot`; phase 2 duplicates Archer 2-3 shot chains and unlocks `crescendo_volley`.
 - Venti uses Bard's archer-style health/damage tuning and equips `bards_rpg:aether_harp_crossbow` during the duel.
+- Berserker/Zagreus uses `simplyswords:ribboncleaver`, slow heavy two-handed attacks, long but bounded recovery windows, and Berserker RPG blood/rage/thunder/frost VFX. Phase 2 chains 2-3 heavy attacks and unlocks `rumbling_swing` and `nordic_storm`.
 - Track a random guard-bait timeout between 60 and 120 ticks.
 - Keep the live status label aligned with these state names.
 - Keep this behavior inside the bossfight controller so future templates can swap the state graph without changing base NPC routines.

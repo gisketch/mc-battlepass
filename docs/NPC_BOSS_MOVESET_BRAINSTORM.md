@@ -143,6 +143,8 @@ Good boss moves:
 - Generic heavy slam: `animation_id = "bettercombat:two_handed_slam_heavy"`
 - Whirlwind visual: `animation_id = "simplyswords:two_handed_whirlwind"`
 
+Implemented boss direction: `berserker` equips `simplyswords:ribboncleaver`, uses slow heavy two-handed attacks with controlled-frenzy Zagreus tone, and relies on Berserker RPG blood/rage/thunder/frost VFX. Phase 2 adds rumbling swing and nordic storm.
+
 ### Aloy - Bounty Hunter
 
 Class: `bounty_hunter`

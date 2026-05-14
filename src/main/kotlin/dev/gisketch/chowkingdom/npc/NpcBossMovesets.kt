@@ -79,6 +79,7 @@ object NpcBossMovesets {
         defaultArcaneWizard(),
         defaultPriest(),
         defaultBard(),
+        defaultBerserker(),
         defaultWitcher(),
     )
 
@@ -582,6 +583,72 @@ object NpcBossMovesets {
         ),
     )
 
+    private fun defaultBerserker(): NpcBossMovesetDefinition = NpcBossMovesetDefinition(
+        id = "berserker",
+        displayName = "Berserker",
+        health = 105.0,
+        damage = 4.5,
+        attackStartDistance = 5.0,
+        offenseChainMin = 1,
+        offenseChainRandom = 0,
+        offenseChainRecoveryTicks = 14,
+        approachAnimationId = "simplyswords:pose_two_handed_dragable",
+        strafeAnimationId = "simplyswords:pose_two_handed_dragable",
+        guardAnimationId = "simplyswords:pose_two_handed_dragable",
+        parryAnimationId = "bettercombat:two_handed_slam",
+        recoveryAnimationId = "simplyswords:pose_two_handed_dragable",
+        recoveryHitsAllowed = 4,
+        guardRollWeight = 0,
+        guardDodgeWeight = 1,
+        guardParryWeight = 4,
+        guardDodgeAnimationId = "spell_engine:dodge",
+        guardDodgeDistance = 2.2,
+        guardDodgeDirection = "side",
+        parryDamage = 1.1,
+        parryKnockback = 1.0,
+        parryParticle = "more_rpg_classes:rage_particle",
+        parrySoundId = "simplyswords:dark_sword_parry",
+        phases = mutableListOf(
+            phase(
+                id = "blood_oath",
+                displayName = "Blood Oath",
+                startsAtHealthRatio = 1.0,
+                damageMultiplier = 1.0,
+                speedMultiplier = 0.94,
+                offenseChainMin = 1,
+                offenseChainRandom = 0,
+                offenseChainRecoveryTicks = 14,
+                musicId = "cataclysm:enderguardian_music_1",
+                musicVolume = 0.55,
+                musicRepeatTicks = 3000,
+            ),
+            phase(
+                id = "death_defiance",
+                displayName = "Death Defiance",
+                startsAtHealthRatio = 0.5,
+                damageMultiplier = 1.2,
+                speedMultiplier = 1.08,
+                offenseChainMin = 2,
+                offenseChainRandom = 1,
+                offenseChainRecoveryTicks = 12,
+                transitionFallback = "Blood and darkness. One more run.",
+                transitionLlmPrompt = "The duel has reached half health and you are entering a heavier, more frenzied Berserker second phase. Reply as Zagreus with one short battle line: witty, controlled, dangerous, not cruel.",
+                musicId = "cataclysm:maledictus_music",
+                musicVolume = 0.6,
+                musicRepeatTicks = 3000,
+            ),
+        ),
+        moves = mutableListOf(
+            melee("blood_sweep", "simplyswords:dragable_slash_upward", duration = 31, hitTick = 17, damage = 3.9, range = 4.1, arc = 75.0, cooldown = 32, recovery = 28, weight = 6, spellId = "berserker_rpg:bloody_strike", impactParticle = "spell_engine:dripping_blood", releaseParticle = "more_rpg_classes:rage_particle", releaseSoundId = "simplyswords:elemental_sword_earth_attack_01", impactSoundId = "berserker_rpg:bloody_strike", knockback = 0.65),
+            melee("red_line_chop", "bettercombat:two_handed_slam", duration = 36, hitTick = 21, damage = 5.2, range = 4.0, arc = 55.0, cooldown = 44, recovery = 34, weight = 4, spellId = "berserker_rpg:bloody_strike", impactParticle = "more_rpg_classes:blood_drop", releaseParticle = "crimson_spore", releaseSoundId = "simplyswords:elemental_sword_earth_attack_02", impactSoundId = "simplyswords:object_impact_thud", knockback = 0.95),
+            melee("decapitate", "berserker_rpg:decapitate_charge", duration = 44, hitTick = 28, damage = 6.3, range = 4.3, arc = 65.0, cooldown = 78, recovery = 40, weight = 3, spellId = "berserker_rpg:decapitate", releaseAnimationId = "berserker_rpg:decapitate_release", castParticle = "crimson_spore", releaseParticle = "spell_engine:dripping_blood", impactParticle = "more_rpg_classes:blood_drop", releaseSoundId = "berserker_rpg:decapitate_swing", impactSoundId = "berserker_rpg:decapitate_impact", knockback = 1.25),
+            area("wild_rage", "more_rpg_classes:two_handed_roar", duration = 25, hitTick = 13, damage = 1.0, radius = 3.1, cooldown = 64, recovery = 24, weight = 3, min = 0.0, max = 4.0, spellId = "berserker_rpg:wild_rage", knockback = 1.0, impactParticle = "more_rpg_classes:rage_particle", releaseParticle = "spell_engine:magic_stripe_float", releaseSoundId = "berserker_rpg:wild_rage", impactSoundId = "berserker_rpg:wild_rage"),
+            area("rumbling_swing", "berserker_rpg:rumbling_swing", duration = 38, hitTick = 21, damage = 4.6, radius = 4.2, cooldown = 58, recovery = 32, weight = 4, min = 0.0, max = 5.2, spellId = "berserker_rpg:rumbling_swing", knockback = 1.35, arc = 130.0, impactParticle = "electric_spark", releaseParticle = "electric_spark", releaseSoundId = "minecraft:entity.player.attack.sweep", impactSoundId = "minecraft:entity.lightning_bolt.impact", minPhaseIndex = 1),
+            area("nordic_storm", "berserker_rpg:nordic_storm", duration = 44, hitTick = 24, damage = 3.5, radius = 3.6, cooldown = 68, recovery = 34, weight = 3, min = 0.0, max = 4.4, spellId = "berserker_rpg:nordic_storm", knockback = 0.7, impactParticle = "spell_engine:frost_shard", releaseParticle = "sweep_attack", castParticle = "spell_engine:frost_shard", releaseSoundId = "spell_engine:generic_frost_impact", impactSoundId = "minecraft:item.axe.strip", statusEffectId = "minecraft:slowness", statusEffectTicks = 30, minPhaseIndex = 1),
+            roll("death_defiance_step", "spell_engine:dodge", duration = 12, cooldown = 46, distance = 2.4, direction = "side", weight = 2, supportParticle = "more_rpg_classes:rage_particle"),
+        ),
+    )
+
     private fun defaultWitcher(): NpcBossMovesetDefinition = NpcBossMovesetDefinition(
         id = "witcher",
         displayName = "Witcher",
@@ -664,10 +731,11 @@ object NpcBossMovesets {
         castSoundId: String = "",
         releaseSoundId: String = "",
         impactSoundId: String = "",
+        knockback: Double = 0.35,
         minPhaseIndex: Int = 0,
         maxPhaseIndex: Int = 99,
     ): NpcBossMoveDefinition =
-        NpcBossMoveDefinition(id = id, kind = NpcBossMoveKinds.MELEE, animationId = animationId, releaseAnimationId = releaseAnimationId, spellId = spellId, durationTicks = duration, hitTicks = mutableListOf(hitTick), damage = damage, range = range, arcDegrees = arc, cooldownTicks = cooldown, recoveryTicks = recovery, weight = weight, maxDistance = range + 0.4, castParticle = castParticle, releaseParticle = releaseParticle, impactParticle = impactParticle, castSoundId = castSoundId, releaseSoundId = releaseSoundId, impactSoundId = impactSoundId, minPhaseIndex = minPhaseIndex, maxPhaseIndex = maxPhaseIndex)
+        NpcBossMoveDefinition(id = id, kind = NpcBossMoveKinds.MELEE, animationId = animationId, releaseAnimationId = releaseAnimationId, spellId = spellId, durationTicks = duration, hitTicks = mutableListOf(hitTick), damage = damage, range = range, arcDegrees = arc, cooldownTicks = cooldown, recoveryTicks = recovery, weight = weight, maxDistance = range + 0.4, knockback = knockback, castParticle = castParticle, releaseParticle = releaseParticle, impactParticle = impactParticle, castSoundId = castSoundId, releaseSoundId = releaseSoundId, impactSoundId = impactSoundId, minPhaseIndex = minPhaseIndex, maxPhaseIndex = maxPhaseIndex)
 
     private fun area(
         id: String,

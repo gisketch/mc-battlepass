@@ -22,13 +22,15 @@ work_blocks = [
 [boss]
 enabled = true
 health = 105.0
-damage = 5.5
+damage = 4.5
 template = "sword_user"
+main_hand = "simplyswords:ribboncleaver"
+off_hand = "none"
 
 [boss.balloons]
 chase = ["One more run, {player}!", "No easy exits this time.", "Keep moving. The underworld loves a chase.", "You run like you have not died before.", "This is barely Asphodel pace!", "Faster! Father is not watching.", "Dash through. I will catch up.", "Running is half the fun, mate!", "Elysium teaches better footwork.", "You are not losing me that easy!"]
-attack = ["Coming in hot!", "Mind the underworld hospitality!", "Stygius swings!", "Blood and darkness!", "A boon for your face!", "Zagreus special!", "Hot as the Phlegethon!", "Try dodging this one!", "House of Hades says hello!", "Aspect of aggression!"]
-recovery = ["There you go. Take the opening.", "Your turn before Father critiques me.", "Gap! Use it before I recover!", "I dropped my guard. Shocking.", "Window open. Climb through.", "Quick! Achilles would be proud.", "An opening. Rare. Earned.", "Strike now! For the blood!", "Your chance. Do not waste it.", "Now! Before the boon refreshes!"]
+attack = ["Coming in heavy!", "Mind the underworld hospitality!", "Blood and darkness!", "A boon for your face!", "Zagreus special!", "Try dodging this one!", "House of Hades says hello!", "Red line, coming through!", "This one's got weight!", "Aspect of aggression!"]
+recovery = ["There you go. Take the opening.", "Your turn before Father critiques me.", "Gap! Use it before I recover!", "Heavy swing. Fair opening.", "Window open. Climb through.", "Quick! Achilles would be proud.", "An opening. Rare. Earned.", "Strike now! For the blood!", "Your chance. Do not waste it.", "Now! Before the boon refreshes!"]
 taunt = ["Tempting gap, is it not?", "Go on. I promise it is only mostly a trap.", "You call that a dodge? Cute.", "I have died to worse. Much worse.", "Zagreus bait. Sixty percent effective.", "Come on. I mock Father harder than this.", "Skelly would block better than you.", "Is that your best? I am barely trying.", "You hit like Hypnos after a nap.", "The Pact demands better effort!"]
 guard_react = ["Ah, you took the bait.", "Seen that one in Elysium.", "Predictable. Like Lernie's patterns.", "You swing like a shade.", "I know that attack. Old news.", "Thesius telegraphs less than you.", "Bait swallowed. Hook set.", "Read you like the Codex.", "That was a Tartarus-level swing.", "You ran right into it, mate."]
 parry = ["Parried. Still alive? Good.", "Nice try. Bad boon.", "Denied! With underworld flair.", "Your blade met the Styx.", "Parry. Death denied.", "Deflected like Father's lectures.", "Not this run, friend.", "Blocked. Try a different keepsake.", "Your attack took a swim in the Styx.", "Redirected. Very olympian."]

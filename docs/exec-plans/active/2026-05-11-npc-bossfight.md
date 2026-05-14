@@ -25,6 +25,7 @@ Add and evolve an extensible NPC bossfight prototype using the current SmartBrai
 - Arcane Wizard/Invoker has a separate empty-hand floating caster boss fight using arcane projectile, beam, blink teleport, and ward-parry VFX; it has no melee, staff, sword, or combat roll.
 - Priest/Pope Leo has a templated two-phase support caster boss fight using PlayerAnimator-only Spell Engine healing clips, registry-backed Spell Engine / Paladins VFX ids, limited healing, and temporary virtual absorption.
 - Bard/Venti has a separate archer-style boss fight using real arrows, harp-crossbow PlayerAnimator clips, Bard spell ids, music-note/star VFX, and no melee/support/area moves.
+- Berserker/Zagreus has a separate slow heavy melee boss fight using `simplyswords:ribboncleaver`, bounded long recovery windows, and Berserker RPG blood/rage/thunder/frost VFX.
 - Phase transitions pause combat and open the NPC dialog screen with animalese voice; they support an LLM-injected line with a configured fallback and do not use world chat.
 - The visible boss bar is the custom CKDM HUD bar using the 9-slice progress textures and client-side HP lerp.
 - Boss music is a templated sound-event hook on moveset phases; no third-party music assets are copied into the repo.
@@ -64,6 +65,7 @@ Add and evolve an extensible NPC bossfight prototype using the current SmartBrai
 - Boss moveset `phases` own health thresholds, damage/speed multipliers, offense-chain tuning, transition dialogue, and optional music sound ids.
 - Keep music implementation asset-neutral: configs reference sound event ids only, and the mod owner supplies actual audio/assets.
 - Boss armory is cosmetic and per-NPC: `main_hand` / `off_hand` equip during the duel, while moveset damage and phase multipliers still own combat damage.
+- Duelist hits during boss `ATTACK` reduce virtual boss health without interrupting the active attack animation or scheduled hit ticks; phase transition waits until the attack ends.
 - Finn V1 uses `simplyswords:diamond_longsword`; Ezio V1 uses dual `simplyswords:iron_rapier`.
 - Projectile boss moves spawn real vanilla arrows at release ticks. `archer` uses `spell_engine:archery_pull`/`spell_engine:archery_release`, and Huntress Wizard equips `archers:composite_longbow`.
 - Magic projectile boss moves use particle travel, block collision, shield/roll counterplay, impact radius, and optional status effects. `wizard` uses arcane, fire, and frost starter spells, and Gandalf equips `wizards:staff_wizard`.
@@ -107,3 +109,4 @@ Add and evolve an extensible NPC bossfight prototype using the current SmartBrai
 - 2026-05-14: Temporarily deleted the separate Bard boss moveset path while isolating the axe-like instrument animation issue.
 - 2026-05-14: Recreated Bard as its own Archer-style real-arrow moveset with harp crossbow armory, harp channel/release animations, Bard spell metadata, star/music arrow VFX, phase 2 crescendo volley, and no melee/support/area moves.
 - 2026-05-15: Added Arcane Wizard/Invoker as an empty-hand floating caster with arcane bolt/blast/missile/beam, blink teleport dodge, arcane parry VFX, and no melee/equipment/roll kit.
+- 2026-05-15: Added Berserker/Zagreus with Ribboncleaver, slow heavy attacks, longer recoveries, phase-2 rumbling swing/nordic storm, and attack-phase damage that does not interrupt boss animations.

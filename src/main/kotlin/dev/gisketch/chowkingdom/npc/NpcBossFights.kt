@@ -230,8 +230,8 @@ object NpcBossFights {
                 blockBossHit(entity)
                 true
             }
-            BossFightPhase.CHASE,
-            BossFightPhase.ATTACK -> true
+            BossFightPhase.CHASE -> true
+            BossFightPhase.ATTACK -> false
         }
     }
 
@@ -251,8 +251,8 @@ object NpcBossFights {
             BossFightPhase.GUARD_ROLL,
             BossFightPhase.GUARD_DODGE,
             BossFightPhase.PARRY -> blockBossHit(entity)
-            BossFightPhase.CHASE,
-            BossFightPhase.ATTACK -> Unit
+            BossFightPhase.ATTACK -> acceptAttackHit(entity, target, fight, damage)
+            BossFightPhase.CHASE -> Unit
         }
         return true
     }
@@ -438,6 +438,7 @@ object NpcBossFights {
             }
         }
         if (elapsed < move.durationTicks) return true
+        if (maybeAdvanceBossPhase(entity, target, fight)) return true
         val continueOffense = fight.tacticPhase == BossTacticPhase.OFFENSE && fight.offenseAttacksRemaining > 0
         if (move.kind == NpcBossMoveKinds.ROLL || move.kind == NpcBossMoveKinds.DODGE || move.recoveryTicks <= 0) {
             if (continueOffense) startChase(entity, target, fight) else startDefensePhase(entity, target, fight)
@@ -1056,6 +1057,15 @@ object NpcBossFights {
         applySelfHeal(entity, target, fight, move)
         applyAbsorption(entity, fight, move)
         playBossSound(level, move.impactSoundId.ifBlank { move.releaseSoundId }, SoundEvents.EVOKER_CAST_SPELL, position.x, position.y, position.z, 0.7f, 1.25f)
+    }
+
+    private fun acceptAttackHit(entity: ChowNpcEntity, target: ServerPlayer, fight: ActiveBossFight, damage: Float) {
+        fight.health = (fight.health - damage.coerceAtLeast(0.0f)).coerceAtLeast(0.0f)
+        updateBossBar(entity, target, fight)
+        showBossBalloon(entity, target, fight, fight.balloons.tookDamage, "took_damage")
+        if (fight.health <= 0.0f) {
+            defeat(entity, target, fight)
+        }
     }
 
     private fun acceptRecoveryHit(entity: ChowNpcEntity, target: ServerPlayer, fight: ActiveBossFight, damage: Float) {
@@ -1984,6 +1994,10 @@ object NpcBossFights {
             )
             "bard" -> NpcBossArmory(
                 bossItemStack("bards_rpg:aether_harp_crossbow", ItemStack(Items.CROSSBOW)),
+                ItemStack.EMPTY,
+            )
+            "berserker" -> NpcBossArmory(
+                bossItemStack("simplyswords:ribboncleaver", ItemStack(Items.NETHERITE_SWORD)),
                 ItemStack.EMPTY,
             )
             "wizard" -> NpcBossArmory(
