@@ -38,6 +38,7 @@ import java.util.UUID
 object NpcBossFights {
     private val active: MutableMap<UUID, ActiveBossFight> = linkedMapOf()
     private val resultProtection: MutableMap<UUID, BossResultProtection> = linkedMapOf()
+    private val duelistResultProtection: MutableMap<UUID, Int> = linkedMapOf()
 
     fun start(player: ServerPlayer, entity: ChowNpcEntity, definition: NpcDefinition): NpcBossStartResult {
         NpcBossMovesets.load()
@@ -81,6 +82,7 @@ object NpcBossFights {
         fight.offenseAttacksRemaining = offenseChainCount(entity, fight)
         active[entity.uuid] = fight
         resultProtection.remove(entity.uuid)
+        duelistResultProtection.remove(player.uuid)
         entity.updatePassThroughInteractions(true)
         updateBossBar(entity, player, fight, forceMusic = true)
         SnackbarNetwork.send(player, SnackbarNotification.npc(definition.id, "BOSS FIGHT STARTED", definition.displayName(), SnackbarType.GENERIC, SnackbarSounds.GENERIC))
@@ -124,6 +126,7 @@ object NpcBossFights {
         fight.offenseAttacksRemaining = offenseChainCount(entity, fight)
         active[entity.uuid] = fight
         resultProtection.remove(entity.uuid)
+        duelistResultProtection.remove(player.uuid)
         entity.updatePassThroughInteractions(true)
         updateBossBar(entity, player, fight, forceMusic = true)
         SnackbarNetwork.send(player, SnackbarNotification.npc(entity.npcId, "BOSS TEST STARTED", displayName, SnackbarType.GENERIC, SnackbarSounds.GENERIC))
@@ -184,6 +187,7 @@ object NpcBossFights {
 
         val targetPlayer = target as? ServerPlayer
         if (targetPlayer != null) {
+            if (isDuelistResultProtected(targetPlayer)) return true
             val fight = active.entries.firstOrNull { entry -> entry.value.targetId == targetPlayer.uuid }
             if (fight != null) {
                 if (sourceEntity == null && directEntity == null) return false
@@ -281,6 +285,7 @@ object NpcBossFights {
 
     fun cancelForPlayer(player: ServerPlayer, reason: String = "Boss fight reset.") {
         NpcCombatRollBridge.clear(player)
+        duelistResultProtection.remove(player.uuid)
         active.values.filter { fight -> fight.targetId == player.uuid }.forEach { fight ->
             val entity = NpcFeature.existingNpc(player.server, fight.npcId)
             if (entity != null) cancel(entity, fight, reason) else {
@@ -1414,9 +1419,11 @@ object NpcBossFights {
         if (fight.debug) {
             SnackbarNetwork.send(target, SnackbarNotification.npc(fight.npcId, "BOSS TEST WON", fight.displayName, SnackbarType.SUCCESS, SnackbarSounds.REWARD))
             finish(entity, fight)
+            settleDuelistAfterResult(target, heal = false)
             return
         }
         finish(entity, fight, protectResultDialog = true)
+        settleDuelistAfterResult(target, heal = false)
         val definition = NpcConfig.get(fight.npcId) ?: return
         if (ClassMentorQuestService.onMentorDuelWon(target, entity, definition)) return
         SnackbarNetwork.send(target, SnackbarNotification.npc(definition.id, "BOSS DEFEATED", definition.displayName(), SnackbarType.SUCCESS, SnackbarSounds.REWARD))
@@ -1426,13 +1433,13 @@ object NpcBossFights {
     private fun bossVictory(entity: ChowNpcEntity, target: ServerPlayer, fight: ActiveBossFight) {
         showBossBalloon(entity, target, fight, fight.balloons.victory, "victory")
         if (fight.debug) {
-            healDuelist(target)
+            settleDuelistAfterResult(target, heal = true)
             SnackbarNetwork.send(target, SnackbarNotification.npc(fight.npcId, "BOSS TEST LOST", "${fight.displayName} healed you.", SnackbarType.GENERIC, SnackbarSounds.GENERIC))
             finish(entity, fight)
             return
         }
         finish(entity, fight, protectResultDialog = true)
-        healDuelist(target)
+        settleDuelistAfterResult(target, heal = true)
         val definition = NpcConfig.get(fight.npcId) ?: return
         SnackbarNetwork.send(target, SnackbarNotification.npc(definition.id, "BOSS WON", "${definition.displayName()} healed you.", SnackbarType.GENERIC, SnackbarSounds.GENERIC))
         openVictoryDialog(target, entity, definition)
@@ -1933,10 +1940,34 @@ object NpcBossFights {
     private fun healDuelist(player: ServerPlayer) {
         val maxHealth = finitePositive(player.maxHealth, 20.0f).coerceAtLeast(1.0f)
         player.health = maxHealth
+        clearDuelistDanger(player)
+    }
+
+    private fun settleDuelistAfterResult(player: ServerPlayer, heal: Boolean) {
+        if (heal) healDuelist(player) else {
+            player.health = finitePositive(player.health, 1.0f).coerceAtLeast(1.0f)
+            clearDuelistDanger(player)
+        }
+        duelistResultProtection[player.uuid] = player.tickCount + PLAYER_RESULT_PROTECTION_TICKS
+    }
+
+    private fun clearDuelistDanger(player: ServerPlayer) {
         player.remainingFireTicks = 0
         player.setTicksFrozen(0)
         player.fallDistance = 0.0f
+        player.removeEffect(MobEffects.POISON)
+        player.removeEffect(MobEffects.WITHER)
+        player.removeEffect(MobEffects.MOVEMENT_SLOWDOWN)
+        player.removeEffect(MobEffects.WEAKNESS)
+        player.removeEffect(MobEffects.DIG_SLOWDOWN)
         player.invulnerableTime = player.invulnerableTime.coerceAtLeast(20)
+    }
+
+    private fun isDuelistResultProtected(player: ServerPlayer): Boolean {
+        val untilTick = duelistResultProtection[player.uuid] ?: return false
+        if (player.tickCount <= untilTick) return true
+        duelistResultProtection.remove(player.uuid)
+        return false
     }
 
     private fun finitePositive(value: Float, fallback: Float): Float =
@@ -2154,6 +2185,7 @@ object NpcBossFights {
     private const val BOSS_BALLOON_MAX_CHARS = 120
     private const val BOSS_BALLOON_CHANCE = 0.3f
     private const val RESULT_DIALOG_PROTECTION_TICKS = 20 * 120
+    private const val PLAYER_RESULT_PROTECTION_TICKS = 20 * 12
     private const val ATTACK_START_DISTANCE_SQR = 3.0 * 3.0
     private const val HIT_DISTANCE_SQR = 2.5 * 2.5
     private const val STRAFE_TOO_CLOSE_DISTANCE_SQR = 2.0 * 2.0

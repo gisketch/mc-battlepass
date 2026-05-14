@@ -16,7 +16,7 @@ Add and evolve an extensible NPC bossfight prototype using the current SmartBrai
 - Bossfight balloons are probabilistic barks, not guaranteed messages; current chance is 30% per trigger.
 - The first bossfight bark is guaranteed so a duel cannot be silent just because early 30% rolls miss.
 - A boss hit that would down the player skips revive, ends the duel as an NPC victory, fully heals the player, and opens an NPC victory dialog.
-- After a boss result dialog opens, the NPC stays protected briefly but can be right-clicked for normal talk again.
+- After a boss result dialog opens, the NPC stays protected briefly but can be right-clicked for normal talk again; the duelist also clears boss-applied danger effects and gets short result protection so lingering spell damage cannot kill them during dialog.
 - The V1 `sword_user` loop has chase, attack, strafing recovery, guard bait, guard react, and parry behavior.
 - Warrior has templated health phases: phase 1 is more defensive, phase 2 starts at half health with faster movement, higher damage, and longer offense chains.
 - Rogue/Ezio has a templated two-phase dual-wield boss fight using PlayerAnimator-only Better Combat and Spell Engine clips.
@@ -62,6 +62,7 @@ Add and evolve an extensible NPC bossfight prototype using the current SmartBrai
 - Bossfight damage isolation blocks entity-caused third-party damage but leaves environment damage to the player alone.
 - Bossfight bark text belongs in per-NPC `[boss.balloons]` data, not in the state machine.
 - Bossfight is non-lethal in both directions: player victory defeats virtual boss health; NPC victory intercepts would-be lethal player damage before revive.
+- Result dialogs are non-lethal too: player win/loss cleanup clears fire, freeze, fall damage, and harmful boss debuffs, then blocks lingering damage for a short window.
 - Boss moveset `phases` own health thresholds, damage/speed multipliers, offense-chain tuning, transition dialogue, and optional music sound ids.
 - Keep music implementation asset-neutral: configs reference sound event ids only, and the mod owner supplies actual audio/assets.
 - Boss armory is cosmetic and per-NPC: `main_hand` / `off_hand` equip during the duel, while moveset damage and phase multipliers still own combat damage.
@@ -110,3 +111,4 @@ Add and evolve an extensible NPC bossfight prototype using the current SmartBrai
 - 2026-05-14: Recreated Bard as its own Archer-style real-arrow moveset with harp crossbow armory, harp channel/release animations, Bard spell metadata, star/music arrow VFX, phase 2 crescendo volley, and no melee/support/area moves.
 - 2026-05-15: Added Arcane Wizard/Invoker as an empty-hand floating caster with arcane bolt/blast/missile/beam, blink teleport dodge, arcane parry VFX, and no melee/equipment/roll kit.
 - 2026-05-15: Added Berserker/Zagreus with Ribboncleaver, slow heavy attacks, longer recoveries, phase-2 rumbling swing/nordic storm, and attack-phase damage that does not interrupt boss animations.
+- 2026-05-15: Added player-side post-result cleanup/protection so lingering burn or harmful boss debuffs cannot kill the duelist during defeat/victory dialog.

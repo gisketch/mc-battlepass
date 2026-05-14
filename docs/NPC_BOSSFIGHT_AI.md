@@ -201,6 +201,7 @@ Live label: `NPC mode: dodging`
 
 - Boss health remains virtual; do not allow real NPC death.
 - When a duel result dialog is open, keep the NPC protected from damage so late player hits cannot kill the restored entity.
+- When a duel result dialog opens, clear the duelist's boss-applied danger state: fire, freeze, fall damage, Poison, Wither, Slowness, Weakness, and Mining Fatigue. Give the duelist brief result protection so lingering boss spell damage cannot kill them during the dialog.
 - Only the duel player can reduce virtual boss health.
 - Player damage is accepted during `RECOVERY` only.
 - Temporary boss absorption from support moves is consumed before virtual boss health.
