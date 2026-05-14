@@ -44,6 +44,7 @@ The `projectile` move kind supports archer and wizard-style boss attacks:
 - `projectile_type = "arrow"` spawns real vanilla arrows. Draw/release normally use `spell_engine:archery_pull` and `spell_engine:archery_release`.
 - `projectile_type = "magic"` creates a server-ticked particle projectile. Charge/release normally use `spell_engine:one_handed_projectile_charge` and `spell_engine:one_handed_projectile_release`.
 - Hit ticks are release ticks. Projectile travel is dodgeable and can miss.
+- Tracked arrow impacts can add release/trail/impact VFX, status effects, and optional impact hazards without replacing vanilla arrow damage, shield behavior, line-of-sight, or dodge logic.
 - Magic projectiles stop on block collision, shield block, roll iframes, target impact, or lifetime expiry.
 - Projectile tuning lives on the move: `projectile_speed`, `projectile_inaccuracy`, `projectile_count`, `projectile_spread_degrees`, `impact_radius`, `knockback`, `damage`, and optional `status_effect_id` fields.
 - Visual and audio ids are registry-backed and safe to omit: `projectile_particle`, `cast_particle`, `release_particle`, `impact_particle`, `cast_sound_id`, `release_sound_id`, and `impact_sound_id` fall back to built-in particles/sounds if a referenced mod is not loaded.
@@ -97,6 +98,7 @@ Live label: `NPC mode: offense` while the boss is in the aggressive tactic, othe
 - Warrior starts in offense. Phase 1 rolls a 1-attack budget; phase 2 rolls a 3-5 attack budget.
 - Rogue/Ezio starts in offense. Phase 1 rolls a 1-attack budget at slightly higher speed; phase 2 rolls a 3-5 attack budget with faster movement and lighter damage than warrior.
 - Archer/Huntress Wizard starts in offense at range. Phase 1 fires one readable shot at a time; phase 2 chains 2-3 shots and unlocks volley.
+- Bounty Hunter/Aloy starts in offense at longer range. It is Archer-plus but punishable: real-arrow shots, Deadeye spell ids, impact debuffs, choking gas, phase-2 2-3 shot chains, and smoky non-teleport `alter_ego` sidesteps.
 - Wizard/Gandalf starts in offense at mid range. Phase 1 casts one readable spell at a time; phase 2 chains 2-3 spells.
 - Priest/Pope Leo starts in offense at mid range. Phase 1 mixes holy shocks, short AoE, and limited sustain; phase 2 casts faster, chains 2-3 moves, and keeps healing capped below the transition threshold.
 - Bard/Venti starts in offense at range. It duplicates Archer mechanics with real arrows, harp-crossbow clips, Bard spell ids, and music/star VFX.
@@ -129,7 +131,7 @@ Live label: `NPC mode: recovery`
   - Plays the PlayerAnimator hurt/dodge substitute.
   - Applies a small knockback to the NPC.
   - Increments `recovery_hits_taken`.
-- Recovery hits are accepted until `recovery_hits_allowed` is reached. Warrior, rogue, archer, wizard, priest, and bard V1 use a 4-hit cap.
+- Recovery hits are accepted until `recovery_hits_allowed` is reached. Warrior, rogue, archer, bounty_hunter, wizard, priest, and bard V1 use a 4-hit cap.
 - Any extra player swing after the cap immediately converts into the guard response.
 - When the hit cap is reached, enter `GUARD_MODE` after the hurt reaction.
 - If chain recovery times out while offense still has attacks left, return to offense.
@@ -194,6 +196,7 @@ Live label: `NPC mode: dodging`
 
 - Play `spell_engine:dodge` by default.
 - Dodge in the configured direction, defaulting to a backstep.
+- Only Arcane Wizard/Invoker converts dodge into blink teleport. Other boss dodges are normal movement steps.
 - Apply boss iframes for the configured dodge window.
 - After dodge recovery, enter offense.
 

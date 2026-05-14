@@ -21,9 +21,10 @@ work_blocks = [
 
 [boss]
 enabled = true
-health = 85.0
-damage = 4.5
-template = "sword_user"
+health = 86.0
+damage = 3.4
+template = "bounty_hunter"
+main_hand = "archers:aether_longbow"
 
 [boss.balloons]
 chase = ["Tracks are fresh, {player}. Move.", "I have your path.", "Step where I step.", "You are not losing me.", "Keep your breathing steady.", "I have tracked bigger things.", "Watch the terrain. Not me.", "Your trail reads loud.", "Pick up the pace.", "Movement is data."]

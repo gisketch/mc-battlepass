@@ -47,6 +47,10 @@ object NpcBossMovesets {
     }
 
     fun forDefinition(definition: NpcDefinition): NpcBossMovesetDefinition {
+        val templateId = normalizeId(definition.boss.template)
+        if (templateId.isNotBlank() && templateId != NpcBossDefinition.DEFAULT_BOSS_TEMPLATE) {
+            get(templateId)?.let { return it }
+        }
         val classId = normalizeId(definition.classId)
         return if (classId.isNotBlank()) {
             get(classId) ?: get(DEFAULT_CLASS_ID) ?: defaultWarrior().normalized()
@@ -75,6 +79,7 @@ object NpcBossMovesets {
         defaultWarrior(),
         defaultRogue(),
         defaultArcher(),
+        defaultBountyHunter(),
         defaultWizard(),
         defaultArcaneWizard(),
         defaultPriest(),
@@ -356,6 +361,69 @@ object NpcBossMovesets {
             magicProjectile("frostbolt", spellId = "wizards:frostbolt", duration = 26, hitTick = 17, damage = 1.8, cooldown = 34, recovery = 20, weight = 4, min = 4.0, max = 10.5, speed = 0.5, impactRadius = 0.7, particle = "spell_engine:magic_frost_float", impactParticle = "spell_engine:magic_frost_burst", releaseSoundId = "spell_engine:generic_frost_release", statusEffectId = "minecraft:slowness", statusEffectTicks = 45, statusEffectAmplifier = 0),
             area("frost_nova", "spell_engine:one_handed_area_release", duration = 24, hitTick = 14, damage = 2.2, radius = 3.0, cooldown = 56, recovery = 20, weight = 3, min = 0.0, max = 3.4, spellId = "wizards:frost_nova", impactParticle = "spell_engine:magic_frost_burst", releaseParticle = "spell_engine:area_circle_1"),
             roll("blink_dodge", "spell_engine:dodge", duration = 12, cooldown = 36, distance = 3.6, direction = "back", weight = 4, supportParticle = "spell_engine:magic_arcane_decelerate"),
+        ),
+    )
+
+    private fun defaultBountyHunter(): NpcBossMovesetDefinition = NpcBossMovesetDefinition(
+        id = "bounty_hunter",
+        displayName = "Bounty Hunter",
+        health = 86.0,
+        damage = 3.4,
+        attackStartDistance = 14.0,
+        offenseChainMin = 1,
+        offenseChainRandom = 0,
+        offenseChainRecoveryTicks = 8,
+        approachAnimationId = "bettercombat:pose_two_handed_bow",
+        strafeAnimationId = "bettercombat:pose_two_handed_bow",
+        guardAnimationId = "bettercombat:pose_two_handed_bow",
+        parryAnimationId = "spell_engine:archery_release",
+        recoveryAnimationId = "bettercombat:pose_two_handed_bow",
+        guardRollWeight = 0,
+        guardDodgeAnimationId = "spell_engine:dodge",
+        guardDodgeIframeTicks = 8,
+        guardDodgeDistance = 2.2,
+        guardDodgeDirection = "back",
+        guardDodgeWeight = 1,
+        recoveryHitsAllowed = 4,
+        phases = mutableListOf(
+            phase(
+                id = "phase_1",
+                displayName = "Marked Quarry",
+                startsAtHealthRatio = 1.0,
+                damageMultiplier = 1.0,
+                speedMultiplier = 1.0,
+                offenseChainMin = 1,
+                offenseChainRandom = 0,
+                offenseChainRecoveryTicks = 8,
+                musicId = "cataclysm:enderguardian_music_1",
+                musicVolume = 0.52,
+                musicRepeatTicks = 3000,
+            ),
+            phase(
+                id = "phase_2",
+                displayName = "Deadeye Hunt",
+                startsAtHealthRatio = 0.5,
+                damageMultiplier = 1.15,
+                speedMultiplier = 1.18,
+                offenseChainMin = 2,
+                offenseChainRandom = 1,
+                offenseChainRecoveryTicks = 7,
+                transitionFallback = "Focus is locked. Every weak point is lit.",
+                transitionLlmPrompt = "The duel has reached half health and you are entering a faster Deadeye archer second phase. Reply as Aloy with one short focused battle line about weak points, tracking, or target control. Sound precise and intense.",
+                musicId = "cataclysm:maledictus_music",
+                musicVolume = 0.58,
+                musicRepeatTicks = 3000,
+            ),
+        ),
+        moves = mutableListOf(
+            projectile("fast_shot", duration = 18, hitTick = 11, damage = 1.5, cooldown = 18, recovery = 16, weight = 8, min = 4.0, max = 14.0, speed = 2.45, inaccuracy = 0.65, spellId = "archers_expansion:fast_shot", projectileParticle = "minecraft:crit", impactParticle = "minecraft:enchanted_hit", impactRadius = 0.5, castParticle = "minecraft:crit", releaseParticle = "minecraft:crit", releaseSoundId = "minecraft:entity.arrow.shoot", impactSoundId = "minecraft:entity.arrow.hit"),
+            projectile("trick_shot", duration = 22, hitTick = 14, damage = 1.8, cooldown = 26, recovery = 18, weight = 5, min = 4.0, max = 14.0, speed = 2.4, inaccuracy = 1.25, spellId = "archers_expansion:trick_shot", projectileParticle = "minecraft:crit", impactParticle = "minecraft:poof", impactRadius = 0.65, castParticle = "minecraft:enchanted_hit", releaseParticle = "minecraft:crit", releaseSoundId = "minecraft:entity.arrow.shoot", impactSoundId = "minecraft:entity.arrow.hit"),
+            projectile("disabling_shot", duration = 24, hitTick = 16, damage = 1.6, cooldown = 36, recovery = 20, weight = 4, min = 5.0, max = 14.0, speed = 2.45, inaccuracy = 0.45, spellId = "archers_expansion:disabling_shot", projectileParticle = "minecraft:smoke", impactParticle = "minecraft:cloud", impactRadius = 0.85, castParticle = "minecraft:crit", releaseParticle = "minecraft:smoke", releaseSoundId = "minecraft:entity.arrow.shoot", impactSoundId = "minecraft:entity.arrow.hit_player", statusEffectId = "minecraft:slowness", statusEffectTicks = 60),
+            projectile("choking_gas", duration = 28, hitTick = 18, damage = 1.2, cooldown = 86, recovery = 24, weight = 2, min = 5.0, max = 14.0, speed = 2.25, inaccuracy = 0.75, spellId = "archers_expansion:choking_gas", projectileParticle = "minecraft:smoke", impactParticle = "minecraft:cloud", impactRadius = 0.9, castParticle = "minecraft:smoke", releaseParticle = "minecraft:smoke", releaseSoundId = "minecraft:entity.arrow.shoot", impactSoundId = "minecraft:block.fire.extinguish", statusEffectId = "minecraft:slowness", statusEffectTicks = 40, hazardRadius = 2.6, hazardTicks = 60, hazardIntervalTicks = 14, hazardDamage = 0.45, hazardParticle = "minecraft:cloud"),
+            projectile("improved_disabling_shot", duration = 26, hitTick = 17, damage = 1.6, cooldown = 54, recovery = 22, weight = 3, min = 5.0, max = 14.0, speed = 2.45, inaccuracy = 0.4, spellId = "archers_expansion:improved_disabling_shot", projectileParticle = "minecraft:crit", impactParticle = "minecraft:enchanted_hit", impactRadius = 0.9, castParticle = "minecraft:enchanted_hit", releaseParticle = "minecraft:crit", releaseSoundId = "minecraft:entity.arrow.shoot", impactSoundId = "minecraft:entity.arrow.hit_player", statusEffectId = "slowness_weakness", statusEffectTicks = 55, minPhaseIndex = 1),
+            projectile("infiltrators_arrow", duration = 34, hitTick = 23, damage = 3.4, cooldown = 72, recovery = 28, weight = 2, min = 7.0, max = 16.0, speed = 2.75, inaccuracy = 0.12, knockback = 0.65, spellId = "archers_expansion:infiltrators_arrow", projectileParticle = "minecraft:enchanted_hit", impactParticle = "minecraft:crit", impactRadius = 0.75, castParticle = "minecraft:enchanted_hit", releaseParticle = "minecraft:crit", releaseSoundId = "minecraft:entity.arrow.shoot", impactSoundId = "minecraft:entity.arrow.hit_player", minPhaseIndex = 1),
+            projectile("deadeye_barrage", duration = 36, hitTick = 23, damage = 0.9, cooldown = 90, recovery = 28, weight = 3, min = 5.0, max = 14.0, speed = 2.3, inaccuracy = 1.0, count = 4, spreadDegrees = 12.0, spellId = "archers_expansion:fast_shot", projectileParticle = "minecraft:crit", impactParticle = "minecraft:enchanted_hit", impactRadius = 0.6, castParticle = "minecraft:crit", releaseParticle = "minecraft:enchanted_hit", releaseSoundId = "minecraft:entity.arrow.shoot", impactSoundId = "minecraft:entity.arrow.hit", minPhaseIndex = 1),
+            roll("alter_ego", "spell_engine:dodge", duration = 12, cooldown = 70, distance = 2.1, direction = "side", weight = 1, supportParticle = "minecraft:smoke", spellId = "archers_expansion:alter_ego"),
         ),
     )
 
@@ -799,6 +867,15 @@ object NpcBossMovesets {
         castSoundId: String = "",
         releaseSoundId: String = "",
         impactSoundId: String = "",
+        statusEffectId: String = "",
+        statusEffectTicks: Int = 0,
+        statusEffectAmplifier: Int = 0,
+        fireTicks: Int = 0,
+        hazardRadius: Double = 0.0,
+        hazardTicks: Int = 0,
+        hazardIntervalTicks: Int = 10,
+        hazardDamage: Double = 0.0,
+        hazardParticle: String = "",
         minPhaseIndex: Int = 0,
         maxPhaseIndex: Int = 99,
     ): NpcBossMoveDefinition = NpcBossMoveDefinition(
@@ -829,6 +906,15 @@ object NpcBossMovesets {
         castSoundId = castSoundId,
         releaseSoundId = releaseSoundId,
         impactSoundId = impactSoundId,
+        statusEffectId = statusEffectId,
+        statusEffectTicks = statusEffectTicks,
+        statusEffectAmplifier = statusEffectAmplifier,
+        fireTicks = fireTicks,
+        hazardRadius = hazardRadius,
+        hazardTicks = hazardTicks,
+        hazardIntervalTicks = hazardIntervalTicks,
+        hazardDamage = hazardDamage,
+        hazardParticle = hazardParticle,
         knockback = knockback,
         minPhaseIndex = minPhaseIndex,
         maxPhaseIndex = maxPhaseIndex,
@@ -1002,11 +1088,11 @@ object NpcBossMovesets {
         impactSoundId = impactSoundId,
     )
 
-    private fun roll(id: String, animationId: String, duration: Int, cooldown: Int, distance: Double, direction: String, weight: Int, supportParticle: String = ""): NpcBossMoveDefinition =
-        NpcBossMoveDefinition(id = id, kind = NpcBossMoveKinds.ROLL, animationId = animationId, durationTicks = duration, hitTicks = mutableListOf(), damage = 0.0, cooldownTicks = cooldown, recoveryTicks = 0, weight = weight, minDistance = 0.0, maxDistance = 3.5, rollDistance = distance, rollDirection = direction, iframeStartTick = 0, iframeEndTick = duration.coerceAtLeast(1), supportParticle = supportParticle)
+    private fun roll(id: String, animationId: String, duration: Int, cooldown: Int, distance: Double, direction: String, weight: Int, supportParticle: String = "", spellId: String = ""): NpcBossMoveDefinition =
+        NpcBossMoveDefinition(id = id, kind = NpcBossMoveKinds.ROLL, animationId = animationId, spellId = spellId, durationTicks = duration, hitTicks = mutableListOf(), damage = 0.0, cooldownTicks = cooldown, recoveryTicks = 0, weight = weight, minDistance = 0.0, maxDistance = 3.5, rollDistance = distance, rollDirection = direction, iframeStartTick = 0, iframeEndTick = duration.coerceAtLeast(1), supportParticle = supportParticle)
 
-    private fun dodge(id: String, animationId: String, duration: Int, cooldown: Int, distance: Double, direction: String, weight: Int, supportParticle: String = "", releaseSoundId: String = ""): NpcBossMoveDefinition =
-        NpcBossMoveDefinition(id = id, kind = NpcBossMoveKinds.DODGE, animationId = animationId, releaseAnimationId = animationId, durationTicks = duration, hitTicks = mutableListOf(), damage = 0.0, cooldownTicks = cooldown, recoveryTicks = 0, weight = weight, minDistance = 0.0, maxDistance = 14.0, rollDistance = distance, rollDirection = direction, iframeStartTick = 0, iframeEndTick = duration.coerceAtLeast(1), supportParticle = supportParticle, releaseSoundId = releaseSoundId)
+    private fun dodge(id: String, animationId: String, duration: Int, cooldown: Int, distance: Double, direction: String, weight: Int, supportParticle: String = "", releaseSoundId: String = "", spellId: String = ""): NpcBossMoveDefinition =
+        NpcBossMoveDefinition(id = id, kind = NpcBossMoveKinds.DODGE, animationId = animationId, releaseAnimationId = animationId, spellId = spellId, durationTicks = duration, hitTicks = mutableListOf(), damage = 0.0, cooldownTicks = cooldown, recoveryTicks = 0, weight = weight, minDistance = 0.0, maxDistance = 14.0, rollDistance = distance, rollDirection = direction, iframeStartTick = 0, iframeEndTick = duration.coerceAtLeast(1), supportParticle = supportParticle, releaseSoundId = releaseSoundId)
 
     private fun phase(
         id: String,

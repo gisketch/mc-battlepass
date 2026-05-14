@@ -44,10 +44,10 @@ object NpcBossFights {
         NpcBossMovesets.load()
         val boss = definition.boss.normalized()
         if (!boss.enabled) return NpcBossStartResult(false, "${definition.displayName()} has boss fights disabled.")
-        if (boss.template != NpcBossDefinition.DEFAULT_BOSS_TEMPLATE) return NpcBossStartResult(false, "Unknown NPC boss template '${boss.template}'.")
+        val moveset = NpcBossMovesets.forDefinition(definition)
+        if (boss.template != NpcBossDefinition.DEFAULT_BOSS_TEMPLATE && moveset.id != boss.template) return NpcBossStartResult(false, "Unknown NPC boss template '${boss.template}'.")
         if (active.containsKey(entity.uuid)) return NpcBossStartResult(false, "${definition.displayName()} is already in a boss fight.")
         if (active.values.any { fight -> fight.targetId == player.uuid }) return NpcBossStartResult(false, "You are already in an NPC boss fight.")
-        val moveset = NpcBossMovesets.forDefinition(definition)
         val armory = bossArmory(boss)
         if (entity.isSleeping) entity.stopSleeping()
         entity.navigation.stop()
@@ -316,7 +316,7 @@ object NpcBossFights {
         tickSupportEffects(entity, fight)
         tickBossHazards(entity, target, fight)
         tickMagicProjectiles(entity, target, fight)
-        tickTrackedArrows(entity, fight)
+        tickTrackedArrows(entity, target, fight)
         if (active[entity.uuid] !== fight) return true
         updateBossBar(entity, target, fight)
         return when (fight.phase) {
@@ -853,14 +853,19 @@ object NpcBossFights {
         }
     }
 
-    private fun tickTrackedArrows(entity: ChowNpcEntity, fight: ActiveBossFight) {
+    private fun tickTrackedArrows(entity: ChowNpcEntity, target: ServerPlayer, fight: ActiveBossFight) {
         val level = entity.level() as? ServerLevel ?: return
         val iterator = fight.trackedArrows.iterator()
         while (iterator.hasNext()) {
             val tracked = iterator.next()
             val arrow = level.getEntity(tracked.arrowId) as? AbstractArrow
-            if (arrow == null || !arrow.isAlive || tracked.ticksRemaining-- <= 0) {
-                playTrackedArrowImpactVfx(level, tracked.move, tracked.position)
+            if (arrow == null || !arrow.isAlive) {
+                trackedArrowImpact(entity, target, fight, tracked, tracked.position, applyEffects = true)
+                iterator.remove()
+                continue
+            }
+            if (tracked.ticksRemaining-- <= 0) {
+                trackedArrowImpact(entity, target, fight, tracked, tracked.position, applyEffects = false)
                 iterator.remove()
                 continue
             }
@@ -870,10 +875,21 @@ object NpcBossFights {
                 level.sendParticles(bossParticle(tracked.move.projectileParticle, ParticleTypes.END_ROD), position.x, position.y, position.z, 1, 0.03, 0.03, 0.03, 0.0)
             }
             if (arrow.tickCount > ARROW_VFX_MIN_IMPACT_TICKS && arrow.deltaMovement.lengthSqr() <= ARROW_VFX_STOPPED_SPEED_SQR) {
-                playTrackedArrowImpactVfx(level, tracked.move, position)
+                trackedArrowImpact(entity, target, fight, tracked, position, applyEffects = true)
                 iterator.remove()
             }
         }
+    }
+
+    private fun trackedArrowImpact(entity: ChowNpcEntity, target: ServerPlayer, fight: ActiveBossFight, tracked: TrackedBossArrow, position: Vec3, applyEffects: Boolean) {
+        val level = entity.level() as? ServerLevel ?: return
+        playTrackedArrowImpactVfx(level, tracked.move, position)
+        if (!applyEffects) return
+        if (tracked.move.hazardTicks > 0) createBossHazardAt(entity, fight, tracked.move, position)
+        val radius = tracked.move.impactRadius.coerceAtLeast(0.5)
+        val nearTarget = target.boundingBox.inflate(radius).contains(position) || target.distanceToSqr(position) <= radius * radius
+        if (!nearTarget || target.isBlocking || NpcCombatRollBridge.isRolling(target)) return
+        applyMoveEffects(target, tracked.move)
     }
 
     private fun playTrackedArrowImpactVfx(level: ServerLevel, move: NpcBossMoveDefinition, position: Vec3) {
@@ -970,10 +986,13 @@ object NpcBossFights {
     }
 
     private fun createBossHazard(entity: ChowNpcEntity, target: ServerPlayer, fight: ActiveBossFight, move: NpcBossMoveDefinition) {
+        createBossHazardAt(entity, fight, move, target.position().add(0.0, 0.08, 0.0))
+    }
+
+    private fun createBossHazardAt(entity: ChowNpcEntity, fight: ActiveBossFight, move: NpcBossMoveDefinition, center: Vec3) {
         if (move.hazardTicks <= 0) return
         val level = entity.level() as? ServerLevel ?: return
         val radius = move.hazardRadius.takeIf { value -> value > 0.0 } ?: move.areaRadius.takeIf { value -> value > 0.0 } ?: move.range
-        val center = target.position().add(0.0, 0.08, 0.0)
         fight.areaHazards.add(
             BossAreaHazard(
                 move = move,
@@ -1201,6 +1220,10 @@ object NpcBossFights {
     }
 
     private fun performNpcDodge(entity: ChowNpcEntity, target: ServerPlayer, fight: ActiveBossFight, move: NpcBossMoveDefinition) {
+        if (fight.moveset.id != "arcane_wizard") {
+            performNpcRoll(entity, target, fight, move)
+            return
+        }
         val direction = rollDirection(entity, target, move)
         performBlinkTeleport(
             entity = entity,
@@ -1230,7 +1253,7 @@ object NpcBossFights {
 
     private fun performGuardDodge(entity: ChowNpcEntity, target: ServerPlayer, fight: ActiveBossFight) {
         val direction = guardDodgeDirection(entity, target, fight)
-        if (fight.moveset.hoverHeight > 0.0) {
+        if (fight.moveset.id == "arcane_wizard") {
             performBlinkTeleport(
                 entity = entity,
                 target = target,
@@ -1774,7 +1797,8 @@ object NpcBossFights {
         ((move.maxDistance + 8.0) / move.projectileSpeed).toInt().coerceIn(10, 100)
 
     private fun tracksArrowVfx(move: NpcBossMoveDefinition): Boolean =
-        move.projectileParticle.isNotBlank() || move.impactParticle.isNotBlank() || move.impactSoundId.isNotBlank()
+        move.projectileParticle.isNotBlank() || move.impactParticle.isNotBlank() || move.impactSoundId.isNotBlank() ||
+            move.statusEffectTicks > 0 || move.fireTicks > 0 || move.hazardTicks > 0
 
     private fun bossParticle(id: String, fallback: SimpleParticleType): SimpleParticleType {
         val raw = id.trim()
@@ -1799,13 +1823,16 @@ object NpcBossFights {
     private fun applyMoveEffects(target: ServerPlayer, move: NpcBossMoveDefinition) {
         if (move.fireTicks > 0) target.remainingFireTicks = target.remainingFireTicks.coerceAtLeast(move.fireTicks)
         if (move.statusEffectTicks <= 0) return
-        val effect = when (move.statusEffectId) {
-            "minecraft:slowness", "slowness" -> MobEffects.MOVEMENT_SLOWDOWN
-            "minecraft:weakness", "weakness" -> MobEffects.WEAKNESS
-            "minecraft:mining_fatigue", "mining_fatigue", "minecraft:dig_slowdown", "dig_slowdown" -> MobEffects.DIG_SLOWDOWN
-            else -> null
-        } ?: return
-        target.addEffect(MobEffectInstance(effect, move.statusEffectTicks, move.statusEffectAmplifier, false, false, true))
+        val effects = when (move.statusEffectId) {
+            "minecraft:slowness", "slowness" -> listOf(MobEffects.MOVEMENT_SLOWDOWN)
+            "minecraft:weakness", "weakness" -> listOf(MobEffects.WEAKNESS)
+            "minecraft:mining_fatigue", "mining_fatigue", "minecraft:dig_slowdown", "dig_slowdown" -> listOf(MobEffects.DIG_SLOWDOWN)
+            "slowness_weakness", "minecraft:slowness_weakness" -> listOf(MobEffects.MOVEMENT_SLOWDOWN, MobEffects.WEAKNESS)
+            else -> emptyList()
+        }
+        effects.forEach { effect ->
+            target.addEffect(MobEffectInstance(effect, move.statusEffectTicks, move.statusEffectAmplifier, false, false, true))
+        }
     }
 
     private fun currentBossPhase(fight: ActiveBossFight): NpcBossPhaseDefinition =
@@ -2025,6 +2052,10 @@ object NpcBossFights {
             )
             "bard" -> NpcBossArmory(
                 bossItemStack("bards_rpg:aether_harp_crossbow", ItemStack(Items.CROSSBOW)),
+                ItemStack.EMPTY,
+            )
+            "bounty_hunter" -> NpcBossArmory(
+                bossItemStack("archers:aether_longbow", ItemStack(Items.BOW)),
                 ItemStack.EMPTY,
             )
             "berserker" -> NpcBossArmory(

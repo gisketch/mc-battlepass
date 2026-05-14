@@ -169,6 +169,8 @@ Good boss moves:
 
 Stronger implementation direction: make Aloy `bounty_hunter`, Archer on steroids. Keep real arrows and Archer ranged spacing, but increase pace and pressure: faster draw/release, higher damage, longer preferred range, and phase-2 3-5 shot chains. Use Deadeye spell ids heavily for metadata/VFX: `fast_shot` as the common quick shot, `trick_shot` as angled side pressure, `disabling_shot`/`improved_disabling_shot` as impact slow/weakness shots, `infiltrators_arrow` as the high-damage sniper shot, `choking_gas` as an arrow-triggered lingering gas hazard, and `alter_ego` as a smoky dodge/reposition. VFX should be visible: crit/sweep trails on arrows, smoke/gas clouds on impact, green/red deadeye particles on charge/release, and a sharp phase-2 volley.
 
+Implemented boss direction: Aloy uses `bounty_hunter` with `archers:aether_longbow`, real arrows, tuned Archer-plus pacing, Deadeye spell metadata, disabling impacts, choking gas, infiltrator shot, phase-2 barrage, non-teleport `alter_ego` sidestep, and no melee kit.
+
 ### Invoker - Arcane Wizard Mentor
 
 Class: `arcane_wizard`
