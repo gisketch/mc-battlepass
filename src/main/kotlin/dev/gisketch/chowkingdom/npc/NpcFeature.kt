@@ -2250,12 +2250,13 @@ object NpcFeature {
             context.source.sendFailure(Component.literal("Unknown NPC boss class '$classId'. Available: ${NpcBossMovesets.ids().joinToString(", ")}"))
             return 0
         }
+        val requestedClassId = NpcBossMovesets.normalizeId(classId)
         removeBossFightDebugEntity(player)
         val level = player.level() as? ServerLevel ?: return 0
         val spawnPos = animationDebugSpawnPos(level, player)
         val npc = NPC_ENTITY.get().create(level) ?: return 0
-        val debugNpcId = bossFightDebugNpcId(player, moveset.id)
-        val debugSkin = bossFightDebugSkinDefinition(moveset.id)
+        val debugNpcId = bossFightDebugNpcId(player, requestedClassId.ifBlank { moveset.id })
+        val debugSkin = bossFightDebugSkinDefinition(requestedClassId) ?: bossFightDebugSkinDefinition(moveset.id)
         npc.configureBossDebug(debugNpcId, "${debugSkin?.displayName() ?: moveset.displayName} Test NPC", player.blockPosition(), debugSkin?.bodyType ?: NpcBodyTypes.NORMAL)
         npc.setNoAi(false)
         npc.moveTo(spawnPos.x + 0.5, spawnPos.y.toDouble(), spawnPos.z + 0.5, player.yRot + 180.0f, 0.0f)

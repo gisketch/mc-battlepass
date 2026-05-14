@@ -95,7 +95,7 @@ Live label: `NPC mode: offense` while the boss is in the aggressive tactic, othe
 - Archer/Huntress Wizard starts in offense at range. Phase 1 fires one readable shot at a time; phase 2 chains 2-3 shots and unlocks volley.
 - Wizard/Gandalf starts in offense at mid range. Phase 1 casts one readable spell at a time; phase 2 chains 2-3 spells.
 - Priest/Pope Leo starts in offense at mid range. Phase 1 mixes holy shocks, short AoE, and limited sustain; phase 2 casts faster, chains 2-3 moves, and keeps healing capped below the transition threshold.
-- Bard/Venti starts in offense at mid range. It is tuned as an upgrade-class boss: phase 1 plays 1-2 note pressure and spacing bursts; phase 2 chains 3-5 note phrases and unlocks crescendo.
+- Bard/Venti starts in offense at range. It duplicates Archer mechanics with real arrows, harp-crossbow clips, Bard spell ids, and music/star VFX.
 - During offense, prefer real melee/area attacks over roll moves and avoid repeating the last move when another legal attack is available.
 
 ### Attack
@@ -270,11 +270,12 @@ Priest neutral movement should hold range around 4-8 blocks:
 - Reuse Spell Engine / Paladins holy particles and sound-event ids when present, with safe fallback if those registries are absent.
 - Holy shock pressures at range, judgement burst punishes close pressure, and limited mercy/barrier support creates a defensive rhythm without infinite sustain.
 
-Bard neutral movement should hold range around 4-8 blocks:
+Bard neutral movement should hold range around 6-12 blocks:
 
-- Use normal walking/strafe locomotion while moving; reserve PlayerAnimator projectile/healing clips for committed notes and songs.
-- Reuse Bards RPG spell ids and Spell Engine particle fallbacks for visible music-note pressure.
-- Vicious mockery and discordant note poke/control at range, discordant burst answers rushes, inspiring riff/healing hymn provide limited sustain, and crescendo is a phase 2 finisher.
+- Use Archer ranged spacing and real arrow projectiles.
+- Use `bards_rpg:aether_harp_crossbow` with `bards_rpg:harp_channel` / `bards_rpg:harp_release`.
+- Add Bard flavor through `starshots`, `vicious_mockery`, `magical_ballad`, and phase 2 `crescendo` move metadata, music-note/star trail particles, and Bard sounds.
+- No Bard melee, area, support, lute, or lyre moves are maintained in this version.
 
 ## Implementation Notes
 
@@ -295,8 +296,8 @@ Bard neutral movement should hold range around 4-8 blocks:
 - Gandalf uses the wizard moveset and equips `wizards:staff_wizard` during the duel.
 - Priest phase 1 uses `paladins:holy_shock`, `paladins:judgement`, limited self-heal, and absorption support with Spell Engine healing clips. Phase 2 uses `damage_multiplier = 1.1`, `speed_multiplier = 1.12`, `offense_chain_min = 2`, `offense_chain_random = 1`, and healing that cannot restore above roughly 45% health.
 - Pope Leo uses the priest moveset and equips `paladins:holy_staff` during the duel.
-- Bard phase 1 uses `bards_rpg:vicious_mockery`, `bards_rpg:discordant_note`, `bards_rpg:magical_ballad`, limited support songs, and `spell_engine:dodge` repositioning. It is harder than starter casters through higher health, faster movement, 1-2 note chains, stronger close-range knockback, and status pressure. Phase 2 uses `damage_multiplier = 1.12`, `speed_multiplier = 1.4`, `offense_chain_min = 3`, `offense_chain_random = 2`, and unlocks `bards_rpg:crescendo`.
-- Venti uses the bard moveset and equips `bards_rpg:aether_lute` during the duel. Refs name it Angelic Lute, which fits Venti's wind/bard fantasy better than dragon, ruby, or netherite lutes.
+- Bard phase 1 duplicates Archer shot timing with `starshot`, `mocking_shot`, and `ballad_shot`; phase 2 duplicates Archer 2-3 shot chains and unlocks `crescendo_volley`.
+- Venti uses Bard's archer-style health/damage tuning and equips `bards_rpg:aether_harp_crossbow` during the duel.
 - Track a random guard-bait timeout between 60 and 120 ticks.
 - Keep the live status label aligned with these state names.
 - Keep this behavior inside the bossfight controller so future templates can swap the state graph without changing base NPC routines.

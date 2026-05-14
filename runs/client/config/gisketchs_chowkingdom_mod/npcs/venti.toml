@@ -21,10 +21,10 @@ work_blocks = [
 
 [boss]
 enabled = true
-health = 76.0
-damage = 4.0
+health = 72.0
+damage = 3.0
 template = "sword_user"
-main_hand = "bards_rpg:aether_lute"
+main_hand = "bards_rpg:aether_harp_crossbow"
 off_hand = ""
 
 [boss.balloons]

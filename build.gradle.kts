@@ -122,7 +122,7 @@ dependencies {
     implementation("net.tslat.smartbrainlib:SmartBrainLib-neoforge-$minecraftVersion:$smartBrainLibVersion")
     implementation("maven.modrinth:better-combat:$betterCombatVersion")
     implementation("maven.modrinth:playeranimator:$playerAnimatorVersion")
-    implementation("maven.modrinth:mob-player-animator-neo:$mobPlayerAnimatorVersion")
+    compileOnly("maven.modrinth:mob-player-animator-neo:$mobPlayerAnimatorVersion")
     implementation("maven.modrinth:cloth-config:$clothConfigVersion")
     compileOnly("maven.modrinth:jade:15.9.3+neoforge")
 

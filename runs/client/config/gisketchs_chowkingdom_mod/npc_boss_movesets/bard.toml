@@ -1,68 +1,66 @@
 id = "bard"
 display_name = "Bard"
-health = 88.0
+health = 72.0
 damage = 3.0
-attack_start_distance = 9.0
+attack_start_distance = 12.0
 offense_chain_min = 1
 offense_chain_random = 0
 offense_chain_recovery_ticks = 8
-approach_animation_id = ""
-approach_animation_source = "natural"
-strafe_animation_id = ""
-strafe_animation_source = "natural"
-guard_animation_id = ""
-guard_animation_source = "natural"
-parry_animation_id = "spell_engine:one_handed_projectile_release"
+approach_animation_id = "bards_rpg:harp_channel"
+approach_animation_source = "playerlike"
+strafe_animation_id = "bards_rpg:harp_channel"
+strafe_animation_source = "playerlike"
+guard_animation_id = "bards_rpg:harp_channel"
+guard_animation_source = "playerlike"
+parry_animation_id = "bards_rpg:harp_release"
 parry_animation_source = "playerlike"
 hurt_animation_id = "spell_engine:dodge"
 hurt_animation_source = "playerlike"
-recovery_animation_id = ""
-recovery_animation_source = "natural"
+recovery_animation_id = "bards_rpg:harp_channel"
+recovery_animation_source = "playerlike"
+guard_react_ticks = 6
+guard_counter_ticks = 12
 guard_roll_animation_id = "combat_roll:roll"
 guard_roll_animation_source = "playerlike"
+guard_roll_ticks = 14
+guard_roll_iframe_ticks = 14
+guard_roll_distance = 3.0
 guard_dodge_animation_id = "spell_engine:dodge"
 guard_dodge_animation_source = "playerlike"
-guard_dodge_distance = 3.4
+guard_dodge_ticks = 12
+guard_dodge_iframe_ticks = 10
+guard_dodge_distance = 2.8
 guard_dodge_direction = "back"
+guard_min_ticks = 50
+guard_random_ticks = 45
+guard_taunt_min_ticks = 40
+guard_taunt_random_ticks = 40
 recovery_hits_allowed = 4
+parry_damage = 0.0
+parry_knockback = 0.6
 
-[[phases]]
-id = "phase_1"
-display_name = "Opening Verse"
-starts_at_health_ratio = 1.0
-damage_multiplier = 0.95
-speed_multiplier = 1.15
-offense_chain_min = 1
-offense_chain_random = 1
-offense_chain_recovery_ticks = 8
-music_id = "cataclysm:enderguardian_music_1"
-music_volume = 0.48
-music_pitch = 1.0
-music_repeat_ticks = 3000
-
-[[phases]]
-id = "phase_2"
-display_name = "Encore"
-starts_at_health_ratio = 0.5
-damage_multiplier = 1.12
-speed_multiplier = 1.4
-offense_chain_min = 3
-offense_chain_random = 2
-offense_chain_recovery_ticks = 6
-transition_fallback = "Fine, fine. I will play the loud part."
-transition_llm_prompt = "The duel has reached half health and you are entering a faster bard encore phase. Reply as Venti with one short playful battle line about wind, music, or freedom. Sound teasing but focused."
-music_id = "cataclysm:maledictus_music"
-music_volume = 0.54
-music_pitch = 1.0
-music_repeat_ticks = 3000
+phases = [
+  { id = "phase_1", display_name = "Opening Verse", starts_at_health_ratio = 1.0, damage_multiplier = 1.0, speed_multiplier = 1.0, offense_chain_min = 1, offense_chain_random = 0, offense_chain_recovery_ticks = 8, transition_fallback = "", transition_llm_prompt = "", music_id = "cataclysm:enderguardian_music_1", music_volume = 0.5, music_pitch = 1.0, music_repeat_ticks = 3000 },
+  { id = "phase_2", display_name = "Encore", starts_at_health_ratio = 0.5, damage_multiplier = 1.2, speed_multiplier = 1.25, offense_chain_min = 2, offense_chain_random = 1, offense_chain_recovery_ticks = 6, transition_fallback = "Fine, fine. I will play the loud part.", transition_llm_prompt = "The duel has reached half health and you are entering a faster harp-crossbow encore phase. Reply as Venti with one short playful battle line about wind, music, or freedom. Sound teasing but focused.", music_id = "cataclysm:maledictus_music", music_volume = 0.55, music_pitch = 1.0, music_repeat_ticks = 3000 },
+]
 
 moves = [
-  { id = "mocking_note", kind = "projectile", animation_id = "spell_engine:one_handed_projectile_charge", release_animation_id = "spell_engine:one_handed_projectile_release", spell_id = "bards_rpg:vicious_mockery", duration_ticks = 22, hit_ticks = [14], cooldown_ticks = 22, recovery_ticks = 16, damage = 1.8, range = 9.5, arc_degrees = 80.0, knockback = 0.35, weight = 6, min_distance = 3.5, max_distance = 9.5, projectile_type = "magic", projectile_speed = 0.56, projectile_particle = "spell_engine:magic_arcane_float", impact_particle = "spell_engine:magic_arcane_burst", impact_radius = 0.55, status_effect_id = "minecraft:weakness", status_effect_ticks = 60, release_sound_id = "bards_rpg:vicious_mockery", impact_sound_id = "bards_rpg:vicious_mockery" },
-  { id = "discordant_note", kind = "projectile", animation_id = "spell_engine:one_handed_projectile_charge", release_animation_id = "spell_engine:one_handed_projectile_release", spell_id = "bards_rpg:discordant_note", duration_ticks = 26, hit_ticks = [17], cooldown_ticks = 34, recovery_ticks = 18, damage = 2.2, range = 8.0, arc_degrees = 80.0, knockback = 0.35, weight = 4, min_distance = 2.5, max_distance = 8.0, projectile_type = "magic", projectile_speed = 0.48, projectile_particle = "spell_engine:magic_arcane_float", impact_particle = "spell_engine:magic_arcane_burst", impact_radius = 0.9, status_effect_id = "minecraft:slowness", status_effect_ticks = 45, release_sound_id = "bards_rpg:discordant_note", impact_sound_id = "bards_rpg:discordant_note" },
-  { id = "chord_strike", kind = "projectile", animation_id = "spell_engine:one_handed_projectile_charge", release_animation_id = "spell_engine:one_handed_projectile_release", spell_id = "bards_rpg:magical_ballad", duration_ticks = 30, hit_ticks = [20], cooldown_ticks = 46, recovery_ticks = 22, damage = 1.45, range = 10.0, arc_degrees = 80.0, knockback = 0.35, weight = 3, min_distance = 4.0, max_distance = 10.0, projectile_type = "magic", projectile_speed = 0.5, projectile_count = 3, projectile_spread_degrees = 10.0, projectile_particle = "spell_engine:magic_arcane_float", impact_particle = "spell_engine:magic_arcane_burst", impact_radius = 0.45, release_sound_id = "bards_rpg:magical_ballad", impact_sound_id = "bards_rpg:magical_ballad" },
-  { id = "discordant_burst", kind = "area", animation_id = "spell_engine:one_handed_area_release", spell_id = "bards_rpg:discordant_note", duration_ticks = 24, hit_ticks = [14], cooldown_ticks = 48, recovery_ticks = 20, damage = 2.4, range = 3.2, arc_degrees = 360.0, area_radius = 3.2, knockback = 1.35, weight = 3, min_distance = 0.0, max_distance = 3.6, impact_particle = "spell_engine:magic_arcane_burst", release_particle = "spell_engine:area_circle_1", impact_sound_id = "bards_rpg:discordant_note" },
-  { id = "inspiring_riff", kind = "support", animation_id = "spell_engine:one_handed_healing_charge", release_animation_id = "spell_engine:one_handed_healing_release", spell_id = "bards_rpg:song_of_celerity", duration_ticks = 28, hit_ticks = [18], cooldown_ticks = 82, recovery_ticks = 18, damage = 0.0, range = 8.5, arc_degrees = 360.0, weight = 2, min_distance = 2.0, max_distance = 8.5, cast_particle = "spell_engine:magic_spark_float", support_particle = "spell_engine:magic_arcane_decelerate", release_sound_id = "bards_rpg:song_of_celerity", impact_sound_id = "bards_rpg:song_of_celerity", absorption_amount = 4.5, absorption_ticks = 90 },
-  { id = "healing_hymn", kind = "support", animation_id = "spell_engine:one_handed_healing_charge", release_animation_id = "spell_engine:one_handed_healing_release", spell_id = "bards_rpg:hymn_of_the_golden_light", duration_ticks = 32, hit_ticks = [22], cooldown_ticks = 120, recovery_ticks = 24, damage = 0.0, range = 8.5, arc_degrees = 360.0, weight = 1, min_distance = 2.0, max_distance = 8.5, cast_particle = "spell_engine:magic_spark_float", support_particle = "spell_engine:magic_heal_ascend", release_sound_id = "bards_rpg:hymn_of_the_golden_light", impact_sound_id = "bards_rpg:hymn_of_the_golden_light", self_heal_amount = 4.0, self_heal_cap_health_ratio = 0.65, self_heal_max_uses_per_phase = 1 },
-  { id = "crescendo", kind = "projectile", animation_id = "spell_engine:one_handed_projectile_charge", release_animation_id = "spell_engine:one_handed_projectile_release", spell_id = "bards_rpg:crescendo", duration_ticks = 34, hit_ticks = [24], cooldown_ticks = 68, recovery_ticks = 26, damage = 3.4, range = 10.5, arc_degrees = 80.0, knockback = 0.35, weight = 3, min_distance = 4.0, max_distance = 10.5, projectile_type = "magic", projectile_speed = 0.46, projectile_particle = "spell_engine:magic_arcane_float", impact_particle = "spell_engine:magic_arcane_burst", impact_radius = 1.45, release_sound_id = "bards_rpg:crescendo", impact_sound_id = "bards_rpg:crescendo", min_phase_index = 1 },
-  { id = "encore_step", kind = "roll", animation_id = "spell_engine:dodge", duration_ticks = 12, hit_ticks = [], cooldown_ticks = 34, recovery_ticks = 0, damage = 0.0, weight = 4, roll_distance = 3.5, roll_direction = "back", iframe_start_tick = 0, iframe_end_tick = 12, support_particle = "spell_engine:magic_arcane_decelerate" },
+  { id = "starshot", kind = "projectile", animation_id = "bards_rpg:harp_channel", animation_source = "playerlike", release_animation_id = "bards_rpg:harp_release", release_animation_source = "playerlike", spell_id = "bards_rpg:starshots", duration_ticks = 26, hit_ticks = [18], cooldown_ticks = 24, recovery_ticks = 22, damage = 2.0, range = 13.0, arc_degrees = 80.0, area_radius = 0.0, knockback = 0.35, weight = 6, min_distance = 5.0, max_distance = 13.0, roll_distance = 0.0, roll_direction = "back", iframe_start_tick = 0, iframe_end_tick = 0, projectile_type = "arrow", projectile_speed = 2.35, projectile_inaccuracy = 0.35, projectile_count = 1, projectile_spread_degrees = 0.0, projectile_particle = "more_rpg_classes:star", impact_particle = "more_rpg_classes:star", impact_radius = 0.55, cast_particle = "more_rpg_classes:music_note", release_particle = "spell_engine:magic_spark_decelerate", support_particle = "", cast_sound_id = "bards_rpg:troubadours_minuet", release_sound_id = "bards_rpg:harp_crossbow_shoot", impact_sound_id = "bards_rpg:bard_impact", min_phase_index = 0, max_phase_index = 99 },
+  { id = "mocking_shot", kind = "projectile", animation_id = "bards_rpg:harp_channel", animation_source = "playerlike", release_animation_id = "bards_rpg:harp_release", release_animation_source = "playerlike", spell_id = "bards_rpg:vicious_mockery", duration_ticks = 18, hit_ticks = [11], cooldown_ticks = 18, recovery_ticks = 16, damage = 1.4, range = 10.0, arc_degrees = 80.0, area_radius = 0.0, knockback = 0.35, weight = 5, min_distance = 3.0, max_distance = 10.0, roll_distance = 0.0, roll_direction = "back", iframe_start_tick = 0, iframe_end_tick = 0, projectile_type = "arrow", projectile_speed = 2.15, projectile_inaccuracy = 0.75, projectile_count = 1, projectile_spread_degrees = 0.0, projectile_particle = "more_rpg_classes:music_note", impact_particle = "more_rpg_classes:rage_particle", impact_radius = 0.55, cast_particle = "more_rpg_classes:music_note", release_particle = "more_rpg_classes:music_note", support_particle = "", cast_sound_id = "", release_sound_id = "bards_rpg:harp_crossbow_shoot", impact_sound_id = "bards_rpg:bard_impact", min_phase_index = 0, max_phase_index = 99 },
+  { id = "ballad_shot", kind = "projectile", animation_id = "bards_rpg:harp_channel", animation_source = "playerlike", release_animation_id = "bards_rpg:harp_release", release_animation_source = "playerlike", spell_id = "bards_rpg:magical_ballad", duration_ticks = 34, hit_ticks = [25], cooldown_ticks = 52, recovery_ticks = 30, damage = 3.0, range = 14.0, arc_degrees = 80.0, area_radius = 0.0, knockback = 1.0, weight = 2, min_distance = 6.0, max_distance = 14.0, roll_distance = 0.0, roll_direction = "back", iframe_start_tick = 0, iframe_end_tick = 0, projectile_type = "arrow", projectile_speed = 2.75, projectile_inaccuracy = 0.2, projectile_count = 1, projectile_spread_degrees = 0.0, projectile_particle = "more_rpg_classes:music_note", impact_particle = "spell_engine:magic_spark_burst", impact_radius = 0.75, cast_particle = "more_rpg_classes:music_note", release_particle = "more_rpg_classes:music_note", support_particle = "", cast_sound_id = "bards_rpg:magical_ballad", release_sound_id = "bards_rpg:harp_crossbow_shoot", impact_sound_id = "bards_rpg:bard_impact", min_phase_index = 0, max_phase_index = 99 },
+  { id = "crescendo_volley", kind = "projectile", animation_id = "bards_rpg:harp_channel", animation_source = "playerlike", release_animation_id = "bards_rpg:harp_release", release_animation_source = "playerlike", spell_id = "bards_rpg:crescendo", duration_ticks = 36, hit_ticks = [22], cooldown_ticks = 66, recovery_ticks = 26, damage = 1.1, range = 13.0, arc_degrees = 80.0, area_radius = 0.0, knockback = 0.35, weight = 4, min_distance = 5.0, max_distance = 13.0, roll_distance = 0.0, roll_direction = "back", iframe_start_tick = 0, iframe_end_tick = 0, projectile_type = "arrow", projectile_speed = 2.2, projectile_inaccuracy = 1.0, projectile_count = 3, projectile_spread_degrees = 9.0, projectile_particle = "more_rpg_classes:music_note", impact_particle = "spell_engine:magic_spark_burst", impact_radius = 0.65, cast_particle = "more_rpg_classes:music_note", release_particle = "more_rpg_classes:music_note", support_particle = "", cast_sound_id = "bards_rpg:encore_channel", release_sound_id = "bards_rpg:harp_crossbow_shoot", impact_sound_id = "bards_rpg:encore_cooldown_impact", min_phase_index = 1, max_phase_index = 99 },
+  { id = "backstep", kind = "roll", animation_id = "combat_roll:roll", animation_source = "playerlike", release_animation_id = "", release_animation_source = "playerlike", spell_id = "", duration_ticks = 14, hit_ticks = [], cooldown_ticks = 36, recovery_ticks = 0, damage = 0.0, range = 2.8, arc_degrees = 95.0, area_radius = 0.0, knockback = 0.35, weight = 3, min_distance = 0.0, max_distance = 3.5, roll_distance = 3.4, roll_direction = "back", iframe_start_tick = 0, iframe_end_tick = 14, projectile_speed = 2.2, projectile_inaccuracy = 0.5, projectile_count = 1, projectile_spread_degrees = 0.0, min_phase_index = 0, max_phase_index = 99 },
+  { id = "side_roll", kind = "roll", animation_id = "spell_engine:dodge", animation_source = "playerlike", release_animation_id = "", release_animation_source = "playerlike", spell_id = "", duration_ticks = 12, hit_ticks = [], cooldown_ticks = 34, recovery_ticks = 0, damage = 0.0, range = 2.8, arc_degrees = 95.0, area_radius = 0.0, knockback = 0.35, weight = 2, min_distance = 0.0, max_distance = 3.5, roll_distance = 2.7, roll_direction = "side", iframe_start_tick = 0, iframe_end_tick = 12, projectile_speed = 2.2, projectile_inaccuracy = 0.5, projectile_count = 1, projectile_spread_degrees = 0.0, min_phase_index = 0, max_phase_index = 99 },
 ]
+
+[balloons]
+chase = ["The wind is faster, {player}!"]
+attack = ["A sharp little chorus!", "Here comes the downbeat!", "That note flies true!"]
+recovery = ["Your solo, traveler!"]
+taunt = ["Careful. The breeze is baiting you."]
+guard_react = ["Oops. Wrong note."]
+parry = ["Parried on the beat!"]
+hit_player = ["That note landed!"]
+took_damage = ["Ah, a bold verse!"]
+victory = ["My verse wins! I healed you, so no gloomy ending."]
+defeat = ["I yield. What a splendid finale!"]
