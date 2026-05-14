@@ -41,6 +41,8 @@ object NpcPlayerlikeAnimationRegistry {
         "spell_engine:one_handed_projectile_release",
         "spell_engine:one_handed_area_charge",
         "spell_engine:one_handed_area_release",
+        "spell_engine:one_handed_healing_charge",
+        "spell_engine:one_handed_healing_release",
     )
     private var animations: Map<String, NpcPlayerlikeAnimationDefinition> = fallbackIds.associate { id -> id to NpcPlayerlikeAnimationDefinition(id) }
 

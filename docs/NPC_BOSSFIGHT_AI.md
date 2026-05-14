@@ -14,6 +14,8 @@ Boss fights use PlayerAnimator clips only. Do not route boss fight chase, strafe
 - `spell_engine:dodge`: short hurt/reposition/guard dodge visual.
 - `combat_roll:roll`: guard dodge roll visual.
 - `spell_engine:archery_pull` / `spell_engine:archery_release`: archer draw and release visuals.
+- `spell_engine:one_handed_projectile_charge` / `spell_engine:one_handed_projectile_release`: wizard spell charge and release visuals.
+- `spell_engine:one_handed_healing_charge` / `spell_engine:one_handed_healing_release`: priest heal/barrier support visuals.
 
 ## Boss Armory
 
@@ -26,7 +28,7 @@ Boss armory is cosmetic for combat math; moveset damage and phase multipliers st
 
 ## Template Phases
 
-Boss movesets can define ordered `phases`. The active phase is selected from `starts_at_health_ratio`; warrior, rogue, and archer use phase 1 from full health and phase 2 at `0.5` health.
+Boss movesets can define ordered `phases`. The active phase is selected from `starts_at_health_ratio`; warrior, rogue, archer, wizard, and priest use phase 1 from full health and phase 2 at `0.5` health.
 
 - Phase 1 is defensive: normal damage/speed and a 1-attack offense budget before returning to recovery and guard.
 - Phase 2 starts at half health: higher `damage_multiplier`, higher `speed_multiplier`, and a larger offense chain budget.
@@ -44,7 +46,18 @@ The `projectile` move kind supports archer and wizard-style boss attacks:
 - Hit ticks are release ticks. Projectile travel is dodgeable and can miss.
 - Magic projectiles stop on block collision, shield block, roll iframes, target impact, or lifetime expiry.
 - Projectile tuning lives on the move: `projectile_speed`, `projectile_inaccuracy`, `projectile_count`, `projectile_spread_degrees`, `impact_radius`, `knockback`, `damage`, and optional `status_effect_id` fields.
+- Visual and audio ids are registry-backed and safe to omit: `projectile_particle`, `cast_particle`, `release_particle`, `impact_particle`, `cast_sound_id`, `release_sound_id`, and `impact_sound_id` fall back to built-in particles/sounds if a referenced mod is not loaded.
 - Damage still comes from the moveset move and active phase multiplier. Equipped bows/staves are cosmetic.
+
+## Support Moves
+
+The `support` move kind covers priest-style self sustain and barriers:
+
+- Support moves use PlayerAnimator charge/release clips like attacks, but do not damage the player.
+- `self_heal_amount`, `self_heal_cap_health_ratio`, and `self_heal_max_uses_per_phase` tune healing.
+- Healing is capped by the active phase. A phase below full health can only heal up to that phase threshold minus a small buffer, so a phase 2 priest cannot undo the half-health transition.
+- `absorption_amount` and `absorption_ticks` create a temporary virtual shield that is consumed before boss HP during accepted recovery hits.
+- `support_particle`, `release_particle`, `cast_sound_id`, `release_sound_id`, and `impact_sound_id` let priests reuse Spell Engine / Paladins visuals without hard dependencies.
 
 ## Loop
 
@@ -58,6 +71,8 @@ OFFENSE: CHASE/OFFENSE -> ATTACK -> SHORT_CHAIN_RECOVERY -> ATTACK
 OFFENSE END -> TIMED_RECOVERY -> DEFENSE/GUARD_MODE
                       |
                       +-- accepted recovery hits until time expires or hit cap is reached
+
+SUPPORT MOVE -> HEAL/BARRIER VFX -> TIMED_RECOVERY
 
 DEFENSE: GUARD_MODE -- player attacks guard --> random PARRY or ROLL or DODGE -> OFFENSE
 DEFENSE: GUARD_MODE -- no hit in 3-6s --> OFFENSE
@@ -79,6 +94,8 @@ Live label: `NPC mode: offense` while the boss is in the aggressive tactic, othe
 - Rogue/Ezio starts in offense. Phase 1 rolls a 1-attack budget at slightly higher speed; phase 2 rolls a 3-5 attack budget with faster movement and lighter damage than warrior.
 - Archer/Huntress Wizard starts in offense at range. Phase 1 fires one readable shot at a time; phase 2 chains 2-3 shots and unlocks volley.
 - Wizard/Gandalf starts in offense at mid range. Phase 1 casts one readable spell at a time; phase 2 chains 2-3 spells.
+- Priest/Pope Leo starts in offense at mid range. Phase 1 mixes holy shocks, short AoE, and limited sustain; phase 2 casts faster, chains 2-3 moves, and keeps healing capped below the transition threshold.
+- Bard/Venti starts in offense at mid range. It is tuned as an upgrade-class boss: phase 1 plays 1-2 note pressure and spacing bursts; phase 2 chains 3-5 note phrases and unlocks crescendo.
 - During offense, prefer real melee/area attacks over roll moves and avoid repeating the last move when another legal attack is available.
 
 ### Attack
@@ -90,6 +107,7 @@ Live label: `NPC mode: attacking`
 - Damage only on the authored hit tick.
 - Damage only if range and forward cone pass.
 - Projectile attacks spawn arrows on the authored hit tick, then use real arrow travel for counterplay.
+- Support moves apply their heal/barrier on the authored hit tick, then recover.
 - After the attack clip ends, enter `RECOVERY`.
 - If offense still has attacks left, use `offense_chain_recovery_ticks` as a short bridge and then return to offense.
 - If offense is spent, use the move's normal `recovery_ticks`, then enter defense guard.
@@ -103,11 +121,11 @@ Live label: `NPC mode: recovery`
 - Passively strafe side to side at recovery speed while keeping melee spacing.
 - The player may punish the boss during the per-move `recovery_ticks` window.
 - Each accepted player hit:
-  - Reduces virtual boss health.
+  - Consumes virtual absorption first, then reduces virtual boss health.
   - Plays the PlayerAnimator hurt/dodge substitute.
   - Applies a small knockback to the NPC.
   - Increments `recovery_hits_taken`.
-- Recovery hits are accepted until `recovery_hits_allowed` is reached. Warrior V1 uses a 4-hit cap.
+- Recovery hits are accepted until `recovery_hits_allowed` is reached. Warrior, rogue, archer, wizard, priest, and bard V1 use a 4-hit cap.
 - Any extra player swing after the cap immediately converts into the guard response.
 - When the hit cap is reached, enter `GUARD_MODE` after the hurt reaction.
 - If chain recovery times out while offense still has attacks left, return to offense.
@@ -179,6 +197,7 @@ Live label: `NPC mode: dodging`
 - When a duel result dialog is open, keep the NPC protected from damage so late player hits cannot kill the restored entity.
 - Only the duel player can reduce virtual boss health.
 - Player damage is accepted during `RECOVERY` only.
+- Temporary boss absorption from support moves is consumed before virtual boss health.
 - Player damage during `GUARD_MODE`, `GUARD_REACT`, `GUARD_ROLL`, `GUARD_DODGE`, or `PARRY` is blocked and answered by parry, roll, or dodge flow.
 - Player damage during `PHASE_DIALOGUE` is blocked silently while the fight is paused.
 - Player damage after the configured recovery hit cap is also blocked and answered by parry, roll, or dodge flow.
@@ -245,6 +264,18 @@ Wizard neutral movement should hold range around 5-10 blocks:
 - If the player gets inside melee range, prefer blink dodge; if blink is unavailable, use frost nova as a close-range space reset.
 - Magic charges should be readable enough for dodge, shield, line-of-sight break, or rush counterplay.
 
+Priest neutral movement should hold range around 4-8 blocks:
+
+- Use normal walking/strafe locomotion while moving; reserve PlayerAnimator healing/projectile clips for committed casts.
+- Reuse Spell Engine / Paladins holy particles and sound-event ids when present, with safe fallback if those registries are absent.
+- Holy shock pressures at range, judgement burst punishes close pressure, and limited mercy/barrier support creates a defensive rhythm without infinite sustain.
+
+Bard neutral movement should hold range around 4-8 blocks:
+
+- Use normal walking/strafe locomotion while moving; reserve PlayerAnimator projectile/healing clips for committed notes and songs.
+- Reuse Bards RPG spell ids and Spell Engine particle fallbacks for visible music-note pressure.
+- Vicious mockery and discordant note poke/control at range, discordant burst answers rushes, inspiring riff/healing hymn provide limited sustain, and crescendo is a phase 2 finisher.
+
 ## Implementation Notes
 
 - Replace current neutral/telegraph-heavy loop with the simpler chase-attack-recovery-guard loop above.
@@ -260,8 +291,12 @@ Wizard neutral movement should hold range around 5-10 blocks:
 - Rogue attacks use dual-wield PlayerAnimator clips from Better Combat and Spell Engine, including `bettercombat:dual_handed_slash_cross`, `bettercombat:dual_handed_slash_uncross`, `bettercombat:dual_handed_stab`, `spell_engine:dual_handed_weapon_open`, `spell_engine:dual_handed_weapon_cross`, `spell_engine:weapon_slash_uncross_swipe`, and `spell_engine:weapon_dual_throw`.
 - Archer phase 1 uses `spell_engine:archery_pull`/`spell_engine:archery_release` with patient aimed, quick, and power shots. Phase 2 uses `damage_multiplier = 1.2`, `speed_multiplier = 1.25`, `offense_chain_min = 2`, `offense_chain_random = 1`, and unlocks `volley` through `min_phase_index = 1`.
 - Huntress Wizard uses the archer moveset and equips `archers:composite_longbow` during the duel.
-- Wizard phase 1 uses `spell_engine:one_handed_projectile_charge`/`spell_engine:one_handed_projectile_release` with `wizards:arcane_blast`, `wizards:fire_blast`, and `wizards:frostbolt` magic projectiles. Phase 2 uses `damage_multiplier = 1.18`, `speed_multiplier = 1.18`, `offense_chain_min = 2`, `offense_chain_random = 1`, and shorter chain recovery.
+- Wizard phase 1 uses `spell_engine:one_handed_projectile_charge`/`spell_engine:one_handed_projectile_release` with `wizards:arcane_blast`, `wizards:fire_blast`, and `wizards:frostbolt` magic projectiles. Wizard spell visuals reuse Spell Engine particle/sound ids for arcane, fire, frost projectile travel, release, and impact when available. Phase 2 uses `damage_multiplier = 1.18`, `speed_multiplier = 1.18`, `offense_chain_min = 2`, `offense_chain_random = 1`, and shorter chain recovery.
 - Gandalf uses the wizard moveset and equips `wizards:staff_wizard` during the duel.
+- Priest phase 1 uses `paladins:holy_shock`, `paladins:judgement`, limited self-heal, and absorption support with Spell Engine healing clips. Phase 2 uses `damage_multiplier = 1.1`, `speed_multiplier = 1.12`, `offense_chain_min = 2`, `offense_chain_random = 1`, and healing that cannot restore above roughly 45% health.
+- Pope Leo uses the priest moveset and equips `paladins:holy_staff` during the duel.
+- Bard phase 1 uses `bards_rpg:vicious_mockery`, `bards_rpg:discordant_note`, `bards_rpg:magical_ballad`, limited support songs, and `spell_engine:dodge` repositioning. It is harder than starter casters through higher health, faster movement, 1-2 note chains, stronger close-range knockback, and status pressure. Phase 2 uses `damage_multiplier = 1.12`, `speed_multiplier = 1.4`, `offense_chain_min = 3`, `offense_chain_random = 2`, and unlocks `bards_rpg:crescendo`.
+- Venti uses the bard moveset and equips `bards_rpg:aether_lute` during the duel. Refs name it Angelic Lute, which fits Venti's wind/bard fantasy better than dragon, ruby, or netherite lutes.
 - Track a random guard-bait timeout between 60 and 120 ticks.
 - Keep the live status label aligned with these state names.
 - Keep this behavior inside the bossfight controller so future templates can swap the state graph without changing base NPC routines.

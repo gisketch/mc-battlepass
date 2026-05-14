@@ -847,7 +847,7 @@ object RolesConfig {
             "water_wizard" to listOf("elemental_wizards_rpg:aqua_water_whip", "elemental_wizards_rpg:aqua_splash", "elemental_wizards_rpg:elemental_avatar", "elemental_wizards_rpg:improved_aqua_springwater"),
             "earth_wizard" to listOf("elemental_wizards_rpg:terra_stone_spear", "elemental_wizards_rpg:terra_stone_throw", "elemental_wizards_rpg:elemental_avatar", "elemental_wizards_rpg:improved_terra_drip_circle"),
             "wind_wizard" to listOf("elemental_wizards_rpg:wind_air_cutter", "elemental_wizards_rpg:wind_gust", "elemental_wizards_rpg:elemental_avatar", "elemental_wizards_rpg:improved_wind_updraft"),
-            "priest" to listOf("paladins:holy_shock", "paladins:heal"),
+            "priest" to listOf("paladins:holy_shock", "paladins:heal", "paladins:judgement", "paladins:barrier"),
         )
         val patternMap = mapOf(
             "bard" to listOf("bards_rpg:*"),

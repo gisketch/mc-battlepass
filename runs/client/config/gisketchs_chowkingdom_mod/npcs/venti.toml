@@ -24,6 +24,8 @@ enabled = true
 health = 76.0
 damage = 4.0
 template = "sword_user"
+main_hand = "bards_rpg:aether_lute"
+off_hand = ""
 
 [boss.balloons]
 chase = ["The wind is faster, {player}!", "Run with the song, not against it!", "Catch me if you can! Ehe!", "My feet have a lovely tempo!", "This chase needs a lute solo!", "You are chasing the breeze, friend!", "Faster! The melody quickens!", "I am but a leaf on the wind!", "Your sprint could use a rhythm section!", "Keep up! The chorus is coming!"]

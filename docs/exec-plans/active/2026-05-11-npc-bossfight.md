@@ -22,6 +22,8 @@ Add and evolve an extensible NPC bossfight prototype using the current SmartBrai
 - Rogue/Ezio has a templated two-phase dual-wield boss fight using PlayerAnimator-only Better Combat and Spell Engine clips.
 - Archer/Huntress Wizard has a templated two-phase ranged boss fight using PlayerAnimator-only Spell Engine archery clips and real arrow projectiles.
 - Wizard/Gandalf has a templated two-phase starter caster boss fight using PlayerAnimator-only Spell Engine charge/release clips and server-ticked magic projectiles.
+- Priest/Pope Leo has a templated two-phase support caster boss fight using PlayerAnimator-only Spell Engine healing clips, registry-backed Spell Engine / Paladins VFX ids, limited healing, and temporary virtual absorption.
+- Bard/Venti has a templated two-phase rhythm-control boss fight using PlayerAnimator-only Spell Engine charge/release clips, Bards RPG spell ids, magic note projectiles, limited support songs, and Angelic Lute armory.
 - Phase transitions pause combat and open the NPC dialog screen with animalese voice; they support an LLM-injected line with a configured fallback and do not use world chat.
 - The visible boss bar is the custom CKDM HUD bar using the 9-slice progress textures and client-side HP lerp.
 - Boss music is a templated sound-event hook on moveset phases; no third-party music assets are copied into the repo.
@@ -64,6 +66,9 @@ Add and evolve an extensible NPC bossfight prototype using the current SmartBrai
 - Finn V1 uses `simplyswords:diamond_longsword`; Ezio V1 uses dual `simplyswords:iron_rapier`.
 - Projectile boss moves spawn real vanilla arrows at release ticks. `archer` uses `spell_engine:archery_pull`/`spell_engine:archery_release`, and Huntress Wizard equips `archers:composite_longbow`.
 - Magic projectile boss moves use particle travel, block collision, shield/roll counterplay, impact radius, and optional status effects. `wizard` uses arcane, fire, and frost starter spells, and Gandalf equips `wizards:staff_wizard`.
+- Boss caster VFX fields are registry-backed and asset-neutral: particle/sound ids from Spell Engine, Wizards, Paladins, or other RPG mods are reused when loaded and safely fall back when absent.
+- Support boss moves can self-heal with per-phase use caps, heal caps, and temporary virtual absorption that is consumed before boss HP during accepted recovery hits. `priest` uses holy shock, judgement, mercy prayer, and barrier support; Pope Leo equips `paladins:holy_staff`.
+- Bard boss fights are upgrade-class control/support duelists, not healer clones: `bard` uses vicious mockery, discordant note, magical ballad, limited support songs, and phase 2 crescendo. Venti equips `bards_rpg:aether_lute` because refs name it Angelic Lute. Tuning is intentionally harder than starter casters through higher health, faster movement, longer note chains, and stronger status/knockback pressure.
 
 ## Progress Log
 
@@ -94,3 +99,6 @@ Add and evolve an extensible NPC bossfight prototype using the current SmartBrai
 - 2026-05-14: Added per-NPC boss armory fields, Finn/Ezio Simply Swords weapon config, offhand playerlike render pose support, and an Ezio-focused phased rogue boss template with dual-wield Spell Engine / Better Combat PlayerAnimator attacks.
 - 2026-05-14: Added the base archer boss template, projectile move fields, phase-gated volley, Huntress Wizard composite longbow armory, and ranged boss docs.
 - 2026-05-14: Added the base wizard boss template, magic projectile runtime, Gandalf staff armory, frostbolt slow, and wizard boss docs.
+- 2026-05-14: Added registry-backed caster VFX/sound fields, Spell Engine wizard VFX ids, the base priest support-caster boss template, Pope Leo holy staff armory, limited phase-aware healing, and temporary virtual absorption.
+- 2026-05-14: Added the base bard boss template, Venti Angelic Lute armory, fan-out magic note projectiles, rhythm-control spell tuning, limited support songs, and bard boss docs.
+- 2026-05-14: Retuned bard as an upgrade-class boss with 88 health, faster phase movement, 1-2 note phase 1 chains, 3-5 note encore chains, stronger close-range knockback, stronger status pressure, and scarier phase 2 crescendo.

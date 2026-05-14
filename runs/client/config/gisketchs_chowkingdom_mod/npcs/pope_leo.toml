@@ -5,7 +5,7 @@ skin = "gisketchs_chowkingdom_mod:npc/pope_leo"
 body_type = "normal"
 height = 1.02
 weight = 0.9
-main_pokemon = "cobblemon:blissey"
+main_pokemon = "cobblemon:popplio"
 store = "cosmetics"
 class = "priest"
 hurt_messages = ["Peace, {player}. Let us not answer confusion with harm.", "Careful. Mercy requires steady hands.", "I forgive the blow. Now choose better."]
@@ -24,6 +24,8 @@ enabled = true
 health = 82.0
 damage = 3.5
 template = "sword_user"
+main_hand = "paladins:holy_staff"
+off_hand = ""
 
 [boss.balloons]
 chase = ["Walk toward peace, {player}.", "A shepherd follows the wandering.", "Do not run from discipline."]

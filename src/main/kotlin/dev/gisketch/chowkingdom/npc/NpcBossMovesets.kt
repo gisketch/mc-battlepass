@@ -76,6 +76,8 @@ object NpcBossMovesets {
         defaultRogue(),
         defaultArcher(),
         defaultWizard(),
+        defaultPriest(),
+        defaultBard(),
         defaultWitcher(),
     )
 
@@ -291,11 +293,136 @@ object NpcBossMovesets {
             ),
         ),
         moves = mutableListOf(
-            magicProjectile("arcane_blast", spellId = "wizards:arcane_blast", duration = 24, hitTick = 15, damage = 2.4, cooldown = 24, recovery = 18, weight = 6, min = 4.0, max = 11.0, speed = 0.58, impactRadius = 0.55, particle = "minecraft:end_rod", impactParticle = "minecraft:poof"),
-            magicProjectile("fire_blast", spellId = "wizards:fire_blast", duration = 30, hitTick = 21, damage = 3.4, cooldown = 46, recovery = 24, weight = 3, min = 5.0, max = 11.0, speed = 0.44, impactRadius = 1.35, particle = "minecraft:flame", impactParticle = "minecraft:flame"),
-            magicProjectile("frostbolt", spellId = "wizards:frostbolt", duration = 26, hitTick = 17, damage = 1.8, cooldown = 34, recovery = 20, weight = 4, min = 4.0, max = 10.5, speed = 0.5, impactRadius = 0.7, particle = "minecraft:snowflake", impactParticle = "minecraft:poof", statusEffectId = "minecraft:slowness", statusEffectTicks = 45, statusEffectAmplifier = 0),
-            area("frost_nova", "spell_engine:one_handed_area_release", duration = 24, hitTick = 14, damage = 2.2, radius = 3.0, cooldown = 56, recovery = 20, weight = 3, min = 0.0, max = 3.4, spellId = "wizards:frost_nova"),
-            roll("blink_dodge", "spell_engine:dodge", duration = 12, cooldown = 36, distance = 3.6, direction = "back", weight = 4),
+            magicProjectile("arcane_blast", spellId = "wizards:arcane_blast", duration = 24, hitTick = 15, damage = 2.4, cooldown = 24, recovery = 18, weight = 6, min = 4.0, max = 11.0, speed = 0.58, impactRadius = 0.55, particle = "spell_engine:magic_arcane_float", impactParticle = "spell_engine:magic_arcane_burst", releaseSoundId = "spell_engine:generic_arcane_release"),
+            magicProjectile("fire_blast", spellId = "wizards:fire_blast", duration = 30, hitTick = 21, damage = 3.4, cooldown = 46, recovery = 24, weight = 3, min = 5.0, max = 11.0, speed = 0.44, impactRadius = 1.35, particle = "spell_engine:flame_spark", impactParticle = "spell_engine:fire_explosion", releaseSoundId = "spell_engine:generic_fire_release"),
+            magicProjectile("frostbolt", spellId = "wizards:frostbolt", duration = 26, hitTick = 17, damage = 1.8, cooldown = 34, recovery = 20, weight = 4, min = 4.0, max = 10.5, speed = 0.5, impactRadius = 0.7, particle = "spell_engine:magic_frost_float", impactParticle = "spell_engine:magic_frost_burst", releaseSoundId = "spell_engine:generic_frost_release", statusEffectId = "minecraft:slowness", statusEffectTicks = 45, statusEffectAmplifier = 0),
+            area("frost_nova", "spell_engine:one_handed_area_release", duration = 24, hitTick = 14, damage = 2.2, radius = 3.0, cooldown = 56, recovery = 20, weight = 3, min = 0.0, max = 3.4, spellId = "wizards:frost_nova", impactParticle = "spell_engine:magic_frost_burst", releaseParticle = "spell_engine:area_circle_1"),
+            roll("blink_dodge", "spell_engine:dodge", duration = 12, cooldown = 36, distance = 3.6, direction = "back", weight = 4, supportParticle = "spell_engine:magic_arcane_decelerate"),
+        ),
+    )
+
+    private fun defaultPriest(): NpcBossMovesetDefinition = NpcBossMovesetDefinition(
+        id = "priest",
+        displayName = "Priest",
+        health = 82.0,
+        damage = 2.5,
+        attackStartDistance = 10.0,
+        offenseChainMin = 1,
+        offenseChainRandom = 0,
+        offenseChainRecoveryTicks = 9,
+        approachAnimationId = "",
+        approachAnimationSource = NpcBossAnimationSources.NATURAL,
+        strafeAnimationId = "",
+        strafeAnimationSource = NpcBossAnimationSources.NATURAL,
+        guardAnimationId = "",
+        guardAnimationSource = NpcBossAnimationSources.NATURAL,
+        parryAnimationId = "spell_engine:one_handed_healing_release",
+        recoveryAnimationId = "",
+        recoveryAnimationSource = NpcBossAnimationSources.NATURAL,
+        recoveryHitsAllowed = 4,
+        guardDodgeAnimationId = "spell_engine:dodge",
+        guardDodgeDistance = 3.0,
+        guardDodgeDirection = "back",
+        phases = mutableListOf(
+            phase(
+                id = "phase_1",
+                displayName = "Phase 1",
+                startsAtHealthRatio = 1.0,
+                damageMultiplier = 0.9,
+                speedMultiplier = 0.95,
+                offenseChainMin = 1,
+                offenseChainRandom = 0,
+                offenseChainRecoveryTicks = 9,
+                musicId = "cataclysm:enderguardian_music_1",
+                musicVolume = 0.48,
+                musicRepeatTicks = 3000,
+            ),
+            phase(
+                id = "phase_2",
+                displayName = "Phase 2",
+                startsAtHealthRatio = 0.5,
+                damageMultiplier = 1.1,
+                speedMultiplier = 1.12,
+                offenseChainMin = 2,
+                offenseChainRandom = 1,
+                offenseChainRecoveryTicks = 7,
+                transitionFallback = "Mercy is not weakness. Stand with discipline.",
+                transitionLlmPrompt = "The duel has reached half health and you are entering a firmer priest second phase. Reply as Pope Leo with one short pastoral battle line about disciplined mercy, courage, or restraint.",
+                musicId = "cataclysm:maledictus_music",
+                musicVolume = 0.54,
+                musicRepeatTicks = 3000,
+            ),
+        ),
+        moves = mutableListOf(
+            magicProjectile("holy_shock", spellId = "paladins:holy_shock", duration = 26, hitTick = 17, damage = 2.1, cooldown = 28, recovery = 18, weight = 6, min = 4.0, max = 11.0, speed = 0.52, impactRadius = 0.65, particle = "spell_engine:magic_holy_float", impactParticle = "spell_engine:magic_holy_burst", releaseSoundId = "spell_engine:generic_healing_release", impactSoundId = "paladins:holy_shock_damage"),
+            area("judgement_burst", "spell_engine:one_handed_area_release", duration = 25, hitTick = 15, damage = 2.0, radius = 3.0, cooldown = 52, recovery = 20, weight = 3, min = 0.0, max = 3.4, spellId = "paladins:judgement", knockback = 0.85, impactParticle = "spell_engine:magic_holy_burst", releaseParticle = "spell_engine:area_circle_1", impactSoundId = "paladins:judgement_impact"),
+            support("mercy_prayer", "spell_engine:one_handed_healing_charge", duration = 32, hitTick = 22, cooldown = 78, recovery = 24, weight = 2, min = 2.0, max = 10.0, spellId = "paladins:heal", selfHeal = 6.0, healCapRatio = 0.75, maxHealUses = 2, castParticle = "spell_engine:magic_spark_float", supportParticle = "spell_engine:magic_heal_ascend", releaseSoundId = "spell_engine:generic_healing_release", impactSoundId = "paladins:holy_shock_heal"),
+            support("priest_absorption", "spell_engine:one_handed_healing_charge", duration = 28, hitTick = 18, cooldown = 90, recovery = 18, weight = 2, min = 1.0, max = 9.0, spellId = "paladins:barrier", absorption = 4.0, absorptionTicks = 100, castParticle = "spell_engine:magic_spark_float", supportParticle = "spell_engine:shield_small", releaseSoundId = "paladins:holy_barrier_activate", impactSoundId = "paladins:holy_barrier_activate"),
+            roll("sanctuary_step", "spell_engine:dodge", duration = 12, cooldown = 40, distance = 3.2, direction = "back", weight = 3, supportParticle = "spell_engine:magic_holy_decelerate"),
+        ),
+    )
+
+    private fun defaultBard(): NpcBossMovesetDefinition = NpcBossMovesetDefinition(
+        id = "bard",
+        displayName = "Bard",
+        health = 88.0,
+        damage = 3.0,
+        attackStartDistance = 9.0,
+        offenseChainMin = 1,
+        offenseChainRandom = 0,
+        offenseChainRecoveryTicks = 8,
+        approachAnimationId = "",
+        approachAnimationSource = NpcBossAnimationSources.NATURAL,
+        strafeAnimationId = "",
+        strafeAnimationSource = NpcBossAnimationSources.NATURAL,
+        guardAnimationId = "",
+        guardAnimationSource = NpcBossAnimationSources.NATURAL,
+        parryAnimationId = "spell_engine:one_handed_projectile_release",
+        recoveryAnimationId = "",
+        recoveryAnimationSource = NpcBossAnimationSources.NATURAL,
+        recoveryHitsAllowed = 4,
+        guardDodgeAnimationId = "spell_engine:dodge",
+        guardDodgeDistance = 3.4,
+        guardDodgeDirection = "back",
+        phases = mutableListOf(
+            phase(
+                id = "phase_1",
+                displayName = "Opening Verse",
+                startsAtHealthRatio = 1.0,
+                damageMultiplier = 0.95,
+                speedMultiplier = 1.15,
+                offenseChainMin = 1,
+                offenseChainRandom = 1,
+                offenseChainRecoveryTicks = 8,
+                musicId = "cataclysm:enderguardian_music_1",
+                musicVolume = 0.48,
+                musicRepeatTicks = 3000,
+            ),
+            phase(
+                id = "phase_2",
+                displayName = "Encore",
+                startsAtHealthRatio = 0.5,
+                damageMultiplier = 1.12,
+                speedMultiplier = 1.4,
+                offenseChainMin = 3,
+                offenseChainRandom = 2,
+                offenseChainRecoveryTicks = 6,
+                transitionFallback = "Fine, fine. I will play the loud part.",
+                transitionLlmPrompt = "The duel has reached half health and you are entering a faster bard encore phase. Reply as Venti with one short playful battle line about wind, music, or freedom. Sound teasing but focused.",
+                musicId = "cataclysm:maledictus_music",
+                musicVolume = 0.54,
+                musicRepeatTicks = 3000,
+            ),
+        ),
+        moves = mutableListOf(
+            magicProjectile("mocking_note", spellId = "bards_rpg:vicious_mockery", duration = 22, hitTick = 14, damage = 1.8, cooldown = 22, recovery = 16, weight = 6, min = 3.5, max = 9.5, speed = 0.56, impactRadius = 0.55, particle = "spell_engine:magic_arcane_float", impactParticle = "spell_engine:magic_arcane_burst", statusEffectId = "minecraft:weakness", statusEffectTicks = 60, releaseSoundId = "bards_rpg:vicious_mockery", impactSoundId = "bards_rpg:vicious_mockery"),
+            magicProjectile("discordant_note", spellId = "bards_rpg:discordant_note", duration = 26, hitTick = 17, damage = 2.2, cooldown = 34, recovery = 18, weight = 4, min = 2.5, max = 8.0, speed = 0.48, impactRadius = 0.9, particle = "spell_engine:magic_arcane_float", impactParticle = "spell_engine:magic_arcane_burst", statusEffectId = "minecraft:slowness", statusEffectTicks = 45, releaseSoundId = "bards_rpg:discordant_note", impactSoundId = "bards_rpg:discordant_note"),
+            magicProjectile("chord_strike", spellId = "bards_rpg:magical_ballad", duration = 30, hitTick = 20, damage = 1.45, cooldown = 46, recovery = 22, weight = 3, min = 4.0, max = 10.0, speed = 0.5, impactRadius = 0.45, particle = "spell_engine:magic_arcane_float", impactParticle = "spell_engine:magic_arcane_burst", releaseSoundId = "bards_rpg:magical_ballad", impactSoundId = "bards_rpg:magical_ballad", count = 3, spreadDegrees = 10.0),
+            area("discordant_burst", "spell_engine:one_handed_area_release", duration = 24, hitTick = 14, damage = 2.4, radius = 3.2, cooldown = 48, recovery = 20, weight = 3, min = 0.0, max = 3.6, spellId = "bards_rpg:discordant_note", knockback = 1.35, impactParticle = "spell_engine:magic_arcane_burst", releaseParticle = "spell_engine:area_circle_1", impactSoundId = "bards_rpg:discordant_note"),
+            support("inspiring_riff", "spell_engine:one_handed_healing_charge", duration = 28, hitTick = 18, cooldown = 82, recovery = 18, weight = 2, min = 2.0, max = 8.5, spellId = "bards_rpg:song_of_celerity", absorption = 4.5, absorptionTicks = 90, castParticle = "spell_engine:magic_spark_float", supportParticle = "spell_engine:magic_arcane_decelerate", releaseSoundId = "bards_rpg:song_of_celerity", impactSoundId = "bards_rpg:song_of_celerity"),
+            support("healing_hymn", "spell_engine:one_handed_healing_charge", duration = 32, hitTick = 22, cooldown = 120, recovery = 24, weight = 1, min = 2.0, max = 8.5, spellId = "bards_rpg:hymn_of_the_golden_light", selfHeal = 4.0, healCapRatio = 0.65, maxHealUses = 1, castParticle = "spell_engine:magic_spark_float", supportParticle = "spell_engine:magic_heal_ascend", releaseSoundId = "bards_rpg:hymn_of_the_golden_light", impactSoundId = "bards_rpg:hymn_of_the_golden_light"),
+            magicProjectile("crescendo", spellId = "bards_rpg:crescendo", duration = 34, hitTick = 24, damage = 3.4, cooldown = 68, recovery = 26, weight = 3, min = 4.0, max = 10.5, speed = 0.46, impactRadius = 1.45, particle = "spell_engine:magic_arcane_float", impactParticle = "spell_engine:magic_arcane_burst", releaseSoundId = "bards_rpg:crescendo", impactSoundId = "bards_rpg:crescendo", minPhaseIndex = 1),
+            roll("encore_step", "spell_engine:dodge", duration = 12, cooldown = 34, distance = 3.5, direction = "back", weight = 4, supportParticle = "spell_engine:magic_arcane_decelerate"),
         ),
     )
 
@@ -317,8 +444,8 @@ object NpcBossMovesets {
     private fun melee(id: String, animationId: String, duration: Int, hitTick: Int, damage: Double, range: Double, arc: Double, cooldown: Int, recovery: Int, weight: Int): NpcBossMoveDefinition =
         NpcBossMoveDefinition(id = id, kind = NpcBossMoveKinds.MELEE, animationId = animationId, durationTicks = duration, hitTicks = mutableListOf(hitTick), damage = damage, range = range, arcDegrees = arc, cooldownTicks = cooldown, recoveryTicks = recovery, weight = weight, maxDistance = range + 0.4)
 
-    private fun area(id: String, animationId: String, duration: Int, hitTick: Int, damage: Double, radius: Double, cooldown: Int, recovery: Int, weight: Int, min: Double = 0.0, max: Double = radius + 0.8, spellId: String = ""): NpcBossMoveDefinition =
-        NpcBossMoveDefinition(id = id, kind = NpcBossMoveKinds.AREA, animationId = animationId, durationTicks = duration, hitTicks = mutableListOf(hitTick), damage = damage, range = radius, arcDegrees = 360.0, areaRadius = radius, cooldownTicks = cooldown, recoveryTicks = recovery, weight = weight, minDistance = min, maxDistance = max, spellId = spellId)
+    private fun area(id: String, animationId: String, duration: Int, hitTick: Int, damage: Double, radius: Double, cooldown: Int, recovery: Int, weight: Int, min: Double = 0.0, max: Double = radius + 0.8, spellId: String = "", knockback: Double = 0.35, impactParticle: String = "", releaseParticle: String = "", impactSoundId: String = ""): NpcBossMoveDefinition =
+        NpcBossMoveDefinition(id = id, kind = NpcBossMoveKinds.AREA, animationId = animationId, durationTicks = duration, hitTicks = mutableListOf(hitTick), damage = damage, range = radius, arcDegrees = 360.0, areaRadius = radius, cooldownTicks = cooldown, recoveryTicks = recovery, weight = weight, minDistance = min, maxDistance = max, spellId = spellId, knockback = knockback, impactParticle = impactParticle, releaseParticle = releaseParticle, impactSoundId = impactSoundId)
 
     private fun projectile(
         id: String,
@@ -379,6 +506,10 @@ object NpcBossMovesets {
         statusEffectId: String = "",
         statusEffectTicks: Int = 0,
         statusEffectAmplifier: Int = 0,
+        releaseSoundId: String = "",
+        impactSoundId: String = "",
+        count: Int = 1,
+        spreadDegrees: Double = 0.0,
         minPhaseIndex: Int = 0,
         maxPhaseIndex: Int = 99,
     ): NpcBossMoveDefinition = NpcBossMoveDefinition(
@@ -400,20 +531,69 @@ object NpcBossMovesets {
         projectileType = "magic",
         projectileSpeed = speed,
         projectileInaccuracy = 0.0,
-        projectileCount = 1,
-        projectileSpreadDegrees = 0.0,
+        projectileCount = count,
+        projectileSpreadDegrees = spreadDegrees,
         projectileParticle = particle,
         impactParticle = impactParticle,
         impactRadius = impactRadius,
         statusEffectId = statusEffectId,
         statusEffectTicks = statusEffectTicks,
         statusEffectAmplifier = statusEffectAmplifier,
+        releaseSoundId = releaseSoundId,
+        impactSoundId = impactSoundId,
         minPhaseIndex = minPhaseIndex,
         maxPhaseIndex = maxPhaseIndex,
     )
 
-    private fun roll(id: String, animationId: String, duration: Int, cooldown: Int, distance: Double, direction: String, weight: Int): NpcBossMoveDefinition =
-        NpcBossMoveDefinition(id = id, kind = NpcBossMoveKinds.ROLL, animationId = animationId, durationTicks = duration, hitTicks = mutableListOf(), damage = 0.0, cooldownTicks = cooldown, recoveryTicks = 0, weight = weight, minDistance = 0.0, maxDistance = 3.5, rollDistance = distance, rollDirection = direction, iframeStartTick = 0, iframeEndTick = duration.coerceAtLeast(1))
+    private fun support(
+        id: String,
+        animationId: String,
+        duration: Int,
+        hitTick: Int,
+        cooldown: Int,
+        recovery: Int,
+        weight: Int,
+        min: Double,
+        max: Double,
+        spellId: String,
+        selfHeal: Double = 0.0,
+        healCapRatio: Double = 1.0,
+        maxHealUses: Int = 0,
+        absorption: Double = 0.0,
+        absorptionTicks: Int = 0,
+        castParticle: String = "",
+        supportParticle: String = "",
+        releaseSoundId: String = "",
+        impactSoundId: String = "",
+    ): NpcBossMoveDefinition = NpcBossMoveDefinition(
+        id = id,
+        kind = NpcBossMoveKinds.SUPPORT,
+        animationId = animationId,
+        releaseAnimationId = "spell_engine:one_handed_healing_release",
+        spellId = spellId,
+        durationTicks = duration,
+        hitTicks = mutableListOf(hitTick),
+        cooldownTicks = cooldown,
+        recoveryTicks = recovery,
+        damage = 0.0,
+        range = max,
+        arcDegrees = 360.0,
+        weight = weight,
+        minDistance = min,
+        maxDistance = max,
+        selfHealAmount = selfHeal,
+        selfHealCapHealthRatio = healCapRatio,
+        selfHealMaxUsesPerPhase = maxHealUses,
+        absorptionAmount = absorption,
+        absorptionTicks = absorptionTicks,
+        castParticle = castParticle,
+        supportParticle = supportParticle,
+        releaseSoundId = releaseSoundId,
+        impactSoundId = impactSoundId,
+    )
+
+    private fun roll(id: String, animationId: String, duration: Int, cooldown: Int, distance: Double, direction: String, weight: Int, supportParticle: String = ""): NpcBossMoveDefinition =
+        NpcBossMoveDefinition(id = id, kind = NpcBossMoveKinds.ROLL, animationId = animationId, durationTicks = duration, hitTicks = mutableListOf(), damage = 0.0, cooldownTicks = cooldown, recoveryTicks = 0, weight = weight, minDistance = 0.0, maxDistance = 3.5, rollDistance = distance, rollDirection = direction, iframeStartTick = 0, iframeEndTick = duration.coerceAtLeast(1), supportParticle = supportParticle)
 
     private fun phase(
         id: String,
@@ -452,6 +632,7 @@ object NpcBossMoveKinds {
     const val MELEE = "melee"
     const val AREA = "area"
     const val PROJECTILE = "projectile"
+    const val SUPPORT = "support"
     const val ROLL = "roll"
 }
 
@@ -680,6 +861,17 @@ class NpcBossMoveDefinition(
     @SerializedName("status_effect_id") var statusEffectId: String = "",
     @SerializedName("status_effect_ticks") var statusEffectTicks: Int = 0,
     @SerializedName("status_effect_amplifier") var statusEffectAmplifier: Int = 0,
+    @SerializedName("cast_particle") var castParticle: String = "",
+    @SerializedName("release_particle") var releaseParticle: String = "",
+    @SerializedName("support_particle") var supportParticle: String = "",
+    @SerializedName("cast_sound_id") var castSoundId: String = "",
+    @SerializedName("release_sound_id") var releaseSoundId: String = "",
+    @SerializedName("impact_sound_id") var impactSoundId: String = "",
+    @SerializedName("self_heal_amount") var selfHealAmount: Double = 0.0,
+    @SerializedName("self_heal_cap_health_ratio") var selfHealCapHealthRatio: Double = 1.0,
+    @SerializedName("self_heal_max_uses_per_phase") var selfHealMaxUsesPerPhase: Int = 0,
+    @SerializedName("absorption_amount") var absorptionAmount: Double = 0.0,
+    @SerializedName("absorption_ticks") var absorptionTicks: Int = 0,
     @SerializedName("min_phase_index") var minPhaseIndex: Int = 0,
     @SerializedName("max_phase_index") var maxPhaseIndex: Int = 99,
 ) {
@@ -688,6 +880,7 @@ class NpcBossMoveDefinition(
         kind = when (kind.trim().lowercase()) {
             NpcBossMoveKinds.AREA, "spell" -> NpcBossMoveKinds.AREA
             NpcBossMoveKinds.PROJECTILE, "ranged", "arrow", "bow" -> NpcBossMoveKinds.PROJECTILE
+            NpcBossMoveKinds.SUPPORT, "heal", "shield", "buff" -> NpcBossMoveKinds.SUPPORT
             NpcBossMoveKinds.ROLL, "dodge", "evade" -> NpcBossMoveKinds.ROLL
             else -> NpcBossMoveKinds.MELEE
         }
@@ -720,7 +913,7 @@ class NpcBossMoveDefinition(
         if (kind == NpcBossMoveKinds.ROLL) hitTicks = mutableListOf()
         cooldownTicks = cooldownTicks.coerceIn(0, 20 * 60)
         recoveryTicks = recoveryTicks.coerceIn(0, 20 * 10)
-        damage = if (kind == NpcBossMoveKinds.ROLL) 0.0 else damage.takeIf { it > 0.0 }?.coerceIn(0.0, 1000.0) ?: baseDamage
+        damage = if (kind == NpcBossMoveKinds.ROLL || kind == NpcBossMoveKinds.SUPPORT) 0.0 else damage.takeIf { it > 0.0 }?.coerceIn(0.0, 1000.0) ?: baseDamage
         range = range.coerceIn(0.5, 16.0)
         arcDegrees = arcDegrees.coerceIn(1.0, 360.0)
         areaRadius = if (kind == NpcBossMoveKinds.AREA) areaRadius.takeIf { it > 0.0 }?.coerceIn(0.5, 16.0) ?: range else 0.0
@@ -750,6 +943,17 @@ class NpcBossMoveDefinition(
         statusEffectId = cleanParticleId(statusEffectId, "")
         statusEffectTicks = statusEffectTicks.coerceIn(0, 20 * 20)
         statusEffectAmplifier = statusEffectAmplifier.coerceIn(0, 10)
+        castParticle = cleanParticleId(castParticle, "")
+        releaseParticle = cleanParticleId(releaseParticle, "")
+        supportParticle = cleanParticleId(supportParticle, "")
+        castSoundId = cleanParticleId(castSoundId, "")
+        releaseSoundId = cleanParticleId(releaseSoundId, "")
+        impactSoundId = cleanParticleId(impactSoundId, "")
+        selfHealAmount = selfHealAmount.coerceIn(0.0, 1000.0)
+        selfHealCapHealthRatio = selfHealCapHealthRatio.coerceIn(0.0, 1.0)
+        selfHealMaxUsesPerPhase = selfHealMaxUsesPerPhase.coerceIn(0, 20)
+        absorptionAmount = absorptionAmount.coerceIn(0.0, 1000.0)
+        absorptionTicks = absorptionTicks.coerceIn(0, 20 * 60)
         minPhaseIndex = minPhaseIndex.coerceIn(0, 99)
         maxPhaseIndex = maxPhaseIndex.coerceIn(minPhaseIndex, 99)
     }
