@@ -1,4 +1,10 @@
 {
+  "parry": {
+    "subtitle": "subtitle.gisketchs_chowkingdom_mod.parry",
+    "sounds": [
+      "gisketchs_chowkingdom_mod:parry"
+    ]
+  },
   "npc.animalese.high.sound01": {
     "sounds": [
       "gisketchs_chowkingdom_mod:npc/animalese/high/sound01"

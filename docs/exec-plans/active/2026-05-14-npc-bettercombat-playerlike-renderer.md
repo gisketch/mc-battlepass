@@ -24,5 +24,14 @@ Boss fight follow-up:
 - `/npc fight` still starts a duel with the NPC under crosshair.
 - `/npc fight <class_id>` spawns a transient Steve using that class moveset for debugging.
 - Attacks and dodges can use PlayerAnimator ids from Better Combat, Spell Engine, Combat Roll, or RPG class mods.
-- Guard, parry, and hurt can stay Gecko-backed per moveset, so old guard/parry behavior remains usable.
+- Boss fight approach, strafe, guard, counter, hurt, attack, and roll animations are PlayerAnimator-only; old Gecko ids in moveset TOML are normalized to PlayerAnimator substitutes at load.
 - Combat Roll player-start events are tracked server-side so NPC hits whiff during player roll iframes; NPC roll moves also get an iframe window.
+
+Progress log:
+
+- 2026-05-14: Fixed `/npc fight <class_id>` debug bosses freezing in `NPC mode: chase`. The transient debug NPC id has no normal NPC config, so SmartBrain prep now lets active boss fights tick before config-backed town behavior.
+- 2026-05-14: Reworked boss guard responses to PlayerAnimator-only visuals. Guard bait now blocks the hit, then chooses a fast Better Combat slash counter, a left/right `combat_roll:roll` dodge with boss iframes, or a `spell_engine:dodge` backstep with iframes. NPC entity sync interval is now every tick to reduce visible stutter.
+- 2026-05-14: Warrior moveset config now exposes the Spell Engine guard dodge knobs.
+- 2026-05-14: Fixed Better Combat playerlike limb transforms by returning the boss playerlike renderer to `PlayerModel` and preserving Better Combat keyframes as `CustomAnimationPlayer` subclasses. Smooth partial-tick sampling now stays inside that known player type instead of hiding keyframes behind a generic `IAnimation` wrapper.
+- 2026-05-14: Rebalanced warrior recovery into a shorter timed punish window with a 4-hit cap. Warrior now uses `bettercombat:pose_one_handed_backwards` during recovery, passively side-strafes while facing the player, and keeps per-attack recovery durations: fast slash 28 ticks, stab 32, battle shout 36, slam 46.
+- 2026-05-14: Added offense/defense tactics. Warrior now starts aggressive, chains 2-3 attacks with 10-tick chain recovery, then hands off to defense guard; defense exits back into offense after timeout or guard response.

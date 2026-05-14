@@ -44,9 +44,9 @@ Add a barebones, extensible NPC bossfight prototype using the current SmartBrain
 
 - V1 uses a temporary duel instead of real NPC death.
 - OP-only command allows every NPC to use default boss settings.
-- V1 target loop is documented in `docs/NPC_BOSSFIGHT_AI.md`: chase, attack, one-hit recovery punish, guard bait, parry, then chase again.
+- Current target loop is documented in `docs/NPC_BOSSFIGHT_AI.md`: offense chains attacks, timed recovery opens punish, defense guard baits a response, then offense resumes.
 - Guard should be a reactive block/parry state, not a constant standing guard pose.
-- Anti-spam rule: one safe recovery hit only. Extra recovery swings and guard-bait hits become guard/parry punishment.
+- Anti-spam rule: recovery accepts hits until the configured timed window expires or `recovery_hits_allowed` is reached. Warrior V1 uses a 4-hit cap; extra recovery swings and guard-bait hits become guard response punishment.
 - Bossfight damage isolation blocks entity-caused third-party damage but leaves environment damage to the player alone.
 - Bossfight bark text belongs in per-NPC `[boss.balloons]` data, not in the state machine.
 - Bossfight is non-lethal in both directions: player victory defeats virtual boss health; NPC victory intercepts would-be lethal player damage before revive.
@@ -68,3 +68,5 @@ Add a barebones, extensible NPC bossfight prototype using the current SmartBrain
 - 2026-05-11: Added NPC victory flow for would-be lethal boss hits and changed boss balloons to 30% chance barks.
 - 2026-05-11: Added post-result NPC protection/pass-through interaction and guaranteed the first bossfight bark.
 - 2026-05-13: Limited right-click pass-through to active bossfights only so defeated/result-protected bosses can be talked to again.
+- 2026-05-14: Rebalanced warrior recovery into shorter timed punish windows with a 4-hit cap and winded passive strafe recovery.
+- 2026-05-14: Added offense/defense tactics so warrior proactively chains 2-3 attacks before entering defense guard.

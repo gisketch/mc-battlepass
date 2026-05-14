@@ -1,6 +1,7 @@
 package dev.gisketch.chowkingdom.compat
 
 import com.mojang.brigadier.context.CommandContext
+import dev.gisketch.chowkingdom.ParrySoundFeature
 import dev.gisketch.chowkingdom.roles.RoleClassEquipmentRules
 import net.minecraft.ChatFormatting
 import net.minecraft.commands.CommandSourceStack
@@ -113,6 +114,7 @@ object UnifiedStaminaFeature {
         val player = event.entity as? ServerPlayer ?: return
         if (event.originalDamage <= 0.0f || event.newDamage >= event.originalDamage) return
         if (ShieldNParryStaminaBridge.consumeSuccessfulParry(player, player.level().gameTime)) {
+            ParrySoundFeature.play(player)
             giveStamina(player, config.shieldNParrySuccessGain)
         }
     }

@@ -37,7 +37,7 @@ No client PlayerAnimator animation found for NPC playerlike key ...
 
 ## Renderer Notes
 
-Do not use vanilla `PlayerModel` for the Mob Player Animator NPC path. PlayerAnimator's own `PlayerModel` mixin only animates `AbstractClientPlayer`, and Mob Player Animator intentionally skips `PlayerModel` in its humanoid model hook. CKDM uses `HumanoidModel` for the playerlike NPC renderer so Mob Player Animator can patch it as a mob model.
+Use `PlayerModel` for the Better Combat playerlike NPC renderer. Mob Player Animator 1.4 has a `PlayerModel` mob hook for non-player entities, and Better Combat player clips expect the vanilla player part tree names (`torso`, `rightArm`, `leftArm`, `rightLeg`, `leftLeg`).
 
 The animation layer is attached client-side through:
 
@@ -57,6 +57,8 @@ PlayerAnimator `AnimationStack.tick()` only ticks layers whose `isActive()` is a
 
 CKDM's `NpcPlayerlikeAnimationLayer.isActive()` must return true when there is a pending synced `playerlikeAnimationKey` / `playerlikeAnimationPlayId` change, or when the layer needs to clear an old animation.
 
+The NPC layer pushes the render partial tick into the active animation from `get3DTransform`. This is important for Mob Player Animator paths where transform sampling can happen without `KeyframeAnimationPlayer.setupAnim(partialTick)` having refreshed the delegate first. Without that refresh, Better Combat keyframes sample whole ticks and look like low-FPS animation even when the game is rendering above 20 FPS.
+
 Expected client log after `/npc animations <id>`:
 
 ```text
@@ -67,11 +69,13 @@ Playing NPC playerlike animation bettercombat:... on animation_debug_steve
 
 Better Combat clips resolve from `PlayerAnimationRegistry` as `KeyframeAnimation`. CKDM wraps those in Better Combat's `CustomAnimationPlayer` instead of using plain `playAnimation()`, so Better Combat first-person and wind-down behavior is preserved where applicable.
 
+Do not wrap Better Combat keyframes in a generic `IAnimation` adapter. Mob Player Animator detects animated body parts by walking known layer/player types such as `KeyframeAnimationPlayer`, `CustomAnimationPlayer`, `ModifierLayer`, and `AnimationStack`. Hiding a Better Combat keyframe behind an unknown wrapper can make limbs look frozen while item/body transforms still move.
+
 ## EMF / Fresh Animations
 
 Mob Player Animator already pauses EMF animation evaluation around mob rendering. Current debugging showed EMF/Fresh Animations were loaded, but the freeze was not caused by EMF. The two concrete bugs were:
 
-- `PlayerModel` was the wrong model type for mob PlayerAnimator hooks.
 - The custom layer was inactive, so PlayerAnimator never ticked it.
+- Better Combat keyframes were hidden behind a generic `IAnimation` wrapper, so Mob Player Animator could lose animated body-part discovery.
 
 Keep EMF in mind for visual conflicts, but check the attach/play log lines first.

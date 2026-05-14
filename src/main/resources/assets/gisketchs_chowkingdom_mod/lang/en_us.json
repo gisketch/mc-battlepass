@@ -2,6 +2,7 @@
   "key.category.gisketchs_chowkingdom_mod": "Chowkingdom mod",
   "key.gisketchs_chowkingdom_mod.battlepass.open": "Open Battlepass",
   "key.gisketchs_chowkingdom_mod.discord_screenshot.send": "Send Screenshot to Discord",
+  "subtitle.gisketchs_chowkingdom_mod.parry": "Parry",
   "block.gisketchs_chowkingdom_mod.shipping_bin": "Shipping Bin",
   "message.gisketchs_chowkingdom_mod.discord_screenshot.sent": "Screenshot sent to Discord.",
   "message.gisketchs_chowkingdom_mod.discord_screenshot.failed": "Failed to send screenshot to Discord: %s",

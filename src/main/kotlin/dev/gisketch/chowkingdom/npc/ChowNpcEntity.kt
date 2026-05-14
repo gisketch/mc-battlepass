@@ -180,9 +180,9 @@ class ChowNpcEntity(entityType: EntityType<out PathfinderMob>, level: Level) : P
         setCustomAnimationMode(false)
     }
 
-    fun configureBossDebug(id: String, displayName: String, camp: BlockPos) {
+    fun configureBossDebug(id: String, displayName: String, camp: BlockPos, debugBodyType: String = NpcBodyTypes.NORMAL) {
         npcId = id
-        bodyType = NpcBodyTypes.NORMAL
+        bodyType = debugBodyType
         campPos = camp.immutable()
         homePos = null
         customName = Component.literal(displayName)

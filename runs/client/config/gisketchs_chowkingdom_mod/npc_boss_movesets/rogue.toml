@@ -1,0 +1,90 @@
+# Chow Kingdom config: rogue.toml. Edit while the game is stopped, then run reload commands or restart.
+
+# Config value: id.
+id = "rogue"
+# Config value: display_name.
+display_name = "Rogue"
+# Config value: health.
+health = 70.0
+# Config value: damage.
+damage = 3.5
+# Config value: attack_start_distance.
+attack_start_distance = 3.2
+# Config value: approach_animation_id.
+approach_animation_id = "bettercombat:pose_two_handed_sword"
+# Config value: approach_animation_source.
+approach_animation_source = "playerlike"
+# Config value: strafe_animation_id.
+strafe_animation_id = "bettercombat:pose_two_handed_sword"
+# Config value: strafe_animation_source.
+strafe_animation_source = "playerlike"
+# Config value: guard_animation_id.
+guard_animation_id = "bettercombat:pose_two_handed_sword"
+# Config value: guard_animation_source.
+guard_animation_source = "playerlike"
+# Config value: parry_animation_id.
+parry_animation_id = "bettercombat:one_handed_slash_horizontal_right"
+# Config value: parry_animation_source.
+parry_animation_source = "playerlike"
+# Config value: hurt_animation_id.
+hurt_animation_id = "spell_engine:dodge"
+# Config value: hurt_animation_source.
+hurt_animation_source = "playerlike"
+# Config value: guard_react_ticks.
+guard_react_ticks = 6
+# Config value: guard_counter_ticks.
+guard_counter_ticks = 12
+# Config value: guard_roll_animation_id.
+guard_roll_animation_id = "combat_roll:roll"
+# Config value: guard_roll_animation_source.
+guard_roll_animation_source = "playerlike"
+# Config value: guard_roll_ticks.
+guard_roll_ticks = 14
+# Config value: guard_roll_iframe_ticks.
+guard_roll_iframe_ticks = 14
+# Config value: guard_roll_distance.
+guard_roll_distance = 3.0
+# Config value: guard_min_ticks.
+guard_min_ticks = 60
+# Config value: guard_random_ticks.
+guard_random_ticks = 60
+# Config value: guard_taunt_min_ticks.
+guard_taunt_min_ticks = 40
+# Config value: guard_taunt_random_ticks.
+guard_taunt_random_ticks = 40
+# Config value: recovery_hits_allowed.
+recovery_hits_allowed = 1
+# Config value: parry_damage.
+parry_damage = 0.0
+# Config value: parry_knockback.
+parry_knockback = 0.6
+# Config value: moves.
+moves = [
+  { id = "cross_slash", kind = "melee", animation_id = "bettercombat:dual_handed_slash_cross", animation_source = "playerlike", spell_id = "", duration_ticks = 17, hit_ticks = [7], cooldown_ticks = 14, recovery_ticks = 10, damage = 4.5, range = 2.6, arc_degrees = 95.0, area_radius = 0.0, knockback = 0.35, weight = 5, min_distance = 0.0, max_distance = 3.0, roll_distance = 0.0, roll_direction = "back", iframe_start_tick = 0, iframe_end_tick = 0 },
+  { id = "dagger_stab", kind = "melee", animation_id = "bettercombat:dual_handed_stab", animation_source = "playerlike", spell_id = "", duration_ticks = 15, hit_ticks = [6], cooldown_ticks = 18, recovery_ticks = 11, damage = 5.5, range = 2.9, arc_degrees = 45.0, area_radius = 0.0, knockback = 0.35, weight = 4, min_distance = 0.0, max_distance = 3.3, roll_distance = 0.0, roll_direction = "back", iframe_start_tick = 0, iframe_end_tick = 0 },
+  { id = "uncross", kind = "melee", animation_id = "bettercombat:dual_handed_slash_uncross", animation_source = "playerlike", spell_id = "", duration_ticks = 18, hit_ticks = [8], cooldown_ticks = 18, recovery_ticks = 12, damage = 4.0, range = 2.8, arc_degrees = 110.0, area_radius = 0.0, knockback = 0.35, weight = 3, min_distance = 0.0, max_distance = 3.1999999999999997, roll_distance = 0.0, roll_direction = "back", iframe_start_tick = 0, iframe_end_tick = 0 },
+  { id = "dodge", kind = "roll", animation_id = "spell_engine:dodge", animation_source = "playerlike", spell_id = "", duration_ticks = 12, hit_ticks = [], cooldown_ticks = 44, recovery_ticks = 0, damage = 0.0, range = 2.8, arc_degrees = 95.0, area_radius = 0.0, knockback = 0.35, weight = 3, min_distance = 0.0, max_distance = 3.5, roll_distance = 3.2, roll_direction = "side", iframe_start_tick = 0, iframe_end_tick = 12 },
+]
+
+# Config value: balloons.
+[balloons]
+# Config value: balloons.chase.
+chase = ["Keep moving, {player}."]
+# Config value: balloons.attack.
+attack = ["Here it comes."]
+# Config value: balloons.recovery.
+recovery = ["Your turn. Make it count."]
+# Config value: balloons.taunt.
+taunt = ["Take the bait, {player}."]
+# Config value: balloons.guard_react.
+guard_react = ["Too eager."]
+# Config value: balloons.parry.
+parry = ["Parried."]
+# Config value: balloons.hit_player.
+hit_player = ["Solid hit."]
+# Config value: balloons.took_damage.
+took_damage = ["Good hit."]
+# Config value: balloons.victory.
+victory = ["I win this round. You are healed."]
+# Config value: balloons.defeat.
+defeat = ["I yield. Good fight."]

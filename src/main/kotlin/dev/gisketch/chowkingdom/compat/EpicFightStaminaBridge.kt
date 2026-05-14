@@ -1,6 +1,7 @@
 package dev.gisketch.chowkingdom.compat
 
 import dev.gisketch.chowkingdom.ChowKingdomMod
+import dev.gisketch.chowkingdom.ParrySoundFeature
 import net.minecraft.server.level.ServerPlayer
 import net.neoforged.fml.ModList
 import java.lang.reflect.InvocationHandler
@@ -128,7 +129,11 @@ object EpicFightStaminaBridge {
             player.isBlocking -> config.epicFightBlockCost
             else -> return
         }
-        if (!UnifiedStaminaFeature.spendEpicFightBlock(player, cost)) api.cancel.invoke(event)
+        if (!UnifiedStaminaFeature.spendEpicFightBlock(player, cost)) {
+            api.cancel.invoke(event)
+            return
+        }
+        if (parried) ParrySoundFeature.play(player)
     }
 
     private fun onStartAction(event: Any) {

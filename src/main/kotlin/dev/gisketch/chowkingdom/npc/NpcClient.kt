@@ -61,8 +61,12 @@ import net.neoforged.neoforge.client.event.RenderTooltipEvent
 import net.neoforged.neoforge.client.gui.VanillaGuiLayers
 import net.neoforged.neoforge.common.NeoForge
 import com.mojang.datafixers.util.Either
+import dev.kosmx.playerAnim.api.TransformType
+import dev.kosmx.playerAnim.api.firstPerson.FirstPersonConfiguration
+import dev.kosmx.playerAnim.api.firstPerson.FirstPersonMode
 import dev.kosmx.playerAnim.api.layered.IAnimation
 import dev.kosmx.playerAnim.api.layered.ModifierLayer
+import dev.kosmx.playerAnim.core.util.Vec3f
 import dev.kosmx.playerAnim.core.data.KeyframeAnimation
 import dev.kosmx.playerAnim.minecraftApi.PlayerAnimationRegistry
 import me.Thelnfamous1.mobplayeranimator.api.MobAnimationAccess
@@ -637,10 +641,37 @@ private data class NpcBalloonIcon(val marker: String, val texture: ResourceLocat
 
 private fun npcTexture(npcId: String): ResourceLocation {
     val cleanId = npcId.trim().lowercase(Locale.ROOT).replace(Regex("[^a-z0-9_./-]"), "")
-    return if (cleanId.isBlank() || cleanId == ChowNpcEntity.ANIMATION_DEBUG_NPC_ID) STEVE_TEXTURE else ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/entity/npc/$cleanId.png")
+    if (cleanId.isBlank() || cleanId == ChowNpcEntity.ANIMATION_DEBUG_NPC_ID) return STEVE_TEXTURE
+    val configuredSkin = NpcConfig.get(cleanId)?.skin?.takeIf(String::isNotBlank)
+    val debugSkin = bossFightDebugClassId(cleanId)
+        ?.let { classId -> NpcConfig.all().firstOrNull { definition -> NpcBossMovesets.normalizeId(definition.classId) == classId && definition.skin.isNotBlank() } }
+        ?.skin
+    return npcSkinTexture(configuredSkin ?: debugSkin ?: cleanId)
 }
 
 private val STEVE_TEXTURE = ResourceLocation.withDefaultNamespace("textures/entity/player/wide/steve.png")
+
+private fun bossFightDebugClassId(npcId: String): String? {
+    val body = npcId.removePrefix(BOSS_DEBUG_NPC_PREFIX).takeIf { it != npcId } ?: return null
+    return body.substringBeforeLast('_', body).takeIf(String::isNotBlank)
+}
+
+private fun npcSkinTexture(rawSkin: String): ResourceLocation {
+    val normalized = rawSkin.trim().lowercase(Locale.ROOT).replace(Regex("[^a-z0-9_:./-]"), "")
+    val location = runCatching {
+        if (':' in normalized) ResourceLocation.parse(normalized) else ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, normalized)
+    }.getOrNull() ?: return STEVE_TEXTURE
+    val path = location.path.trim('/')
+    val texturePath = when {
+        path.startsWith("textures/") -> path
+        path.startsWith("entity/") -> "textures/$path"
+        path.startsWith("npc/") -> "textures/entity/$path"
+        else -> "textures/entity/npc/$path"
+    }.let { value -> if (value.endsWith(".png")) value else "$value.png" }
+    return ResourceLocation.fromNamespaceAndPath(location.namespace, texturePath)
+}
+
+private const val BOSS_DEBUG_NPC_PREFIX = "boss_debug_"
 
 private class ChowNpcDelegatingRenderer(context: EntityRendererProvider.Context) : EntityRenderer<ChowNpcEntity>(context) {
     private val betterCombatPlayerlikeRenderer = ChowNpcBetterCombatPlayerlikeRenderer(context)
@@ -663,9 +694,9 @@ private class ChowNpcDelegatingRenderer(context: EntityRendererProvider.Context)
     }
 }
 
-private class ChowNpcBetterCombatPlayerlikeRenderer(context: EntityRendererProvider.Context) : HumanoidMobRenderer<ChowNpcEntity, HumanoidModel<ChowNpcEntity>>(context, HumanoidModel(context.bakeLayer(ModelLayers.PLAYER)), 0.5f) {
-    private val normalModel = HumanoidModel<ChowNpcEntity>(context.bakeLayer(ModelLayers.PLAYER))
-    private val slimModel = HumanoidModel<ChowNpcEntity>(context.bakeLayer(ModelLayers.PLAYER_SLIM))
+private class ChowNpcBetterCombatPlayerlikeRenderer(context: EntityRendererProvider.Context) : HumanoidMobRenderer<ChowNpcEntity, PlayerModel<ChowNpcEntity>>(context, PlayerModel(context.bakeLayer(ModelLayers.PLAYER), false), 0.5f) {
+    private val normalModel = PlayerModel<ChowNpcEntity>(context.bakeLayer(ModelLayers.PLAYER), false)
+    private val slimModel = PlayerModel<ChowNpcEntity>(context.bakeLayer(ModelLayers.PLAYER_SLIM), true)
 
     init {
         addLayer(
@@ -892,8 +923,8 @@ private class NpcPlayerlikeAnimationLayer(val entity: ChowNpcEntity) : ModifierL
             val animationId = runCatching { ResourceLocation.parse(animationKey) }.getOrNull()
             val playable = animationId?.let(PlayerAnimationRegistry::getAnimation)
             val animation = when (playable) {
-                is KeyframeAnimation -> CustomAnimationPlayer(playable, 0)
-                else -> playable?.playAnimation() as? IAnimation
+                is KeyframeAnimation -> NpcSmoothCustomAnimationPlayer(playable, 0)
+                else -> (playable?.playAnimation() as? IAnimation)?.let(::NpcSmoothPlayerlikeAnimation)
             }
             setAnimation(animation)
             if (animation == null && warnedMissingAnimationKey != animationKey) {
@@ -912,6 +943,59 @@ private class NpcPlayerlikeAnimationLayer(val entity: ChowNpcEntity) : ModifierL
         }
         super.tick()
     }
+}
+
+private class NpcSmoothCustomAnimationPlayer(animation: KeyframeAnimation, startTick: Int) : CustomAnimationPlayer(animation, startTick) {
+    override fun setupAnim(tickDelta: Float) = super.setupAnim(npcPlayerlikePartialTick(tickDelta))
+
+    override fun get3DTransform(modelName: String, type: TransformType, tickDelta: Float, value0: Vec3f): Vec3f {
+        val partialTick = npcPlayerlikePartialTick(tickDelta)
+        super.setupAnim(partialTick)
+        return super.get3DTransform(modelName, type, partialTick, value0)
+    }
+
+    override fun getFirstPersonMode(tickDelta: Float): FirstPersonMode {
+        val partialTick = npcPlayerlikePartialTick(tickDelta)
+        super.setupAnim(partialTick)
+        return super.getFirstPersonMode(partialTick)
+    }
+
+    override fun getFirstPersonConfiguration(tickDelta: Float): FirstPersonConfiguration {
+        val partialTick = npcPlayerlikePartialTick(tickDelta)
+        super.setupAnim(partialTick)
+        return super.getFirstPersonConfiguration(partialTick)
+    }
+}
+
+private class NpcSmoothPlayerlikeAnimation(private val delegate: IAnimation) : IAnimation {
+    override fun tick() = delegate.tick()
+
+    override fun isActive(): Boolean = delegate.isActive()
+
+    override fun setupAnim(tickDelta: Float) = delegate.setupAnim(npcPlayerlikePartialTick(tickDelta))
+
+    override fun get3DTransform(modelName: String, type: TransformType, tickDelta: Float, value0: Vec3f): Vec3f {
+        val partialTick = npcPlayerlikePartialTick(tickDelta)
+        delegate.setupAnim(partialTick)
+        return delegate.get3DTransform(modelName, type, partialTick, value0)
+    }
+
+    override fun getFirstPersonMode(tickDelta: Float): FirstPersonMode {
+        val partialTick = npcPlayerlikePartialTick(tickDelta)
+        delegate.setupAnim(partialTick)
+        return delegate.getFirstPersonMode(partialTick)
+    }
+
+    override fun getFirstPersonConfiguration(tickDelta: Float): FirstPersonConfiguration {
+        val partialTick = npcPlayerlikePartialTick(tickDelta)
+        delegate.setupAnim(partialTick)
+        return delegate.getFirstPersonConfiguration(partialTick)
+    }
+}
+
+private fun npcPlayerlikePartialTick(value: Float): Float {
+    if (!java.lang.Float.isFinite(value)) return 0.0f
+    return (value - floor(value)).coerceIn(0.0f, 0.999f)
 }
 
 @Suppress("OVERRIDE_DEPRECATION")

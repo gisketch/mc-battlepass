@@ -76,11 +76,18 @@ object NpcBossMovesets {
         displayName = "Warrior",
         health = 90.0,
         damage = 4.0,
+        offenseChainMin = 2,
+        offenseChainRandom = 1,
+        offenseChainRecoveryTicks = 10,
+        recoveryAnimationId = NpcBossMovesetDefinition.DEFAULT_RECOVERY_ANIMATION,
+        recoveryHitsAllowed = 4,
         moves = mutableListOf(
-            melee("fast_slash", "bettercombat:one_handed_slash_horizontal_right", duration = 18, hitTick = 7, damage = 5.0, range = 2.8, arc = 100.0, cooldown = 16, recovery = 12, weight = 6),
-            melee("stab", "bettercombat:one_handed_stab", duration = 17, hitTick = 6, damage = 6.0, range = 3.2, arc = 55.0, cooldown = 22, recovery = 14, weight = 4),
-            area("slam", "bettercombat:one_handed_slam", duration = 26, hitTick = 13, damage = 8.0, radius = 2.4, cooldown = 58, recovery = 18, weight = 2),
-            area("battle_shout", "spell_engine:one_handed_shout_release", duration = 20, hitTick = 10, damage = 3.0, radius = 4.0, cooldown = 90, recovery = 14, weight = 2, spellId = "spell_engine:shout"),
+            melee("fast_slash", "bettercombat:one_handed_slash_horizontal_right", duration = 18, hitTick = 7, damage = 5.0, range = 2.8, arc = 100.0, cooldown = 16, recovery = 28, weight = 6),
+            melee("left_slash", "bettercombat:one_handed_slash_horizontal_left", duration = 18, hitTick = 7, damage = 5.0, range = 2.8, arc = 100.0, cooldown = 16, recovery = 28, weight = 5),
+            melee("stab", "bettercombat:one_handed_stab", duration = 17, hitTick = 6, damage = 6.0, range = 3.2, arc = 55.0, cooldown = 22, recovery = 32, weight = 4),
+            melee("uppercut", "bettercombat:one_handed_uppercut_right", duration = 20, hitTick = 8, damage = 5.5, range = 2.8, arc = 85.0, cooldown = 26, recovery = 34, weight = 3),
+            area("slam", "bettercombat:one_handed_slam", duration = 26, hitTick = 13, damage = 8.0, radius = 2.4, cooldown = 58, recovery = 46, weight = 2),
+            area("battle_shout", "spell_engine:one_handed_shout_release", duration = 20, hitTick = 10, damage = 3.0, radius = 4.0, cooldown = 90, recovery = 36, weight = 2, spellId = "spell_engine:shout"),
             roll("combat_roll_backstep", "combat_roll:roll", duration = 14, cooldown = 70, distance = 3.0, direction = "back", weight = 2),
         ),
     )
@@ -149,17 +156,34 @@ class NpcBossMovesetDefinition(
     var health: Double = 80.0,
     var damage: Double = 4.0,
     @SerializedName("attack_start_distance") var attackStartDistance: Double = 3.2,
-    @SerializedName("approach_animation_id") var approachAnimationId: String = "running_sword",
-    @SerializedName("approach_animation_source") var approachAnimationSource: String = NpcBossAnimationSources.GECKO,
-    @SerializedName("strafe_animation_id") var strafeAnimationId: String = "running_sword",
-    @SerializedName("strafe_animation_source") var strafeAnimationSource: String = NpcBossAnimationSources.GECKO,
-    @SerializedName("guard_animation_id") var guardAnimationId: String = "guard",
-    @SerializedName("guard_animation_source") var guardAnimationSource: String = NpcBossAnimationSources.GECKO,
-    @SerializedName("parry_animation_id") var parryAnimationId: String = "parry",
-    @SerializedName("parry_animation_source") var parryAnimationSource: String = NpcBossAnimationSources.GECKO,
-    @SerializedName("hurt_animation_id") var hurtAnimationId: String = "hurt",
-    @SerializedName("hurt_animation_source") var hurtAnimationSource: String = NpcBossAnimationSources.GECKO,
+    @SerializedName("offense_chain_min") var offenseChainMin: Int = 1,
+    @SerializedName("offense_chain_random") var offenseChainRandom: Int = 0,
+    @SerializedName("offense_chain_recovery_ticks") var offenseChainRecoveryTicks: Int = 10,
+    @SerializedName("approach_animation_id") var approachAnimationId: String = DEFAULT_READY_ANIMATION,
+    @SerializedName("approach_animation_source") var approachAnimationSource: String = NpcBossAnimationSources.PLAYERLIKE,
+    @SerializedName("strafe_animation_id") var strafeAnimationId: String = DEFAULT_READY_ANIMATION,
+    @SerializedName("strafe_animation_source") var strafeAnimationSource: String = NpcBossAnimationSources.PLAYERLIKE,
+    @SerializedName("guard_animation_id") var guardAnimationId: String = DEFAULT_READY_ANIMATION,
+    @SerializedName("guard_animation_source") var guardAnimationSource: String = NpcBossAnimationSources.PLAYERLIKE,
+    @SerializedName("parry_animation_id") var parryAnimationId: String = DEFAULT_COUNTER_ANIMATION,
+    @SerializedName("parry_animation_source") var parryAnimationSource: String = NpcBossAnimationSources.PLAYERLIKE,
+    @SerializedName("hurt_animation_id") var hurtAnimationId: String = DEFAULT_HURT_ANIMATION,
+    @SerializedName("hurt_animation_source") var hurtAnimationSource: String = NpcBossAnimationSources.PLAYERLIKE,
+    @SerializedName("recovery_animation_id") var recoveryAnimationId: String = DEFAULT_READY_ANIMATION,
+    @SerializedName("recovery_animation_source") var recoveryAnimationSource: String = NpcBossAnimationSources.PLAYERLIKE,
     @SerializedName("guard_react_ticks") var guardReactTicks: Int = 6,
+    @SerializedName("guard_counter_ticks") var guardCounterTicks: Int = 12,
+    @SerializedName("guard_roll_animation_id") var guardRollAnimationId: String = DEFAULT_ROLL_ANIMATION,
+    @SerializedName("guard_roll_animation_source") var guardRollAnimationSource: String = NpcBossAnimationSources.PLAYERLIKE,
+    @SerializedName("guard_roll_ticks") var guardRollTicks: Int = 14,
+    @SerializedName("guard_roll_iframe_ticks") var guardRollIframeTicks: Int = 14,
+    @SerializedName("guard_roll_distance") var guardRollDistance: Double = 3.0,
+    @SerializedName("guard_dodge_animation_id") var guardDodgeAnimationId: String = DEFAULT_DODGE_ANIMATION,
+    @SerializedName("guard_dodge_animation_source") var guardDodgeAnimationSource: String = NpcBossAnimationSources.PLAYERLIKE,
+    @SerializedName("guard_dodge_ticks") var guardDodgeTicks: Int = 12,
+    @SerializedName("guard_dodge_iframe_ticks") var guardDodgeIframeTicks: Int = 10,
+    @SerializedName("guard_dodge_distance") var guardDodgeDistance: Double = 2.4,
+    @SerializedName("guard_dodge_direction") var guardDodgeDirection: String = "back",
     @SerializedName("guard_min_ticks") var guardMinTicks: Int = 60,
     @SerializedName("guard_random_ticks") var guardRandomTicks: Int = 60,
     @SerializedName("guard_taunt_min_ticks") var guardTauntMinTicks: Int = 40,
@@ -176,17 +200,34 @@ class NpcBossMovesetDefinition(
         health = health.coerceIn(1.0, 10000.0)
         damage = damage.coerceIn(0.0, 1000.0)
         attackStartDistance = attackStartDistance.coerceIn(1.0, 16.0)
-        approachAnimationId = cleanAnimation(approachAnimationId, "running_sword")
-        approachAnimationSource = cleanSource(approachAnimationSource)
-        strafeAnimationId = cleanAnimation(strafeAnimationId, approachAnimationId)
-        strafeAnimationSource = cleanSource(strafeAnimationSource)
-        guardAnimationId = cleanAnimation(guardAnimationId, "guard")
-        guardAnimationSource = cleanSource(guardAnimationSource)
-        parryAnimationId = cleanAnimation(parryAnimationId, "parry")
-        parryAnimationSource = cleanSource(parryAnimationSource)
-        hurtAnimationId = cleanAnimation(hurtAnimationId, "hurt")
-        hurtAnimationSource = cleanSource(hurtAnimationSource)
+        offenseChainMin = offenseChainMin.coerceIn(1, 6)
+        offenseChainRandom = offenseChainRandom.coerceIn(0, 6)
+        offenseChainRecoveryTicks = offenseChainRecoveryTicks.coerceIn(1, 80)
+        approachAnimationId = cleanBossPlayerlikeAnimation(approachAnimationId, DEFAULT_READY_ANIMATION)
+        approachAnimationSource = NpcBossAnimationSources.PLAYERLIKE
+        strafeAnimationId = cleanBossPlayerlikeAnimation(strafeAnimationId, approachAnimationId)
+        strafeAnimationSource = NpcBossAnimationSources.PLAYERLIKE
+        guardAnimationId = cleanBossPlayerlikeAnimation(guardAnimationId, DEFAULT_READY_ANIMATION)
+        guardAnimationSource = NpcBossAnimationSources.PLAYERLIKE
+        parryAnimationId = cleanBossPlayerlikeAnimation(parryAnimationId, DEFAULT_COUNTER_ANIMATION)
+        parryAnimationSource = NpcBossAnimationSources.PLAYERLIKE
+        hurtAnimationId = cleanBossPlayerlikeAnimation(hurtAnimationId, DEFAULT_HURT_ANIMATION)
+        hurtAnimationSource = NpcBossAnimationSources.PLAYERLIKE
+        recoveryAnimationId = cleanBossPlayerlikeAnimation(recoveryAnimationId, DEFAULT_READY_ANIMATION)
+        recoveryAnimationSource = NpcBossAnimationSources.PLAYERLIKE
         guardReactTicks = guardReactTicks.coerceIn(1, 40)
+        guardCounterTicks = guardCounterTicks.coerceIn(1, 40)
+        guardRollAnimationId = cleanBossPlayerlikeAnimation(guardRollAnimationId, DEFAULT_ROLL_ANIMATION)
+        guardRollAnimationSource = NpcBossAnimationSources.PLAYERLIKE
+        guardRollTicks = guardRollTicks.coerceIn(1, 40)
+        guardRollIframeTicks = guardRollIframeTicks.coerceIn(0, guardRollTicks)
+        guardRollDistance = guardRollDistance.coerceIn(0.0, 8.0)
+        guardDodgeAnimationId = cleanBossPlayerlikeAnimation(guardDodgeAnimationId, DEFAULT_DODGE_ANIMATION)
+        guardDodgeAnimationSource = NpcBossAnimationSources.PLAYERLIKE
+        guardDodgeTicks = guardDodgeTicks.coerceIn(1, 40)
+        guardDodgeIframeTicks = guardDodgeIframeTicks.coerceIn(0, guardDodgeTicks)
+        guardDodgeDistance = guardDodgeDistance.coerceIn(0.0, 8.0)
+        guardDodgeDirection = cleanEvadeDirection(guardDodgeDirection)
         guardMinTicks = guardMinTicks.coerceIn(10, 20 * 30)
         guardRandomTicks = guardRandomTicks.coerceIn(0, 20 * 30)
         guardTauntMinTicks = guardTauntMinTicks.coerceIn(10, 20 * 30)
@@ -204,9 +245,33 @@ class NpcBossMovesetDefinition(
         .trim('_')
         .ifBlank { fallback }
 
-    private fun cleanSource(value: String): String = when (value.trim().lowercase()) {
-        NpcBossAnimationSources.PLAYERLIKE, "player_animator", "playeranimator" -> NpcBossAnimationSources.PLAYERLIKE
-        else -> NpcBossAnimationSources.GECKO
+    private fun cleanBossPlayerlikeAnimation(value: String, fallback: String): String = when (val clean = cleanAnimation(value, fallback)) {
+        "running",
+        "running_sword",
+        "run_with_sword",
+        "guard" -> DEFAULT_READY_ANIMATION
+        "attack",
+        "attack_sword",
+        "parry" -> DEFAULT_COUNTER_ANIMATION
+        "hurt" -> DEFAULT_HURT_ANIMATION
+        "roll" -> DEFAULT_ROLL_ANIMATION
+        "dodge" -> DEFAULT_DODGE_ANIMATION
+        else -> clean
+    }
+
+    private fun cleanEvadeDirection(value: String): String = when (value.trim().lowercase()) {
+        "side", "left", "right", "random_side" -> "side"
+        "forward" -> "forward"
+        else -> "back"
+    }
+
+    companion object {
+        const val DEFAULT_READY_ANIMATION = "bettercombat:pose_two_handed_sword"
+        const val DEFAULT_COUNTER_ANIMATION = "bettercombat:one_handed_slash_horizontal_right"
+        const val DEFAULT_HURT_ANIMATION = "spell_engine:dodge"
+        const val DEFAULT_RECOVERY_ANIMATION = "bettercombat:pose_one_handed_backwards"
+        const val DEFAULT_ROLL_ANIMATION = "combat_roll:roll"
+        const val DEFAULT_DODGE_ANIMATION = "spell_engine:dodge"
     }
 }
 
@@ -241,11 +306,21 @@ class NpcBossMoveDefinition(
             else -> NpcBossMoveKinds.MELEE
         }
         animationId = animationId.trim().lowercase().replace(Regex("[^a-z0-9_.:/-]+"), "_").trim('_')
-            .ifBlank { "bettercombat:one_handed_slash_horizontal_right" }
-        animationSource = when (animationSource.trim().lowercase()) {
-            NpcBossAnimationSources.GECKO -> NpcBossAnimationSources.GECKO
-            else -> NpcBossAnimationSources.PLAYERLIKE
+            .ifBlank { NpcBossMovesetDefinition.DEFAULT_COUNTER_ANIMATION }
+        animationId = when (animationId) {
+            "attack",
+            "attack_sword",
+            "parry" -> NpcBossMovesetDefinition.DEFAULT_COUNTER_ANIMATION
+            "guard",
+            "running",
+            "running_sword",
+            "run_with_sword" -> NpcBossMovesetDefinition.DEFAULT_READY_ANIMATION
+            "hurt",
+            "dodge" -> NpcBossMovesetDefinition.DEFAULT_HURT_ANIMATION
+            "roll" -> NpcBossMovesetDefinition.DEFAULT_ROLL_ANIMATION
+            else -> animationId
         }
+        animationSource = NpcBossAnimationSources.PLAYERLIKE
         spellId = spellId.trim().lowercase().replace(Regex("[^a-z0-9_.:/-]+"), "_").trim('_')
         durationTicks = durationTicks.coerceIn(1, 20 * 10)
         hitTicks = hitTicks.map { tick -> tick.coerceIn(0, durationTicks) }.distinct().sorted().toMutableList()

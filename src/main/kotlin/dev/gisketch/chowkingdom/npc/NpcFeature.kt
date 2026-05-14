@@ -128,7 +128,7 @@ object NpcFeature {
             EntityType.Builder.of(::ChowNpcEntity, MobCategory.CREATURE)
                 .sized(0.6f, 1.8f)
                 .clientTrackingRange(10)
-                .updateInterval(3)
+                .updateInterval(1)
                 .build("npc")
         },
     )
@@ -1149,6 +1149,7 @@ object NpcFeature {
     }
 
     fun prepareSmartBrainTick(entity: ChowNpcEntity): Boolean {
+        if (NpcBossFights.isActive(entity)) return true
         val definition = NpcConfig.get(entity.npcId) ?: return false
         entity.homePos = validHomePos(entity.level(), definition.id)
         entity.campPos = entity.campPos ?: NpcStore.campPos(definition.id)
@@ -2254,7 +2255,8 @@ object NpcFeature {
         val spawnPos = animationDebugSpawnPos(level, player)
         val npc = NPC_ENTITY.get().create(level) ?: return 0
         val debugNpcId = bossFightDebugNpcId(player, moveset.id)
-        npc.configureBossDebug(debugNpcId, "${moveset.displayName} Test Steve", player.blockPosition())
+        val debugSkin = bossFightDebugSkinDefinition(moveset.id)
+        npc.configureBossDebug(debugNpcId, "${moveset.displayName} Test NPC", player.blockPosition(), debugSkin?.bodyType ?: NpcBodyTypes.NORMAL)
         npc.setNoAi(false)
         npc.moveTo(spawnPos.x + 0.5, spawnPos.y.toDouble(), spawnPos.z + 0.5, player.yRot + 180.0f, 0.0f)
         level.addFreshEntity(npc)
@@ -2795,6 +2797,11 @@ object NpcFeature {
 
     private fun bossFightDebugNpcId(player: ServerPlayer, classId: String): String =
         "boss_debug_${NpcBossMovesets.normalizeId(classId)}_${player.uuid.toString().take(8)}"
+
+    private fun bossFightDebugSkinDefinition(classId: String): NpcDefinition? {
+        val normalizedClassId = NpcBossMovesets.normalizeId(classId)
+        return NpcConfig.all().firstOrNull { definition -> NpcBossMovesets.normalizeId(definition.classId) == normalizedClassId && definition.skin.isNotBlank() }
+    }
 
     private fun animationDebugSpawnPos(level: ServerLevel, player: ServerPlayer): BlockPos {
         val base = player.blockPosition().relative(player.direction, 2)

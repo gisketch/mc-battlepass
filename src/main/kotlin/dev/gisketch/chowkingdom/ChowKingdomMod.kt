@@ -57,6 +57,7 @@ class ChowKingdomMod(modBus: IEventBus, container: ModContainer) {
     init {
         LOGGER.info("Loading {}", container.modInfo.displayName)
         TomlConfigIO.migrateModConfigTree()
+        ChowSounds.register(modBus)
         ChowClockConfig.load()
         BattlepassPassRegistry.reload()
         BattlepassXpStore.load()
@@ -86,6 +87,7 @@ class ChowKingdomMod(modBus: IEventBus, container: ModContainer) {
         ClassSkillTreeFeature.register(modBus)
         TownReturnFeature.register(modBus)
         WorldsFeature.register()
+        ParrySoundFeature.register()
         if (FMLEnvironment.dist == Dist.CLIENT) {
             container.registerExtensionPoint(IConfigScreenFactory::class.java) {
                 IConfigScreenFactory { _, modListScreen -> ChowKingdomConfigScreen(modListScreen) }
