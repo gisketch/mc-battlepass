@@ -394,6 +394,17 @@ Good boss moves:
 - Axii: `spell_id = "witcher_rpg:axii"`, animations `witcher_rpg:sign_cast_long`, `witcher_rpg:sign_cast_short`
 - Reflex guard: `spell_id = "witcher_rpg:defensive_witcher_mechanics"`, animation `witcher_rpg:witcher_reflexes`
 
+Implemented boss refresh:
+
+- Geralt equips `witcher_rpg:steel_witcher_sword` for boss duels.
+- Phase 1 mixes fast/strong Witcher sword attacks with frequent visible `Aard`, `Igni`, and `Quen` sign usage.
+- Phase 2 unlocks `Aard Sweep`, `Yrden`, `Axii`, `Rend`, and `Whirl`; the phase chain is longer and faster.
+- `Aard`/`Igni` are cone area moves with visible cast/release/impact particles and sounds.
+- `Igni` applies fire ticks.
+- `Quen` is temporary boss absorption, not healing.
+- `Yrden` creates a visible pulsing ground hazard with slow/chip damage.
+- `Axii` is a visible magic projectile that applies brief Weakness.
+
 ### Gandalf - Wizard
 
 Class: `wizard`

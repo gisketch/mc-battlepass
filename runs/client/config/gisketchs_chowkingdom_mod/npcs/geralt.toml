@@ -22,8 +22,9 @@ work_blocks = [
 [boss]
 enabled = true
 health = 100.0
-damage = 5.5
+damage = 4.0
 template = "sword_user"
+main_hand = "witcher_rpg:steel_witcher_sword"
 
 [boss.balloons]
 chase = ["Keep moving. I can still smell fear.", "Footwork, {player}. Use it.", "Run smarter, not faster.", "I have tracked worse.", "Your trail is messy.", "Pace yourself. Long chase.", "You are winded already.", "The wolf always catches up.", "Keep those legs moving.", "Every step counts now."]

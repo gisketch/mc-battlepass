@@ -1,92 +1,76 @@
 # Chow Kingdom config: witcher.toml. Edit while the game is stopped, then run reload commands or restart.
 
-# Config value: id.
 id = "witcher"
-# Config value: display_name.
 display_name = "Witcher"
-# Config value: health.
-health = 85.0
-# Config value: damage.
-damage = 4.0
-# Config value: attack_start_distance.
-attack_start_distance = 3.2
-# Config value: approach_animation_id.
+health = 94.0
+damage = 3.5
+attack_start_distance = 7.5
+offense_chain_min = 2
+offense_chain_random = 1
+offense_chain_recovery_ticks = 9
 approach_animation_id = "bettercombat:pose_two_handed_sword"
-# Config value: approach_animation_source.
 approach_animation_source = "playerlike"
-# Config value: strafe_animation_id.
 strafe_animation_id = "bettercombat:pose_two_handed_sword"
-# Config value: strafe_animation_source.
 strafe_animation_source = "playerlike"
-# Config value: guard_animation_id.
 guard_animation_id = "bettercombat:pose_two_handed_sword"
-# Config value: guard_animation_source.
 guard_animation_source = "playerlike"
-# Config value: parry_animation_id.
 parry_animation_id = "bettercombat:one_handed_slash_horizontal_right"
-# Config value: parry_animation_source.
 parry_animation_source = "playerlike"
-# Config value: hurt_animation_id.
 hurt_animation_id = "spell_engine:dodge"
-# Config value: hurt_animation_source.
 hurt_animation_source = "playerlike"
-# Config value: guard_react_ticks.
+recovery_animation_id = "bettercombat:pose_one_handed_backwards"
+recovery_animation_source = "playerlike"
 guard_react_ticks = 6
-# Config value: guard_counter_ticks.
 guard_counter_ticks = 12
-# Config value: guard_roll_animation_id.
-guard_roll_animation_id = "combat_roll:roll"
-# Config value: guard_roll_animation_source.
+guard_roll_animation_id = "witcher_rpg:witcher_reflexes"
 guard_roll_animation_source = "playerlike"
-# Config value: guard_roll_ticks.
 guard_roll_ticks = 14
-# Config value: guard_roll_iframe_ticks.
 guard_roll_iframe_ticks = 14
-# Config value: guard_roll_distance.
 guard_roll_distance = 3.0
-# Config value: guard_min_ticks.
+guard_dodge_animation_id = "witcher_rpg:witcher_reflexes"
+guard_dodge_animation_source = "playerlike"
+guard_dodge_ticks = 12
+guard_dodge_iframe_ticks = 10
+guard_dodge_distance = 3.0
+guard_dodge_direction = "side"
 guard_min_ticks = 60
-# Config value: guard_random_ticks.
 guard_random_ticks = 60
-# Config value: guard_taunt_min_ticks.
 guard_taunt_min_ticks = 40
-# Config value: guard_taunt_random_ticks.
 guard_taunt_random_ticks = 40
-# Config value: recovery_hits_allowed.
-recovery_hits_allowed = 1
-# Config value: parry_damage.
+recovery_hits_allowed = 4
 parry_damage = 0.0
-# Config value: parry_knockback.
 parry_knockback = 0.6
-# Config value: moves.
-moves = [
-  { id = "fast_attack_1", kind = "melee", animation_id = "witcher_rpg:fast_attack_witcher_1", animation_source = "playerlike", spell_id = "", duration_ticks = 17, hit_ticks = [7], cooldown_ticks = 14, recovery_ticks = 10, damage = 5.0, range = 2.8, arc_degrees = 95.0, area_radius = 0.0, knockback = 0.35, weight = 5, min_distance = 0.0, max_distance = 3.1999999999999997, roll_distance = 0.0, roll_direction = "back", iframe_start_tick = 0, iframe_end_tick = 0 },
-  { id = "fast_attack_2", kind = "melee", animation_id = "witcher_rpg:fast_attack_witcher_2", animation_source = "playerlike", spell_id = "", duration_ticks = 17, hit_ticks = [7], cooldown_ticks = 14, recovery_ticks = 10, damage = 5.0, range = 2.8, arc_degrees = 95.0, area_radius = 0.0, knockback = 0.35, weight = 4, min_distance = 0.0, max_distance = 3.1999999999999997, roll_distance = 0.0, roll_direction = "back", iframe_start_tick = 0, iframe_end_tick = 0 },
-  { id = "strong_attack", kind = "melee", animation_id = "witcher_rpg:strong_attack_witcher_1", animation_source = "playerlike", spell_id = "", duration_ticks = 27, hit_ticks = [14], cooldown_ticks = 46, recovery_ticks = 18, damage = 8.0, range = 3.0, arc_degrees = 85.0, area_radius = 0.0, knockback = 0.35, weight = 2, min_distance = 0.0, max_distance = 3.4, roll_distance = 0.0, roll_direction = "back", iframe_start_tick = 0, iframe_end_tick = 0 },
-  { id = "normal_spin", kind = "area", animation_id = "witcher_rpg:witcher_normal_spin", animation_source = "playerlike", spell_id = "", duration_ticks = 25, hit_ticks = [12], cooldown_ticks = 44, recovery_ticks = 14, damage = 6.0, range = 2.7, arc_degrees = 360.0, area_radius = 2.7, knockback = 0.35, weight = 3, min_distance = 0.0, max_distance = 3.5, roll_distance = 0.0, roll_direction = "back", iframe_start_tick = 0, iframe_end_tick = 0 },
-  { id = "whirl", kind = "area", animation_id = "witcher_rpg:witcher_whirl", animation_source = "playerlike", spell_id = "", duration_ticks = 34, hit_ticks = [12], cooldown_ticks = 70, recovery_ticks = 18, damage = 7.0, range = 3.0, arc_degrees = 360.0, area_radius = 3.0, knockback = 0.35, weight = 2, min_distance = 0.0, max_distance = 3.8, roll_distance = 0.0, roll_direction = "back", iframe_start_tick = 0, iframe_end_tick = 0 },
-  { id = "reflexes", kind = "roll", animation_id = "witcher_rpg:witcher_reflexes", animation_source = "playerlike", spell_id = "", duration_ticks = 14, hit_ticks = [], cooldown_ticks = 52, recovery_ticks = 0, damage = 0.0, range = 2.8, arc_degrees = 95.0, area_radius = 0.0, knockback = 0.35, weight = 2, min_distance = 0.0, max_distance = 3.5, roll_distance = 2.8, roll_direction = "side", iframe_start_tick = 0, iframe_end_tick = 14 },
+
+phases = [
+  { id = "signs_and_steel", display_name = "Signs And Steel", starts_at_health_ratio = 1.0, damage_multiplier = 1.0, speed_multiplier = 1.08, offense_chain_min = 2, offense_chain_random = 1, offense_chain_recovery_ticks = 9, transition_fallback = "", transition_llm_prompt = "", music_id = "cataclysm:enderguardian_music_1", music_volume = 0.52, music_pitch = 1.0, music_repeat_ticks = 3000 },
+  { id = "mutagen_focus", display_name = "Mutagen Focus", starts_at_health_ratio = 0.5, damage_multiplier = 1.18, speed_multiplier = 1.24, offense_chain_min = 3, offense_chain_random = 1, offense_chain_recovery_ticks = 7, transition_fallback = "Enough. Watch the signs.", transition_llm_prompt = "The duel has reached half health and you are entering a faster Witcher second phase with stronger signs, Yrden, Axii, Rend, and Whirl. Reply as Geralt with one short dry battle line.", music_id = "cataclysm:maledictus_music", music_volume = 0.58, music_pitch = 1.0, music_repeat_ticks = 3000 },
 ]
 
-# Config value: balloons.
+moves = [
+  { id = "fast_attack_1", kind = "melee", animation_id = "witcher_rpg:fast_attack_witcher_1", animation_source = "playerlike", release_animation_id = "", release_animation_source = "playerlike", spell_id = "witcher_rpg:fast_attack", duration_ticks = 17, hit_ticks = [7], cooldown_ticks = 13, recovery_ticks = 20, damage = 2.4, range = 2.8, arc_degrees = 95.0, area_radius = 0.0, knockback = 0.35, weight = 5, min_distance = 0.0, max_distance = 3.2, roll_distance = 0.0, roll_direction = "back", iframe_start_tick = 0, iframe_end_tick = 0, min_phase_index = 0, max_phase_index = 99 },
+  { id = "fast_attack_2", kind = "melee", animation_id = "witcher_rpg:fast_attack_witcher_2", animation_source = "playerlike", release_animation_id = "", release_animation_source = "playerlike", spell_id = "witcher_rpg:fast_attack", duration_ticks = 17, hit_ticks = [7], cooldown_ticks = 13, recovery_ticks = 20, damage = 2.4, range = 2.8, arc_degrees = 95.0, area_radius = 0.0, knockback = 0.35, weight = 5, min_distance = 0.0, max_distance = 3.2, roll_distance = 0.0, roll_direction = "back", iframe_start_tick = 0, iframe_end_tick = 0, min_phase_index = 0, max_phase_index = 99 },
+  { id = "fast_attack_3", kind = "melee", animation_id = "witcher_rpg:fast_attack_witcher_3", animation_source = "playerlike", release_animation_id = "", release_animation_source = "playerlike", spell_id = "witcher_rpg:fast_attack", duration_ticks = 18, hit_ticks = [8], cooldown_ticks = 16, recovery_ticks = 22, damage = 2.6, range = 2.9, arc_degrees = 95.0, area_radius = 0.0, knockback = 0.35, weight = 4, min_distance = 0.0, max_distance = 3.3, roll_distance = 0.0, roll_direction = "back", iframe_start_tick = 0, iframe_end_tick = 0, min_phase_index = 0, max_phase_index = 99 },
+  { id = "strong_attack", kind = "melee", animation_id = "witcher_rpg:strong_attack_witcher_1", animation_source = "playerlike", release_animation_id = "", release_animation_source = "playerlike", spell_id = "witcher_rpg:strong_attack", duration_ticks = 27, hit_ticks = [14], cooldown_ticks = 34, recovery_ticks = 30, damage = 3.6, range = 3.1, arc_degrees = 85.0, area_radius = 0.0, knockback = 0.35, weight = 3, min_distance = 0.0, max_distance = 3.5, roll_distance = 0.0, roll_direction = "back", iframe_start_tick = 0, iframe_end_tick = 0, min_phase_index = 0, max_phase_index = 99 },
+  { id = "rend", kind = "melee", animation_id = "witcher_rpg:rend_cast", animation_source = "playerlike", release_animation_id = "witcher_rpg:rend_release", release_animation_source = "playerlike", spell_id = "witcher_rpg:rend", duration_ticks = 36, hit_ticks = [24], cooldown_ticks = 72, recovery_ticks = 42, damage = 4.6, range = 4.1, arc_degrees = 55.0, area_radius = 0.0, knockback = 0.35, weight = 3, min_distance = 0.0, max_distance = 4.5, roll_distance = 0.0, roll_direction = "back", iframe_start_tick = 0, iframe_end_tick = 0, impact_particle = "sweep_attack", cast_particle = "crimson_spore", release_particle = "crimson_spore", release_sound_id = "witcher_rpg:rend_spell", min_phase_index = 1, max_phase_index = 99 },
+  { id = "aard", kind = "area", animation_id = "witcher_rpg:sign_cast_short", animation_source = "playerlike", release_animation_id = "", release_animation_source = "playerlike", spell_id = "witcher_rpg:aard", duration_ticks = 20, hit_ticks = [11], cooldown_ticks = 25, recovery_ticks = 18, damage = 1.4, range = 7.2, arc_degrees = 90.0, area_radius = 7.2, knockback = 1.45, weight = 7, min_distance = 0.0, max_distance = 8.0, roll_distance = 0.0, roll_direction = "back", iframe_start_tick = 0, iframe_end_tick = 0, impact_particle = "more_rpg_classes:wind_vacuum", cast_particle = "witcher_rpg:aard_sign_cast", release_particle = "witcher_rpg:aard_sign_cast", release_sound_id = "witcher_rpg:aard_sign", impact_sound_id = "witcher_rpg:aard_sign", min_phase_index = 0, max_phase_index = 99 },
+  { id = "igni", kind = "area", animation_id = "witcher_rpg:sign_cast_long", animation_source = "playerlike", release_animation_id = "", release_animation_source = "playerlike", spell_id = "witcher_rpg:igni", duration_ticks = 30, hit_ticks = [16], cooldown_ticks = 32, recovery_ticks = 22, damage = 2.0, range = 5.8, arc_degrees = 90.0, area_radius = 5.8, knockback = 0.2, weight = 6, min_distance = 0.0, max_distance = 6.6, roll_distance = 0.0, roll_direction = "back", iframe_start_tick = 0, iframe_end_tick = 0, impact_particle = "spell_engine:flame_medium_a", cast_particle = "witcher_rpg:igni_sign_cast", release_particle = "witcher_rpg:igni_sign_cast", release_sound_id = "witcher_rpg:igni_sign", impact_sound_id = "witcher_rpg:igni_sign", fire_ticks = 80, min_phase_index = 0, max_phase_index = 99 },
+  { id = "quen", kind = "support", animation_id = "witcher_rpg:sign_cast_short", animation_source = "playerlike", release_animation_id = "witcher_rpg:sign_cast_short", release_animation_source = "playerlike", spell_id = "witcher_rpg:quen", duration_ticks = 24, hit_ticks = [13], cooldown_ticks = 58, recovery_ticks = 18, damage = 0.0, range = 7.5, arc_degrees = 360.0, area_radius = 0.0, knockback = 0.35, weight = 3, min_distance = 0.0, max_distance = 7.5, roll_distance = 0.0, roll_direction = "back", iframe_start_tick = 0, iframe_end_tick = 0, cast_particle = "witcher_rpg:quen_sign_cast", support_particle = "spell_engine:electric_arc_a", release_sound_id = "witcher_rpg:quen_sign", impact_sound_id = "witcher_rpg:quen_sign", absorption_amount = 5.0, absorption_ticks = 110, min_phase_index = 0, max_phase_index = 99 },
+  { id = "aard_sweep", kind = "area", animation_id = "witcher_rpg:sign_cast_ground", animation_source = "playerlike", release_animation_id = "", release_animation_source = "playerlike", spell_id = "witcher_rpg:aard_sweep", duration_ticks = 26, hit_ticks = [15], cooldown_ticks = 52, recovery_ticks = 22, damage = 1.2, range = 4.2, arc_degrees = 360.0, area_radius = 4.2, knockback = 1.25, weight = 4, min_distance = 0.0, max_distance = 5.0, roll_distance = 0.0, roll_direction = "back", iframe_start_tick = 0, iframe_end_tick = 0, impact_particle = "more_rpg_classes:wind_vacuum", cast_particle = "witcher_rpg:aard_sign_cast", release_particle = "witcher_rpg:aard_sign_cast", release_sound_id = "witcher_rpg:aard_sign", impact_sound_id = "witcher_rpg:aard_sign", min_phase_index = 1, max_phase_index = 99 },
+  { id = "yrden", kind = "area", animation_id = "witcher_rpg:sign_cast_ground", animation_source = "playerlike", release_animation_id = "", release_animation_source = "playerlike", spell_id = "witcher_rpg:yrden", duration_ticks = 30, hit_ticks = [18], cooldown_ticks = 66, recovery_ticks = 24, damage = 0.8, range = 6.0, arc_degrees = 360.0, area_radius = 6.0, knockback = 0.0, weight = 5, min_distance = 0.0, max_distance = 6.8, roll_distance = 0.0, roll_direction = "back", iframe_start_tick = 0, iframe_end_tick = 0, impact_particle = "spell_engine:ground_glow", cast_particle = "witcher_rpg:yrden_sign_cast", release_particle = "witcher_rpg:yrden_sign_cast", release_sound_id = "witcher_rpg:yrden_sign", impact_sound_id = "witcher_rpg:yrden_sign", status_effect_id = "minecraft:slowness", status_effect_ticks = 35, hazard_radius = 3.2, hazard_ticks = 120, hazard_interval_ticks = 16, hazard_damage = 0.55, hazard_particle = "witcher_rpg:yrden_cloud", min_phase_index = 1, max_phase_index = 99 },
+  { id = "axii", kind = "projectile", animation_id = "witcher_rpg:sign_cast_long", animation_source = "playerlike", release_animation_id = "witcher_rpg:sign_cast_short", release_animation_source = "playerlike", spell_id = "witcher_rpg:axii", duration_ticks = 28, hit_ticks = [17], cooldown_ticks = 54, recovery_ticks = 22, damage = 1.0, range = 9.5, arc_degrees = 80.0, area_radius = 0.0, knockback = 0.35, weight = 4, min_distance = 3.0, max_distance = 9.5, roll_distance = 0.0, roll_direction = "back", iframe_start_tick = 0, iframe_end_tick = 0, projectile_type = "magic", projectile_speed = 0.6, projectile_inaccuracy = 0.0, projectile_count = 1, projectile_spread_degrees = 0.0, projectile_particle = "witcher_rpg:axii_sign_cast", impact_particle = "witcher_rpg:axii_sign_cast", impact_radius = 0.9, status_effect_id = "minecraft:weakness", status_effect_ticks = 70, cast_particle = "witcher_rpg:axii_sign_cast", release_particle = "witcher_rpg:axii_sign_cast", release_sound_id = "witcher_rpg:axii_sign", impact_sound_id = "witcher_rpg:axii_sign", min_phase_index = 1, max_phase_index = 99 },
+  { id = "normal_spin", kind = "area", animation_id = "witcher_rpg:witcher_normal_spin", animation_source = "playerlike", release_animation_id = "", release_animation_source = "playerlike", spell_id = "witcher_rpg:whirl", duration_ticks = 25, hit_ticks = [12], cooldown_ticks = 42, recovery_ticks = 28, damage = 2.8, range = 2.7, arc_degrees = 360.0, area_radius = 2.7, knockback = 0.35, weight = 3, min_distance = 0.0, max_distance = 3.5, roll_distance = 0.0, roll_direction = "back", iframe_start_tick = 0, iframe_end_tick = 0, impact_particle = "sweep_attack", release_sound_id = "witcher_rpg:whirl", min_phase_index = 0, max_phase_index = 99 },
+  { id = "whirl", kind = "area", animation_id = "witcher_rpg:witcher_whirl", animation_source = "playerlike", release_animation_id = "", release_animation_source = "playerlike", spell_id = "witcher_rpg:whirl", duration_ticks = 34, hit_ticks = [13], cooldown_ticks = 62, recovery_ticks = 34, damage = 3.4, range = 3.1, arc_degrees = 360.0, area_radius = 3.1, knockback = 0.35, weight = 3, min_distance = 0.0, max_distance = 3.9, roll_distance = 0.0, roll_direction = "back", iframe_start_tick = 0, iframe_end_tick = 0, impact_particle = "sweep_attack", release_sound_id = "witcher_rpg:whirl", impact_sound_id = "witcher_rpg:whirl", min_phase_index = 1, max_phase_index = 99 },
+  { id = "reflexes", kind = "roll", animation_id = "witcher_rpg:witcher_reflexes", animation_source = "playerlike", release_animation_id = "", release_animation_source = "playerlike", spell_id = "", duration_ticks = 14, hit_ticks = [], cooldown_ticks = 38, recovery_ticks = 0, damage = 0.0, range = 2.8, arc_degrees = 95.0, area_radius = 0.0, knockback = 0.35, weight = 3, min_distance = 0.0, max_distance = 3.5, roll_distance = 3.0, roll_direction = "side", iframe_start_tick = 0, iframe_end_tick = 14, support_particle = "witcher_rpg:quen_sign_cast", min_phase_index = 0, max_phase_index = 99 },
+]
+
 [balloons]
-# Config value: balloons.chase.
-chase = ["Keep moving, {player}."]
-# Config value: balloons.attack.
-attack = ["Here it comes."]
-# Config value: balloons.recovery.
-recovery = ["Your turn. Make it count."]
-# Config value: balloons.taunt.
-taunt = ["Take the bait, {player}."]
-# Config value: balloons.guard_react.
-guard_react = ["Too eager."]
-# Config value: balloons.parry.
-parry = ["Parried."]
-# Config value: balloons.hit_player.
-hit_player = ["Solid hit."]
-# Config value: balloons.took_damage.
-took_damage = ["Good hit."]
-# Config value: balloons.victory.
-victory = ["I win this round. You are healed."]
-# Config value: balloons.defeat.
-defeat = ["I yield. Good fight."]
+chase = ["Footwork, {player}.", "Keep moving.", "I can still track you."]
+attack = ["Sign.", "Steel.", "Too close.", "Should have dodged."]
+recovery = ["Opening. Use it.", "Now. Quick.", "Your window."]
+taunt = ["Thinking too much.", "Bad stance.", "Come on."]
+guard_react = ["Predictable.", "Read that.", "Too slow."]
+parry = ["Parried.", "Bad angle.", "No."]
+hit_player = ["That landed.", "Learn from it.", "Felt that."]
+took_damage = ["Good hit.", "Better.", "You noticed."]
+victory = ["I win. Patched you up.", "Down. Healed. Learn."]
+defeat = ["Enough. You win.", "I yield. Good fight."]

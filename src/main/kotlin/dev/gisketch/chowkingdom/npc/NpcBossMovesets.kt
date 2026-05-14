@@ -421,23 +421,125 @@ object NpcBossMovesets {
     private fun defaultWitcher(): NpcBossMovesetDefinition = NpcBossMovesetDefinition(
         id = "witcher",
         displayName = "Witcher",
-        health = 85.0,
-        damage = 4.0,
+        health = 94.0,
+        damage = 3.5,
+        attackStartDistance = 7.5,
+        offenseChainMin = 2,
+        offenseChainRandom = 1,
+        offenseChainRecoveryTicks = 9,
+        recoveryAnimationId = NpcBossMovesetDefinition.DEFAULT_RECOVERY_ANIMATION,
+        recoveryHitsAllowed = 4,
+        guardRollAnimationId = "witcher_rpg:witcher_reflexes",
+        guardDodgeAnimationId = "witcher_rpg:witcher_reflexes",
+        guardDodgeDistance = 3.0,
+        guardDodgeDirection = "side",
+        phases = mutableListOf(
+            phase(
+                id = "signs_and_steel",
+                displayName = "Signs And Steel",
+                startsAtHealthRatio = 1.0,
+                damageMultiplier = 1.0,
+                speedMultiplier = 1.08,
+                offenseChainMin = 2,
+                offenseChainRandom = 1,
+                offenseChainRecoveryTicks = 9,
+                musicId = "cataclysm:enderguardian_music_1",
+                musicVolume = 0.52,
+                musicRepeatTicks = 3000,
+            ),
+            phase(
+                id = "mutagen_focus",
+                displayName = "Mutagen Focus",
+                startsAtHealthRatio = 0.5,
+                damageMultiplier = 1.18,
+                speedMultiplier = 1.24,
+                offenseChainMin = 3,
+                offenseChainRandom = 1,
+                offenseChainRecoveryTicks = 7,
+                transitionFallback = "Enough. Watch the signs.",
+                transitionLlmPrompt = "The duel has reached half health and you are entering a faster Witcher second phase with stronger signs, Yrden, Axii, Rend, and Whirl. Reply as Geralt with one short dry battle line.",
+                musicId = "cataclysm:maledictus_music",
+                musicVolume = 0.58,
+                musicRepeatTicks = 3000,
+            ),
+        ),
         moves = mutableListOf(
-            melee("fast_attack_1", "witcher_rpg:fast_attack_witcher_1", duration = 17, hitTick = 7, damage = 5.0, range = 2.8, arc = 95.0, cooldown = 14, recovery = 10, weight = 5),
-            melee("fast_attack_2", "witcher_rpg:fast_attack_witcher_2", duration = 17, hitTick = 7, damage = 5.0, range = 2.8, arc = 95.0, cooldown = 14, recovery = 10, weight = 4),
-            melee("strong_attack", "witcher_rpg:strong_attack_witcher_1", duration = 27, hitTick = 14, damage = 8.0, range = 3.0, arc = 85.0, cooldown = 46, recovery = 18, weight = 2),
-            area("normal_spin", "witcher_rpg:witcher_normal_spin", duration = 25, hitTick = 12, damage = 6.0, radius = 2.7, cooldown = 44, recovery = 14, weight = 3),
-            area("whirl", "witcher_rpg:witcher_whirl", duration = 34, hitTick = 12, damage = 7.0, radius = 3.0, cooldown = 70, recovery = 18, weight = 2),
-            roll("reflexes", "witcher_rpg:witcher_reflexes", duration = 14, cooldown = 52, distance = 2.8, direction = "side", weight = 2),
+            melee("fast_attack_1", "witcher_rpg:fast_attack_witcher_1", duration = 17, hitTick = 7, damage = 2.4, range = 2.8, arc = 95.0, cooldown = 13, recovery = 20, weight = 5, spellId = "witcher_rpg:fast_attack"),
+            melee("fast_attack_2", "witcher_rpg:fast_attack_witcher_2", duration = 17, hitTick = 7, damage = 2.4, range = 2.8, arc = 95.0, cooldown = 13, recovery = 20, weight = 5, spellId = "witcher_rpg:fast_attack"),
+            melee("fast_attack_3", "witcher_rpg:fast_attack_witcher_3", duration = 18, hitTick = 8, damage = 2.6, range = 2.9, arc = 95.0, cooldown = 16, recovery = 22, weight = 4, spellId = "witcher_rpg:fast_attack"),
+            melee("strong_attack", "witcher_rpg:strong_attack_witcher_1", duration = 27, hitTick = 14, damage = 3.6, range = 3.1, arc = 85.0, cooldown = 34, recovery = 30, weight = 3, spellId = "witcher_rpg:strong_attack"),
+            melee("rend", "witcher_rpg:rend_cast", duration = 36, hitTick = 24, damage = 4.6, range = 4.1, arc = 55.0, cooldown = 72, recovery = 42, weight = 3, spellId = "witcher_rpg:rend", releaseAnimationId = "witcher_rpg:rend_release", castParticle = "crimson_spore", releaseParticle = "crimson_spore", impactParticle = "sweep_attack", releaseSoundId = "witcher_rpg:rend_spell", minPhaseIndex = 1),
+            area("aard", "witcher_rpg:sign_cast_short", duration = 20, hitTick = 11, damage = 1.4, radius = 7.2, cooldown = 25, recovery = 18, weight = 7, spellId = "witcher_rpg:aard", knockback = 1.45, arc = 90.0, impactParticle = "more_rpg_classes:wind_vacuum", releaseParticle = "witcher_rpg:aard_sign_cast", castParticle = "witcher_rpg:aard_sign_cast", releaseSoundId = "witcher_rpg:aard_sign", impactSoundId = "witcher_rpg:aard_sign"),
+            area("igni", "witcher_rpg:sign_cast_long", duration = 30, hitTick = 16, damage = 2.0, radius = 5.8, cooldown = 32, recovery = 22, weight = 6, spellId = "witcher_rpg:igni", knockback = 0.2, arc = 90.0, impactParticle = "spell_engine:flame_medium_a", releaseParticle = "witcher_rpg:igni_sign_cast", castParticle = "witcher_rpg:igni_sign_cast", releaseSoundId = "witcher_rpg:igni_sign", impactSoundId = "witcher_rpg:igni_sign", fireTicks = 80),
+            support("quen", "witcher_rpg:sign_cast_short", duration = 24, hitTick = 13, cooldown = 58, recovery = 18, weight = 3, min = 0.0, max = 7.5, spellId = "witcher_rpg:quen", absorption = 5.0, absorptionTicks = 110, castParticle = "witcher_rpg:quen_sign_cast", supportParticle = "spell_engine:electric_arc_a", releaseSoundId = "witcher_rpg:quen_sign", impactSoundId = "witcher_rpg:quen_sign", releaseAnimationId = "witcher_rpg:sign_cast_short"),
+            area("aard_sweep", "witcher_rpg:sign_cast_ground", duration = 26, hitTick = 15, damage = 1.2, radius = 4.2, cooldown = 52, recovery = 22, weight = 4, spellId = "witcher_rpg:aard_sweep", knockback = 1.25, impactParticle = "more_rpg_classes:wind_vacuum", releaseParticle = "witcher_rpg:aard_sign_cast", castParticle = "witcher_rpg:aard_sign_cast", releaseSoundId = "witcher_rpg:aard_sign", impactSoundId = "witcher_rpg:aard_sign", minPhaseIndex = 1),
+            area("yrden", "witcher_rpg:sign_cast_ground", duration = 30, hitTick = 18, damage = 0.8, radius = 6.0, cooldown = 66, recovery = 24, weight = 5, spellId = "witcher_rpg:yrden", knockback = 0.0, impactParticle = "spell_engine:ground_glow", releaseParticle = "witcher_rpg:yrden_sign_cast", castParticle = "witcher_rpg:yrden_sign_cast", releaseSoundId = "witcher_rpg:yrden_sign", impactSoundId = "witcher_rpg:yrden_sign", statusEffectId = "minecraft:slowness", statusEffectTicks = 35, hazardRadius = 3.2, hazardTicks = 120, hazardIntervalTicks = 16, hazardDamage = 0.55, hazardParticle = "witcher_rpg:yrden_cloud", minPhaseIndex = 1),
+            magicProjectile("axii", spellId = "witcher_rpg:axii", duration = 28, hitTick = 17, damage = 1.0, cooldown = 54, recovery = 22, weight = 4, min = 3.0, max = 9.5, speed = 0.6, impactRadius = 0.9, particle = "witcher_rpg:axii_sign_cast", impactParticle = "witcher_rpg:axii_sign_cast", statusEffectId = "minecraft:weakness", statusEffectTicks = 70, statusEffectAmplifier = 0, animationId = "witcher_rpg:sign_cast_long", releaseAnimationId = "witcher_rpg:sign_cast_short", castParticle = "witcher_rpg:axii_sign_cast", releaseParticle = "witcher_rpg:axii_sign_cast", releaseSoundId = "witcher_rpg:axii_sign", impactSoundId = "witcher_rpg:axii_sign", minPhaseIndex = 1),
+            area("normal_spin", "witcher_rpg:witcher_normal_spin", duration = 25, hitTick = 12, damage = 2.8, radius = 2.7, cooldown = 42, recovery = 28, weight = 3, spellId = "witcher_rpg:whirl", impactParticle = "sweep_attack", releaseSoundId = "witcher_rpg:whirl"),
+            area("whirl", "witcher_rpg:witcher_whirl", duration = 34, hitTick = 13, damage = 3.4, radius = 3.1, cooldown = 62, recovery = 34, weight = 3, spellId = "witcher_rpg:whirl", impactParticle = "sweep_attack", releaseSoundId = "witcher_rpg:whirl", impactSoundId = "witcher_rpg:whirl", minPhaseIndex = 1),
+            roll("reflexes", "witcher_rpg:witcher_reflexes", duration = 14, cooldown = 38, distance = 3.0, direction = "side", weight = 3, supportParticle = "witcher_rpg:quen_sign_cast"),
         ),
     )
 
-    private fun melee(id: String, animationId: String, duration: Int, hitTick: Int, damage: Double, range: Double, arc: Double, cooldown: Int, recovery: Int, weight: Int): NpcBossMoveDefinition =
-        NpcBossMoveDefinition(id = id, kind = NpcBossMoveKinds.MELEE, animationId = animationId, durationTicks = duration, hitTicks = mutableListOf(hitTick), damage = damage, range = range, arcDegrees = arc, cooldownTicks = cooldown, recoveryTicks = recovery, weight = weight, maxDistance = range + 0.4)
+    private fun melee(
+        id: String,
+        animationId: String,
+        duration: Int,
+        hitTick: Int,
+        damage: Double,
+        range: Double,
+        arc: Double,
+        cooldown: Int,
+        recovery: Int,
+        weight: Int,
+        spellId: String = "",
+        releaseAnimationId: String = "",
+        castParticle: String = "",
+        releaseParticle: String = "",
+        impactParticle: String = "",
+        castSoundId: String = "",
+        releaseSoundId: String = "",
+        impactSoundId: String = "",
+        minPhaseIndex: Int = 0,
+        maxPhaseIndex: Int = 99,
+    ): NpcBossMoveDefinition =
+        NpcBossMoveDefinition(id = id, kind = NpcBossMoveKinds.MELEE, animationId = animationId, releaseAnimationId = releaseAnimationId, spellId = spellId, durationTicks = duration, hitTicks = mutableListOf(hitTick), damage = damage, range = range, arcDegrees = arc, cooldownTicks = cooldown, recoveryTicks = recovery, weight = weight, maxDistance = range + 0.4, castParticle = castParticle, releaseParticle = releaseParticle, impactParticle = impactParticle, castSoundId = castSoundId, releaseSoundId = releaseSoundId, impactSoundId = impactSoundId, minPhaseIndex = minPhaseIndex, maxPhaseIndex = maxPhaseIndex)
 
-    private fun area(id: String, animationId: String, duration: Int, hitTick: Int, damage: Double, radius: Double, cooldown: Int, recovery: Int, weight: Int, min: Double = 0.0, max: Double = radius + 0.8, spellId: String = "", knockback: Double = 0.35, impactParticle: String = "", releaseParticle: String = "", castSoundId: String = "", releaseSoundId: String = "", impactSoundId: String = "", releaseAnimationId: String = ""): NpcBossMoveDefinition =
-        NpcBossMoveDefinition(id = id, kind = NpcBossMoveKinds.AREA, animationId = animationId, releaseAnimationId = releaseAnimationId, durationTicks = duration, hitTicks = mutableListOf(hitTick), damage = damage, range = radius, arcDegrees = 360.0, areaRadius = radius, cooldownTicks = cooldown, recoveryTicks = recovery, weight = weight, minDistance = min, maxDistance = max, spellId = spellId, knockback = knockback, impactParticle = impactParticle, releaseParticle = releaseParticle, castSoundId = castSoundId, releaseSoundId = releaseSoundId, impactSoundId = impactSoundId)
+    private fun area(
+        id: String,
+        animationId: String,
+        duration: Int,
+        hitTick: Int,
+        damage: Double,
+        radius: Double,
+        cooldown: Int,
+        recovery: Int,
+        weight: Int,
+        min: Double = 0.0,
+        max: Double = radius + 0.8,
+        spellId: String = "",
+        knockback: Double = 0.35,
+        arc: Double = 360.0,
+        impactParticle: String = "",
+        releaseParticle: String = "",
+        castParticle: String = "",
+        castSoundId: String = "",
+        releaseSoundId: String = "",
+        impactSoundId: String = "",
+        releaseAnimationId: String = "",
+        statusEffectId: String = "",
+        statusEffectTicks: Int = 0,
+        statusEffectAmplifier: Int = 0,
+        fireTicks: Int = 0,
+        hazardRadius: Double = 0.0,
+        hazardTicks: Int = 0,
+        hazardIntervalTicks: Int = 10,
+        hazardDamage: Double = 0.0,
+        hazardParticle: String = "",
+        minPhaseIndex: Int = 0,
+        maxPhaseIndex: Int = 99,
+    ): NpcBossMoveDefinition =
+        NpcBossMoveDefinition(id = id, kind = NpcBossMoveKinds.AREA, animationId = animationId, releaseAnimationId = releaseAnimationId, durationTicks = duration, hitTicks = mutableListOf(hitTick), damage = damage, range = radius, arcDegrees = arc, areaRadius = radius, cooldownTicks = cooldown, recoveryTicks = recovery, weight = weight, minDistance = min, maxDistance = max, spellId = spellId, knockback = knockback, impactParticle = impactParticle, releaseParticle = releaseParticle, castParticle = castParticle, castSoundId = castSoundId, releaseSoundId = releaseSoundId, impactSoundId = impactSoundId, statusEffectId = statusEffectId, statusEffectTicks = statusEffectTicks, statusEffectAmplifier = statusEffectAmplifier, fireTicks = fireTicks, hazardRadius = hazardRadius, hazardTicks = hazardTicks, hazardIntervalTicks = hazardIntervalTicks, hazardDamage = hazardDamage, hazardParticle = hazardParticle, minPhaseIndex = minPhaseIndex, maxPhaseIndex = maxPhaseIndex)
 
     private fun projectile(
         id: String,
@@ -884,6 +986,12 @@ class NpcBossMoveDefinition(
     @SerializedName("status_effect_id") var statusEffectId: String = "",
     @SerializedName("status_effect_ticks") var statusEffectTicks: Int = 0,
     @SerializedName("status_effect_amplifier") var statusEffectAmplifier: Int = 0,
+    @SerializedName("fire_ticks") var fireTicks: Int = 0,
+    @SerializedName("hazard_radius") var hazardRadius: Double = 0.0,
+    @SerializedName("hazard_ticks") var hazardTicks: Int = 0,
+    @SerializedName("hazard_interval_ticks") var hazardIntervalTicks: Int = 10,
+    @SerializedName("hazard_damage") var hazardDamage: Double = 0.0,
+    @SerializedName("hazard_particle") var hazardParticle: String = "",
     @SerializedName("cast_particle") var castParticle: String = "",
     @SerializedName("release_particle") var releaseParticle: String = "",
     @SerializedName("support_particle") var supportParticle: String = "",
@@ -966,6 +1074,12 @@ class NpcBossMoveDefinition(
         statusEffectId = cleanParticleId(statusEffectId, "")
         statusEffectTicks = statusEffectTicks.coerceIn(0, 20 * 20)
         statusEffectAmplifier = statusEffectAmplifier.coerceIn(0, 10)
+        fireTicks = fireTicks.coerceIn(0, 20 * 20)
+        hazardRadius = hazardRadius.coerceIn(0.0, 16.0)
+        hazardTicks = hazardTicks.coerceIn(0, 20 * 20)
+        hazardIntervalTicks = hazardIntervalTicks.coerceIn(4, 20 * 10)
+        hazardDamage = hazardDamage.coerceIn(0.0, 1000.0)
+        hazardParticle = cleanParticleId(hazardParticle, "")
         castParticle = cleanParticleId(castParticle, "")
         releaseParticle = cleanParticleId(releaseParticle, "")
         supportParticle = cleanParticleId(supportParticle, "")

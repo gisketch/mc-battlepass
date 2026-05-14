@@ -305,6 +305,7 @@ object NpcBossFights {
         if (!target.isAlive) return false
         if (!withinTether(entity, target, fight)) return false
         tickSupportEffects(entity, fight)
+        tickBossHazards(entity, target, fight)
         tickMagicProjectiles(entity, target, fight)
         tickTrackedArrows(entity, fight)
         if (active[entity.uuid] !== fight) return true
@@ -619,6 +620,13 @@ object NpcBossFights {
 
     private fun attackHit(entity: ChowNpcEntity, target: ServerPlayer, fight: ActiveBossFight, move: NpcBossMoveDefinition) {
         val level = entity.level() as? ServerLevel ?: return
+        if (move.releaseAnimationId != move.animationId) {
+            playTemplate(entity, fight, projectileReleaseTemplate(fight, move), forceRestart = true)
+        }
+        if (move.releaseSoundId.isNotBlank()) {
+            playBossSound(level, move.releaseSoundId, SoundEvents.PLAYER_ATTACK_SWEEP, entity.x, entity.eyeY, entity.z, 0.9f, 1.0f)
+        }
+        sendMoveParticle(level, move.releaseParticle, entity.x, entity.eyeY, entity.z, 18, 0.28, 0.28, 0.28, 0.02, ParticleTypes.SWEEP_ATTACK)
         entity.swing(InteractionHand.MAIN_HAND, true)
         if (entity.distanceToSqr(target) > move.range * move.range || !targetInForwardCone(entity, target, move.arcDegrees)) {
             entity.debugGoal = "${move.id}_miss"
@@ -646,9 +654,9 @@ object NpcBossFights {
         if (move.releaseSoundId.isNotBlank()) {
             playBossSound(level, move.releaseSoundId, SoundEvents.EVOKER_CAST_SPELL, entity.x, entity.eyeY, entity.z, 0.75f, 1.0f)
         }
-        sendMoveParticle(level, move.releaseParticle, entity.x, entity.eyeY, entity.z, 10, 0.3, 0.3, 0.3, 0.02, ParticleTypes.END_ROD)
+        sendMoveParticle(level, move.releaseParticle, entity.x, entity.eyeY, entity.z, 28, 0.45, 0.45, 0.45, 0.03, ParticleTypes.END_ROD)
         val radius = move.areaRadius.takeIf { value -> value > 0.0 } ?: move.range
-        if (entity.distanceToSqr(target) > radius * radius) {
+        if (entity.distanceToSqr(target) > radius * radius || !targetInForwardCone(entity, target, move.arcDegrees)) {
             entity.debugGoal = "${move.id}_miss"
             return
         }
@@ -662,8 +670,10 @@ object NpcBossFights {
         if (target.hurt(entity.damageSources().mobAttack(entity), phaseDamage(fight, move.damage))) {
             target.knockback(move.knockback, entity.x - target.x, entity.z - target.z)
             target.hurtMarked = true
+            applyMoveEffects(target, move)
             showBossBalloon(entity, target, fight, fight.balloons.hitPlayer, "hit_player")
         }
+        createBossHazard(entity, target, fight, move)
     }
 
     private fun projectileHit(entity: ChowNpcEntity, target: ServerPlayer, fight: ActiveBossFight, move: NpcBossMoveDefinition) {
@@ -681,7 +691,7 @@ object NpcBossFights {
         val start = eye.add(firstAim.scale(0.45)).add(0.0, -0.15, 0.0)
         val aim = target.getEyePosition().add(0.0, -0.1, 0.0)
         val baseDirection = aim.subtract(start).takeIf { vector -> vector.lengthSqr() > 0.0001 }?.normalize() ?: firstAim
-        sendMoveParticle(level, move.releaseParticle, start.x, start.y, start.z, 10, 0.2, 0.2, 0.2, 0.02, ParticleTypes.END_ROD)
+        sendMoveParticle(level, move.releaseParticle, start.x, start.y, start.z, 18, 0.24, 0.24, 0.24, 0.03, ParticleTypes.END_ROD)
         val count = move.projectileCount.coerceAtLeast(1)
         repeat(count) { index ->
             val offset = spreadOffset(index, count, move.projectileSpreadDegrees)
@@ -710,7 +720,7 @@ object NpcBossFights {
         faceTarget(entity, target)
         playTemplate(entity, fight, projectileReleaseTemplate(fight, move), forceRestart = true)
         playBossSound(level, move.releaseSoundId, SoundEvents.EVOKER_CAST_SPELL, entity.x, entity.eyeY, entity.z, 0.9f, 0.9f + entity.random.nextFloat() * 0.25f)
-        sendMoveParticle(level, move.releaseParticle, entity.x, entity.eyeY, entity.z, 10, 0.2, 0.2, 0.2, 0.02, ParticleTypes.END_ROD)
+        sendMoveParticle(level, move.releaseParticle, entity.x, entity.eyeY, entity.z, 22, 0.26, 0.26, 0.26, 0.03, ParticleTypes.END_ROD)
 
         val start = entity.getEyePosition().add(0.0, -0.08, 0.0)
         val aim = target.getEyePosition().add(0.0, -0.08, 0.0)
@@ -749,7 +759,7 @@ object NpcBossFights {
                 continue
             }
             projectile.position = next
-            level.sendParticles(bossParticle(projectile.move.projectileParticle, ParticleTypes.END_ROD), next.x, next.y, next.z, 2, 0.06, 0.06, 0.06, 0.0)
+            level.sendParticles(bossParticle(projectile.move.projectileParticle, ParticleTypes.END_ROD), next.x, next.y, next.z, 4, 0.08, 0.08, 0.08, 0.0)
             if (target.boundingBox.inflate(projectile.move.impactRadius).contains(next)) {
                 magicImpact(entity, target, fight, projectile, next)
                 iterator.remove()
@@ -811,8 +821,58 @@ object NpcBossFights {
             val knockback = projectile.move.knockback.coerceAtLeast(0.0)
             if (knockback > 0.0) target.knockback(knockback, -projectile.velocity.x, -projectile.velocity.z)
             target.hurtMarked = true
-            applyMagicStatus(target, projectile.move)
+            applyMoveEffects(target, projectile.move)
             showBossBalloon(entity, target, fight, fight.balloons.hitPlayer, "hit_player")
+        }
+    }
+
+    private fun createBossHazard(entity: ChowNpcEntity, target: ServerPlayer, fight: ActiveBossFight, move: NpcBossMoveDefinition) {
+        if (move.hazardTicks <= 0) return
+        val level = entity.level() as? ServerLevel ?: return
+        val radius = move.hazardRadius.takeIf { value -> value > 0.0 } ?: move.areaRadius.takeIf { value -> value > 0.0 } ?: move.range
+        val center = target.position().add(0.0, 0.08, 0.0)
+        fight.areaHazards.add(
+            BossAreaHazard(
+                move = move,
+                position = center,
+                radius = radius.coerceIn(0.5, 8.0),
+                expiresTick = entity.tickCount + move.hazardTicks,
+                nextPulseTick = entity.tickCount,
+            ),
+        )
+        val particleId = move.hazardParticle.ifBlank { move.impactParticle.ifBlank { move.releaseParticle } }
+        level.sendParticles(bossParticle(particleId, ParticleTypes.END_ROD), center.x, center.y, center.z, 54, radius * 0.5, 0.08, radius * 0.5, 0.02)
+    }
+
+    private fun tickBossHazards(entity: ChowNpcEntity, target: ServerPlayer, fight: ActiveBossFight) {
+        val level = entity.level() as? ServerLevel ?: return
+        val iterator = fight.areaHazards.iterator()
+        while (iterator.hasNext()) {
+            val hazard = iterator.next()
+            if (entity.tickCount > hazard.expiresTick) {
+                iterator.remove()
+                continue
+            }
+            val particleId = hazard.move.hazardParticle.ifBlank { hazard.move.impactParticle.ifBlank { hazard.move.releaseParticle } }
+            level.sendParticles(bossParticle(particleId, ParticleTypes.END_ROD), hazard.position.x, hazard.position.y, hazard.position.z, 8, hazard.radius * 0.45, 0.03, hazard.radius * 0.45, 0.0)
+            if (entity.tickCount < hazard.nextPulseTick) continue
+            hazard.nextPulseTick = entity.tickCount + hazard.move.hazardIntervalTicks
+            level.sendParticles(bossParticle(particleId, ParticleTypes.END_ROD), hazard.position.x, hazard.position.y + 0.05, hazard.position.z, 30, hazard.radius * 0.55, 0.05, hazard.radius * 0.55, 0.02)
+            val dx = target.x - hazard.position.x
+            val dz = target.z - hazard.position.z
+            if (dx * dx + dz * dz > hazard.radius * hazard.radius) continue
+            if (NpcCombatRollBridge.isRolling(target)) {
+                entity.debugGoal = "${hazard.move.id}_hazard_roll_whiff"
+                continue
+            }
+            applyMoveEffects(target, hazard.move)
+            if (hazard.move.hazardDamage <= 0.0) continue
+            target.invulnerableTime = 0
+            if (target.hurt(entity.damageSources().mobAttack(entity), phaseDamage(fight, hazard.move.hazardDamage))) {
+                target.hurtMarked = true
+                showBossBalloon(entity, target, fight, fight.balloons.hitPlayer, "hit_player")
+                if (active[entity.uuid] !== fight) return
+            }
         }
     }
 
@@ -855,7 +915,7 @@ object NpcBossFights {
         playTemplate(entity, fight, projectileReleaseTemplate(fight, move), forceRestart = true)
         val position = entity.position().add(0.0, 1.0, 0.0)
         playBossSound(level, move.releaseSoundId, SoundEvents.EVOKER_CAST_SPELL, position.x, position.y, position.z, 0.8f, 1.1f)
-        sendMoveParticle(level, move.supportParticle, position.x, position.y, position.z, 24, 0.55, 0.7, 0.55, 0.04, ParticleTypes.END_ROD)
+        sendMoveParticle(level, move.supportParticle, position.x, position.y, position.z, 42, 0.7, 0.85, 0.7, 0.05, ParticleTypes.END_ROD)
         applySelfHeal(entity, target, fight, move)
         applyAbsorption(entity, fight, move)
         playBossSound(level, move.impactSoundId.ifBlank { move.releaseSoundId }, SoundEvents.EVOKER_CAST_SPELL, position.x, position.y, position.z, 0.7f, 1.25f)
@@ -955,14 +1015,15 @@ object NpcBossFights {
     private fun playMoveCastVfx(entity: ChowNpcEntity, move: NpcBossMoveDefinition) {
         val level = entity.level() as? ServerLevel ?: return
         playBossSound(level, move.castSoundId, SoundEvents.EVOKER_PREPARE_ATTACK, entity.x, entity.eyeY, entity.z, 0.55f, 1.2f)
-        sendMoveParticle(level, move.castParticle, entity.x, entity.y + 0.65, entity.z, 10, 0.35, 0.5, 0.35, 0.02, ParticleTypes.END_ROD)
+        val count = if (move.castParticle.isNotBlank() && move.spellId.startsWith("witcher_rpg:")) 26 else 10
+        sendMoveParticle(level, move.castParticle, entity.x, entity.y + 0.75, entity.z, count, 0.45, 0.6, 0.45, 0.03, ParticleTypes.END_ROD)
     }
 
     private fun playMoveImpactVfx(level: ServerLevel, move: NpcBossMoveDefinition, position: Vec3, radius: Double, fallbackSound: SoundEvent) {
         val particleFallback = if (move.kind == NpcBossMoveKinds.AREA) ParticleTypes.SWEEP_ATTACK else ParticleTypes.POOF
         val particleId = move.impactParticle.ifBlank { move.releaseParticle }
-        val count = if (move.kind == NpcBossMoveKinds.AREA) 18 else 14
-        level.sendParticles(bossParticle(particleId, particleFallback), position.x, position.y, position.z, count, radius * 0.35, radius * 0.35, radius * 0.35, 0.02)
+        val count = if (move.kind == NpcBossMoveKinds.AREA) 42 else 24
+        level.sendParticles(bossParticle(particleId, particleFallback), position.x, position.y, position.z, count, radius * 0.42, radius * 0.32, radius * 0.42, 0.03)
         playBossSound(level, move.impactSoundId, fallbackSound, position.x, position.y, position.z, 0.45f, 1.35f)
     }
 
@@ -1495,10 +1556,13 @@ object NpcBossFights {
         return BuiltInRegistries.SOUND_EVENT.getOptional(location).orElse(fallback)
     }
 
-    private fun applyMagicStatus(target: ServerPlayer, move: NpcBossMoveDefinition) {
+    private fun applyMoveEffects(target: ServerPlayer, move: NpcBossMoveDefinition) {
+        if (move.fireTicks > 0) target.remainingFireTicks = target.remainingFireTicks.coerceAtLeast(move.fireTicks)
         if (move.statusEffectTicks <= 0) return
         val effect = when (move.statusEffectId) {
             "minecraft:slowness", "slowness" -> MobEffects.MOVEMENT_SLOWDOWN
+            "minecraft:weakness", "weakness" -> MobEffects.WEAKNESS
+            "minecraft:mining_fatigue", "mining_fatigue", "minecraft:dig_slowdown", "dig_slowdown" -> MobEffects.DIG_SLOWDOWN
             else -> null
         } ?: return
         target.addEffect(MobEffectInstance(effect, move.statusEffectTicks, move.statusEffectAmplifier, false, false, true))
@@ -1707,6 +1771,10 @@ object NpcBossFights {
                 bossItemStack("paladins:holy_staff", ItemStack(Items.BLAZE_ROD)),
                 ItemStack.EMPTY,
             )
+            "witcher" -> NpcBossArmory(
+                bossItemStack("witcher_rpg:steel_witcher_sword", ItemStack(Items.IRON_SWORD)),
+                ItemStack.EMPTY,
+            )
             "rogue" -> NpcBossArmory(
                 bossItemStack("simplyswords:iron_rapier", ItemStack(Items.IRON_SWORD)),
                 bossItemStack("simplyswords:iron_rapier", ItemStack.EMPTY),
@@ -1738,6 +1806,14 @@ object NpcBossFights {
         val move: NpcBossMoveDefinition,
         var position: Vec3,
         var ticksRemaining: Int,
+    )
+
+    private data class BossAreaHazard(
+        val move: NpcBossMoveDefinition,
+        val position: Vec3,
+        val radius: Double,
+        val expiresTick: Int,
+        var nextPulseTick: Int,
     )
 
     private class ActiveBossFight(
@@ -1782,6 +1858,7 @@ object NpcBossFights {
         val moveCooldowns: MutableMap<String, Int> = linkedMapOf(),
         val magicProjectiles: MutableList<MagicBossProjectile> = mutableListOf(),
         val trackedArrows: MutableList<TrackedBossArrow> = mutableListOf(),
+        val areaHazards: MutableList<BossAreaHazard> = mutableListOf(),
         val supportUses: MutableMap<String, Int> = linkedMapOf(),
         var absorptionHealth: Float = 0.0f,
         var absorptionUntilTick: Int = 0,
