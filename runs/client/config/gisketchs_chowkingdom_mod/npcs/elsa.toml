@@ -21,9 +21,11 @@ work_blocks = [
 
 [boss]
 enabled = true
-health = 84.0
-damage = 4.5
-template = "sword_user"
+health = 86.0
+damage = 3.1
+template = "frost_wizard"
+main_hand = "none"
+off_hand = "none"
 
 [boss.balloons]
 chase = ["Steady. Fear only makes the ice grow.", "The storm follows breath.", "Do not panic."]

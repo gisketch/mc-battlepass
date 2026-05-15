@@ -2166,9 +2166,19 @@ object NpcBossFights {
     }
 
     private fun bossArmory(boss: NpcBossDefinition): NpcBossArmory = NpcBossArmory(
-        mainHand = bossItemStack(boss.mainHand, ItemStack(Items.IRON_SWORD)),
+        mainHand = bossItemStack(boss.mainHand, bossMainHandFallback(boss.template)),
         offHand = bossItemStack(boss.offHand, ItemStack.EMPTY),
     )
+
+    private fun bossMainHandFallback(template: String): ItemStack = when (NpcBossMovesets.normalizeId(template)) {
+        "archer", "bounty_hunter", "tundra_archer", "war_archer" -> ItemStack(Items.BOW)
+        "bard" -> ItemStack(Items.CROSSBOW)
+        "water_wizard", "arcane_wizard", "fire_wizard", "frost_wizard", "wind_wizard", "earth_wizard" -> ItemStack.EMPTY
+        "forcemaster" -> bossItemStack("forcemaster_rpg:wooden_knuckle", ItemStack.EMPTY)
+        "paladin" -> ItemStack(Items.MACE)
+        "priest", "wizard" -> ItemStack(Items.BLAZE_ROD)
+        else -> ItemStack(Items.IRON_SWORD)
+    }
 
     private fun debugArmory(moveset: NpcBossMovesetDefinition, definition: NpcDefinition?): NpcBossArmory {
         val boss = definition?.boss?.normalized()
@@ -2186,6 +2196,14 @@ object NpcBossFights {
                 bossItemStack("archers:aether_longbow", ItemStack(Items.BOW)),
                 ItemStack.EMPTY,
             )
+            "tundra_archer" -> NpcBossArmory(
+                bossItemStack("minecells:ice_bow", bossItemStack("archers:aether_longbow", ItemStack(Items.BOW))),
+                ItemStack.EMPTY,
+            )
+            "war_archer" -> NpcBossArmory(
+                bossItemStack("archers:aether_longbow", ItemStack(Items.BOW)),
+                ItemStack.EMPTY,
+            )
             "berserker" -> NpcBossArmory(
                 bossItemStack("simplyswords:ribboncleaver", ItemStack(Items.NETHERITE_SWORD)),
                 ItemStack.EMPTY,
@@ -2193,6 +2211,10 @@ object NpcBossFights {
             "forcemaster" -> NpcBossArmory(
                 bossItemStack("forcemaster_rpg:unique_knuckle_1", bossItemStack("forcemaster_rpg:wooden_knuckle", ItemStack.EMPTY)),
                 bossItemStack("forcemaster_rpg:unique_knuckle_0", bossItemStack("forcemaster_rpg:wooden_knuckle", ItemStack.EMPTY)),
+            )
+            "paladin" -> NpcBossArmory(
+                ItemStack(Items.MACE),
+                ItemStack(Items.SHIELD),
             )
             "wizard" -> NpcBossArmory(
                 bossItemStack("wizards:staff_wizard", ItemStack(Items.BLAZE_ROD)),
@@ -2207,6 +2229,10 @@ object NpcBossFights {
                 ItemStack.EMPTY,
             )
             "fire_wizard" -> NpcBossArmory(
+                ItemStack.EMPTY,
+                ItemStack.EMPTY,
+            )
+            "frost_wizard" -> NpcBossArmory(
                 ItemStack.EMPTY,
                 ItemStack.EMPTY,
             )

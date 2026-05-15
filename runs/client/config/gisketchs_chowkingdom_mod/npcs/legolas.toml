@@ -21,20 +21,22 @@ work_blocks = [
 
 [boss]
 enabled = true
-health = 78.0
-damage = 4.5
-template = "sword_user"
+health = 88.0
+damage = 3.5
+template = "war_archer"
+main_hand = "archers:aether_longbow"
+off_hand = "none"
 
 [boss.balloons]
 chase = ["Swift feet, {player}. I am swifter.", "The field tells me where you go.", "I have tracked orcs across harder ground.", "Your pace is loud to elven ears.", "Fleet as a deer. Slower than an arrow.", "The wind carries your scent.", "You leave a trail even mortals could follow.", "Run well. I enjoy the exercise.", "Every blade of grass betrays you.", "Distance is no shield against elven sight."]
-attack = ["Too close to the blade.", "A quick stroke.", "Like a leaf on the wind.", "The bow sings. So does the sword.", "Light as starlight. Sharp as memory.", "One clean arc.", "Elven steel finds its mark.", "Swift. Silent. True.", "No wasted breath. No wasted steel.", "The blade of Mirkwood answers."]
+attack = ["Too close to the bow.", "A quick release.", "Like a leaf on the wind.", "The bow sings.", "Light as starlight. Sharp as memory.", "One clean shot.", "Elven aim finds its mark.", "Swift. Silent. True.", "No wasted breath. No wasted arrow.", "The warbow answers."]
 recovery = ["There is your mark. Take it.", "Loose your courage now.", "The gap opens like dawn.", "A breath between beats.", "Now. With an archer's patience.", "Your arrow is nocked. Fly.", "See the clearing? Enter it.", "The moment is small. Your will is not.", "Time slows for the keen-eyed.", "Strike as the wind shifts."]
-taunt = ["Your stance speaks loudly.", "Do not announce your strike before it flies.", "A dwarf swings with more subtlety.", "Your blade shouts. Elves whisper.", "Even the trees laugh at that form.", "You lean before you step. Fatal.", "An orc would see that coming.", "Patience, friend. Ages have taught me.", "Your feet tell the story before your sword.", "Grace before force. You have neither."]
+taunt = ["Your stance speaks loudly.", "Do not announce your strike before it flies.", "A dwarf moves with more subtlety.", "Your step shouts. Elves whisper.", "Even the trees laugh at that form.", "You lean before you step. Fatal.", "An orc would see that coming.", "Patience, friend. Ages have taught me.", "Your feet tell the story before your arrow.", "Grace before force. You have neither."]
 guard_react = ["I saw the feather turn before the arrow.", "Your motion betrayed you.", "Elven eyes miss nothing.", "You moved before you thought.", "That thrust was born of desperation.", "I watched the thought form.", "Your shoulder spoke first.", "Ages of war. One glance is enough.", "Read like an open book.", "Too much weight on the back foot."]
-parry = ["Turned aside cleanly.", "Grace beats haste.", "Parried. Like a breeze redirects a leaf.", "Your steel met silence.", "Deflected. The forest approves.", "A whisper of steel. A lesson.", "Redirected. Try again with purpose.", "Your blade found only air.", "Quicker than a spider's web.", "Elven defense. Impenetrable."]
-hit_player = ["A light touch, but true.", "You stepped into range.", "That one kissed the target.", "Do not mourn the hit. Learn.", "Your left side wanders.", "A tap. A reminder.", "You gave me that opening.", "The blade found the gap you made.", "Elves do not miss opportunities.", "Good. Now correct the flaw."]
+parry = ["Turned aside cleanly.", "Grace beats haste.", "Parried. Like a breeze redirects a leaf.", "Your strike met silence.", "Deflected. The forest approves.", "A whisper of motion. A lesson.", "Redirected. Try again with purpose.", "Your aim found only air.", "Quicker than a spider's web.", "Elven defense. Impenetrable."]
+hit_player = ["A light touch, but true.", "You stepped into range.", "That one kissed the target.", "Do not mourn the hit. Learn.", "Your left side wanders.", "A tap. A reminder.", "You gave me that opening.", "The arrow found the gap you made.", "Elves do not miss opportunities.", "Good. Now correct the flaw."]
 took_damage = ["Well aimed.", "Good. Your eyes are open.", "You have the sight.", "A worthy blow.", "The stag strikes back.", "Your hand was guided by more than luck.", "Clear eye. Steady hand.", "A mark of respect.", "You honor the spar.", "Like a ranger of the north."]
-victory = ["The bout is mine. You are healed, friend.", "Rise lightly. I have mended the harm.", "Victory to the elf. You are restored.", "I win. Your wounds are gone.", "The duel ends. You are whole again.", "My win. Healed. Return to the starlight.", "I claim this round. You are mended.", "Steel rests. Health returns.", "You fell with grace. I healed you.", "The forest keeps you. Restored."]
+victory = ["The bout is mine. You are healed, friend.", "Rise lightly. I have mended the harm.", "Victory to the elf. You are restored.", "I win. Your wounds are gone.", "The duel ends. You are whole again.", "My win. Healed. Return to the starlight.", "I claim this round. You are mended.", "Bows rest. Health returns.", "You fell with grace. I healed you.", "The forest keeps you. Restored."]
 defeat = ["I yield. Your aim was true.", "Well fought, friend of this realm.", "You have elven quality.", "I concede. The stars smile on you.", "Victory yours. Well earned.", "You pierced the leaf. I yield.", "A worthy win. Celebrate it.", "I yield. You have the eyes of an elf.", "Well struck. The forest bows.", "You fought with light. I concede."]
 
 [job_definition]

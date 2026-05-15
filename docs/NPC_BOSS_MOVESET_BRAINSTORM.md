@@ -212,6 +212,8 @@ Frost options:
 - `wizards:frost_blizzard`, animation `spell_engine:one_handed_sky_charge`
 - `wizards:frost_shield`, animation `spell_engine:one_handed_area_release`
 
+Implemented boss direction: Elsa uses `frost_wizard` with empty hands, graceful grounded movement, frostbolt, frost shard, ice lance, frost nova, ice wall sweep, frost shield absorption, ice step, phase-2 frost blizzard hazard, and phase-2 shard storm. VFX uses Wizards frost spell metadata plus snowflake/frost burst particles. Elsa has no weapon, staff, hover, teleport, or melee weapon kit.
+
 ### Toph - Earth Wizard
 
 Class: `earth_wizard`
@@ -266,6 +268,8 @@ Good boss moves:
 - Barrier: `spell_id = "paladins:barrier"`, animations `spell_engine:one_handed_area_charge`, `spell_engine:one_handed_area_release`
 - Battle banner: `spell_id = "paladins:battle_banner"`, animation `spell_engine:one_handed_healing_release`
 - Sword punish: `animation_id = "bettercombat:two_handed_slash_vertical_right"` or `bettercombat:one_handed_slam`
+
+Implemented boss direction: Tarnished uses `paladin` with `minecraft:mace` and `minecraft:shield`, Elden-style close pressure, medium/back rolls, shield bash/parry guard responses, guard counter, mace heavy, golden slam, holy shock, judgement, golden barrier, battle banner, phase-2 holy beam, and phase-2 Erdtree burst hazard. It is the final boss-style Paladin duel: aggressive, shielded, holy, and roll-based, with no teleport or defensive waiting wall.
 
 ### Pope Leo XIV - Priest
 
@@ -352,6 +356,8 @@ Good boss moves:
 - Frozen pact: `spell_id = "archers_expansion:frozen_pact"`, animations `spell_engine:one_handed_area_charge`, `spell_engine:one_handed_area_release`
 - Fast bow visuals: `spell_engine:archery_pull`, `spell_engine:archery_release`
 
+Implemented boss direction: Traxex uses `tundra_archer` with `minecells:ice_bow` and bow fallback, real arrows, frost shot/crystal arrow/arctic volley/improved arctic volley, phase-2 `winters_grip` frost hazard, `frozen_pact` absorption, snow/frost VFX, and normal non-teleport frost steps. It is ranged-only and no longer uses `sword_user`.
+
 ### Legolas - War Archer
 
 Class: `war_archer`
@@ -372,6 +378,8 @@ Good boss moves:
 - Pin down: `spell_id = "archers_expansion:pin_down"`, animations `spell_engine:archery_pull`, `spell_engine:archery_release`
 - Fan of fire: `spell_id = "archers_expansion:fan_of_fire"`, animations `spell_engine:archery_pull`, `spell_engine:archery_release`
 - Bow stance: `animation_id = "bettercombat:pose_two_handed_bow"`
+
+Implemented boss direction: Legolas uses `war_archer` with `archers:aether_longbow`, real arrows, dual shot, pin down, smoldering arrow, point blank shot, phase-2 fan of fire and improved point blank shot, crit/flame/sweep VFX, and normal roll/step movement. It is ranged-only and no longer uses `sword_user`.
 
 ### Finn - Warrior
 

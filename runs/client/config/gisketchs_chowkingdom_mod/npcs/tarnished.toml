@@ -21,9 +21,11 @@ work_blocks = [
 
 [boss]
 enabled = true
-health = 110.0
-damage = 5.5
-template = "sword_user"
+health = 120.0
+damage = 4.0
+template = "paladin"
+main_hand = "minecraft:mace"
+off_hand = "minecraft:shield"
 
 [boss.balloons]
 chase = ["Rise and run, {player}. Grace watches.", "The trial pursues thee.", "Flee with purpose, Tarnished.", "Thy flight is measured.", "Grace lights the path. Follow.", "Run. The Erdtree sees all.", "Thy steps are known.", "No shame in retreat. Only in giving up.", "The Lands Between taught chasing.", "Keep thy feet. Grace endures."]
