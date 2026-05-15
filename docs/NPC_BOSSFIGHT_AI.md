@@ -72,12 +72,12 @@ The `support` move kind covers priest-style self sustain and barriers:
 
 ## Loop
 
-The V1 loop has moveset template phases plus an all-offense runtime tactic:
+The V1 loop has moveset template phases plus an all-offense runtime tactic with rotating footwork:
 
 ```text
-OFFENSE: CHASE/OFFENSE -> ATTACK -> SHORT_CHAIN_RECOVERY -> ATTACK
-                                      |                      |
-                                      +-- repeat until the offense chain budget is spent
+OFFENSE: FOOTWORK -> ATTACK WHILE MOVING -> SHORT_MOVING_RECOVERY -> FOOTWORK
+                                                        |
+                                                        +-- repeat until the offense chain budget is spent
 
 OFFENSE END -> TIMED_RECOVERY -> OFFENSE
                       |
@@ -112,7 +112,7 @@ Live label: `NPC mode: offense` while the boss is in the aggressive tactic, othe
 - Priest/Pope Leo starts in offense at mid range. Phase 1 mixes holy shocks, short AoE, and limited sustain; phase 2 casts faster, chains 2-3 moves, and keeps healing capped below the transition threshold.
 - Bard/Venti starts in offense at range. It duplicates Archer mechanics with real arrows, harp-crossbow clips, Bard spell ids, and music/star VFX.
 - Earth Wizard/Toph starts in offense at mid range. It stays grounded with empty hands, uses Terra stone projectiles, ground shockwaves, stone hazards, absorption, and Force Master stone-hand parry flavor.
-- Paladin/Tarnished starts in offense at close/mid range. It uses mace plus shield, Elden-style side/back rolls, shield bash/parry responses, holy shock, judgement, barrier, battle banner, and phase-2 holy beam/Erdtree burst pressure.
+- Paladin/Tarnished starts in offense at close/mid range. It uses mace plus shield, Elden-style side/back rolls, visible shield guard beats, shield bash/parry responses, holy shock, judgement, barrier, battle banner, and phase-2 holy beam/Erdtree burst pressure.
 - During offense, prefer real melee/area attacks over roll moves and avoid repeating the last move when another legal attack is available.
 - Boss offense uses a per-fight attack rotation bag. Legal attacks are still selected randomly by weight, but a move is removed from the rotation after use until the currently available attack pool is exhausted, and the last two attacks are avoided when possible. This showcases more of each moveset without becoming a fixed scripted order.
 
@@ -120,13 +120,14 @@ Live label: `NPC mode: offense` while the boss is in the aggressive tactic, othe
 
 Live label: `NPC mode: attacking`
 
-- Stop or slow enough to make the swing readable.
+- Move with purposeful footwork during windup and late frames; slow or stabilize only near authored hit ticks.
 - Play the configured PlayerAnimator attack clip.
 - Damage only on the authored hit tick.
 - Damage only if range and forward cone pass.
 - Projectile attacks spawn arrows on the authored hit tick, then use real arrow travel for counterplay.
 - Support moves apply their heal/barrier on the authored hit tick, then recover.
 - Player hits during attack use a timing curve and build anti-spam pressure. Windup hits deal `0%` virtual boss damage and build pressure hard, active/release hits deal `25%`, and late attack hits deal `50%`. The boss attack animation and scheduled hit ticks continue.
+- After accepted boss damage, `damage_lockout_ticks` blocks extra rapid hits with parry VFX and pressure instead of more HP loss. Default is `4` ticks.
 - If attack-phase pressure reaches the moveset threshold, queue a short reactive guard response after the current attack finishes.
 - After the attack clip ends, enter `RECOVERY`.
 - If a reactive guard response is queued, start PARRY/ROLL/DODGE instead of normal recovery.
@@ -147,7 +148,7 @@ Live label: `NPC mode: recovery`
   - Applies a small knockback to the NPC.
   - Increments `recovery_hits_taken`.
 - Recovery hits are accepted until `recovery_hits_allowed` is reached. Warrior, rogue, archer, bounty_hunter, wizard, priest, and bard V1 use a 4-hit cap; fast/control benders such as fire_wizard, frost_wizard, and wind_wizard plus close-pressure forcemaster use a tighter 3-hit cap.
-- Recovery hits deal full virtual boss damage and build anti-spam pressure.
+- Recovery hits deal full virtual boss damage and build anti-spam pressure unless they land inside `damage_lockout_ticks`, in which case they are blocked and converted into pressure.
 - When anti-spam pressure or the recovery hit cap reaches the moveset threshold, trigger one short PARRY/ROLL/DODGE response if the reactive guard cooldown is ready.
 - Any extra player swing after the cap is blocked. It can trigger the same short reactive guard response, but never starts a long defensive guard loop.
 - If chain recovery times out while offense still has attacks left, return to offense.
@@ -263,10 +264,12 @@ Boss fights use the custom CKDM HUD bar instead of the vanilla boss overlay.
 
 ## Movement Rules
 
-Recovery mode must use lock-on passive strafing:
+Runtime footwork uses the per-moveset `movement_style`, `combat_range_min`, `combat_range_max`, `footwork_aggression`, `footwork_strafe_weight`, `footwork_retreat_weight`, and `footwork_advance_weight` fields. Movement intents rotate through strafe-left, strafe-right, retreat, advance, hold-angle, charge-in, and dash-out so bosses do not repeat the same positioning loop.
+
+Recovery mode must use lock-on movement:
 
 - Keep facing the player.
-- Side-step around the player at recovery speed so the boss does not freeze in place.
+- Side-step, dash out, or re-angle at recovery speed so the boss does not freeze in place.
 - Keep a small melee-range orbit, backing out only when too close and stepping in only when too far.
 - Use a slower/smaller strafe than guard mode so recovery still reads punishable.
 
@@ -281,13 +284,15 @@ Guard mode must use lock-on strafing:
 Archer neutral movement should hold range around 6-12 blocks:
 
 - Use a bow-ready PlayerAnimator pose while vanilla movement handles footwork.
-- Strafe while facing the player at range.
+- Strafe, retreat, and occasionally advance while facing the player at range.
+- Keep moving during draw windows, then briefly stabilize on arrow release.
 - If the player closes to melee range, prefer backstep or side roll over standing still.
 - Draw windows should be readable enough for dodge, shield, line-of-sight break, or rush counterplay.
 
 Wizard neutral movement should hold range around 5-10 blocks:
 
 - Use normal NPC walking/strafe locomotion while moving; reserve PlayerAnimator staff charge/release clips for actual spell casts.
+- Circle, backpedal, or step forward during cast windups; stabilize only on release/hit ticks.
 - Use arcane, fire, and frost magic projectiles as the starter tri-spell kit.
 - If the player gets inside melee range, prefer blink dodge; if blink is unavailable, use frost nova as a close-range space reset.
 - Magic charges should be readable enough for dodge, shield, line-of-sight break, or rush counterplay.
@@ -315,9 +320,10 @@ Earth Wizard neutral movement should hold range around 4-10 blocks:
 
 ## Implementation Notes
 
-- Replace the old neutral/telegraph-heavy loop with the simpler chase-attack-recovery-offense loop above.
+- Replace the old neutral/telegraph-heavy loop with the footwork-attack-moving-recovery-offense loop above.
 - Moveset phases tune health thresholds, damage, speed, offense chain size, transition dialogue, and music hooks. Runtime tactics stay offensive in every phase.
-- Moveset anti-spam knobs tune `attack_phase_damage_multiplier`, `attack_windup_damage_multiplier`, `attack_active_damage_multiplier`, `attack_late_damage_multiplier`, `attack_windup_pressure_multiplier`, `attack_active_pressure_multiplier`, `anti_spam_pressure_threshold`, and `anti_spam_reactive_guard_cooldown_ticks`. Defaults make attack-phase trades much weaker than recovery punishes and let rapid spam trigger one short parry/roll/dodge response.
+- Moveset movement knobs tune `movement_style`, combat range, footwork weights, and footwork aggression. Missing values are inferred from the move kit: arrow-only ranged bosses use ranged footwork, magic/support bosses use caster footwork, melee-heavy bosses use melee footwork, and mixed kits use hybrid footwork.
+- Moveset anti-spam knobs tune `damage_lockout_ticks`, `attack_phase_damage_multiplier`, `attack_windup_damage_multiplier`, `attack_active_damage_multiplier`, `attack_late_damage_multiplier`, `attack_windup_pressure_multiplier`, `attack_active_pressure_multiplier`, `anti_spam_pressure_threshold`, and `anti_spam_reactive_guard_cooldown_ticks`. Defaults make attack-phase trades much weaker than recovery punishes, block rapid repeat damage, and let spam trigger one short parry/roll/dodge response.
 - Phase transition dialogue is local NPC dialog only. It uses animalese and can use LLM, but it should not emit player-visible world chat or boss balloons.
 - Guard response should be reactive: random fast counter slash, side roll with iframes, or Spell Engine dodge with iframes.
 - Track per-recovery hit count in bossfight state. Warrior V1 cap is 4.
@@ -339,7 +345,7 @@ Earth Wizard neutral movement should hold range around 4-10 blocks:
 - Wind Wizard/Aang uses empty hands with `main_hand = "none"` and `off_hand = "none"`. Phase 1 uses `damage_multiplier = 1.0`, `speed_multiplier = 1.28`, `offense_chain_min = 2`, `offense_chain_random = 1`, and rotates air cutter, double air cutter, wind gust, spiral gust, air roll, and air step. Phase 2 uses `damage_multiplier = 1.12`, `speed_multiplier = 1.45`, `offense_chain_min = 3`, `offense_chain_random = 1`, and unlocks improved updraft, avatar current absorption, and avatar burst. It stays grounded, moves naturally while chasing/strafing/recovering, and never teleports or equips a weapon.
 - Forcemaster/Vi uses dual `forcemaster_rpg:unique_knuckle_1` / `unique_knuckle_0` armory. Phase 1 uses `damage_multiplier = 1.0`, `speed_multiplier = 1.22`, `offense_chain_min = 3`, `offense_chain_random = 1`, and rotates jab/cross, hook chain, straight punch, body breaker, burstcrack, stonehand, weave step, and pressure step. Phase 2 uses `damage_multiplier = 1.16`, `speed_multiplier = 1.38`, `offense_chain_min = 4`, `offense_chain_random = 2`, and unlocks belial smashing plus asal. It is close-range boxer pressure with no sword, staff, ranged caster kit, hover, or teleport.
 - Arcane Wizard/Invoker is an empty-hand floating caster using `wizards:arcane_bolt`, `wizards:arcane_blast`, phase-2 `wizards:arcane_missile`, phase-2 `wizards:arcane_beam`, and `wizards:arcane_blink`. It has no melee, no held staff, no weapon parry, and no combat-roll move; guard dodge uses blink teleport effects.
-- Paladin/Tarnished uses `minecraft:mace` and `minecraft:shield`. Phase 1 uses `damage_multiplier = 1.0`, `speed_multiplier = 1.05`, `offense_chain_min = 2`, `offense_chain_random = 1`, and rotates guard counter, shield bash, mace heavy, golden slam, holy shock, judgement, golden barrier, battle banner, medium roll, and back roll. Phase 2 uses `damage_multiplier = 1.18`, `speed_multiplier = 1.22`, `offense_chain_min = 3`, `offense_chain_random = 1`, and unlocks holy beam plus Erdtree burst hazard. Support is absorption only, not healing, so Tarnished remains aggressive instead of stalling.
+- Paladin/Tarnished uses `minecraft:mace` and `paladins:netherite_kite_shield` with vanilla shield fallback. Phase 1 uses `damage_multiplier = 1.0`, `speed_multiplier = 1.05`, `offense_chain_min = 1`, `offense_chain_random = 1`, heavier parry weighting, and rotates guard counter, shield guard, shield bash, mace heavy, golden slam, holy shock, judgement, golden barrier, battle banner, medium roll, and back roll. Phase 2 uses `damage_multiplier = 1.18`, `speed_multiplier = 1.22`, `offense_chain_min = 2`, `offense_chain_random = 1`, and unlocks holy beam plus Erdtree burst hazard. Support is absorption only, not healing, so Tarnished blocks and re-engages instead of stalling.
 - Priest phase 1 uses `paladins:holy_shock`, `paladins:judgement`, limited self-heal, and absorption support with Spell Engine healing clips. Phase 2 uses `damage_multiplier = 1.1`, `speed_multiplier = 1.12`, `offense_chain_min = 2`, `offense_chain_random = 1`, and healing that cannot restore above roughly 45% health.
 - Pope Leo uses the priest moveset and equips `paladins:holy_staff` during the duel.
 - Bard phase 1 duplicates Archer shot timing with `starshot`, `mocking_shot`, and `ballad_shot`; phase 2 duplicates Archer 2-3 shot chains and unlocks `crescendo_volley`.

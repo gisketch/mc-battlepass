@@ -402,8 +402,7 @@ object NpcBossFights {
             holdRangedSpacing(entity, target, fight)
             return true
         }
-        val chaseSpeed = phaseSpeed(fight, BOSS_CHASE_SPEED)
-        moveBossTo(entity, fight, target.x, target.y, target.z, chaseSpeed)
+        moveWithFootwork(entity, target, fight, null, recovering = false, duringAttack = false)
         return true
     }
 
@@ -412,6 +411,7 @@ object NpcBossFights {
         fight.activeMove = move
         fight.firedHitTicks.clear()
         fight.moveCooldowns[move.id] = entity.tickCount + move.cooldownTicks
+        chooseFootwork(entity, fight, move, recovering = false)
         val isMovementMove = move.kind == NpcBossMoveKinds.ROLL || move.kind == NpcBossMoveKinds.DODGE
         if (!isMovementMove) {
             fight.lastMoveId = move.id
@@ -452,9 +452,13 @@ object NpcBossFights {
             NpcBossMoveKinds.DODGE -> "dodging"
             else -> "attacking"
         })
-        entity.navigation.stop()
-        if (move.kind != NpcBossMoveKinds.ROLL && move.kind != NpcBossMoveKinds.DODGE) faceTarget(entity, target)
         val elapsed = entity.tickCount - fight.phaseStartedTick
+        if (move.kind == NpcBossMoveKinds.ROLL || move.kind == NpcBossMoveKinds.DODGE) {
+            entity.navigation.stop()
+        } else {
+            faceTarget(entity, target)
+            moveDuringAttack(entity, target, fight, move, elapsed)
+        }
         move.hitTicks.forEach { hitTick ->
             if (elapsed >= hitTick && fight.firedHitTicks.add(hitTick)) {
                 executeMoveHit(entity, target, fight, move)
@@ -489,6 +493,7 @@ object NpcBossFights {
         fight.guardAfterHurtTick = 0
         fight.recoveryReturnToOffense = returnToOffense
         prepareStrafe(entity, fight)
+        chooseFootwork(entity, fight, null, recovering = true)
         playTemplate(entity, fight, recoveryTemplate(fight), forceRestart = true)
         showModeBalloon(entity, target, fight, "recovery")
     }
@@ -508,16 +513,7 @@ object NpcBossFights {
             finishRecovery(entity, target, fight)
             return true
         }
-        strafeAroundTarget(
-            entity,
-            target,
-            fight,
-            BOSS_RECOVERY_STRAFE_SPEED,
-            RECOVERY_STRAFE_STEP,
-            RECOVERY_STRAFE_RADIUS,
-            RECOVERY_STRAFE_INNER_RADIUS,
-            RECOVERY_STRAFE_OUTER_RADIUS,
-        )
+        moveWithFootwork(entity, target, fight, null, recovering = true, duringAttack = false)
         return true
     }
 
@@ -1111,8 +1107,14 @@ object NpcBossFights {
     private fun acceptAttackHit(entity: ChowNpcEntity, target: ServerPlayer, fight: ActiveBossFight, damage: Float) {
         val timing = attackDamageWindow(entity, fight)
         val scaledDamage = damage.coerceAtLeast(0.0f) * attackDamageMultiplier(fight, timing).toFloat()
+        if (bossDamageLocked(entity, fight)) {
+            blockBossHit(entity)
+            addAntiSpamPressure(entity, target, fight, base = ATTACK_HIT_PRESSURE * attackPressureMultiplier(fight, timing), deferGuard = true)
+            return
+        }
         if (scaledDamage > 0.0f) {
             applyPlayerBossDamage(fight, scaledDamage)
+            markBossDamageAccepted(entity, fight)
             updateBossBar(entity, target, fight)
             showBossBalloon(entity, target, fight, fight.balloons.tookDamage, "took_damage")
             if (fight.health <= 0.0f) {
@@ -1153,7 +1155,13 @@ object NpcBossFights {
     }
 
     private fun acceptRecoveryHit(entity: ChowNpcEntity, target: ServerPlayer, fight: ActiveBossFight, damage: Float) {
+        if (bossDamageLocked(entity, fight)) {
+            blockBossHit(entity)
+            addAntiSpamPressure(entity, target, fight, base = RECOVERY_HIT_PRESSURE, deferGuard = false)
+            return
+        }
         applyPlayerBossDamage(fight, damage.coerceAtLeast(0.0f))
+        markBossDamageAccepted(entity, fight)
         fight.recoveryHitsTaken++
         fight.hurtUntilTick = entity.tickCount + PLAYERLIKE_HURT_TICKS
         fight.guardAfterHurtTick = 0
@@ -1177,6 +1185,15 @@ object NpcBossFights {
             return
         }
         maybeAdvanceBossPhase(entity, target, fight)
+    }
+
+    private fun bossDamageLocked(entity: ChowNpcEntity, fight: ActiveBossFight): Boolean {
+        if (fight.moveset.damageLockoutTicks <= 0 || fight.lastAcceptedBossDamageTick <= 0) return false
+        return entity.tickCount - fight.lastAcceptedBossDamageTick < fight.moveset.damageLockoutTicks
+    }
+
+    private fun markBossDamageAccepted(entity: ChowNpcEntity, fight: ActiveBossFight) {
+        fight.lastAcceptedBossDamageTick = entity.tickCount
     }
 
     private fun applyPlayerBossDamage(fight: ActiveBossFight, damage: Float) {
@@ -1235,6 +1252,7 @@ object NpcBossFights {
         fight.guardAfterHurtTick = 0
         fight.recoveryReturnToOffense = false
         fight.activeMove = null
+        chooseFootwork(entity, fight, null, recovering = false)
         playTemplate(entity, fight, approachTemplate(fight), forceRestart = true)
         showModeBalloon(entity, target, fight, mode)
     }
@@ -1483,6 +1501,146 @@ object NpcBossFights {
         }
     }
 
+    private fun chooseFootwork(entity: ChowNpcEntity, fight: ActiveBossFight, move: NpcBossMoveDefinition?, recovering: Boolean) {
+        val candidates = footworkCandidates(fight, move, recovering)
+        if (candidates.isEmpty()) return
+        val available = candidates.filterNot { candidate -> candidate.intent in fight.usedFootworkIntents }
+            .ifEmpty {
+                fight.usedFootworkIntents.clear()
+                candidates
+            }
+            .filter { candidate -> candidates.size <= 1 || candidate.intent != fight.footworkIntent }
+            .ifEmpty { candidates }
+        val totalWeight = available.sumOf { candidate -> candidate.weight }.coerceAtLeast(1)
+        var roll = entity.random.nextInt(totalWeight)
+        val selected = available.firstOrNull { candidate ->
+            roll -= candidate.weight
+            roll < 0
+        }?.intent ?: available.last().intent
+        fight.footworkIntent = selected
+        fight.usedFootworkIntents += selected
+    }
+
+    private fun footworkCandidates(fight: ActiveBossFight, move: NpcBossMoveDefinition?, recovering: Boolean): List<WeightedFootwork> {
+        val style = fight.moveset.movementStyle
+        val strafe = fight.moveset.footworkStrafeWeight.coerceAtLeast(0)
+        val retreat = fight.moveset.footworkRetreatWeight.coerceAtLeast(0)
+        val advance = fight.moveset.footworkAdvanceWeight.coerceAtLeast(0)
+        val kind = move?.kind
+        val rangedMove = kind == NpcBossMoveKinds.PROJECTILE || kind == NpcBossMoveKinds.BEAM || kind == NpcBossMoveKinds.SUPPORT
+        val meleeMove = kind == NpcBossMoveKinds.MELEE || kind == NpcBossMoveKinds.AREA
+        val list = mutableListOf<WeightedFootwork>()
+        fun add(intent: BossFootworkIntent, weight: Int) {
+            if (weight > 0) list += WeightedFootwork(intent, weight)
+        }
+        when {
+            recovering && (style == NpcBossMovementStyles.MELEE || style == NpcBossMovementStyles.HYBRID || meleeMove) -> {
+                add(BossFootworkIntent.DASH_OUT, retreat + 2)
+                add(BossFootworkIntent.STRAFE_LEFT, strafe)
+                add(BossFootworkIntent.STRAFE_RIGHT, strafe)
+                add(BossFootworkIntent.CHARGE_IN, advance / 2)
+            }
+            style == NpcBossMovementStyles.RANGED || rangedMove && style != NpcBossMovementStyles.MELEE -> {
+                add(BossFootworkIntent.STRAFE_LEFT, strafe)
+                add(BossFootworkIntent.STRAFE_RIGHT, strafe)
+                add(BossFootworkIntent.RETREAT, retreat)
+                add(BossFootworkIntent.HOLD_ANGLE, (strafe / 2).coerceAtLeast(1))
+                add(BossFootworkIntent.ADVANCE, advance)
+            }
+            style == NpcBossMovementStyles.CASTER -> {
+                add(BossFootworkIntent.STRAFE_LEFT, strafe)
+                add(BossFootworkIntent.STRAFE_RIGHT, strafe)
+                add(BossFootworkIntent.RETREAT, retreat)
+                add(BossFootworkIntent.ADVANCE, advance)
+                add(BossFootworkIntent.HOLD_ANGLE, 2)
+            }
+            else -> {
+                add(BossFootworkIntent.CHARGE_IN, advance)
+                add(BossFootworkIntent.ADVANCE, (advance / 2).coerceAtLeast(1))
+                add(BossFootworkIntent.STRAFE_LEFT, strafe)
+                add(BossFootworkIntent.STRAFE_RIGHT, strafe)
+                add(BossFootworkIntent.DASH_OUT, retreat)
+            }
+        }
+        return list
+    }
+
+    private fun moveDuringAttack(entity: ChowNpcEntity, target: ServerPlayer, fight: ActiveBossFight, move: NpcBossMoveDefinition, elapsed: Int) {
+        val stabilize = move.hitTicks.any { hitTick -> kotlin.math.abs(elapsed - hitTick) <= ATTACK_STABILIZE_TICKS }
+        if (stabilize) {
+            entity.navigation.stop()
+            return
+        }
+        val speedScale = when (move.kind) {
+            NpcBossMoveKinds.BEAM -> 0.45
+            NpcBossMoveKinds.SUPPORT -> 0.65
+            NpcBossMoveKinds.PROJECTILE -> 0.85
+            else -> 1.0
+        }
+        moveWithFootwork(entity, target, fight, move, recovering = false, duringAttack = true, speedScale = speedScale)
+    }
+
+    private fun moveWithFootwork(
+        entity: ChowNpcEntity,
+        target: ServerPlayer,
+        fight: ActiveBossFight,
+        move: NpcBossMoveDefinition?,
+        recovering: Boolean,
+        duringAttack: Boolean,
+        speedScale: Double = 1.0,
+    ) {
+        if (fight.footworkIntent == BossFootworkIntent.NONE) chooseFootwork(entity, fight, move, recovering)
+        val intent = fight.footworkIntent.takeIf { value -> value != BossFootworkIntent.NONE } ?: BossFootworkIntent.ADVANCE
+        val fromTargetRaw = Vec3(entity.x - target.x, 0.0, entity.z - target.z)
+        val radial = if (fromTargetRaw.lengthSqr() > 0.0001) fromTargetRaw.normalize() else Vec3(1.0, 0.0, 0.0)
+        val leftTangent = Vec3(-radial.z, 0.0, radial.x)
+        val tangent = when (intent) {
+            BossFootworkIntent.STRAFE_LEFT -> leftTangent
+            BossFootworkIntent.STRAFE_RIGHT -> leftTangent.scale(-1.0)
+            else -> leftTangent.scale(fight.strafeSide.toDouble())
+        }
+        val distance = entity.distanceTo(target).toDouble()
+        val minRange = fight.moveset.combatRangeMin
+        val maxRange = fight.moveset.combatRangeMax.coerceAtLeast(minRange + 0.1)
+        val midRange = (minRange + maxRange) * 0.5
+        val desiredRadius = when (intent) {
+            BossFootworkIntent.RETREAT,
+            BossFootworkIntent.DASH_OUT -> maxRange
+            BossFootworkIntent.CHARGE_IN -> minRange
+            BossFootworkIntent.ADVANCE -> if (fight.moveset.movementStyle == NpcBossMovementStyles.RANGED || fight.moveset.movementStyle == NpcBossMovementStyles.CASTER) {
+                minRange + (maxRange - minRange) * 0.35
+            } else {
+                minRange
+            }
+            BossFootworkIntent.HOLD_ANGLE -> midRange
+            BossFootworkIntent.STRAFE_LEFT,
+            BossFootworkIntent.STRAFE_RIGHT -> when {
+                distance < minRange -> maxRange
+                distance > maxRange -> maxRange
+                else -> distance.coerceIn(minRange, maxRange)
+            }
+            BossFootworkIntent.NONE -> midRange
+        }
+        val tangentStep = when (intent) {
+            BossFootworkIntent.STRAFE_LEFT,
+            BossFootworkIntent.STRAFE_RIGHT -> if (fight.moveset.movementStyle == NpcBossMovementStyles.RANGED) RANGED_STRAFE_STEP else STRAFE_STEP
+            BossFootworkIntent.HOLD_ANGLE -> 0.8
+            BossFootworkIntent.ADVANCE,
+            BossFootworkIntent.CHARGE_IN -> if (duringAttack) 0.55 else 0.95
+            else -> 0.35
+        }
+        val desired = target.position().add(radial.scale(desiredRadius)).add(tangent.scale(tangentStep))
+        val baseSpeed = when (intent) {
+            BossFootworkIntent.ADVANCE,
+            BossFootworkIntent.CHARGE_IN,
+            BossFootworkIntent.RETREAT,
+            BossFootworkIntent.DASH_OUT -> BOSS_CHASE_SPEED
+            else -> if (recovering) BOSS_RECOVERY_STRAFE_SPEED else BOSS_STRAFE_SPEED
+        }
+        val adjustedSpeed = phaseSpeed(fight, baseSpeed * fight.moveset.footworkAggression * speedScale)
+        moveBossTo(entity, fight, desired.x, target.y, desired.z, adjustedSpeed)
+    }
+
     private fun prepareStrafe(entity: ChowNpcEntity, fight: ActiveBossFight) {
         fight.strafeSide = if (entity.random.nextBoolean()) 1 else -1
         fight.nextStrafeFlipTick = entity.tickCount + STRAFE_MIN_FLIP_TICKS + entity.random.nextInt(STRAFE_RANDOM_FLIP_TICKS + 1)
@@ -1547,8 +1705,10 @@ object NpcBossFights {
             fight.moveset.moves.none { move -> move.kind == NpcBossMoveKinds.MELEE }
 
     private fun rangedSpacingBounds(fight: ActiveBossFight): Pair<Double, Double> {
-        val outer = (fight.moveset.attackStartDistance - 1.0).coerceIn(RANGED_MIN_OUTER_RADIUS, RANGED_MAX_OUTER_RADIUS)
-        val inner = (outer * RANGED_INNER_RADIUS_FACTOR).coerceIn(RANGED_MIN_INNER_RADIUS, outer - RANGED_MIN_WIDTH)
+        val outer = fight.moveset.combatRangeMax.takeIf { value -> value > 0.0 }
+            ?: (fight.moveset.attackStartDistance - 1.0).coerceIn(RANGED_MIN_OUTER_RADIUS, RANGED_MAX_OUTER_RADIUS)
+        val inner = fight.moveset.combatRangeMin.takeIf { value -> value > 0.0 }
+            ?: (outer * RANGED_INNER_RADIUS_FACTOR).coerceIn(RANGED_MIN_INNER_RADIUS, outer - RANGED_MIN_WIDTH)
         return inner to outer
     }
 
@@ -2167,7 +2327,7 @@ object NpcBossFights {
 
     private fun bossArmory(boss: NpcBossDefinition): NpcBossArmory = NpcBossArmory(
         mainHand = bossItemStack(boss.mainHand, bossMainHandFallback(boss.template)),
-        offHand = bossItemStack(boss.offHand, ItemStack.EMPTY),
+        offHand = bossItemStack(boss.offHand, bossOffHandFallback(boss.template)),
     )
 
     private fun bossMainHandFallback(template: String): ItemStack = when (NpcBossMovesets.normalizeId(template)) {
@@ -2178,6 +2338,11 @@ object NpcBossFights {
         "paladin" -> ItemStack(Items.MACE)
         "priest", "wizard" -> ItemStack(Items.BLAZE_ROD)
         else -> ItemStack(Items.IRON_SWORD)
+    }
+
+    private fun bossOffHandFallback(template: String): ItemStack = when (NpcBossMovesets.normalizeId(template)) {
+        "paladin" -> bossItemStack("paladins:netherite_kite_shield", ItemStack(Items.SHIELD))
+        else -> ItemStack.EMPTY
     }
 
     private fun debugArmory(moveset: NpcBossMovesetDefinition, definition: NpcDefinition?): NpcBossArmory {
@@ -2214,7 +2379,7 @@ object NpcBossFights {
             )
             "paladin" -> NpcBossArmory(
                 ItemStack(Items.MACE),
-                ItemStack(Items.SHIELD),
+                bossItemStack("paladins:netherite_kite_shield", ItemStack(Items.SHIELD)),
             )
             "wizard" -> NpcBossArmory(
                 bossItemStack("wizards:staff_wizard", ItemStack(Items.BLAZE_ROD)),
@@ -2296,6 +2461,8 @@ object NpcBossFights {
         var nextPulseTick: Int,
     )
 
+    private data class WeightedFootwork(val intent: BossFootworkIntent, val weight: Int)
+
     private class ActiveBossFight(
         val npcId: String,
         val displayName: String,
@@ -2336,7 +2503,10 @@ object NpcBossFights {
         var lastMoveId: String = "",
         val recentAttackMoveIds: ArrayDeque<String> = ArrayDeque(),
         val usedAttackMoveIds: MutableSet<String> = linkedSetOf(),
+        var footworkIntent: BossFootworkIntent = BossFootworkIntent.NONE,
+        val usedFootworkIntents: MutableSet<BossFootworkIntent> = linkedSetOf(),
         var npcIframeUntilTick: Int = 0,
+        var lastAcceptedBossDamageTick: Int = 0,
         val firedHitTicks: MutableSet<Int> = mutableSetOf(),
         val moveCooldowns: MutableMap<String, Int> = linkedMapOf(),
         val magicProjectiles: MutableList<MagicBossProjectile> = mutableListOf(),
@@ -2376,6 +2546,17 @@ object NpcBossFights {
         PARRY,
         ROLL,
         DODGE,
+    }
+
+    private enum class BossFootworkIntent {
+        NONE,
+        STRAFE_LEFT,
+        STRAFE_RIGHT,
+        RETREAT,
+        ADVANCE,
+        HOLD_ANGLE,
+        CHARGE_IN,
+        DASH_OUT,
     }
 
     private enum class AttackDamageWindow {
@@ -2437,6 +2618,7 @@ object NpcBossFights {
     private const val RECENT_ATTACK_MOVE_MEMORY = 2
     private const val MAX_RECOVERY_HITS = 1
     private const val BOSS_HEALTH_MULTIPLIER = 2.0f
+    private const val ATTACK_STABILIZE_TICKS = 1
     private const val ATTACK_ACTIVE_DAMAGE_TICKS = 6
     private const val ATTACK_HIT_PRESSURE = 1.15
     private const val RECOVERY_HIT_PRESSURE = 1.0

@@ -10,6 +10,14 @@ health = 75.0
 damage = 2.5
 # Config value: attack_start_distance.
 attack_start_distance = 3.2
+movement_style = "melee"
+combat_range_min = 1.8
+combat_range_max = 4.5
+footwork_aggression = 1.15
+footwork_strafe_weight = 5
+footwork_retreat_weight = 2
+footwork_advance_weight = 7
+damage_lockout_ticks = 4
 # Config value: offense_chain_min.
 offense_chain_min = 1
 # Config value: offense_chain_random.

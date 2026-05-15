@@ -269,7 +269,7 @@ Good boss moves:
 - Battle banner: `spell_id = "paladins:battle_banner"`, animation `spell_engine:one_handed_healing_release`
 - Sword punish: `animation_id = "bettercombat:two_handed_slash_vertical_right"` or `bettercombat:one_handed_slam`
 
-Implemented boss direction: Tarnished uses `paladin` with `minecraft:mace` and `minecraft:shield`, Elden-style close pressure, medium/back rolls, shield bash/parry guard responses, guard counter, mace heavy, golden slam, holy shock, judgement, golden barrier, battle banner, phase-2 holy beam, and phase-2 Erdtree burst hazard. It is the final boss-style Paladin duel: aggressive, shielded, holy, and roll-based, with no teleport or defensive waiting wall.
+Implemented boss direction: Tarnished uses `paladin` with `minecraft:mace` and `paladins:netherite_kite_shield` with vanilla shield fallback, Elden-style close pressure, medium/back rolls, visible shield guard beats, shield bash/parry guard responses, guard counter, mace heavy, golden slam, holy shock, judgement, golden barrier, battle banner, phase-2 holy beam, and phase-2 Erdtree burst hazard. It is the final boss-style Paladin duel: aggressive, shielded, holy, and roll-based, with no teleport or defensive waiting wall.
 
 ### Pope Leo XIV - Priest
 

@@ -1187,7 +1187,7 @@ object NpcBossMovesets {
         health = 120.0,
         damage = 4.0,
         attackStartDistance = 7.0,
-        offenseChainMin = 2,
+        offenseChainMin = 1,
         offenseChainRandom = 1,
         offenseChainRecoveryTicks = 9,
         approachAnimationId = "",
@@ -1200,7 +1200,7 @@ object NpcBossMovesets {
         recoveryHitsAllowed = 4,
         guardRollWeight = 2,
         guardDodgeWeight = 0,
-        guardParryWeight = 4,
+        guardParryWeight = 8,
         guardRollAnimationId = "combat_roll:roll",
         guardRollTicks = 13,
         guardRollIframeTicks = 10,
@@ -1213,6 +1213,8 @@ object NpcBossMovesets {
         parrySoundId = "gisketchs_chowkingdom_mod:parry",
         parryDamage = 0.9,
         parryKnockback = 1.35,
+        antiSpamPressureThreshold = 2.35,
+        antiSpamReactiveGuardCooldownTicks = 42,
         phases = mutableListOf(
             phase(
                 id = "oath_of_grace",
@@ -1220,7 +1222,7 @@ object NpcBossMovesets {
                 startsAtHealthRatio = 1.0,
                 damageMultiplier = 1.0,
                 speedMultiplier = 1.05,
-                offenseChainMin = 2,
+                offenseChainMin = 1,
                 offenseChainRandom = 1,
                 offenseChainRecoveryTicks = 9,
                 musicId = "cataclysm:enderguardian_music_1",
@@ -1233,7 +1235,7 @@ object NpcBossMovesets {
                 startsAtHealthRatio = 0.5,
                 damageMultiplier = 1.18,
                 speedMultiplier = 1.22,
-                offenseChainMin = 3,
+                offenseChainMin = 2,
                 offenseChainRandom = 1,
                 offenseChainRecoveryTicks = 7,
                 transitionFallback = "Grace returns. Raise thy shield.",
@@ -1251,6 +1253,7 @@ object NpcBossMovesets {
             magicProjectile("holy_shock", spellId = "paladins:holy_shock", duration = 24, hitTick = 15, damage = 1.9, cooldown = 26, recovery = 16, weight = 5, min = 3.0, max = 9.5, speed = 0.6, impactRadius = 0.75, particle = "spell_engine:magic_holy_float", impactParticle = "spell_engine:magic_holy_burst", animationId = "spell_engine:one_handed_projectile_charge", releaseAnimationId = "spell_engine:one_handed_projectile_release", castParticle = "spell_engine:magic_spark_float", releaseParticle = "spell_engine:magic_holy_float", releaseSoundId = "spell_engine:generic_healing_release", impactSoundId = "paladins:holy_shock_damage", knockback = 0.45),
             area("judgement", "spell_engine:one_handed_area_release", duration = 26, hitTick = 15, damage = 2.25, radius = 4.0, cooldown = 42, recovery = 20, weight = 5, min = 0.0, max = 4.8, spellId = "paladins:judgement", knockback = 0.95, impactParticle = "spell_engine:magic_holy_burst", releaseParticle = "spell_engine:area_circle_1", castParticle = "spell_engine:magic_holy_float", releaseSoundId = "spell_engine:generic_healing_release", impactSoundId = "paladins:judgement_impact"),
             support("golden_barrier", "spell_engine:one_handed_area_charge", duration = 26, hitTick = 15, cooldown = 74, recovery = 16, weight = 3, min = 0.0, max = 8.0, spellId = "paladins:barrier", absorption = 6.0, absorptionTicks = 90, castParticle = "spell_engine:magic_spark_float", supportParticle = "spell_engine:shield_small", releaseSoundId = "paladins:holy_barrier_activate", impactSoundId = "paladins:holy_barrier_activate", releaseAnimationId = "spell_engine:one_handed_area_release"),
+            support("shield_guard", "bettercombat:pose_one_handed_backwards", duration = 22, hitTick = 7, cooldown = 28, recovery = 8, weight = 7, min = 0.0, max = 6.0, spellId = "paladins:barrier", absorption = 4.0, absorptionTicks = 45, castParticle = "spell_engine:shield_small", supportParticle = "spell_engine:shield_small", castSoundId = "minecraft:item.shield.block", releaseSoundId = "minecraft:item.shield.block", impactSoundId = "gisketchs_chowkingdom_mod:parry", releaseAnimationId = "bettercombat:pose_one_handed_backwards"),
             support("battle_banner", "spell_engine:one_handed_healing_release", duration = 24, hitTick = 13, cooldown = 84, recovery = 15, weight = 2, min = 0.0, max = 7.0, spellId = "paladins:battle_banner", absorption = 3.0, absorptionTicks = 70, castParticle = "spell_engine:magic_holy_float", supportParticle = "spell_engine:area_circle_1", releaseSoundId = "spell_engine:generic_healing_release", impactSoundId = "paladins:holy_barrier_activate", releaseAnimationId = "spell_engine:one_handed_area_release"),
             beam("holy_beam", spellId = "paladins:holy_beam", duration = 40, hitTicks = listOf(17, 22, 27, 32), damage = 0.8, cooldown = 72, recovery = 22, weight = 4, min = 3.5, max = 10.0, impactRadius = 0.75, particle = "spell_engine:magic_holy_float", impactParticle = "spell_engine:magic_holy_burst", castParticle = "spell_engine:magic_spark_float", releaseParticle = "spell_engine:magic_holy_float", castSoundId = "spell_engine:generic_healing_release", releaseSoundId = "spell_engine:generic_healing_release", impactSoundId = "paladins:holy_shock_damage", minPhaseIndex = 1),
             area("erdtree_burst", "spell_engine:one_handed_area_release_ground_left_to_right", duration = 34, hitTick = 20, damage = 2.55, radius = 4.8, cooldown = 66, recovery = 22, weight = 4, min = 0.0, max = 5.4, spellId = "paladins:judgement", knockback = 1.25, impactParticle = "spell_engine:magic_holy_burst", releaseParticle = "spell_engine:area_circle_1", castParticle = "spell_engine:magic_spark_float", releaseSoundId = "spell_engine:generic_healing_release", impactSoundId = "paladins:judgement_impact", hazardRadius = 3.2, hazardTicks = 48, hazardIntervalTicks = 16, hazardDamage = 0.45, hazardParticle = "spell_engine:magic_holy_float", minPhaseIndex = 1),
@@ -1870,6 +1873,13 @@ object NpcBossMoveKinds {
     const val DODGE = "dodge"
 }
 
+object NpcBossMovementStyles {
+    const val MELEE = "melee"
+    const val RANGED = "ranged"
+    const val CASTER = "caster"
+    const val HYBRID = "hybrid"
+}
+
 class NpcBossMovesetDefinition(
     var id: String = "warrior",
     @SerializedName("display_name") var displayName: String = "Warrior",
@@ -1921,6 +1931,14 @@ class NpcBossMovesetDefinition(
     @SerializedName("attack_active_pressure_multiplier") var attackActivePressureMultiplier: Double = 1.25,
     @SerializedName("anti_spam_pressure_threshold") var antiSpamPressureThreshold: Double = 3.25,
     @SerializedName("anti_spam_reactive_guard_cooldown_ticks") var antiSpamReactiveGuardCooldownTicks: Int = 70,
+    @SerializedName("movement_style") var movementStyle: String = "",
+    @SerializedName("combat_range_min") var combatRangeMin: Double = 0.0,
+    @SerializedName("combat_range_max") var combatRangeMax: Double = 0.0,
+    @SerializedName("footwork_aggression") var footworkAggression: Double = 1.0,
+    @SerializedName("footwork_strafe_weight") var footworkStrafeWeight: Int = 0,
+    @SerializedName("footwork_retreat_weight") var footworkRetreatWeight: Int = 0,
+    @SerializedName("footwork_advance_weight") var footworkAdvanceWeight: Int = 0,
+    @SerializedName("damage_lockout_ticks") var damageLockoutTicks: Int = 4,
     @SerializedName("parry_spell_id") var parrySpellId: String = "",
     @SerializedName("parry_particle") var parryParticle: String = "",
     @SerializedName("parry_sound_id") var parrySoundId: String = "",
@@ -1995,7 +2013,32 @@ class NpcBossMovesetDefinition(
         if (phases.isEmpty()) phases = mutableListOf(NpcBossPhaseDefinition.fromLegacy(this))
         moves = moves.map { move -> move.normalized(damage) }.filter { move -> move.id.isNotBlank() }.toMutableList()
         if (moves.isEmpty()) moves = mutableListOf(NpcBossMoveDefinition().normalized(damage))
+        movementStyle = cleanBossMovementStyle(movementStyle, inferMovementStyle())
+        val defaults = defaultFootworkForStyle(movementStyle)
+        footworkAggression = footworkAggression.coerceIn(0.2, 2.5)
+        footworkStrafeWeight = (if (footworkStrafeWeight > 0) footworkStrafeWeight else defaults.strafeWeight).coerceIn(0, 20)
+        footworkRetreatWeight = (if (footworkRetreatWeight > 0) footworkRetreatWeight else defaults.retreatWeight).coerceIn(0, 20)
+        footworkAdvanceWeight = (if (footworkAdvanceWeight > 0) footworkAdvanceWeight else defaults.advanceWeight).coerceIn(0, 20)
+        if (footworkStrafeWeight + footworkRetreatWeight + footworkAdvanceWeight <= 0) footworkStrafeWeight = 1
+        val (defaultMin, defaultMax) = defaultCombatRangeForStyle(movementStyle, attackStartDistance)
+        combatRangeMin = (combatRangeMin.takeIf { value -> value > 0.0 } ?: defaultMin).coerceIn(0.5, 16.0)
+        combatRangeMax = (combatRangeMax.takeIf { value -> value > 0.0 } ?: defaultMax).coerceIn(combatRangeMin, 16.0)
+        damageLockoutTicks = damageLockoutTicks.coerceIn(0, 20)
         balloons = balloons.normalized()
+    }
+
+    private fun inferMovementStyle(): String {
+        val hasMelee = moves.any { move -> move.kind == NpcBossMoveKinds.MELEE || move.kind == NpcBossMoveKinds.AREA }
+        val hasRanged = moves.any { move -> move.kind == NpcBossMoveKinds.PROJECTILE || move.kind == NpcBossMoveKinds.BEAM }
+        val hasSupport = moves.any { move -> move.kind == NpcBossMoveKinds.SUPPORT }
+        val arrowProjectiles = moves.filter { move -> move.kind == NpcBossMoveKinds.PROJECTILE }.takeIf { it.isNotEmpty() }
+        return when {
+            hasMelee && (hasRanged || hasSupport) -> NpcBossMovementStyles.HYBRID
+            hasMelee -> NpcBossMovementStyles.MELEE
+            arrowProjectiles != null && arrowProjectiles.all { move -> move.projectileType == "arrow" } -> NpcBossMovementStyles.RANGED
+            hasRanged || hasSupport -> NpcBossMovementStyles.CASTER
+            else -> NpcBossMovementStyles.MELEE
+        }
     }
 
     private fun cleanAnimation(value: String, fallback: String): String = value.trim().lowercase()
@@ -2022,11 +2065,35 @@ class NpcBossMovesetDefinition(
         else -> NpcBossAnimationSources.PLAYERLIKE
     }
 
+    private fun cleanBossMovementStyle(value: String, fallback: String): String = when (value.trim().lowercase()) {
+        NpcBossMovementStyles.MELEE -> NpcBossMovementStyles.MELEE
+        NpcBossMovementStyles.RANGED -> NpcBossMovementStyles.RANGED
+        NpcBossMovementStyles.CASTER -> NpcBossMovementStyles.CASTER
+        NpcBossMovementStyles.HYBRID -> NpcBossMovementStyles.HYBRID
+        else -> fallback
+    }
+
+    private fun defaultFootworkForStyle(style: String): BossFootworkDefaults = when (style) {
+        NpcBossMovementStyles.RANGED -> BossFootworkDefaults(strafeWeight = 8, retreatWeight = 5, advanceWeight = 1)
+        NpcBossMovementStyles.CASTER -> BossFootworkDefaults(strafeWeight = 7, retreatWeight = 3, advanceWeight = 2)
+        NpcBossMovementStyles.HYBRID -> BossFootworkDefaults(strafeWeight = 4, retreatWeight = 2, advanceWeight = 5)
+        else -> BossFootworkDefaults(strafeWeight = 3, retreatWeight = 2, advanceWeight = 7)
+    }
+
+    private fun defaultCombatRangeForStyle(style: String, attackStartDistance: Double): Pair<Double, Double> = when (style) {
+        NpcBossMovementStyles.RANGED -> (attackStartDistance * 0.55).coerceIn(4.0, 9.0) to (attackStartDistance - 1.0).coerceIn(7.0, 15.0)
+        NpcBossMovementStyles.CASTER -> (attackStartDistance * 0.45).coerceIn(3.5, 8.0) to (attackStartDistance - 1.0).coerceIn(6.0, 13.0)
+        NpcBossMovementStyles.HYBRID -> 2.8 to attackStartDistance.coerceIn(5.0, 9.0)
+        else -> 1.8 to attackStartDistance.coerceIn(3.2, 7.0)
+    }
+
     private fun cleanEvadeDirection(value: String): String = when (value.trim().lowercase()) {
         "side", "left", "right", "random_side" -> "side"
         "forward" -> "forward"
         else -> "back"
     }
+
+    private data class BossFootworkDefaults(val strafeWeight: Int, val retreatWeight: Int, val advanceWeight: Int)
 
     companion object {
         const val DEFAULT_READY_ANIMATION = "bettercombat:pose_two_handed_sword"
