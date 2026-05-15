@@ -7,6 +7,7 @@ import com.mojang.brigadier.arguments.StringArgumentType
 import com.mojang.brigadier.builder.LiteralArgumentBuilder
 import com.mojang.brigadier.context.CommandContext
 import dev.gisketch.chowkingdom.ChowClockConfig
+import dev.gisketch.chowkingdom.ChatGlyphs
 import dev.gisketch.chowkingdom.ChowKingdomMod
 import dev.gisketch.chowkingdom.discord.DiscordRelay
 import dev.gisketch.chowkingdom.relicroulette.RelicRouletteFeature
@@ -1787,6 +1788,7 @@ object NpcFeature {
             val killer = event.source.entity as? ServerPlayer
             val deathText = killer?.let { "${definition.name} died, killed by ${it.gameProfile.name}" } ?: "${definition.name} died"
             NpcStore.recordGlobalEvent("npc_death", deathText)
+            npc.server?.let { server -> announceNpcDeath(server, definition, killer, deathText) }
             killer?.let { player ->
                 NpcStore.adjustFriendship(definition.id, player, FRIENDSHIP_KILL_DELTA, "kill")
                 showFriendshipDelta(npc.level() as? ServerLevel, npc, FRIENDSHIP_KILL_DELTA)
@@ -1820,6 +1822,28 @@ object NpcFeature {
         NpcStore.recordGlobalEvent("notable_kill", killMessage)
         NpcStore.recordGlobalMemory("notable_kill", killMessage)
         NpcStore.recordPlayerMemory(killer, "notable_kill", killMessage)
+    }
+
+    private fun announceNpcDeath(server: MinecraftServer, definition: NpcDefinition, killer: ServerPlayer?, deathText: String) {
+        val content = killer?.let { "Killed by ${it.gameProfile.name}" } ?: "No killer recorded"
+        SnackbarNetwork.sendToAllKnown(
+            server,
+            SnackbarNotification.npc(definition.id, "${definition.name.uppercase()} DIED", content, SnackbarType.ERROR, SnackbarSounds.ERROR),
+        )
+        server.playerList.broadcastSystemMessage(
+            ChatGlyphs.chowKingdomPrefix()
+                .append(Component.literal(definition.name).withStyle(ChatFormatting.RED))
+                .append(Component.literal(" died").withStyle(ChatFormatting.GRAY))
+                .apply {
+                    if (killer != null) {
+                        append(Component.literal(", killed by ").withStyle(ChatFormatting.GRAY))
+                        append(Component.literal(killer.gameProfile.name).withStyle(ChatFormatting.YELLOW))
+                    }
+                    append(Component.literal(".").withStyle(ChatFormatting.GRAY))
+                },
+            false,
+        )
+        DiscordRelay.npcDeath(server, definition.id, definition.name, deathText)
     }
 
     private fun onBlockBreak(event: BlockEvent.BreakEvent) {

@@ -48,6 +48,29 @@ object DiscordRelay {
         DiscordWebhookClient.send(playerEmbedMessage(player, config.formatting.deathTitle, config.formatting.deathDescription, config.formatting.deathColor, values))
     }
 
+    fun npcDeath(server: MinecraftServer, npcId: String, npcName: String, deathMessage: String) {
+        val config = DiscordConfig.current()
+        if (!config.enabled || !config.relayDeaths) return
+        val values = serverValues(server) + mapOf(
+            "npc" to DiscordText.cleanContent(npcName),
+            "npc_id" to npcId,
+            "death_message" to DiscordText.cleanContent(deathMessage),
+        )
+        DiscordWebhookClient.send(
+            DiscordWebhookMessage(
+                username = npcName,
+                avatarUrl = DiscordQuickSkinSupport.npcAvatarUrl(npcId, config),
+                embeds = listOf(
+                    DiscordEmbed(
+                        title = DiscordText.applyTemplate("{npc} died", values),
+                        description = DiscordText.applyTemplate("{death_message}", values),
+                        color = DiscordText.parseColor(config.formatting.deathColor),
+                    ),
+                ),
+            ),
+        )
+    }
+
     fun status(server: MinecraftServer, tps: Double) {
         val config = DiscordConfig.current()
         if (!config.enabled || !config.relayStatus) return
