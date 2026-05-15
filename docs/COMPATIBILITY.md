@@ -48,7 +48,7 @@ Behavior:
 - Epic Fight guard skills, active blocks, and parries spend Paraglider stamina.
 - Shield n Parry active parry attempts spend Paraglider stamina; if the player lacks enough stamina, the active parry is cleared before damage is resolved.
 - Successful Shield n Parry parries grant `shieldNParrySuccessGain` stamina, so the default net result is a small surplus after paying `shieldNParryAttemptCost`.
-- Shield n Parry active parries also cancel CKDM-simulated NPC boss spell damage from magic projectiles, beams, direct area bursts, and lingering boss hazards. CKDM consumes the active parry, plays parry/shield feedback, grants the configured success stamina, and skips the spell damage/status/fire payload. Real arrow damage still stays vanilla, with CKDM's extra arrow effects blocked by normal shield/roll checks.
+- Shield n Parry active parries also cancel NPC boss fight damage from real boss arrows, melee hits, CKDM magic projectiles, beams, direct area bursts, and lingering boss hazards. CKDM consumes the active parry, plays parry/shield feedback, grants the configured success stamina, and skips the damage/status/fire payload.
 - Vanilla shield blocks, Epic Fight parries, Shield n Parry successful parries, and CKDM NPC boss parries play the shared `gisketchs_chowkingdom_mod:parry` sound.
 - ParCool dodges use Paraglider stamina through ParCool's forced Paraglider backend.
 - Combat Roll rolls spend `combatRollCost` when the optional Combat Roll API is present.

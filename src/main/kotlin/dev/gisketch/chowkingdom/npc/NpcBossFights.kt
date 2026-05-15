@@ -184,6 +184,7 @@ object NpcBossFights {
             boss to entry.value
         }
         if (damage <= 0.0f) return false
+        if (tryBossIncomingParry(boss, target, fight, source)) return true
         if (!wouldDefeatPlayer(target, damage)) return false
         bossVictory(boss, target, fight)
         return true
@@ -1036,18 +1037,36 @@ object NpcBossFights {
         if (!ShieldNParryStaminaBridge.consumeActiveParry(target)) return false
         val level = entity.level() as? ServerLevel ?: return true
         entity.debugGoal = "${move.id}_parried"
+        playBossParryFeedback(entity, target, fight, position, direction, move.knockback.coerceAtLeast(0.25), "spell_parried")
+        return true
+    }
+
+    private fun tryBossIncomingParry(entity: ChowNpcEntity, target: ServerPlayer, fight: ActiveBossFight, source: DamageSource): Boolean {
+        if (!ShieldNParryStaminaBridge.consumeActiveParry(target)) return false
+        val direct = source.directEntity
+        val position = direct?.position()?.add(0.0, direct.bbHeight.toDouble() * 0.5, 0.0)
+            ?: target.getEyePosition().add(0.0, -0.25, 0.0)
+        val direction = direct?.deltaMovement?.takeIf { vector -> vector.lengthSqr() > 0.0001 }
+            ?: target.position().subtract(entity.position())
+        entity.debugGoal = "boss_hit_parried"
+        playBossParryFeedback(entity, target, fight, position, direction, 0.35, "hit_parried")
+        if (direct is Projectile) direct.discard()
+        return true
+    }
+
+    private fun playBossParryFeedback(entity: ChowNpcEntity, target: ServerPlayer, fight: ActiveBossFight, position: Vec3, direction: Vec3, knockback: Double, balloonKey: String) {
+        val level = entity.level() as? ServerLevel ?: return
         ParrySoundFeature.play(target, SoundSource.PLAYERS, 1.0f, 1.05f)
         level.playSound(null, target.x, target.y, target.z, SoundEvents.SHIELD_BLOCK, SoundSource.PLAYERS, 0.9f, 1.15f)
         val guardPos = target.getEyePosition().add(0.0, -0.25, 0.0)
         level.sendParticles(ParticleTypes.CRIT, guardPos.x, guardPos.y, guardPos.z, 18, 0.26, 0.26, 0.26, 0.08)
         level.sendParticles(ParticleTypes.ENCHANTED_HIT, position.x, position.y, position.z, 14, 0.18, 0.18, 0.18, 0.05)
         val push = direction.takeIf { vector -> vector.horizontalDistanceSqr() > 0.0001 }?.normalize() ?: entity.position().subtract(target.position()).normalize()
-        target.knockback(move.knockback.coerceAtLeast(0.25) * 0.35, -push.x, -push.z)
+        target.knockback(knockback * 0.35, -push.x, -push.z)
         target.hurtMarked = true
         val config = StaminaCompatConfig.values()
         if (config.enabled) UnifiedStaminaFeature.giveStamina(target, config.shieldNParrySuccessGain)
-        showBossBalloon(entity, target, fight, fight.balloons.parry, "spell_parried")
-        return true
+        showBossBalloon(entity, target, fight, fight.balloons.parry, balloonKey)
     }
 
     private fun tickBossHazards(entity: ChowNpcEntity, target: ServerPlayer, fight: ActiveBossFight) {
