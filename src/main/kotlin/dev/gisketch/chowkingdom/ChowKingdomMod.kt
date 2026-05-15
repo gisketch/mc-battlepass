@@ -22,6 +22,7 @@ import dev.gisketch.chowkingdom.compat.SpellEngineClassLockBridge
 import dev.gisketch.chowkingdom.compat.SkillTreePackFeature
 import dev.gisketch.chowkingdom.compat.UnifiedStaminaFeature
 import dev.gisketch.chowkingdom.config.TomlConfigIO
+import dev.gisketch.chowkingdom.debug.ExtractCommands
 import dev.gisketch.chowkingdom.discord.DiscordFeature
 import dev.gisketch.chowkingdom.discord.DiscordScreenshotClient
 import dev.gisketch.chowkingdom.npc.NpcBossBarClient
@@ -70,6 +71,7 @@ class ChowKingdomMod(modBus: IEventBus, container: ModContainer) {
         BattlepassFarmersDelightEventIntegration.register()
         CobblemonBattlepassIntegration.register()
         BattlepassCommands.register()
+        ExtractCommands.register()
         WalletsFeature.register(modBus)
         ShippingBinFeature.register(modBus)
         ShopsFeature.register(modBus)

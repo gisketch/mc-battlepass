@@ -16,15 +16,16 @@
 - `profiles/`: nickname commands, store, client config/state, network sync, mixin-backed name display.
 - `roles/`: data-driven jobs/classes, role state, commands, and perk hooks.
 - `discord/`: webhook relay, inbound bot bridge, account links, screenshot upload, avatar support.
+- `debug/`: OP-only extraction commands for server registry reports sent to Discord.
 - `trading/`: player trade requests, trade menu/session state, glow cues, chowcoin trade offers, debug solo trade.
 - `revive/`: incapacitated-player state, revive timers, persisted incap counts, OP/debug commands.
-- `shops/`: Spuds-style shop block/item registration, owner-claimed one-item stock storage, stock count renderer, hover price label, optional Jade tooltip, and owner price screen. Buying/selling flow is not implemented yet.
+- `shops/`: shop blocks, vendor contracts, server/NPC stores, dynamic explorer-map offers, stock/runtime state, and store UI/network payloads.
 - `client/`: HUD rendering.
 - `src/main/java/.../mixin/`: renderer/profile/keyboard mixins.
 
 ## State Ownership
 
-- Server owns XP, claims, mission progress, chowcoins, shipping inventories, nicknames, and Discord account links.
+- Server owns XP, claims, mission progress, chowcoins, shipping inventories, nicknames, explorer-map journals, and Discord account links.
 - Server owns active job/class assignments and persists them under world data.
 - Server owns active trade sessions and active revive sessions; those transient states are not persisted.
 - Revive persists per-player incapacitation counts and last cause in world data.

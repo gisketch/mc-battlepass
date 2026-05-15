@@ -9,6 +9,13 @@ preview_items = ["bards_rpg:wooden_lute", "minecraft:note_block"]
 classification = "upgrade"
 starter_class_ids = ["rogue", "archer", "priest"]
 upgrade_class_ids = []
+
+perks = [
+  { type = "starting_items", multiplier = 1.0, weapon_tags = [], armor_tags = [], weapon_patterns = [], armor_patterns = [], wrong_weapon_damage_multiplier = 1.0, wrong_weapon_cooldown_ticks = 0, wrong_weapon_attack_speed_multiplier = 1.0, wrong_armor_disables_sprint = false, starting_items = ["minecraft:book", "bards_rpg:wooden_lute", "minecraft:bread*8"], reward_pool = [] },
+  { type = "equipment_affinity", multiplier = 1.0, weapon_tags = [], armor_tags = [], weapon_patterns = ["bards_rpg:*lute", "bards_rpg:*lyre", "bards_rpg:*rapier", "bards_rpg:*harp_crossbow", "bards_rpg:spell_book/bard", "bards_rpg:unique_lute_*", "bards_rpg:unique_lyre_*", "bards_rpg:unique_rapier_*", "bards_rpg:unique_harp_crossbow_*", "simplyswords:*rapier", "simplymore:jester_penetrate", "simplymore:the_pan"], weapon_exclude_patterns = ["*spawn_egg", "#simplyswords:uniques", "#simplyswords:runic_weapons", "#simplyswords:lootable_uniques", "#simplyswords:conditional_uniques_type_1", "#simplyswords:conditional_uniques_type_2"], armor_patterns = ["minecraft:leather_*", "bards_rpg:*entertainer_garb*", "bards_rpg:*storyteller_garb*", "bards_rpg:*troubadour_garb*"], armor_exclude_patterns = [], wrong_weapon_damage_multiplier = 0.50, wrong_weapon_cooldown_ticks = 8, wrong_weapon_attack_speed_multiplier = 0.65, wrong_armor_disables_sprint = true, starting_items = [], reward_pool = [] },
+  { type = "spell_affinity", spell_ids = [], spell_tags = ["bards_rpg:spell_book/bard", "bards_rpg:spell_scroll/bard", "bards_rpg:weapon/lute", "bards_rpg:weapon/lyre", "bards_rpg:songs"], spell_patterns = ["bards_rpg:*"] },
+]
+
 [mentor_quest]
 mentor_npc_id = "venti"
 title = "Windborne Encore"
@@ -22,10 +29,4 @@ steps = [
   { id = "bard_signature_trial", skeleton = "signature_trial", kind = "task", title = "Traveling Chorus", objective = "Travel 600 blocks on foot.", event = "minecraft:travel_on_foot", goal = 600, filters = { mode = "on_foot" }, start_message = "Walk <b>600 blocks</b>. Let the wind teach your tempo.", complete_message = "There. Your feet found a chorus.", llm_prompt = "Make walking a playful rhythm and wind lesson." },
   { id = "bard_license", skeleton = "payment", kind = "payment", title = "License Seal", objective = "Pay the mentor license fee for bard.", goal = 1, start_message = "The license seal is next. A new {classification} {class} unlock costs {cost} chowcoins.", complete_message = "The license is sealed. Only the mentor duel remains for {class}.", llm_prompt = "Treat payment as a formal license seal, not a bribe. Explain that class changes still use their separate higher fee." },
   { id = "bard_duel", skeleton = "mentor_duel", kind = "duel", title = "Mentor Duel", objective = "Win a non-lethal 1v1 mentor duel.", goal = 1, start_message = "Draw breath. The {class} mentor duel starts now.", complete_message = "The duel is won. {class} is yours.", llm_prompt = "Make this a sharp pre-duel line. The NPC must sound ready to test the player, not hostile." },
-]
-
-perks = [
-  { type = "starting_items", multiplier = 1.0, weapon_tags = [], armor_tags = [], weapon_patterns = [], armor_patterns = [], wrong_weapon_damage_multiplier = 1.0, wrong_weapon_cooldown_ticks = 0, wrong_weapon_attack_speed_multiplier = 1.0, wrong_armor_disables_sprint = false, starting_items = ["minecraft:book", "bards_rpg:wooden_lute", "minecraft:bread*8"], reward_pool = [] },
-  { type = "equipment_affinity", multiplier = 1.0, weapon_tags = [], armor_tags = [], weapon_patterns = ["bards_rpg:*lute", "bards_rpg:*lyre", "bards_rpg:*rapier", "bards_rpg:*harp_crossbow", "bards_rpg:spell_book/bard", "bards_rpg:unique_lute_*", "bards_rpg:unique_lyre_*", "bards_rpg:unique_rapier_*", "bards_rpg:unique_harp_crossbow_*", "simplyswords:*rapier", "simplymore:jester_penetrate", "simplymore:the_pan"], weapon_exclude_patterns = ["*spawn_egg", "#simplyswords:uniques", "#simplyswords:runic_weapons", "#simplyswords:lootable_uniques", "#simplyswords:conditional_uniques_type_1", "#simplyswords:conditional_uniques_type_2"], armor_patterns = ["minecraft:leather_*", "bards_rpg:*entertainer_garb*", "bards_rpg:*storyteller_garb*", "bards_rpg:*troubadour_garb*"], armor_exclude_patterns = [], wrong_weapon_damage_multiplier = 0.50, wrong_weapon_cooldown_ticks = 8, wrong_weapon_attack_speed_multiplier = 0.65, wrong_armor_disables_sprint = true, starting_items = [], reward_pool = [] },
-  { type = "spell_affinity", spell_ids = [], spell_tags = ["bards_rpg:spell_book/bard", "bards_rpg:spell_scroll/bard", "bards_rpg:weapon/lute", "bards_rpg:weapon/lyre", "bards_rpg:songs"], spell_patterns = ["bards_rpg:*"] },
 ]

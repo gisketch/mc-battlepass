@@ -65,6 +65,7 @@ object StoreShopFeature {
 
     fun register(modBus: IEventBus) {
         reloadDefinitions()
+        ExplorerMapService.register()
         modBus.addListener(::registerPayloads)
         net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(::onServerStarted)
     }
@@ -121,16 +122,24 @@ object StoreShopFeature {
             return 0
         }
         val commandStockKey = stockKey(storeId, definition.id)
-        if (pool == ShopViewPool.ALL) {
-            reroll(definition, commandStockKey, ShopViewPool.ALL)
-            reroll(definition, commandStockKey, ShopViewPool.DAILY)
-            reroll(definition, commandStockKey, ShopViewPool.WEEKLY)
-        } else {
-            reroll(definition, commandStockKey, pool)
+        val player = runCatching { context.source.playerOrException }.getOrNull()
+        val stockKeys = if (definition.hasPlayerScopedOffers()) {
+            context.source.server.playerList.players.map { online -> scopedStockKey(online, definition, commandStockKey) }.ifEmpty {
+                player?.let { listOf(scopedStockKey(it, definition, commandStockKey)) }.orEmpty()
+            }
+        } else listOf(commandStockKey)
+        val refreshedPools = if (pool == ShopViewPool.ALL) ShopViewPool.entries.toSet() else setOf(pool)
+        stockKeys.forEach { key ->
+            refreshedPools.forEach { refreshed -> reroll(definition, key, refreshed) }
+        }
+        if (definition.hasPlayerScopedOffers()) {
+            context.source.server.playerList.players.forEach { online ->
+                prepareExplorerOffers(online, definition, scopedStockKey(online, definition, commandStockKey), refreshedPools)
+            }
         }
         saveState()
         context.source.sendSuccess({ Component.literal("Reloaded ${pool.label.lowercase(Locale.ROOT)} stock for ${definition.displayName}.") }, true)
-        runCatching { context.source.playerOrException }.getOrNull()?.let { openStore(it, storeId) }
+        player?.let { openStore(it, storeId) }
         return 1
     }
 
@@ -156,9 +165,9 @@ object StoreShopFeature {
     fun openStore(player: ServerPlayer, storeId: String, stockKey: String, subtitle: String = "Server shared stock"): Boolean {
         reloadDefinitions()
         val definition = definitions[storeId.lowercase(Locale.ROOT)] ?: return false
-        val normalizedStockKey = stockKey(stockKey, definition.id)
+        val normalizedStockKey = scopedStockKey(player, definition, stockKey(stockKey, definition.id))
         ensureActive(definition, normalizedStockKey)
-        PacketDistributor.sendToPlayer(player, StoreShopOpenPayload(view(definition, normalizedStockKey, subtitle)))
+        PacketDistributor.sendToPlayer(player, StoreShopOpenPayload(view(player, definition, normalizedStockKey, subtitle)))
         return true
     }
 
@@ -191,12 +200,21 @@ object StoreShopFeature {
         if (requested.isEmpty()) return
         val purchases = requested.mapNotNull { line ->
             val active = activeOffers[line.entryId] ?: return@mapNotNull null
-            val quantity = line.quantity.coerceIn(1, stock(stockKey, active.pool, active.offer.id))
-            if (quantity <= 0) return@mapNotNull null
-            val stack = stackFor(active.offer, quantity)
-            if (stack.isEmpty) return@mapNotNull null
-            val total = active.offer.priceAmount.coerceAtLeast(0L).saturatingMultiply(quantity.toLong())
-            PendingStoreBuy(active, quantity, total, stack)
+            if (ExplorerMapService.isExplorerMapOffer(active.offer)) {
+                val quantity = 1.coerceAtMost(stock(stockKey, active.pool, active.offer.id))
+                if (quantity <= 0) return@mapNotNull null
+                val stack = ExplorerMapService.purchaseStack(player, stockKey, active.pool, active.offer, periodKey(definition, active.pool))
+                    ?: return@mapNotNull null
+                val total = active.offer.priceAmount.coerceAtLeast(0L)
+                PendingStoreBuy(active, quantity, total, stack)
+            } else {
+                val quantity = line.quantity.coerceIn(1, stock(stockKey, active.pool, active.offer.id))
+                if (quantity <= 0) return@mapNotNull null
+                val stack = stackFor(active.offer, quantity)
+                if (stack.isEmpty) return@mapNotNull null
+                val total = active.offer.priceAmount.coerceAtLeast(0L).saturatingMultiply(quantity.toLong())
+                PendingStoreBuy(active, quantity, total, stack)
+            }
         }
         if (purchases.isEmpty()) {
             player.displayClientMessage(Component.literal("No stock available."), true)
@@ -213,6 +231,9 @@ object StoreShopFeature {
         val stacks = mutableListOf<ItemStack>()
         purchases.forEach { buy ->
             decrement(stockKey, buy.active.pool, buy.active.offer.id, buy.quantity)
+            if (ExplorerMapService.isExplorerMapOffer(buy.active.offer)) {
+                ExplorerMapService.recordPurchase(player, stockKey, buy.active.pool, buy.active.offer, periodKey(definition, buy.active.pool))
+            }
             stacks += buy.stack.copy()
         }
         ChowcoinStore.set(player, balance - totalCost)
@@ -226,18 +247,32 @@ object StoreShopFeature {
         NpcFeature.onStorePurchase(player, storeId, stockKey, boughtCount, itemName, totalCost)
     }
 
-    private fun view(definition: StoreDefinition, stockKey: String, subtitle: String): ShopViewModel {
+    private fun view(player: ServerPlayer, definition: StoreDefinition, stockKey: String, subtitle: String): ShopViewModel {
         val categories = definition.categories.map { ShopViewCategory(it.id, labelFromId(it.id)) }
-        val entries = activeOffers(definition, stockKey).map { active ->
-            ShopViewEntry(
-                active.offer.id,
-                active.category.id,
-                active.pool,
-                stackFor(active.offer, 1),
-                stock(stockKey, active.pool, active.offer.id),
-                active.offer.priceAmount,
-                definition.displayName,
-            )
+        val entries = activeOffers(definition, stockKey).mapNotNull { active ->
+            if (ExplorerMapService.isExplorerMapOffer(active.offer)) {
+                val preview = ExplorerMapService.preview(player, stockKey, active.pool, active.offer, periodKey(definition, active.pool))
+                    ?: return@mapNotNull null
+                ShopViewEntry(
+                    active.offer.id,
+                    active.category.id,
+                    active.pool,
+                    preview.stack,
+                    stock(stockKey, active.pool, active.offer.id).coerceAtMost(preview.stockCount),
+                    active.offer.priceAmount,
+                    definition.displayName,
+                )
+            } else {
+                ShopViewEntry(
+                    active.offer.id,
+                    active.category.id,
+                    active.pool,
+                    stackFor(active.offer, 1),
+                    stock(stockKey, active.pool, active.offer.id),
+                    active.offer.priceAmount,
+                    definition.displayName,
+                )
+            }
         }
         val pools = ShopViewPool.entries.map { pool -> ShopViewPoolInfo(pool, pool.label, resetText(definition, pool)) }
         return ShopViewModel(definition.id, stockKey, definition.displayName, subtitle, categories, pools, entries)
@@ -257,16 +292,28 @@ object StoreShopFeature {
         }
     }
 
-    private fun ensureActive(definition: StoreDefinition, stockKey: String) {
-        ensurePool(definition, stockKey, ShopViewPool.ALL)
-        ensurePool(definition, stockKey, ShopViewPool.DAILY)
-        ensurePool(definition, stockKey, ShopViewPool.WEEKLY)
+    private fun ensureActive(definition: StoreDefinition, stockKey: String): Set<ShopViewPool> {
+        val refreshed = mutableSetOf<ShopViewPool>()
+        ShopViewPool.entries.forEach { pool ->
+            if (ensurePool(definition, stockKey, pool)) refreshed += pool
+        }
+        return refreshed
     }
 
-    private fun ensurePool(definition: StoreDefinition, stockKey: String, pool: ShopViewPool) {
+    private fun ensurePool(definition: StoreDefinition, stockKey: String, pool: ShopViewPool): Boolean {
         val period = periodKey(definition, pool)
         val poolState = stateFor(stockKey).pools.getOrPut(pool.id) { StorePoolState() }
-        if (poolState.period != period || missingSelectedCategories(definition, poolState, pool)) reroll(definition, stockKey, pool)
+        if (poolState.period != period || missingSelectedCategories(definition, poolState, pool)) {
+            reroll(definition, stockKey, pool)
+            return true
+        }
+        return false
+    }
+
+    private fun prepareExplorerOffers(player: ServerPlayer, definition: StoreDefinition, stockKey: String, pools: Set<ShopViewPool>) {
+        activeOffers(definition, stockKey)
+            .filter { active -> active.pool in pools && stock(stockKey, active.pool, active.offer.id) > 0 && ExplorerMapService.isExplorerMapOffer(active.offer) }
+            .forEach { active -> ExplorerMapService.prepare(player, stockKey, active.pool, active.offer, periodKey(definition, active.pool)) }
     }
 
     private fun missingSelectedCategories(definition: StoreDefinition, poolState: StorePoolState, pool: ShopViewPool): Boolean {
@@ -330,6 +377,7 @@ object StoreShopFeature {
     private fun List<StoreOffer>.filterValidOffers(): List<StoreOffer> = filter(::isValidOffer)
 
     private fun isValidOffer(offer: StoreOffer): Boolean {
+        if (ExplorerMapService.isExplorerMapOffer(offer)) return offer.id.isNotBlank() && offer.targets.isNotEmpty()
         if (offer.id.isBlank() || offer.item.isBlank()) return false
         val id = runCatching { ResourceLocation.parse(offer.item) }
             .onFailure { if (warnedInvalidOfferItems.add(offer.item)) ChowKingdomMod.LOGGER.warn("Store offer {} has invalid item id {}; skipping offer.", offer.id, offer.item) }
@@ -355,6 +403,13 @@ object StoreShopFeature {
 
     private fun stockKey(value: String, fallback: String): String =
         value.trim().lowercase(Locale.ROOT).ifBlank { fallback.lowercase(Locale.ROOT) }.take(96)
+
+    private fun scopedStockKey(player: ServerPlayer, definition: StoreDefinition, base: String): String {
+        if (!definition.hasPlayerScopedOffers()) return base
+        val suffix = player.uuid.toString().replace("-", "")
+        if (base.endsWith("_$suffix")) return base
+        return stockKey("${base.take(52)}_$suffix", definition.id)
+    }
 
     private fun weightedSample(offers: List<StoreOffer>, count: Int): List<StoreOffer> {
         val remaining = offers.toMutableList()
@@ -502,6 +557,12 @@ class StoreDefinition(
     }
 }
 
+private fun StoreDefinition.hasPlayerScopedOffers(): Boolean =
+    categories.any { category ->
+        (category.allItems + category.dailyItems + category.weeklyItems).any(ExplorerMapService::isExplorerMapOffer) ||
+            (category.allSets + category.dailySets + category.weeklySets).flatMap(StoreOfferSet::items).any(ExplorerMapService::isExplorerMapOffer)
+    }
+
 class StoreCategoryDefinition(
     @SerializedName("id") var id: String = "",
     @SerializedName("item_types_to_sell") var itemTypesToSell: Int = 1,
@@ -525,6 +586,14 @@ class StoreOfferSet(
 class StoreOffer(
     @SerializedName("id") var id: String = "",
     @SerializedName("item") var item: String = "minecraft:air",
+    @SerializedName("offer_type") var offerType: String = "",
+    @SerializedName("target_type") var targetType: String = "",
+    @SerializedName("targets") var targets: MutableList<String> = mutableListOf(),
+    @SerializedName("label") var label: String = "",
+    @SerializedName("map_scale") var mapScale: Int = 2,
+    @SerializedName("marker") var marker: String = "",
+    @SerializedName("min_distance_blocks") var minDistanceBlocks: Int = 512,
+    @SerializedName("max_distance_blocks") var maxDistanceBlocks: Int = 12000,
     @SerializedName("price_amount") var priceAmount: Long = 1L,
     @SerializedName("stock_count") var stockCount: Int = 1,
     @SerializedName("weight") var weight: Int = 1,

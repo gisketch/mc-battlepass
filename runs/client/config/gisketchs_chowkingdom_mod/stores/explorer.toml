@@ -1,0 +1,189 @@
+# Explorer map stock is data-driven through the normal store pools.
+# Put common biome maps in daily_items, rare biome/structure maps in weekly_items,
+# and linked bundles in daily_sets or weekly_sets.
+
+id = "explorer"
+display_name = "Explorer Maps"
+time_zone = "GMT+8"
+reset_hour = 5
+reset_minute = 0
+
+[[categories]]
+id = "biomes"
+item_types_to_sell = 2
+daily_item_types_to_sell = 3
+weekly_item_types_to_sell = 2
+
+[[categories.daily_items]]
+id = "biome_cherry_grove"
+offer_type = "explorer_map"
+target_type = "biome"
+targets = ["minecraft:cherry_grove"]
+label = "Cherry Grove Map"
+price_amount = 1800
+stock_count = 1
+weight = 3
+map_scale = 3
+marker = "target_x"
+min_distance_blocks = 512
+max_distance_blocks = 12000
+
+[[categories.daily_items]]
+id = "biome_mangrove_swamp"
+offer_type = "explorer_map"
+target_type = "biome"
+targets = ["minecraft:mangrove_swamp"]
+label = "Mangrove Swamp Map"
+price_amount = 1800
+stock_count = 1
+weight = 3
+map_scale = 3
+marker = "target_x"
+min_distance_blocks = 512
+max_distance_blocks = 12000
+
+[[categories.daily_items]]
+id = "biome_bamboo_jungle"
+offer_type = "explorer_map"
+target_type = "biome"
+targets = ["minecraft:bamboo_jungle"]
+label = "Bamboo Jungle Map"
+price_amount = 1800
+stock_count = 1
+weight = 3
+map_scale = 3
+marker = "target_x"
+min_distance_blocks = 512
+max_distance_blocks = 12000
+
+[[categories.daily_items]]
+id = "biome_badlands"
+offer_type = "explorer_map"
+target_type = "biome"
+targets = ["minecraft:badlands", "minecraft:eroded_badlands", "minecraft:wooded_badlands"]
+label = "Badlands Map"
+price_amount = 2200
+stock_count = 1
+weight = 2
+map_scale = 3
+marker = "target_x"
+min_distance_blocks = 512
+max_distance_blocks = 12000
+
+[[categories.daily_items]]
+id = "biome_snowy_slopes"
+offer_type = "explorer_map"
+target_type = "biome"
+targets = ["minecraft:snowy_slopes", "minecraft:frozen_peaks", "minecraft:jagged_peaks"]
+label = "Frozen Peaks Map"
+price_amount = 2200
+stock_count = 1
+weight = 2
+map_scale = 3
+marker = "target_x"
+min_distance_blocks = 512
+max_distance_blocks = 12000
+
+[[categories.weekly_items]]
+id = "biome_mushroom_fields"
+offer_type = "explorer_map"
+target_type = "biome"
+targets = ["minecraft:mushroom_fields"]
+label = "Mushroom Fields Map"
+price_amount = 9000
+stock_count = 1
+weight = 1
+map_scale = 4
+marker = "target_x"
+min_distance_blocks = 512
+max_distance_blocks = 12000
+
+[[categories.weekly_items]]
+id = "biome_deep_dark"
+offer_type = "explorer_map"
+target_type = "biome"
+targets = ["minecraft:deep_dark"]
+label = "Deep Dark Map"
+price_amount = 7500
+stock_count = 1
+weight = 1
+map_scale = 4
+marker = "red_x"
+min_distance_blocks = 512
+max_distance_blocks = 12000
+
+[[categories]]
+id = "structures"
+item_types_to_sell = 1
+daily_item_types_to_sell = 1
+weekly_item_types_to_sell = 2
+
+[[categories.daily_items]]
+id = "structure_village"
+offer_type = "explorer_map"
+target_type = "structure"
+targets = ["#minecraft:village"]
+label = "Village Map"
+price_amount = 2500
+stock_count = 1
+weight = 4
+map_scale = 3
+marker = "village_plains"
+min_distance_blocks = 512
+max_distance_blocks = 12000
+
+[[categories.daily_items]]
+id = "structure_mineshaft"
+offer_type = "explorer_map"
+target_type = "structure"
+targets = ["#minecraft:mineshaft"]
+label = "Mineshaft Map"
+price_amount = 3000
+stock_count = 1
+weight = 3
+map_scale = 3
+marker = "red_x"
+min_distance_blocks = 512
+max_distance_blocks = 12000
+
+[[categories.weekly_items]]
+id = "structure_ocean_monument"
+offer_type = "explorer_map"
+target_type = "structure"
+targets = ["#minecraft:on_ocean_explorer_maps"]
+label = "Ocean Monument Map"
+price_amount = 10000
+stock_count = 1
+weight = 2
+map_scale = 4
+marker = "ocean_monument"
+min_distance_blocks = 1024
+max_distance_blocks = 12000
+
+[[categories.weekly_items]]
+id = "structure_woodland_mansion"
+offer_type = "explorer_map"
+target_type = "structure"
+targets = ["#minecraft:on_woodland_explorer_maps"]
+label = "Woodland Mansion Map"
+price_amount = 14000
+stock_count = 1
+weight = 1
+map_scale = 4
+marker = "woodland_mansion"
+min_distance_blocks = 1024
+max_distance_blocks = 12000
+
+[[categories.weekly_items]]
+id = "structure_trial_chambers"
+offer_type = "explorer_map"
+target_type = "structure"
+targets = ["#minecraft:on_trial_chambers_maps"]
+label = "Trial Chambers Map"
+price_amount = 12000
+stock_count = 1
+weight = 2
+map_scale = 4
+marker = "trial_chambers"
+min_distance_blocks = 1024
+max_distance_blocks = 12000

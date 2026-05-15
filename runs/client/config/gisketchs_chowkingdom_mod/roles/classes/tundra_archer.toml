@@ -9,6 +9,13 @@ preview_items = ["minecraft:trident", "minecraft:bow"]
 classification = "upgrade"
 starter_class_ids = ["archer"]
 upgrade_class_ids = []
+
+perks = [
+  { type = "starting_items", multiplier = 1.0, weapon_tags = [], armor_tags = [], weapon_patterns = [], armor_patterns = [], wrong_weapon_damage_multiplier = 1.0, wrong_weapon_cooldown_ticks = 0, wrong_weapon_attack_speed_multiplier = 1.0, wrong_armor_disables_sprint = false, starting_items = ["minecraft:book", "minecraft:bow", "minecraft:arrow*32", "minecraft:bread*8"], reward_pool = [] },
+  { type = "equipment_affinity", multiplier = 1.0, weapon_tags = ["rpg_series:weapon_type/short_bow", "rpg_series:weapon_type/long_bow", "rpg_series:loot_theme/frosty"], armor_tags = [], weapon_patterns = ["minecraft:bow", "minecraft:crossbow", "archers:*bow", "archers:*crossbow", "archers_expansion:tundra_hunter_spell_book", "minecells:ice_bow", "minecraft:trident"], weapon_exclude_patterns = ["*spawn_egg"], armor_patterns = ["minecraft:leather_*", "minecraft:chainmail_*", "archers_expansion:*tundra*", "archers_expansion:*polar_stalker*", "archers:*archer_armor*", "archers:*ranger_armor*"], armor_exclude_patterns = [], wrong_weapon_damage_multiplier = 0.50, wrong_weapon_cooldown_ticks = 8, wrong_weapon_attack_speed_multiplier = 0.65, wrong_armor_disables_sprint = true, starting_items = [], reward_pool = [] },
+  { type = "spell_affinity", spell_ids = ["archers_expansion:frozen_shot", "archers_expansion:frozen_pact", "archers_expansion:arctic_volley", "archers_expansion:enchanted_crystal_arrow", "archers_expansion:improved_arctic_volley", "archers_expansion:winters_grip"], spell_tags = ["archers_expansion:spell_book/tundra_hunter", "archers_expansion:spell_scroll/tundra_hunter"] },
+]
+
 [mentor_quest]
 mentor_npc_id = "traxex"
 title = "Frostline Hunt"
@@ -22,10 +29,4 @@ steps = [
   { id = "tundra_archer_signature_trial", skeleton = "signature_trial", kind = "timed", title = "Stray Frost Volley", objective = "Defeat 3 strays within 45 seconds.", event = "minecraft:entity_killed", goal = 3, time_window_seconds = 45, filters = { entity = "minecraft:stray" }, start_message = "Drop <b>3 strays in {seconds} seconds</b>. Cold hands, clean aim.", complete_message = "The frost went quiet before it could answer. Adequate.", llm_prompt = "Make this sparse, cold, and precise, with the timer feeling like breath control." },
   { id = "tundra_archer_license", skeleton = "payment", kind = "payment", title = "License Seal", objective = "Pay the mentor license fee for tundra_archer.", goal = 1, start_message = "The license seal is next. A new {classification} {class} unlock costs {cost} chowcoins.", complete_message = "The license is sealed. Only the mentor duel remains for {class}.", llm_prompt = "Treat payment as a formal license seal, not a bribe. Explain that class changes still use their separate higher fee." },
   { id = "tundra_archer_duel", skeleton = "mentor_duel", kind = "duel", title = "Mentor Duel", objective = "Win a non-lethal 1v1 mentor duel.", goal = 1, start_message = "Draw breath. The {class} mentor duel starts now.", complete_message = "The duel is won. {class} is yours.", llm_prompt = "Make this a sharp pre-duel line. The NPC must sound ready to test the player, not hostile." },
-]
-
-perks = [
-  { type = "starting_items", multiplier = 1.0, weapon_tags = [], armor_tags = [], weapon_patterns = [], armor_patterns = [], wrong_weapon_damage_multiplier = 1.0, wrong_weapon_cooldown_ticks = 0, wrong_weapon_attack_speed_multiplier = 1.0, wrong_armor_disables_sprint = false, starting_items = ["minecraft:book", "minecraft:bow", "minecraft:arrow*32", "minecraft:bread*8"], reward_pool = [] },
-  { type = "equipment_affinity", multiplier = 1.0, weapon_tags = ["rpg_series:weapon_type/short_bow", "rpg_series:weapon_type/long_bow", "rpg_series:loot_theme/frosty"], armor_tags = [], weapon_patterns = ["minecraft:bow", "minecraft:crossbow", "archers:*bow", "archers:*crossbow", "archers_expansion:tundra_hunter_spell_book", "minecells:ice_bow", "minecraft:trident"], weapon_exclude_patterns = ["*spawn_egg"], armor_patterns = ["minecraft:leather_*", "minecraft:chainmail_*", "archers_expansion:*tundra*", "archers_expansion:*polar_stalker*", "archers:*archer_armor*", "archers:*ranger_armor*"], armor_exclude_patterns = [], wrong_weapon_damage_multiplier = 0.50, wrong_weapon_cooldown_ticks = 8, wrong_weapon_attack_speed_multiplier = 0.65, wrong_armor_disables_sprint = true, starting_items = [], reward_pool = [] },
-  { type = "spell_affinity", spell_ids = ["archers_expansion:frozen_shot", "archers_expansion:frozen_pact", "archers_expansion:arctic_volley", "archers_expansion:enchanted_crystal_arrow", "archers_expansion:improved_arctic_volley", "archers_expansion:winters_grip"], spell_tags = ["archers_expansion:spell_book/tundra_hunter", "archers_expansion:spell_scroll/tundra_hunter"] },
 ]

@@ -8,13 +8,16 @@ import net.minecraft.commands.arguments.EntityArgument
 import net.minecraft.commands.arguments.AngleArgument
 import net.minecraft.commands.arguments.coordinates.BlockPosArgument
 import net.minecraft.core.BlockPos
+import net.minecraft.core.Direction
 import net.minecraft.core.registries.Registries
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceKey
 import net.minecraft.resources.ResourceLocation
+import net.minecraft.server.level.ServerLevel
 import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.entity.MobSpawnType
 import net.minecraft.world.level.Level
+import net.minecraft.world.level.levelgen.Heightmap
 import net.neoforged.neoforge.common.NeoForge
 import net.neoforged.neoforge.event.RegisterCommandsEvent
 import net.neoforged.neoforge.event.entity.living.MobSpawnEvent
@@ -46,15 +49,11 @@ object WorldsFeature {
         when {
             isSkyLands(player.level()) && player.y <= SKY_LANDS_FALLTHROUGH_Y -> {
                 val overworld = player.server.overworld()
-                player.teleportTo(overworld, player.x, OVERWORLD_FALLTHROUGH_Y, player.z, player.yRot, player.xRot)
-                player.deltaMovement = velocity
-                player.hurtMarked = true
+                teleportToFallbackOrSpawn(player, overworld, player.x, OVERWORLD_FALLTHROUGH_Y, player.z, velocity)
             }
             player.level().dimension() == Level.OVERWORLD && player.y >= OVERWORLD_SKY_RETURN_Y -> {
                 val skyLands = player.server.getLevel(SKY_LANDS) ?: return
-                player.teleportTo(skyLands, player.x, SKY_LANDS_RETURN_Y, player.z, player.yRot, player.xRot)
-                player.deltaMovement = velocity
-                player.hurtMarked = true
+                teleportToFallbackOrSpawn(player, skyLands, player.x, SKY_LANDS_RETURN_Y, player.z, velocity)
             }
         }
     }
@@ -154,8 +153,8 @@ object WorldsFeature {
 
     private fun overworld(context: CommandContext<CommandSourceStack>, player: ServerPlayer): Int {
         val level = context.source.server.overworld()
-        val pos = level.sharedSpawnPos
-        player.teleportTo(level, pos.x + 0.5, (pos.y + 1).toDouble(), pos.z + 0.5, player.yRot, player.xRot)
+        val pos = safeSpawnPos(level, level.sharedSpawnPos)
+        teleportToFeet(player, level, pos, player.yRot, player.xRot)
         context.source.sendSuccess({ Component.literal("Sent ${player.gameProfile.name} to the normal overworld.").withStyle(ChatFormatting.GREEN) }, true)
         return 1
     }
@@ -175,10 +174,64 @@ object WorldsFeature {
         return sendToLevelSpawn(player, level)
     }
 
-    private fun sendToLevelSpawn(player: ServerPlayer, level: net.minecraft.server.level.ServerLevel): Boolean {
-        val pos = level.sharedSpawnPos
-        player.teleportTo(level, pos.x + 0.5, (pos.y + 1).toDouble(), pos.z + 0.5, 0.0f, 0.0f)
+    private fun sendToLevelSpawn(player: ServerPlayer, level: ServerLevel): Boolean {
+        val pos = safeSpawnPos(level, level.sharedSpawnPos)
+        teleportToFeet(player, level, pos, 0.0f, 0.0f)
         return true
+    }
+
+    private fun teleportToFallbackOrSpawn(
+        player: ServerPlayer,
+        level: ServerLevel,
+        x: Double,
+        y: Double,
+        z: Double,
+        velocity: net.minecraft.world.phys.Vec3,
+    ) {
+        val target = BlockPos.containing(x, y, z)
+        val sameColumnSurface = heightmapSafePos(level, target)
+        if (isSafeStandPosition(level, target) || (sameColumnSurface != null && y > sameColumnSurface.y)) {
+            player.teleportTo(level, x, y, z, player.yRot, player.xRot)
+            player.deltaMovement = velocity
+        } else {
+            val spawn = safeSpawnPos(level, level.sharedSpawnPos)
+            teleportToFeet(player, level, spawn, player.yRot, player.xRot)
+        }
+        player.hurtMarked = true
+    }
+
+    private fun teleportToFeet(player: ServerPlayer, level: ServerLevel, pos: BlockPos, yaw: Float, pitch: Float) {
+        player.teleportTo(level, pos.x + 0.5, pos.y.toDouble(), pos.z + 0.5, yaw, pitch)
+        player.deltaMovement = player.deltaMovement.scale(0.0)
+        player.hurtMarked = true
+    }
+
+    private fun safeSpawnPos(level: ServerLevel, base: BlockPos): BlockPos {
+        listOf(base, base.above(), base.below()).firstOrNull { pos -> isSafeStandPosition(level, pos) }?.let { return it }
+        heightmapSafePos(level, base)?.let { return it }
+        for (radius in 1..SAFE_SPAWN_SEARCH_RADIUS) {
+            for (dx in -radius..radius) {
+                for (dz in -radius..radius) {
+                    if (kotlin.math.abs(dx) != radius && kotlin.math.abs(dz) != radius) continue
+                    val candidate = BlockPos(base.x + dx, base.y, base.z + dz)
+                    heightmapSafePos(level, candidate)?.let { return it }
+                }
+            }
+        }
+        return BlockPos(base.x, (base.y + 1).coerceIn(level.minBuildHeight + 2, level.maxBuildHeight - 2), base.z)
+    }
+
+    private fun heightmapSafePos(level: ServerLevel, base: BlockPos): BlockPos? {
+        val pos = level.getHeightmapPos(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, base)
+        return listOf(pos, pos.above(), pos.below()).firstOrNull { candidate -> isSafeStandPosition(level, candidate) }
+    }
+
+    private fun isSafeStandPosition(level: ServerLevel, pos: BlockPos): Boolean {
+        val below = pos.below()
+        if (below.y < level.minBuildHeight || pos.y >= level.maxBuildHeight - 1) return false
+        return level.getBlockState(below).isFaceSturdy(level, below, Direction.UP) &&
+            level.getBlockState(pos).getCollisionShape(level, pos).isEmpty &&
+            level.getBlockState(pos.above()).getCollisionShape(level, pos.above()).isEmpty
     }
 
     private fun setWorldSpawn(context: CommandContext<CommandSourceStack>, pos: BlockPos, angle: Float): Int {
@@ -211,4 +264,5 @@ object WorldsFeature {
     private const val SKY_LANDS_RETURN_Y = 64.0
     private const val OVERWORLD_FALLTHROUGH_Y = 320.0
     private const val OVERWORLD_SKY_RETURN_Y = 360.0
+    private const val SAFE_SPAWN_SEARCH_RADIUS = 32
 }

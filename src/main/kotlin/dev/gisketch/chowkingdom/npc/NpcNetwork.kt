@@ -268,23 +268,23 @@ data class NpcDialogPayload(
             )
 
             override fun encode(buffer: RegistryFriendlyByteBuf, value: NpcDialogPayload) {
-                buffer.writeUtf(value.npcId.take(MAX_NPC_ID_LENGTH), MAX_NPC_ID_LENGTH)
-                buffer.writeUtf(value.name.take(MAX_NPC_NAME_LENGTH), MAX_NPC_NAME_LENGTH)
-                buffer.writeUtf(value.title.take(MAX_NPC_TITLE_LENGTH), MAX_NPC_TITLE_LENGTH)
-                buffer.writeUtf(value.message.take(MAX_NPC_DIALOG_LENGTH), MAX_NPC_DIALOG_LENGTH)
+                buffer.writeBoundedUtf(value.npcId, MAX_NPC_ID_LENGTH)
+                buffer.writeBoundedUtf(value.name, MAX_NPC_NAME_LENGTH)
+                buffer.writeBoundedUtf(value.title, MAX_NPC_TITLE_LENGTH)
+                buffer.writeBoundedUtf(value.message, MAX_NPC_DIALOG_LENGTH)
                 buffer.writeBoolean(value.contractGranted)
                 buffer.writeBoolean(value.closeOnly)
-                buffer.writeUtf(value.closeLabel.take(MAX_NPC_CLOSE_LABEL_LENGTH), MAX_NPC_CLOSE_LABEL_LENGTH)
+                buffer.writeBoundedUtf(value.closeLabel, MAX_NPC_CLOSE_LABEL_LENGTH)
                 buffer.writeVarInt(value.friendshipLevel.coerceIn(-10, 10))
                 buffer.writeVarInt(value.friendshipDelta.coerceIn(-999, 999))
                 buffer.writeVarInt(value.npcEntityId)
-                buffer.writeUtf(value.animalesePitch.take(MAX_NPC_VOICE_PITCH_LENGTH), MAX_NPC_VOICE_PITCH_LENGTH)
+                buffer.writeBoundedUtf(value.animalesePitch, MAX_NPC_VOICE_PITCH_LENGTH)
                 buffer.writeFloat(value.animalesePitchMultiplier.coerceIn(0.5f, 2.0f))
                 buffer.writeFloat(value.animaleseVolume.coerceIn(0.0f, 1.0f))
                 buffer.writeFloat(value.animaleseRadius.coerceIn(1.0f, 48.0f))
                 buffer.writeBoolean(value.talkEnabled)
                 buffer.writeLong(value.responseToken)
-                buffer.writeUtf(value.dialogMode.take(MAX_NPC_DIALOG_MODE_LENGTH), MAX_NPC_DIALOG_MODE_LENGTH)
+                buffer.writeBoundedUtf(value.dialogMode, MAX_NPC_DIALOG_MODE_LENGTH)
                 buffer.writeBoolean(value.startTalkMode)
                 buffer.writeBoolean(value.trainingAvailable)
                 buffer.writeBoolean(value.classChangeAvailable)
@@ -292,15 +292,15 @@ data class NpcDialogPayload(
                 val options = value.classChangeOptions.take(MAX_NPC_CLASS_CHANGE_OPTIONS)
                 buffer.writeVarInt(options.size)
                 options.forEach { option ->
-                    buffer.writeUtf(option.classId.take(MAX_NPC_ID_LENGTH), MAX_NPC_ID_LENGTH)
-                    buffer.writeUtf(option.displayName.take(MAX_NPC_NAME_LENGTH), MAX_NPC_NAME_LENGTH)
-                    buffer.writeUtf(option.warning.take(MAX_NPC_CLASS_CHANGE_WARNING_LENGTH), MAX_NPC_CLASS_CHANGE_WARNING_LENGTH)
+                    buffer.writeBoundedUtf(option.classId, MAX_NPC_ID_LENGTH)
+                    buffer.writeBoundedUtf(option.displayName, MAX_NPC_NAME_LENGTH)
+                    buffer.writeBoundedUtf(option.warning, MAX_NPC_CLASS_CHANGE_WARNING_LENGTH)
                 }
                 val quizChoices = value.quizChoices.take(MAX_NPC_QUIZ_CHOICES)
                 buffer.writeVarInt(quizChoices.size)
                 quizChoices.forEach { choice ->
                     buffer.writeVarInt(choice.index.coerceIn(0, MAX_NPC_QUIZ_CHOICES - 1))
-                    buffer.writeUtf(choice.text.take(MAX_NPC_QUIZ_CHOICE_LENGTH), MAX_NPC_QUIZ_CHOICE_LENGTH)
+                    buffer.writeBoundedUtf(choice.text, MAX_NPC_QUIZ_CHOICE_LENGTH)
                 }
             }
         }
@@ -329,7 +329,7 @@ data class NpcBalloonPayload(
 
             override fun encode(buffer: RegistryFriendlyByteBuf, value: NpcBalloonPayload) {
                 buffer.writeVarInt(value.npcEntityId)
-                buffer.writeUtf(value.message.take(MAX_NPC_BALLOON_LENGTH), MAX_NPC_BALLOON_LENGTH)
+                buffer.writeBoundedUtf(value.message, MAX_NPC_BALLOON_LENGTH)
                 buffer.writeVarInt(value.durationTicks.coerceIn(20, 240))
             }
         }
@@ -351,8 +351,8 @@ data class NpcDialogActionPayload(
             )
 
             override fun encode(buffer: RegistryFriendlyByteBuf, value: NpcDialogActionPayload) {
-                buffer.writeUtf(value.npcId.take(MAX_NPC_ID_LENGTH), MAX_NPC_ID_LENGTH)
-                buffer.writeUtf(value.action.take(MAX_NPC_ACTION_LENGTH), MAX_NPC_ACTION_LENGTH)
+                buffer.writeBoundedUtf(value.npcId, MAX_NPC_ID_LENGTH)
+                buffer.writeBoundedUtf(value.action, MAX_NPC_ACTION_LENGTH)
             }
         }
     }
@@ -375,8 +375,8 @@ data class NpcTalkRequestPayload(
             )
 
             override fun encode(buffer: RegistryFriendlyByteBuf, value: NpcTalkRequestPayload) {
-                buffer.writeUtf(value.npcId.take(MAX_NPC_ID_LENGTH), MAX_NPC_ID_LENGTH)
-                buffer.writeUtf(value.message.take(MAX_NPC_TALK_MESSAGE_LENGTH), MAX_NPC_TALK_MESSAGE_LENGTH)
+                buffer.writeBoundedUtf(value.npcId, MAX_NPC_ID_LENGTH)
+                buffer.writeBoundedUtf(value.message, MAX_NPC_TALK_MESSAGE_LENGTH)
                 buffer.writeLong(value.responseToken)
             }
         }
@@ -402,8 +402,8 @@ data class NpcTalkResponsePayload(
             )
 
             override fun encode(buffer: RegistryFriendlyByteBuf, value: NpcTalkResponsePayload) {
-                buffer.writeUtf(value.npcId.take(MAX_NPC_ID_LENGTH), MAX_NPC_ID_LENGTH)
-                buffer.writeUtf(value.message.take(MAX_NPC_DIALOG_LENGTH), MAX_NPC_DIALOG_LENGTH)
+                buffer.writeBoundedUtf(value.npcId, MAX_NPC_ID_LENGTH)
+                buffer.writeBoundedUtf(value.message, MAX_NPC_DIALOG_LENGTH)
                 buffer.writeLong(value.responseToken)
                 buffer.writeBoolean(value.partial)
             }
@@ -435,13 +435,13 @@ data class NpcWorldChatPayload(
             }
 
             override fun encode(buffer: RegistryFriendlyByteBuf, value: NpcWorldChatPayload) {
-                buffer.writeUtf(value.npcId.take(MAX_NPC_ID_LENGTH), MAX_NPC_ID_LENGTH)
-                buffer.writeUtf(value.npcName.take(MAX_NPC_NAME_LENGTH), MAX_NPC_NAME_LENGTH)
-                buffer.writeUtf(value.targetName.take(MAX_NPC_NAME_LENGTH), MAX_NPC_NAME_LENGTH)
+                buffer.writeBoundedUtf(value.npcId, MAX_NPC_ID_LENGTH)
+                buffer.writeBoundedUtf(value.npcName, MAX_NPC_NAME_LENGTH)
+                buffer.writeBoundedUtf(value.targetName, MAX_NPC_NAME_LENGTH)
                 buffer.writeBoolean(value.targetId != null)
                 value.targetId?.let(buffer::writeUUID)
-                buffer.writeUtf(value.targetKind.take(MAX_NPC_WORLD_CHAT_TARGET_KIND_LENGTH), MAX_NPC_WORLD_CHAT_TARGET_KIND_LENGTH)
-                buffer.writeUtf(value.message.take(MAX_NPC_WORLD_CHAT_MESSAGE_LENGTH), MAX_NPC_WORLD_CHAT_MESSAGE_LENGTH)
+                buffer.writeBoundedUtf(value.targetKind, MAX_NPC_WORLD_CHAT_TARGET_KIND_LENGTH)
+                buffer.writeBoundedUtf(value.message, MAX_NPC_WORLD_CHAT_MESSAGE_LENGTH)
             }
         }
     }
@@ -479,10 +479,10 @@ data class NpcQuestHudEntryPayload(
     val acceptedAtTick: Long,
 ) {
     fun encode(buffer: RegistryFriendlyByteBuf) {
-        buffer.writeUtf(npcId.take(MAX_NPC_ID_LENGTH), MAX_NPC_ID_LENGTH)
-        buffer.writeUtf(npcName.take(MAX_NPC_NAME_LENGTH), MAX_NPC_NAME_LENGTH)
-        buffer.writeUtf(description.take(MAX_NPC_QUEST_DESCRIPTION_LENGTH), MAX_NPC_QUEST_DESCRIPTION_LENGTH)
-        buffer.writeUtf(passId.take(MAX_NPC_QUEST_PASS_LENGTH), MAX_NPC_QUEST_PASS_LENGTH)
+        buffer.writeBoundedUtf(npcId, MAX_NPC_ID_LENGTH)
+        buffer.writeBoundedUtf(npcName, MAX_NPC_NAME_LENGTH)
+        buffer.writeBoundedUtf(description, MAX_NPC_QUEST_DESCRIPTION_LENGTH)
+        buffer.writeBoundedUtf(passId, MAX_NPC_QUEST_PASS_LENGTH)
         buffer.writeVarInt(xp.coerceIn(0, 1_000_000))
         buffer.writeLong(chowcoins.coerceIn(0L, 1_000_000_000L))
         buffer.writeVarInt(progress.coerceAtLeast(0))
@@ -562,15 +562,15 @@ data class NpcBossBarPayload(
             )
 
             override fun encode(buffer: RegistryFriendlyByteBuf, value: NpcBossBarPayload) {
-                buffer.writeUtf(value.npcId.take(MAX_NPC_ID_LENGTH), MAX_NPC_ID_LENGTH)
-                buffer.writeUtf(value.name.take(MAX_NPC_NAME_LENGTH), MAX_NPC_NAME_LENGTH)
-                buffer.writeUtf(value.mode.take(MAX_NPC_BOSS_MODE_LENGTH), MAX_NPC_BOSS_MODE_LENGTH)
-                buffer.writeUtf(value.phaseName.take(MAX_NPC_BOSS_PHASE_LENGTH), MAX_NPC_BOSS_PHASE_LENGTH)
+                buffer.writeBoundedUtf(value.npcId, MAX_NPC_ID_LENGTH)
+                buffer.writeBoundedUtf(value.name, MAX_NPC_NAME_LENGTH)
+                buffer.writeBoundedUtf(value.mode, MAX_NPC_BOSS_MODE_LENGTH)
+                buffer.writeBoundedUtf(value.phaseName, MAX_NPC_BOSS_PHASE_LENGTH)
                 buffer.writeVarInt(value.phaseIndex.coerceIn(0, 32))
                 buffer.writeVarInt(value.phaseCount.coerceIn(1, 32))
                 buffer.writeFloat(value.health.coerceAtLeast(0.0f))
                 buffer.writeFloat(value.maxHealth.coerceAtLeast(1.0f))
-                buffer.writeUtf(value.musicId.take(MAX_NPC_BOSS_MUSIC_ID_LENGTH), MAX_NPC_BOSS_MUSIC_ID_LENGTH)
+                buffer.writeBoundedUtf(value.musicId, MAX_NPC_BOSS_MUSIC_ID_LENGTH)
                 buffer.writeFloat(value.musicVolume.coerceIn(0.0f, 1.0f))
                 buffer.writeFloat(value.musicPitch.coerceIn(0.25f, 4.0f))
                 buffer.writeVarInt(value.musicRepeatTicks.coerceIn(0, 20 * 60 * 10))
@@ -591,7 +591,7 @@ data class NpcBossBarClearPayload(
             override fun decode(buffer: RegistryFriendlyByteBuf): NpcBossBarClearPayload = NpcBossBarClearPayload(buffer.readUtf(MAX_NPC_ID_LENGTH))
 
             override fun encode(buffer: RegistryFriendlyByteBuf, value: NpcBossBarClearPayload) {
-                buffer.writeUtf(value.npcId.take(MAX_NPC_ID_LENGTH), MAX_NPC_ID_LENGTH)
+                buffer.writeBoundedUtf(value.npcId, MAX_NPC_ID_LENGTH)
             }
         }
     }
@@ -632,15 +632,15 @@ data class NpcFriendEntryPayload(
     val missionGoal: Int,
 ) {
     fun encode(buffer: RegistryFriendlyByteBuf) {
-        buffer.writeUtf(npcId.take(MAX_NPC_ID_LENGTH), MAX_NPC_ID_LENGTH)
-        buffer.writeUtf(name.take(MAX_NPC_NAME_LENGTH), MAX_NPC_NAME_LENGTH)
-        buffer.writeUtf(title.take(MAX_NPC_TITLE_LENGTH), MAX_NPC_TITLE_LENGTH)
+        buffer.writeBoundedUtf(npcId, MAX_NPC_ID_LENGTH)
+        buffer.writeBoundedUtf(name, MAX_NPC_NAME_LENGTH)
+        buffer.writeBoundedUtf(title, MAX_NPC_TITLE_LENGTH)
         buffer.writeVarInt(friendshipPoints.coerceIn(-1000, 1000))
         buffer.writeVarInt(friendshipLevel.coerceIn(-10, 10))
-        buffer.writeUtf(giftStatus.take(MAX_NPC_FRIEND_STATUS_LENGTH), MAX_NPC_FRIEND_STATUS_LENGTH)
-        buffer.writeUtf(shopStatus.take(MAX_NPC_FRIEND_STATUS_LENGTH), MAX_NPC_FRIEND_STATUS_LENGTH)
-        buffer.writeUtf(missionStatus.take(MAX_NPC_FRIEND_STATUS_LENGTH), MAX_NPC_FRIEND_STATUS_LENGTH)
-        buffer.writeUtf(aliveStatus.take(MAX_NPC_FRIEND_STATUS_LENGTH), MAX_NPC_FRIEND_STATUS_LENGTH)
+        buffer.writeBoundedUtf(giftStatus, MAX_NPC_FRIEND_STATUS_LENGTH)
+        buffer.writeBoundedUtf(shopStatus, MAX_NPC_FRIEND_STATUS_LENGTH)
+        buffer.writeBoundedUtf(missionStatus, MAX_NPC_FRIEND_STATUS_LENGTH)
+        buffer.writeBoundedUtf(aliveStatus, MAX_NPC_FRIEND_STATUS_LENGTH)
         buffer.writeVarInt(missionProgress.coerceAtLeast(0))
         buffer.writeVarInt(missionGoal.coerceAtLeast(0))
     }
@@ -660,4 +660,21 @@ data class NpcFriendEntryPayload(
             missionGoal = buffer.readVarInt(),
         )
     }
+}
+
+private fun RegistryFriendlyByteBuf.writeBoundedUtf(value: String, maxBytes: Int) {
+    writeUtf(value.truncateUtf8(maxBytes), maxBytes)
+}
+
+private fun String.truncateUtf8(maxBytes: Int): String {
+    if (toByteArray(Charsets.UTF_8).size <= maxBytes) return this
+    val builder = StringBuilder()
+    var used = 0
+    for (char in this) {
+        val bytes = char.toString().toByteArray(Charsets.UTF_8).size
+        if (used + bytes > maxBytes) break
+        builder.append(char)
+        used += bytes
+    }
+    return builder.toString()
 }
