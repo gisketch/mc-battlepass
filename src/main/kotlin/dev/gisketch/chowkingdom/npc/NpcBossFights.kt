@@ -400,6 +400,9 @@ object NpcBossFights {
         val isMovementMove = move.kind == NpcBossMoveKinds.ROLL || move.kind == NpcBossMoveKinds.DODGE
         if (!isMovementMove) {
             fight.lastMoveId = move.id
+            fight.usedAttackMoveIds += move.id
+            fight.recentAttackMoveIds.addLast(move.id)
+            while (fight.recentAttackMoveIds.size > RECENT_ATTACK_MOVE_MEMORY) fight.recentAttackMoveIds.removeFirst()
             if (fight.tacticPhase == BossTacticPhase.OFFENSE) {
                 fight.offenseAttacksRemaining = (fight.offenseAttacksRemaining - 1).coerceAtLeast(0)
             }
@@ -1153,11 +1156,7 @@ object NpcBossFights {
         } else {
             baseCandidates
         }
-        val candidates = if (fight.tacticPhase == BossTacticPhase.OFFENSE && offenseCandidates.size > 1 && fight.lastMoveId.isNotBlank()) {
-            offenseCandidates.filter { move -> move.id != fight.lastMoveId }.ifEmpty { offenseCandidates }
-        } else {
-            offenseCandidates
-        }
+        val candidates = attackRotationCandidates(fight, offenseCandidates)
         if (candidates.isEmpty()) return null
         val totalWeight = candidates.sumOf { move -> move.weight }.coerceAtLeast(1)
         var roll = entity.random.nextInt(totalWeight)
@@ -1166,6 +1165,23 @@ object NpcBossFights {
             if (roll < 0) return move
         }
         return candidates.last()
+    }
+
+    private fun attackRotationCandidates(fight: ActiveBossFight, candidates: List<NpcBossMoveDefinition>): List<NpcBossMoveDefinition> {
+        if (candidates.size <= 1) return candidates
+        val attackCandidates = candidates.filter { move -> move.kind != NpcBossMoveKinds.ROLL && move.kind != NpcBossMoveKinds.DODGE }
+        if (attackCandidates.size <= 1) {
+            return candidates.filter { move -> move.id != fight.lastMoveId }.ifEmpty { candidates }
+        }
+        val availableIds = attackCandidates.mapTo(linkedSetOf()) { move -> move.id }
+        if (availableIds.all { id -> id in fight.usedAttackMoveIds }) {
+            fight.usedAttackMoveIds.removeAll(availableIds)
+        }
+        val rotationPool = attackCandidates.filterNot { move -> move.id in fight.usedAttackMoveIds }.ifEmpty { attackCandidates }
+        return rotationPool
+            .filterNot { move -> move.id in fight.recentAttackMoveIds }
+            .ifEmpty { rotationPool.filter { move -> move.id != fight.lastMoveId } }
+            .ifEmpty { rotationPool }
     }
 
     private fun playMoveAnimation(entity: ChowNpcEntity, fight: ActiveBossFight, move: NpcBossMoveDefinition, forceRestart: Boolean = false) {
@@ -2070,6 +2086,10 @@ object NpcBossFights {
                 ItemStack.EMPTY,
                 ItemStack.EMPTY,
             )
+            "earth_wizard" -> NpcBossArmory(
+                ItemStack.EMPTY,
+                ItemStack.EMPTY,
+            )
             "priest" -> NpcBossArmory(
                 bossItemStack("paladins:holy_staff", ItemStack(Items.BLAZE_ROD)),
                 ItemStack.EMPTY,
@@ -2160,6 +2180,8 @@ object NpcBossFights {
         var shownBossBalloons: Int = 0,
         var activeMove: NpcBossMoveDefinition? = null,
         var lastMoveId: String = "",
+        val recentAttackMoveIds: ArrayDeque<String> = ArrayDeque(),
+        val usedAttackMoveIds: MutableSet<String> = linkedSetOf(),
         var npcIframeUntilTick: Int = 0,
         val firedHitTicks: MutableSet<Int> = mutableSetOf(),
         val moveCooldowns: MutableMap<String, Int> = linkedMapOf(),
@@ -2248,6 +2270,7 @@ object NpcBossFights {
     private const val RANGED_MIN_WIDTH = 1.5
     private const val ARROW_VFX_MIN_IMPACT_TICKS = 3
     private const val ARROW_VFX_STOPPED_SPEED_SQR = 0.0004
+    private const val RECENT_ATTACK_MOVE_MEMORY = 2
     private const val MAX_RECOVERY_HITS = 1
 
     private fun guardTauntDelay(entity: ChowNpcEntity, fight: ActiveBossFight): Int =

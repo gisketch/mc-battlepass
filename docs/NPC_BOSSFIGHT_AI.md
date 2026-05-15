@@ -15,7 +15,12 @@ Boss fights use PlayerAnimator clips only. Do not route boss fight chase, strafe
 - `combat_roll:roll`: guard dodge roll visual.
 - `spell_engine:archery_pull` / `spell_engine:archery_release`: archer draw and release visuals.
 - `spell_engine:one_handed_projectile_charge` / `spell_engine:one_handed_projectile_release`: wizard spell charge and release visuals.
+- `spell_engine:one_handed_throw_charge` / `spell_engine:one_handed_throw_release_instant`: empty-hand throw visuals for rock/projectile casts that need an actual arm swing.
+- `spell_engine:one_handed_projectile_side_charge` / `spell_engine:one_handed_projectile_side_release`: side-cast projectile visuals for caster variety.
 - `spell_engine:one_handed_healing_charge` / `spell_engine:one_handed_healing_release`: priest heal/barrier support visuals.
+- `more_rpg_classes:two_handed_ground_channeling` / `more_rpg_classes:two_handed_ground_release`: grounded earth wizard cast and release visuals.
+- `more_rpg_classes:one_hand_groundsmash` / `two_handed_jump_release`: active earth impact visuals for groundsmash and stone pillar attacks.
+- `forcemaster_rpg:stonehand_cast` / `forcemaster_rpg:burstcrack_cast` / `forcemaster_rpg:burstcrack_release`: empty-hand stone parry and ground-punch flavor visuals.
 
 ## Boss Armory
 
@@ -102,7 +107,9 @@ Live label: `NPC mode: offense` while the boss is in the aggressive tactic, othe
 - Wizard/Gandalf starts in offense at mid range. Phase 1 casts one readable spell at a time; phase 2 chains 2-3 spells.
 - Priest/Pope Leo starts in offense at mid range. Phase 1 mixes holy shocks, short AoE, and limited sustain; phase 2 casts faster, chains 2-3 moves, and keeps healing capped below the transition threshold.
 - Bard/Venti starts in offense at range. It duplicates Archer mechanics with real arrows, harp-crossbow clips, Bard spell ids, and music/star VFX.
+- Earth Wizard/Toph starts in offense at mid range. It stays grounded with empty hands, uses Terra stone projectiles, ground shockwaves, stone hazards, absorption, and Force Master stone-hand parry flavor.
 - During offense, prefer real melee/area attacks over roll moves and avoid repeating the last move when another legal attack is available.
+- Boss offense uses a per-fight attack rotation bag. Legal attacks are still selected randomly by weight, but a move is removed from the rotation after use until the currently available attack pool is exhausted, and the last two attacks are avoided when possible. This showcases more of each moveset without becoming a fixed scripted order.
 
 ### Attack
 
@@ -287,6 +294,14 @@ Bard neutral movement should hold range around 6-12 blocks:
 - Add Bard flavor through `starshots`, `vicious_mockery`, `magical_ballad`, and phase 2 `crescendo` move metadata, music-note/star trail particles, and Bard sounds.
 - No Bard melee, area, support, lute, or lyre moves are maintained in this version.
 
+Earth Wizard neutral movement should hold range around 4-10 blocks:
+
+- Use empty hands and grounded movement; `hover_height = 0.0`.
+- Use Terra spell ids for stone throw, stone spear, impale, earthquake, drip circle, shattering stone, and stone flesh.
+- Use `more_rpg_classes:stone_particle` / `stone_explosion`, earth magic sounds, throw/side-cast/punch/groundsmash clips, and ground release clips so Toph reads as earthbending instead of a static caster.
+- Borrow Force Master only for stone-hand parry, straight-punch spear release, stone jab, and burstcrack ground-punch flavor.
+- No sword, staff, axe, floating, teleport, combat roll, or melee weapon kit.
+
 ## Implementation Notes
 
 - Replace current neutral/telegraph-heavy loop with the simpler chase-attack-recovery-guard loop above.
@@ -310,6 +325,7 @@ Bard neutral movement should hold range around 6-12 blocks:
 - Bard phase 1 duplicates Archer shot timing with `starshot`, `mocking_shot`, and `ballad_shot`; phase 2 duplicates Archer 2-3 shot chains and unlocks `crescendo_volley`.
 - Venti uses Bard's archer-style health/damage tuning and equips `bards_rpg:aether_harp_crossbow` during the duel.
 - Berserker/Zagreus uses `simplyswords:ribboncleaver`, slow heavy two-handed attacks, long but bounded recovery windows, and Berserker RPG blood/rage/thunder/frost VFX. Phase 2 chains 2-3 heavy attacks and unlocks `rumbling_swing` and `nordic_storm`.
+- Earth Wizard/Toph uses empty hands with `main_hand = "none"` and `off_hand = "none"`. Phase 1 rotates through rock throw, side throw, punch spear, impale, earthquake, ground ripple, burstcrack, stone jab, and stone flesh. Phase 2 chains 2-3 casts and unlocks drip circle, stone pillars, and shattering stone pressure while staying grounded with normal non-teleport dodges.
 - Track a random guard-bait timeout between 60 and 120 ticks.
 - Keep the live status label aligned with these state names.
 - Keep this behavior inside the bossfight controller so future templates can swap the state graph without changing base NPC routines.

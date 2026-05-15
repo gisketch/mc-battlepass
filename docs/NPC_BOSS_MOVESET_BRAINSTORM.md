@@ -219,8 +219,15 @@ Earth options:
 - `elemental_wizards_rpg:terra_stone_spear`
 - `elemental_wizards_rpg:terra_impale`
 - `elemental_wizards_rpg:terra_drip_circle`
+- `elemental_wizards_rpg:improved_terra_drip_circle`
 - `elemental_wizards_rpg:terra_earthquake`
+- `elemental_wizards_rpg:terra_shattering_stone`
+- `elemental_wizards_rpg:terra_stone_flesh`
 - Common earth animation family: `more_rpg_classes:two_handed_ground_channeling`, `more_rpg_classes:two_handed_ground_release`
+- Active throw/impact clips: `spell_engine:one_handed_throw_charge`, `spell_engine:one_handed_throw_release_instant`, `spell_engine:one_handed_projectile_side_charge`, `spell_engine:one_handed_projectile_side_release`, `more_rpg_classes:one_hand_groundsmash`, `more_rpg_classes:two_handed_jump_release`
+- Force Master flavor clips: `forcemaster_rpg:stonehand_cast`, `forcemaster_rpg:straight_punch`, `forcemaster_rpg:one_handed_knuckle_attack_2`, `forcemaster_rpg:one_handed_knuckle_attack_4`, `forcemaster_rpg:burstcrack_cast`, `forcemaster_rpg:burstcrack_release`
+
+Implemented boss direction: `earth_wizard` is Toph's empty-hand grounded earthbender-style fight. It uses Terra stone throw/side throw/spear/impale/earthquake/ground ripple/drip circle/stone pillars/shattering stone/stone flesh metadata with stone particles, active throw and groundsmash clips, and Force Master stonehand/straight-punch/stone-jab/burstcrack visuals. Toph equips no weapon, does not float, does not teleport, and does not use a melee weapon kit.
 
 ### Vi - Forcemaster
 

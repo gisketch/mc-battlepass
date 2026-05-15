@@ -21,9 +21,11 @@ work_blocks = [
 
 [boss]
 enabled = true
-health = 90.0
-damage = 5.5
-template = "sword_user"
+health = 88.0
+damage = 3.2
+template = "earth_wizard"
+main_hand = "none"
+off_hand = "none"
 
 [boss.balloons]
 chase = ["The ground says you're running.", "Keep moving. I can still feel you.", "Your footsteps are loud."]

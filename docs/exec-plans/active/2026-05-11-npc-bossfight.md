@@ -27,6 +27,7 @@ Add and evolve an extensible NPC bossfight prototype using the current SmartBrai
 - Priest/Pope Leo has a templated two-phase support caster boss fight using PlayerAnimator-only Spell Engine healing clips, registry-backed Spell Engine / Paladins VFX ids, limited healing, and temporary virtual absorption.
 - Bard/Venti has a separate archer-style boss fight using real arrows, harp-crossbow PlayerAnimator clips, Bard spell ids, music-note/star VFX, and no melee/support/area moves.
 - Berserker/Zagreus has a separate slow heavy melee boss fight using `simplyswords:ribboncleaver`, bounded long recovery windows, and Berserker RPG blood/rage/thunder/frost VFX.
+- Earth Wizard/Toph has a separate empty-hand grounded earthbender-style boss fight using Terra spell ids, stone particles, ground-channel/release clips, Force Master stone-hand flavor, and no weapons, floating, teleport, or melee weapon kit.
 - Phase transitions pause combat and open the NPC dialog screen with animalese voice; they support an LLM-injected line with a configured fallback and do not use world chat.
 - The visible boss bar is the custom CKDM HUD bar using the 9-slice progress textures and client-side HP lerp.
 - Boss music is a templated sound-event hook on moveset phases; no third-party music assets are copied into the repo.
@@ -79,6 +80,8 @@ Add and evolve an extensible NPC bossfight prototype using the current SmartBrai
 - Bard boss fights use a separate `bard` moveset that duplicates Archer health, spacing, shot timing, phase chains, backstep, side roll, and real arrow mechanics. Bard flavor comes from `bards_rpg:aether_harp_crossbow`, `bards_rpg:harp_channel`/`harp_release`, `starshots`, `vicious_mockery`, `magical_ballad`, `crescendo`, music-note/star particles, and Bard sounds.
 - Bounty Hunter boss fights use a separate `bounty_hunter` moveset that upgrades Archer pressure without Invoker blink behavior. Aloy equips `archers:aether_longbow`, uses Deadeye spell ids, real-arrow trails/impacts, disabling shots, choking gas, infiltrator shot, non-teleport `alter_ego` sidestep, and phase-2 barrage. No Bounty Hunter boss move is melee in this version.
 - Only Arcane Wizard/Invoker uses teleport blink for offensive or guard dodge; all other boss dodges are normal movement steps.
+- Earth Wizard boss fights use a separate `earth_wizard` moveset. Toph uses empty hands, Terra spell metadata, visible stone projectile/area/hazard VFX, throw/side-cast/punch/groundsmash animations, Force Master stone-hand/burstcrack flavor, normal grounded sidesteps, and no sword/staff/teleport/floating behavior.
+- Boss move selection uses a per-fight random rotation bag: legal attacks still respect range/cooldown/phase/weight, but selected attacks are suppressed until the current available attack pool is exhausted and the last two attacks are avoided where possible.
 
 ## Progress Log
 
@@ -118,3 +121,5 @@ Add and evolve an extensible NPC bossfight prototype using the current SmartBrai
 - 2026-05-15: Added player-side post-result cleanup/protection so lingering burn or harmful boss debuffs cannot kill the duelist during defeat/victory dialog.
 - 2026-05-15: Added Bounty Hunter/Aloy as an Archer-plus real-arrow boss with `archers:aether_longbow`, Deadeye VFX/metadata, disabling arrows, choking gas hazard, infiltrator shot, phase-2 barrage, and no melee kit.
 - 2026-05-15: Nerfed Aloy's speed, chains, iframes, gas, barrage, and sniper shot; changed `alter_ego` to a non-teleport sidestep and locked teleport dodge runtime to Arcane Wizard/Invoker only.
+- 2026-05-15: Added Earth Wizard/Toph as an empty-hand grounded earthbender-style boss with Terra stone throw/spear/impale/earthquake/drip circle/shattering stone/stone flesh, Force Master stonehand/burstcrack VFX, normal sidestep dodge, and no weapon/floating/teleport kit.
+- 2026-05-15: Reworked boss attack selection to rotate randomly through available attacks instead of repeatedly favoring one move, and refreshed Toph with active throw/side-cast/punch/groundsmash animations plus extra AoE earth attacks.
