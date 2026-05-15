@@ -29,6 +29,12 @@ object ShieldNParryStaminaBridge {
         }
     }
 
+    fun consumeActiveParry(player: ServerPlayer): Boolean {
+        if (!hasActiveParry(player)) return false
+        clearActiveParry(player)
+        return true
+    }
+
     fun consumeSuccessfulParry(player: ServerPlayer, gameTime: Long): Boolean {
         if (!ModList.get().isLoaded("shieldnparry")) return false
         val api = api ?: return false

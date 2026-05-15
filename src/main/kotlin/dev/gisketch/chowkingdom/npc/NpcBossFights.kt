@@ -1,6 +1,9 @@
 package dev.gisketch.chowkingdom.npc
 
 import dev.gisketch.chowkingdom.ParrySoundFeature
+import dev.gisketch.chowkingdom.compat.ShieldNParryStaminaBridge
+import dev.gisketch.chowkingdom.compat.StaminaCompatConfig
+import dev.gisketch.chowkingdom.compat.UnifiedStaminaFeature
 import dev.gisketch.chowkingdom.snackbar.SnackbarNetwork
 import dev.gisketch.chowkingdom.snackbar.SnackbarNotification
 import dev.gisketch.chowkingdom.snackbar.SnackbarSounds
@@ -771,6 +774,7 @@ object NpcBossFights {
             return
         }
         playMoveImpactVfx(level, move, target.position().add(0.0, 1.0, 0.0), radius, SoundEvents.GENERIC_EXPLODE.value())
+        if (tryBossSpellParry(entity, target, fight, move, target.position().add(0.0, 1.0, 0.0), target.position().subtract(entity.position()))) return
         target.invulnerableTime = 0
         if (target.hurt(entity.damageSources().mobAttack(entity), phaseDamage(fight, move.damage))) {
             target.knockback(move.knockback, entity.x - target.x, entity.z - target.z)
@@ -932,6 +936,7 @@ object NpcBossFights {
             level.playSound(null, position.x, position.y, position.z, SoundEvents.PLAYER_ATTACK_WEAK, SoundSource.HOSTILE, 0.8f, 1.1f)
             return
         }
+        if (tryBossSpellParry(entity, target, fight, projectile.move, position, projectile.velocity)) return
         if (target.isBlocking) {
             entity.debugGoal = "${projectile.move.id}_shield_block"
             level.playSound(null, target.x, target.y, target.z, SoundEvents.SHIELD_BLOCK, SoundSource.PLAYERS, 0.9f, 1.0f)
@@ -974,6 +979,7 @@ object NpcBossFights {
             level.playSound(null, target.x, target.y, target.z, SoundEvents.PLAYER_ATTACK_WEAK, SoundSource.HOSTILE, 0.8f, 1.1f)
             return
         }
+        if (tryBossSpellParry(entity, target, fight, move, targetEye, direction)) return
         if (target.isBlocking) {
             entity.debugGoal = "${move.id}_shield_block"
             level.playSound(null, target.x, target.y, target.z, SoundEvents.SHIELD_BLOCK, SoundSource.PLAYERS, 0.9f, 1.0f)
@@ -1026,6 +1032,24 @@ object NpcBossFights {
         level.sendParticles(bossParticle(particleId, ParticleTypes.END_ROD), center.x, center.y, center.z, 54, radius * 0.5, 0.08, radius * 0.5, 0.02)
     }
 
+    private fun tryBossSpellParry(entity: ChowNpcEntity, target: ServerPlayer, fight: ActiveBossFight, move: NpcBossMoveDefinition, position: Vec3, direction: Vec3): Boolean {
+        if (!ShieldNParryStaminaBridge.consumeActiveParry(target)) return false
+        val level = entity.level() as? ServerLevel ?: return true
+        entity.debugGoal = "${move.id}_parried"
+        ParrySoundFeature.play(target, SoundSource.PLAYERS, 1.0f, 1.05f)
+        level.playSound(null, target.x, target.y, target.z, SoundEvents.SHIELD_BLOCK, SoundSource.PLAYERS, 0.9f, 1.15f)
+        val guardPos = target.getEyePosition().add(0.0, -0.25, 0.0)
+        level.sendParticles(ParticleTypes.CRIT, guardPos.x, guardPos.y, guardPos.z, 18, 0.26, 0.26, 0.26, 0.08)
+        level.sendParticles(ParticleTypes.ENCHANTED_HIT, position.x, position.y, position.z, 14, 0.18, 0.18, 0.18, 0.05)
+        val push = direction.takeIf { vector -> vector.horizontalDistanceSqr() > 0.0001 }?.normalize() ?: entity.position().subtract(target.position()).normalize()
+        target.knockback(move.knockback.coerceAtLeast(0.25) * 0.35, -push.x, -push.z)
+        target.hurtMarked = true
+        val config = StaminaCompatConfig.values()
+        if (config.enabled) UnifiedStaminaFeature.giveStamina(target, config.shieldNParrySuccessGain)
+        showBossBalloon(entity, target, fight, fight.balloons.parry, "spell_parried")
+        return true
+    }
+
     private fun tickBossHazards(entity: ChowNpcEntity, target: ServerPlayer, fight: ActiveBossFight) {
         val level = entity.level() as? ServerLevel ?: return
         val iterator = fight.areaHazards.iterator()
@@ -1047,6 +1071,7 @@ object NpcBossFights {
                 entity.debugGoal = "${hazard.move.id}_hazard_roll_whiff"
                 continue
             }
+            if (tryBossSpellParry(entity, target, fight, hazard.move, target.position().add(0.0, 0.8, 0.0), target.position().subtract(hazard.position))) continue
             applyMoveEffects(target, hazard.move)
             if (hazard.move.hazardDamage <= 0.0) continue
             target.invulnerableTime = 0
