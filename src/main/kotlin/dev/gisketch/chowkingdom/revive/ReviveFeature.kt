@@ -6,6 +6,7 @@ import dev.gisketch.chowkingdom.snackbar.SnackbarNetwork
 import dev.gisketch.chowkingdom.snackbar.SnackbarNotification
 import dev.gisketch.chowkingdom.snackbar.SnackbarSounds
 import dev.gisketch.chowkingdom.snackbar.SnackbarType
+import dev.gisketch.chowkingdom.npc.NpcBossFights
 import net.minecraft.ChatFormatting
 import net.minecraft.network.chat.Component
 import net.minecraft.server.MinecraftServer
@@ -215,6 +216,10 @@ object ReviveFeature {
         if (incapacitated.containsKey(player.uuid)) {
             event.isCanceled = true
             stabilizeIncapacitated(player)
+            return
+        }
+        if (NpcBossFights.handlePlayerDeath(player, event.source)) {
+            event.isCanceled = true
             return
         }
         event.isCanceled = true
@@ -799,8 +804,19 @@ object ReviveFeature {
         (expiresAtTick - server.tickCount).coerceAtLeast(0) * 50L
 
     private fun incapacitatedTitle(player: ServerPlayer, source: DamageSource): String {
-        val cause = incapacitatedCauseName(player, source)
-        return if (cause == null) "YOU GOT KILLED" else "YOU GOT KILLED BY ${cause.uppercase(Locale.ROOT)}"
+        val cause = incapacitatedCauseName(player, source) ?: return "YOU GOT KILLED"
+        val lower = cause.lowercase(Locale.ROOT)
+        return when (lower) {
+            "onfire", "on fire", "in fire", "lava", "hot floor" -> "YOU BURNED TO A CRISP"
+            "drown", "drowned" -> "YOU DROWNED"
+            "fall" -> "YOU HIT THE GROUND TOO HARD"
+            "starve", "starved" -> "YOU STARVED"
+            "wither" -> "YOU WITHERED AWAY"
+            "magic", "indirect magic" -> "YOU WERE OVERWHELMED BY MAGIC"
+            "freeze", "frozen" -> "YOU FROZE"
+            "explosion", "explosion player" -> "YOU WERE BLOWN UP"
+            else -> "YOU GOT KILLED BY ${humanizeCause(cause).uppercase(Locale.ROOT)}"
+        }
     }
 
     private fun incapacitatedCauseName(player: ServerPlayer, source: DamageSource): String? {
@@ -810,6 +826,14 @@ object ReviveFeature {
         if (entityName != null) return entityName
         val msgId = source.getMsgId().replace('_', ' ').replace('.', ' ').trim()
         return msgId.takeIf { it.isNotBlank() && !it.equals("generic", ignoreCase = true) }
+    }
+
+    private fun humanizeCause(cause: String): String = when (cause.lowercase(Locale.ROOT).replace("_", " ").replace(".", " ").trim()) {
+        "onfire", "on fire", "in fire" -> "fire"
+        "hot floor" -> "magma"
+        "indirect magic" -> "magic"
+        "explosion player" -> "an explosion"
+        else -> cause.replace('_', ' ').replace('.', ' ').trim()
     }
 
     private fun maxReviveDistanceSqr(): Double {

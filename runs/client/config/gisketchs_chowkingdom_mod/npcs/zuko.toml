@@ -21,9 +21,11 @@ work_blocks = [
 
 [boss]
 enabled = true
-health = 88.0
-damage = 5.5
-template = "sword_user"
+health = 84.0
+damage = 3.3
+template = "fire_wizard"
+main_hand = "none"
+off_hand = "none"
 
 [boss.balloons]
 chase = ["Face the flame.", "Running will not teach control.", "Breathe, then move."]

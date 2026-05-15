@@ -7,22 +7,27 @@ Add and evolve an extensible NPC bossfight prototype using the current SmartBrai
 ## Acceptance Criteria
 
 - `/npc fight` is OP-only and starts a temporary boss duel with the looked-at NPC.
-- Any NPC can be tested by default; `[boss]` can override health, damage, template, and duel-only `main_hand` / `off_hand` armory.
+- Any NPC can be tested by default; `[boss]` can override health, damage, template, and duel-only `main_hand` / `off_hand` armory. Effective boss HP is doubled at fight start.
 - The fight is non-lethal: boss health reaches zero, the NPC restores, and a close-only defeat dialog opens.
 - The duel is isolated: third parties cannot damage either participant, and participants cannot damage outside targets while active.
 - Right-click NPC interaction is blocked while a bossfight is active; duelists get no warning, spectators get a snackbar.
 - The player sees a live `NPC mode` label while the fight is active.
-- The NPC shows configured world-space bossfight balloons for guard taunts, landed boss hits, accepted damage, guard reactions, parries, and defeat.
+- The NPC shows configured world-space bossfight balloons for landed boss hits, accepted damage, legacy guard events, victory, and defeat.
 - Bossfight balloons are probabilistic barks, not guaranteed messages; current chance is 30% per trigger.
 - The first bossfight bark is guaranteed so a duel cannot be silent just because early 30% rolls miss.
-- A boss hit that would down the player skips revive, ends the duel as an NPC victory, fully heals the player, and opens an NPC victory dialog.
+- Bossfight lethal damage skips revive, including lingering/entityless boss-applied damage such as fire ticks. It ends the duel as an NPC victory, fully heals the player, and opens an NPC victory dialog.
 - After a boss result dialog opens, the NPC stays protected briefly but can be right-clicked for normal talk again; the duelist also clears boss-applied danger effects and gets short result protection so lingering spell damage cannot kill them during dialog.
-- The V1 `sword_user` loop has chase, attack, strafing recovery, guard bait, guard react, and parry behavior.
-- Warrior has templated health phases: phase 1 is more defensive, phase 2 starts at half health with faster movement, higher damage, and longer offense chains.
+- The V1 boss loop has chase, attack, strafing recovery, and immediate return to offense; it does not wait in defensive guard loops after normal recovery.
+- Rapid player hits during boss attack/recovery build anti-spam pressure. Pressure or the recovery hit cap can trigger one short parry/roll/dodge combo breaker, then offense resumes.
+- Warrior has templated health phases: phase 1 is offensive and readable, phase 2 starts at half health with faster movement, higher damage, and longer offense chains.
 - Rogue/Ezio has a templated two-phase dual-wield boss fight using PlayerAnimator-only Better Combat and Spell Engine clips.
 - Archer/Huntress Wizard has a templated two-phase ranged boss fight using PlayerAnimator-only Spell Engine archery clips and real arrow projectiles.
 - Bounty Hunter/Aloy has a separate Archer-plus ranged boss fight using `archers:aether_longbow`, real arrows, Deadeye spell ids, visible impact VFX, disabling shots, choking gas, non-teleport sidestep, and no melee moves.
 - Wizard/Gandalf has a templated two-phase starter caster boss fight using PlayerAnimator-only Spell Engine charge/release clips and server-ticked magic projectiles.
+- Water Wizard/Katara has a separate empty-hand waterbender boss fight using Water Wizard spell ids, flowing movement, water whip/splash/waterball/ice bind pressure, capped springwater support, phase-2 hydro beam/avatar burst, and no weapon, hover, or teleport.
+- Fire Wizard/Zuko has a separate empty-hand fire boss fight using aggressive running, normal rolls/flame steps, fire projectiles, close flame area pressure, phase-2 beam/hazard pressure, and no weapon or teleport.
+- Wind Wizard/Aang has a separate empty-hand airbender boss fight using fast natural movement, Wind Wizard spell ids, air cutter/gust/updraft/avatar pressure, normal air roll/step dodges, heavy wind VFX, and no weapon, hover, or teleport.
+- Forcemaster/Vi has a separate dual-knuckle boxer boss fight using fast close-range punch chains, body breaker Weakness, burstcrack, stonehand guard/absorption, phase-2 belial smashing and asal, heavy Force Master VFX, and no sword, staff, ranged caster kit, hover, or teleport.
 - Arcane Wizard/Invoker has a separate empty-hand floating caster boss fight using arcane projectile, beam, blink teleport, and ward-parry VFX; it has no melee, staff, sword, or combat roll.
 - Priest/Pope Leo has a templated two-phase support caster boss fight using PlayerAnimator-only Spell Engine healing clips, registry-backed Spell Engine / Paladins VFX ids, limited healing, and temporary virtual absorption.
 - Bard/Venti has a separate archer-style boss fight using real arrows, harp-crossbow PlayerAnimator clips, Bard spell ids, music-note/star VFX, and no melee/support/area moves.
@@ -58,21 +63,24 @@ Add and evolve an extensible NPC bossfight prototype using the current SmartBrai
 
 - V1 uses a temporary duel instead of real NPC death.
 - OP-only command allows every NPC to use default boss settings.
-- Current target loop is documented in `docs/NPC_BOSSFIGHT_AI.md`: offense chains attacks, timed recovery opens punish, defense guard baits a response, then offense resumes.
-- Guard should be a reactive block/parry state, not a constant standing guard pose.
-- Anti-spam rule: recovery accepts hits until the configured timed window expires or `recovery_hits_allowed` is reached. Warrior V1 uses a 4-hit cap; extra recovery swings and guard-bait hits become guard response punishment.
+- Current target loop is documented in `docs/NPC_BOSSFIGHT_AI.md`: offense chains attacks, timed recovery opens punish, then offense resumes. Normal boss flow should not wait in guard bait.
+- Guard states remain loadable legacy/reactive states, not the default runtime rhythm.
+- Anti-spam rule: recovery accepts hits until the configured timed window expires or `recovery_hits_allowed` is reached. Extra recovery swings after the cap are blocked without converting into a defensive guard loop.
 - Bossfight damage isolation blocks entity-caused third-party damage but leaves environment damage to the player alone.
 - Bossfight bark text belongs in per-NPC `[boss.balloons]` data, not in the state machine.
 - Bossfight is non-lethal in both directions: player victory defeats virtual boss health; NPC victory intercepts would-be lethal player damage before revive.
 - Result dialogs are non-lethal too: player win/loss cleanup clears fire, freeze, fall damage, and harmful boss debuffs, then blocks lingering damage for a short window.
 - Boss moveset `phases` own health thresholds, damage/speed multipliers, offense-chain tuning, transition dialogue, and optional music sound ids.
+- Boss phases are all offensive. Phase 2 makes bosses faster, stronger, and better chained; it is not the first offensive phase.
+- Attack-phase boss damage intake uses a timing curve: windup `0%`, active/release `25%`, late `50%`, capped by `attack_phase_damage_multiplier`; full damage belongs in recovery punish windows. Reactive guard pressure is tuned by `attack_*_pressure_multiplier`, `anti_spam_pressure_threshold`, and `anti_spam_reactive_guard_cooldown_ticks`.
 - Keep music implementation asset-neutral: configs reference sound event ids only, and the mod owner supplies actual audio/assets.
 - Boss armory is cosmetic and per-NPC: `main_hand` / `off_hand` equip during the duel, while moveset damage and phase multipliers still own combat damage.
-- Duelist hits during boss `ATTACK` reduce virtual boss health without interrupting the active attack animation or scheduled hit ticks; phase transition waits until the attack ends.
+- Duelist hits during boss `ATTACK` use timing-curve chip damage without interrupting the active attack animation or scheduled hit ticks; phase transition waits until the attack ends.
 - Finn V1 uses `simplyswords:diamond_longsword`; Ezio V1 uses dual `simplyswords:iron_rapier`.
 - Projectile boss moves spawn real vanilla arrows at release ticks. `archer` uses `spell_engine:archery_pull`/`spell_engine:archery_release`, and Huntress Wizard equips `archers:composite_longbow`.
 - Tracked real-arrow boss moves may attach VFX, status effects, and impact hazards after arrow impact/despawn detection; vanilla arrow damage, collision, shield behavior, and dodge counterplay remain intact.
 - Magic projectile boss moves use particle travel, block collision, shield/roll counterplay, impact radius, and optional status effects. `wizard` uses arcane, fire, and frost starter spells, and Gandalf equips `wizards:staff_wizard`.
+- Fire Wizard boss fights use a separate `fire_wizard` moveset. Zuko uses empty hands, aggressive running/strafe pressure, normal roll/flame-step dodges, fire spell metadata, visible flame projectile/beam/area/hazard VFX, and no weapon or teleport behavior.
 - Beam boss moves trace line of sight, draw registry-backed line VFX, respect shield/roll counterplay, and can apply repeated small hits during a channel.
 - Floating caster movesets use `hover_height`, no-gravity during the duel, and gravity restoration on fight end. Empty hand armory uses `none` / `empty` / `air`.
 - Boss caster VFX fields are registry-backed and asset-neutral: particle/sound ids from Spell Engine, Wizards, Paladins, or other RPG mods are reused when loaded and safely fall back when absent.
@@ -81,6 +89,7 @@ Add and evolve an extensible NPC bossfight prototype using the current SmartBrai
 - Bounty Hunter boss fights use a separate `bounty_hunter` moveset that upgrades Archer pressure without Invoker blink behavior. Aloy equips `archers:aether_longbow`, uses Deadeye spell ids, real-arrow trails/impacts, disabling shots, choking gas, infiltrator shot, non-teleport `alter_ego` sidestep, and phase-2 barrage. No Bounty Hunter boss move is melee in this version.
 - Only Arcane Wizard/Invoker uses teleport blink for offensive or guard dodge; all other boss dodges are normal movement steps.
 - Earth Wizard boss fights use a separate `earth_wizard` moveset. Toph uses empty hands, Terra spell metadata, visible stone projectile/area/hazard VFX, throw/side-cast/punch/groundsmash animations, Force Master stone-hand/burstcrack flavor, normal grounded sidesteps, and no sword/staff/teleport/floating behavior.
+- Forcemaster boss fights use a separate `forcemaster` moveset. Vi equips dual `forcemaster_rpg:unique_knuckle_1` / `unique_knuckle_0`, uses fast close-range boxer chains, body breaker Weakness, burstcrack, stonehand guard/absorption, phase-2 belial smashing and asal, visible Force Master punch/stone/rage VFX, and no sword/staff/ranged caster/hover/teleport behavior.
 - Boss move selection uses a per-fight random rotation bag: legal attacks still respect range/cooldown/phase/weight, but selected attacks are suppressed until the current available attack pool is exhausted and the last two attacks are avoided where possible.
 
 ## Progress Log
@@ -123,3 +132,11 @@ Add and evolve an extensible NPC bossfight prototype using the current SmartBrai
 - 2026-05-15: Nerfed Aloy's speed, chains, iframes, gas, barrage, and sniper shot; changed `alter_ego` to a non-teleport sidestep and locked teleport dodge runtime to Arcane Wizard/Invoker only.
 - 2026-05-15: Added Earth Wizard/Toph as an empty-hand grounded earthbender-style boss with Terra stone throw/spear/impale/earthquake/drip circle/shattering stone/stone flesh, Force Master stonehand/burstcrack VFX, normal sidestep dodge, and no weapon/floating/teleport kit.
 - 2026-05-15: Reworked boss attack selection to rotate randomly through available attacks instead of repeatedly favoring one move, and refreshed Toph with active throw/side-cast/punch/groundsmash animations plus extra AoE earth attacks.
+- 2026-05-15: Added Fire Wizard/Zuko as an empty-hand aggressive fire boss with fire projectiles, flame punches/sweeps, phase-2 dragon breath/fire wall/meteor pressure, normal roll/flame-step movement, and no weapon or teleport.
+- 2026-05-15: Added Wind Wizard/Aang as an empty-hand fast airbender boss with air cutters, gusts, phase-2 updraft/avatar pressure, air roll/step movement, visible wind particles, and no weapon, hover, or teleport.
+- 2026-05-15: Added Water Wizard/Katara as an empty-hand flowing waterbender boss with water whip, splash, waterball, ice bind, capped springwater support, phase-2 hydro beam/avatar burst, and no weapon, hover, or teleport.
+- 2026-05-15: Changed normal boss flow to all-offense: recovery returns to offense, phase 2 only increases speed/damage/chains, and recovery hit caps no longer convert into defensive guard bait.
+- 2026-05-15: Added anti-spam reactive guard pressure for all bosses: attack-phase hits deal reduced virtual boss damage, rapid attack/recovery hits build pressure, and pressure/caps can trigger one short parry/roll/dodge before returning to offense.
+- 2026-05-15: Rebalanced attack-phase punish windows into timing-curve chip damage and doubled effective boss HP for normal and debug boss fights.
+- 2026-05-15: Fixed bossfight lethal lingering damage entering revive by routing any active-duel player death through NPC victory first, and humanized revive cause titles so raw ids like `ONFIRE` do not render.
+- 2026-05-15: Added Forcemaster/Vi as a dual-knuckle aggressive boxer boss with jab/cross, hook chain, straight punch, body breaker, burstcrack, stonehand guard, phase-2 belial smashing/asal, and no sword/staff/ranged caster/hover/teleport kit.

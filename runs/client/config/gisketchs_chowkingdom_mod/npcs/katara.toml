@@ -21,9 +21,11 @@ work_blocks = [
 
 [boss]
 enabled = true
-health = 85.0
-damage = 4.5
-template = "sword_user"
+health = 90.0
+damage = 3.0
+template = "water_wizard"
+main_hand = "none"
+off_hand = "none"
 
 [boss.balloons]
 chase = ["Flow with it, {player}.", "Do not fight the current. Move with it.", "The tide pulls. Resist or ride.", "Every step ripples.", "Water remembers your path.", "You cannot outrun the river.", "Flow faster. I am right behind.", "The current shapes all movement.", "Your wake tells a story.", "Adapt. The water already has."]

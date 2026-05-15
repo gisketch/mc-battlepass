@@ -20,7 +20,7 @@ Boss fights use PlayerAnimator clips only. Do not route boss fight chase, strafe
 - `spell_engine:one_handed_healing_charge` / `spell_engine:one_handed_healing_release`: priest heal/barrier support visuals.
 - `more_rpg_classes:two_handed_ground_channeling` / `more_rpg_classes:two_handed_ground_release`: grounded earth wizard cast and release visuals.
 - `more_rpg_classes:one_hand_groundsmash` / `two_handed_jump_release`: active earth impact visuals for groundsmash and stone pillar attacks.
-- `forcemaster_rpg:stonehand_cast` / `forcemaster_rpg:burstcrack_cast` / `forcemaster_rpg:burstcrack_release`: empty-hand stone parry and ground-punch flavor visuals.
+- `forcemaster_rpg:stonehand_cast` / `burstcrack_cast` / `burstcrack_release` / `straight_punch` / `fist_rush` / `asal_cast` / `asal_release` / `one_handed_knuckle_attack_1-4`: Force Master stone parry, boxer punches, rush, finisher, and ground-punch visuals.
 
 ## Boss Armory
 
@@ -33,10 +33,10 @@ Boss armory is cosmetic for combat math; moveset damage and phase multipliers st
 
 ## Template Phases
 
-Boss movesets can define ordered `phases`. The active phase is selected from `starts_at_health_ratio`; warrior, rogue, archer, wizard, and priest use phase 1 from full health and phase 2 at `0.5` health.
+Boss movesets can define ordered `phases`. The active phase is selected from `starts_at_health_ratio`; warrior, rogue, archer, wizard, fire_wizard, forcemaster, priest, and newer specialist bosses use phase 1 from full health and phase 2 at `0.5` health.
 
-- Phase 1 is defensive: normal damage/speed and a 1-attack offense budget before returning to recovery and guard.
-- Phase 2 starts at half health: higher `damage_multiplier`, higher `speed_multiplier`, and a larger offense chain budget.
+- Phase 1 is offensive: bosses chase, cast, shoot, or swing immediately, then recover and resume offense.
+- Phase 2 starts at half health: higher `damage_multiplier`, higher `speed_multiplier`, and a larger offense chain budget. Phase 2 does not switch the boss from defense to offense; it only makes the existing pressure faster and harder.
 - A phase can define `transition_llm_prompt` plus `transition_fallback`. When a health threshold advances, combat pauses, the local NPC dialog screen opens with animalese voice, and the boss resumes offense when the dialog closes. No phase-transition line is sent through world chat or boss balloons.
 - A phase can define `music_id`, `music_volume`, `music_pitch`, and `music_repeat_ticks`. These are sound-event hooks only; boss music assets are supplied by the modpack/mod owner. Warrior V1 references Cataclysm music sound events when that mod is loaded.
 
@@ -71,21 +71,19 @@ The `support` move kind covers priest-style self sustain and barriers:
 
 ## Loop
 
-The V1 loop has moveset template phases plus two runtime tactics:
+The V1 loop has moveset template phases plus an all-offense runtime tactic:
 
 ```text
 OFFENSE: CHASE/OFFENSE -> ATTACK -> SHORT_CHAIN_RECOVERY -> ATTACK
                                       |                      |
                                       +-- repeat until the offense chain budget is spent
 
-OFFENSE END -> TIMED_RECOVERY -> DEFENSE/GUARD_MODE
+OFFENSE END -> TIMED_RECOVERY -> OFFENSE
                       |
                       +-- accepted recovery hits until time expires or hit cap is reached
+                      +-- spam/cap pressure can trigger short PARRY/ROLL/DODGE -> OFFENSE
 
 SUPPORT MOVE -> HEAL/BARRIER VFX -> TIMED_RECOVERY
-
-DEFENSE: GUARD_MODE -- player attacks guard --> random PARRY or ROLL or DODGE -> OFFENSE
-DEFENSE: GUARD_MODE -- no hit in 3-6s --> OFFENSE
 
 PHASE THRESHOLD -> NPC_DIALOGUE_PAUSE -> OFFENSE
 ```
@@ -105,6 +103,9 @@ Live label: `NPC mode: offense` while the boss is in the aggressive tactic, othe
 - Archer/Huntress Wizard starts in offense at range. Phase 1 fires one readable shot at a time; phase 2 chains 2-3 shots and unlocks volley.
 - Bounty Hunter/Aloy starts in offense at longer range. It is Archer-plus but punishable: real-arrow shots, Deadeye spell ids, impact debuffs, choking gas, phase-2 2-3 shot chains, and smoky non-teleport `alter_ego` sidesteps.
 - Wizard/Gandalf starts in offense at mid range. Phase 1 casts one readable spell at a time; phase 2 chains 2-3 spells.
+- Water Wizard/Katara starts in offense at mid range. It stays empty-handed and grounded, flows around the player, dodges without teleport, and rotates water whip, splash, waterball, ice bind, phase-2 hydro beam, springwater, and elemental avatar pressure.
+- Fire Wizard/Zuko starts in offense at mid range. It stays empty-handed, runs aggressively left/right or straight in, rolls/steps without teleport, and rotates fire jab, fire blast, fireball, scorch, flame sweep, dragon breath, fire wall, and fire meteor pressure.
+- Wind Wizard/Aang starts in offense at mid range. It stays empty-handed and grounded, runs constantly, rolls/air-steps without teleport, and rotates air cutter, double cutter, gust, spiral gust, phase-2 updraft, avatar current, and avatar burst pressure.
 - Priest/Pope Leo starts in offense at mid range. Phase 1 mixes holy shocks, short AoE, and limited sustain; phase 2 casts faster, chains 2-3 moves, and keeps healing capped below the transition threshold.
 - Bard/Venti starts in offense at range. It duplicates Archer mechanics with real arrows, harp-crossbow clips, Bard spell ids, and music/star VFX.
 - Earth Wizard/Toph starts in offense at mid range. It stays grounded with empty hands, uses Terra stone projectiles, ground shockwaves, stone hazards, absorption, and Force Master stone-hand parry flavor.
@@ -121,9 +122,12 @@ Live label: `NPC mode: attacking`
 - Damage only if range and forward cone pass.
 - Projectile attacks spawn arrows on the authored hit tick, then use real arrow travel for counterplay.
 - Support moves apply their heal/barrier on the authored hit tick, then recover.
+- Player hits during attack use a timing curve and build anti-spam pressure. Windup hits deal `0%` virtual boss damage and build pressure hard, active/release hits deal `25%`, and late attack hits deal `50%`. The boss attack animation and scheduled hit ticks continue.
+- If attack-phase pressure reaches the moveset threshold, queue a short reactive guard response after the current attack finishes.
 - After the attack clip ends, enter `RECOVERY`.
+- If a reactive guard response is queued, start PARRY/ROLL/DODGE instead of normal recovery.
 - If offense still has attacks left, use `offense_chain_recovery_ticks` as a short bridge and then return to offense.
-- If offense is spent, use the move's normal `recovery_ticks`, then enter defense guard.
+- If offense is spent, use the move's normal `recovery_ticks`, then resume offense.
 
 ### Recovery
 
@@ -138,14 +142,15 @@ Live label: `NPC mode: recovery`
   - Plays the PlayerAnimator hurt/dodge substitute.
   - Applies a small knockback to the NPC.
   - Increments `recovery_hits_taken`.
-- Recovery hits are accepted until `recovery_hits_allowed` is reached. Warrior, rogue, archer, bounty_hunter, wizard, priest, and bard V1 use a 4-hit cap.
-- Any extra player swing after the cap immediately converts into the guard response.
-- When the hit cap is reached, enter `GUARD_MODE` after the hurt reaction.
+- Recovery hits are accepted until `recovery_hits_allowed` is reached. Warrior, rogue, archer, bounty_hunter, wizard, priest, and bard V1 use a 4-hit cap; fast benders such as fire_wizard and wind_wizard plus close-pressure forcemaster use a tighter 3-hit cap.
+- Recovery hits deal full virtual boss damage and build anti-spam pressure.
+- When anti-spam pressure or the recovery hit cap reaches the moveset threshold, trigger one short PARRY/ROLL/DODGE response if the reactive guard cooldown is ready.
+- Any extra player swing after the cap is blocked. It can trigger the same short reactive guard response, but never starts a long defensive guard loop.
 - If chain recovery times out while offense still has attacks left, return to offense.
-- If final recovery times out before the hit cap, enter `GUARD_MODE`.
+- If final recovery times out before the hit cap, resume offense.
 - If a health threshold advances the moveset phase during recovery, combat pauses immediately for the transition NPC dialog, then resumes in offense.
 
-Attack-phase hits reduce virtual boss health but do not interrupt the current attack animation or scheduled hit ticks. If a health threshold is crossed during an attack, the phase transition waits until that attack finishes.
+Attack-phase hits can reduce virtual boss health, but only by the current attack timing multiplier, and they do not interrupt the current attack animation or scheduled hit ticks. If a health threshold is crossed during an attack, the phase transition waits until that attack finishes.
 
 ### Phase Dialogue
 
@@ -161,6 +166,7 @@ Live label: `NPC mode: dialogue`
 
 Live label: `NPC mode: guard`
 
+- Guard mode is a legacy/reactive state for compatibility. The default boss loop no longer waits in it after normal recovery.
 - Base movement is still slower lock-on strafing with the PlayerAnimator ready pose.
 - Keep lock-on facing.
 - Strafe left or right around the player.
@@ -173,6 +179,7 @@ Live label: `NPC mode: guard`
 
 Live label: `NPC mode: parry`, `NPC mode: rolling`, or `NPC mode: dodging`
 
+- Reactive guard is a short anti-spam combo breaker, not a defensive phase.
 - Cancel incoming boss damage.
 - Play a block sound/particles.
 - 1/3 chance: fast PlayerAnimator slash counter.
@@ -210,15 +217,16 @@ Live label: `NPC mode: dodging`
 ## Damage Rules
 
 - Boss health remains virtual; do not allow real NPC death.
+- Effective boss HP is doubled at fight start for normal and debug boss fights.
 - When a duel result dialog is open, keep the NPC protected from damage so late player hits cannot kill the restored entity.
 - When a duel result dialog opens, clear the duelist's boss-applied danger state: fire, freeze, fall damage, Poison, Wither, Slowness, Weakness, and Mining Fatigue. Give the duelist brief result protection so lingering boss spell damage cannot kill them during the dialog.
 - Only the duel player can reduce virtual boss health.
-- Player damage is accepted during `RECOVERY` only.
+- Player damage is accepted during `ATTACK` and `RECOVERY`. Attack-phase hits are scaled by the attack timing curve and capped by `attack_phase_damage_multiplier`; recovery hits deal full accepted damage.
 - Temporary boss absorption from support moves is consumed before virtual boss health.
 - Player damage during `GUARD_MODE`, `GUARD_REACT`, `GUARD_ROLL`, `GUARD_DODGE`, or `PARRY` is blocked and answered by parry, roll, or dodge flow.
 - Player damage during `PHASE_DIALOGUE` is blocked silently while the fight is paused.
-- Player damage after the configured recovery hit cap is also blocked and answered by parry, roll, or dodge flow.
-- Player damage during `CHASE` or `ATTACK` should be ignored for V1 unless explicitly opened later.
+- Player damage after the configured recovery hit cap is blocked and may trigger a short reactive guard response if the cooldown is ready.
+- Player damage during `CHASE` is blocked.
 - Third-party damage into either participant stays blocked.
 - Fight participants cannot damage outside targets.
 - If a boss hit would reduce the duelist to death/incapacitation, cancel that damage before the revive system, end the fight as an NPC victory, restore the player to full health, and open a close-only NPC victory dialog.
@@ -228,8 +236,7 @@ Live label: `NPC mode: dodging`
 Boss barks are data-driven from each NPC's `[boss.balloons]` block:
 
 - `chase`, `attack`, `recovery`, `taunt`, and `parry` fire when the live phase label changes.
-- `taunt` also repeats during guard bait on a short random cooldown.
-- `guard_react` fires when the player hits the guard bait.
+- `taunt` and `guard_react` remain supported for legacy guard states, but the default all-offense loop does not wait in guard bait.
 - `hit_player` fires when the boss attack lands.
 - `took_damage` fires when the player lands an accepted recovery punish hit.
 - `victory` fires when the NPC wins by landing a would-be lethal hit.
@@ -304,8 +311,9 @@ Earth Wizard neutral movement should hold range around 4-10 blocks:
 
 ## Implementation Notes
 
-- Replace current neutral/telegraph-heavy loop with the simpler chase-attack-recovery-guard loop above.
-- Moveset phases tune health thresholds, damage, speed, offense chain size, transition dialogue, and music hooks. Runtime tactics still alternate between offense and defense.
+- Replace the old neutral/telegraph-heavy loop with the simpler chase-attack-recovery-offense loop above.
+- Moveset phases tune health thresholds, damage, speed, offense chain size, transition dialogue, and music hooks. Runtime tactics stay offensive in every phase.
+- Moveset anti-spam knobs tune `attack_phase_damage_multiplier`, `attack_windup_damage_multiplier`, `attack_active_damage_multiplier`, `attack_late_damage_multiplier`, `attack_windup_pressure_multiplier`, `attack_active_pressure_multiplier`, `anti_spam_pressure_threshold`, and `anti_spam_reactive_guard_cooldown_ticks`. Defaults make attack-phase trades much weaker than recovery punishes and let rapid spam trigger one short parry/roll/dodge response.
 - Phase transition dialogue is local NPC dialog only. It uses animalese and can use LLM, but it should not emit player-visible world chat or boss balloons.
 - Guard response should be reactive: random fast counter slash, side roll with iframes, or Spell Engine dodge with iframes.
 - Track per-recovery hit count in bossfight state. Warrior V1 cap is 4.
@@ -319,6 +327,10 @@ Earth Wizard neutral movement should hold range around 4-10 blocks:
 - Huntress Wizard uses the archer moveset and equips `archers:composite_longbow` during the duel.
 - Wizard phase 1 uses `spell_engine:one_handed_projectile_charge`/`spell_engine:one_handed_projectile_release` with `wizards:arcane_blast`, `wizards:fire_blast`, and `wizards:frostbolt` magic projectiles. Wizard spell visuals reuse Spell Engine particle/sound ids for arcane, fire, frost projectile travel, release, and impact when available. Phase 2 uses `damage_multiplier = 1.18`, `speed_multiplier = 1.18`, `offense_chain_min = 2`, `offense_chain_random = 1`, and shorter chain recovery.
 - Gandalf uses the wizard moveset and equips `wizards:staff_wizard` during the duel.
+- Water Wizard/Katara uses empty hands with `main_hand = "none"` and `off_hand = "none"`. Phase 1 uses `damage_multiplier = 1.0`, `speed_multiplier = 1.08`, `offense_chain_min = 2`, `offense_chain_random = 1`, and rotates water whip, aqua splash, waterball, ice bind, springwater, and water step. Phase 2 uses `damage_multiplier = 1.14`, `speed_multiplier = 1.22`, `offense_chain_min = 3`, `offense_chain_random = 1`, and unlocks hydro beam plus elemental avatar burst. Springwater has only one capped heal per phase and small absorption so Katara stays aggressive instead of stalling.
+- Fire Wizard/Zuko uses empty hands with `main_hand = "none"` and `off_hand = "none"`. Phase 1 runs aggressively and rotates close fire punches, mid-range fire projectiles, and flame sweeps. Phase 2 uses `damage_multiplier = 1.16`, `speed_multiplier = 1.28`, `offense_chain_min = 2`, `offense_chain_random = 1`, and unlocks dragon breath, fire wall, and meteor pressure. It may roll or flame-step, but it never teleports.
+- Wind Wizard/Aang uses empty hands with `main_hand = "none"` and `off_hand = "none"`. Phase 1 uses `damage_multiplier = 1.0`, `speed_multiplier = 1.28`, `offense_chain_min = 2`, `offense_chain_random = 1`, and rotates air cutter, double air cutter, wind gust, spiral gust, air roll, and air step. Phase 2 uses `damage_multiplier = 1.12`, `speed_multiplier = 1.45`, `offense_chain_min = 3`, `offense_chain_random = 1`, and unlocks improved updraft, avatar current absorption, and avatar burst. It stays grounded, moves naturally while chasing/strafing/recovering, and never teleports or equips a weapon.
+- Forcemaster/Vi uses dual `forcemaster_rpg:unique_knuckle_1` / `unique_knuckle_0` armory. Phase 1 uses `damage_multiplier = 1.0`, `speed_multiplier = 1.22`, `offense_chain_min = 3`, `offense_chain_random = 1`, and rotates jab/cross, hook chain, straight punch, body breaker, burstcrack, stonehand, weave step, and pressure step. Phase 2 uses `damage_multiplier = 1.16`, `speed_multiplier = 1.38`, `offense_chain_min = 4`, `offense_chain_random = 2`, and unlocks belial smashing plus asal. It is close-range boxer pressure with no sword, staff, ranged caster kit, hover, or teleport.
 - Arcane Wizard/Invoker is an empty-hand floating caster using `wizards:arcane_bolt`, `wizards:arcane_blast`, phase-2 `wizards:arcane_missile`, phase-2 `wizards:arcane_beam`, and `wizards:arcane_blink`. It has no melee, no held staff, no weapon parry, and no combat-roll move; guard dodge uses blink teleport effects.
 - Priest phase 1 uses `paladins:holy_shock`, `paladins:judgement`, limited self-heal, and absorption support with Spell Engine healing clips. Phase 2 uses `damage_multiplier = 1.1`, `speed_multiplier = 1.12`, `offense_chain_min = 2`, `offense_chain_random = 1`, and healing that cannot restore above roughly 45% health.
 - Pope Leo uses the priest moveset and equips `paladins:holy_staff` during the duel.
@@ -326,6 +338,6 @@ Earth Wizard neutral movement should hold range around 4-10 blocks:
 - Venti uses Bard's archer-style health/damage tuning and equips `bards_rpg:aether_harp_crossbow` during the duel.
 - Berserker/Zagreus uses `simplyswords:ribboncleaver`, slow heavy two-handed attacks, long but bounded recovery windows, and Berserker RPG blood/rage/thunder/frost VFX. Phase 2 chains 2-3 heavy attacks and unlocks `rumbling_swing` and `nordic_storm`.
 - Earth Wizard/Toph uses empty hands with `main_hand = "none"` and `off_hand = "none"`. Phase 1 rotates through rock throw, side throw, punch spear, impale, earthquake, ground ripple, burstcrack, stone jab, and stone flesh. Phase 2 chains 2-3 casts and unlocks drip circle, stone pillars, and shattering stone pressure while staying grounded with normal non-teleport dodges.
-- Track a random guard-bait timeout between 60 and 120 ticks.
+- Keep old guard fields loadable for compatibility, but normal boss flow should not wait in guard bait.
 - Keep the live status label aligned with these state names.
 - Keep this behavior inside the bossfight controller so future templates can swap the state graph without changing base NPC routines.

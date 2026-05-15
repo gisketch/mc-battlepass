@@ -1689,7 +1689,7 @@ object NpcFeature {
             return
         }
         val targetPlayer = event.entity as? ServerPlayer
-        if (targetPlayer != null && NpcBossFights.handlePlayerDamagePre(targetPlayer, event.source.entity, event.source.directEntity, event.newDamage)) {
+        if (targetPlayer != null && NpcBossFights.handlePlayerDamagePre(targetPlayer, event.source, event.newDamage)) {
             event.newDamage = 0.0f
             return
         }

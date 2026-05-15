@@ -21,9 +21,11 @@ work_blocks = [
 
 [boss]
 enabled = true
-health = 78.0
-damage = 4.0
-template = "sword_user"
+health = 86.0
+damage = 3.1
+template = "wind_wizard"
+main_hand = "none"
+off_hand = "none"
 
 [boss.balloons]
 chase = ["Air moves faster when you relax!", "Don't fight the wind!", "Keep up, {player}!"]

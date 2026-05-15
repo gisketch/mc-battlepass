@@ -196,6 +196,9 @@ Fire options:
 - `wizards:fire_scorch`, animations `spell_engine:one_handed_projectile_charge`, `spell_engine:one_handed_projectile_release`
 - `wizards:fire_meteor`, animations `spell_engine:one_handed_projectile_charge`, `spell_engine:one_handed_area_release`
 - `wizards:fire_wall`, animation `spell_engine:one_handed_area_release_ground_left_to_right`
+- `wizards:fire_breath`, animation `spell_engine:two_handed_channeling`
+
+Implemented boss direction: `fire_wizard` is an empty-hand aggressive firebender. It uses normal running and side pressure, no held weapon, no staff, and no teleport. Phase 1 rotates fire jab, fire blast, fireball, scorch, and flame sweep. Phase 2 gets faster/stronger and adds dragon breath, fire wall, and meteor hazard pressure. Zuko may roll or flame-step, but all boss phases stay offensive instead of waiting in guard bait.
 
 ### Elsa - Frost Wizard
 
@@ -245,6 +248,8 @@ Good boss moves:
 - Stonehand buff: `spell_id = "forcemaster_rpg:stonehand"`, animation `forcemaster_rpg:stonehand_cast`
 - Combo visuals: `forcemaster_rpg:one_handed_knuckle_attack_1`, `forcemaster_rpg:one_handed_knuckle_attack_2`, `forcemaster_rpg:one_handed_knuckle_attack_3`, `forcemaster_rpg:one_handed_knuckle_attack_4`, `forcemaster_rpg:straight_punch`
 
+Implemented boss direction: Vi uses `forcemaster` with dual `forcemaster_rpg:unique_knuckle_1` / `unique_knuckle_0`, natural aggressive running, fast close-range boxer chains, body breaker Weakness, burstcrack, stonehand guard/absorption, phase-2 belial smashing, and phase-2 asal. Force Master animations and stone/rage/crit particles provide the visual kit. Vi has no sword, staff, ranged caster kit, hover, or teleport.
+
 ### Tarnished - Paladin
 
 Class: `paladin`
@@ -290,6 +295,8 @@ Good boss moves:
 - `elemental_wizards_rpg:aqua_hydro_beam`, animation `spell_engine:two_handed_channeling`
 - `elemental_wizards_rpg:aqua_springwater`, animations `more_rpg_classes:two_handed_ground_channeling`, `more_rpg_classes:two_handed_ground_release`
 
+Implemented boss direction: Katara uses `water_wizard` with empty hands, flowing grounded movement, water whip, aqua splash, waterball, ice bind, capped springwater support, phase-2 hydro beam, phase-2 elemental avatar burst, and water-step dodge. It uses CKDM boss spell metadata/projectiles/beam/support/VFX, not full Spell Engine runtime, and has no weapon, hover, teleport, or melee weapon kit.
+
 ### Aang - Wind Wizard
 
 Class: `wind_wizard`
@@ -298,9 +305,11 @@ Good boss moves:
 
 - `elemental_wizards_rpg:wind_air_cutter`
 - `elemental_wizards_rpg:wind_gust`
-- `elemental_wizards_rpg:wind_tornado`
-- `elemental_wizards_rpg:wind_updraft`
-- Common wind animation family: `spell_engine:one_handed_area_release`, `spell_engine:one_handed_projectile_charge`, `spell_engine:one_handed_projectile_release`
+- `elemental_wizards_rpg:improved_wind_updraft`
+- `elemental_wizards_rpg:elemental_avatar`
+- Common wind animation family: `spell_engine:one_handed_projectile_charge`, `spell_engine:one_handed_projectile_release`, `spell_engine:one_handed_projectile_side_charge`, `spell_engine:one_handed_projectile_side_release`, `spell_engine:one_handed_area_release`, `spell_engine:one_handed_sky_charge`, `spell_engine:dodge`, and `combat_roll:roll`
+
+Implemented boss direction: Aang uses `wind_wizard` with empty hands, fast natural running/strafe/recovery movement, no hover, and no teleport. The kit rotates air cutter, double air cutter, wind gust, spiral gust, phase-2 improved updraft, phase-2 avatar current absorption, phase-2 avatar burst, air roll, and air step. VFX uses visible wind/cloud/sweep particles with Wind Wizard spell ids as metadata.
 
 ### Ezio - Rogue
 

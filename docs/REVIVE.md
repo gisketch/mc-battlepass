@@ -5,12 +5,13 @@ Revive turns lethal player damage into an incapacitated state.
 ## Runtime Flow
 
 - Lethal damage cancels normal death and marks the player incapacitated.
-- NPC bossfight lethal hits are an exception: the boss duel intercepts the would-be lethal hit first, ends as an NPC victory, restores the player to full health, and opens the NPC victory dialog instead of entering revive.
+- NPC bossfight lethal damage is an exception: the boss duel intercepts the would-be lethal damage first, including entityless lingering damage such as boss-applied fire ticks, ends as an NPC victory, restores the player to full health, and opens the NPC victory dialog instead of entering revive.
 - Incapacitated players glow red for other players, crawl with very slow movement, and stay at minimum health/food.
 - Incapacitated players render lying down with a limp pose, including when resource-pack player animations would otherwise leave them standing.
 - Incapacitated players cannot be damaged and are ignored as AI attack targets; only revive interactions should matter while downed.
 - KO permits camera, movement keys, and chat only; item use, right-click actions, attack, block break/place, item tossing, jump, and sprint are blocked.
 - The incapacitated player sees a faint full red world overlay with the cause title and revive countdown while normal HUD and chat remain usable.
+- Incapacitation cause titles humanize raw damage ids such as `onFire`, `inFire`, `lava`, `drown`, `fall`, `wither`, `magic`, `freeze`, and `explosion` instead of rendering registry-style names.
 - Another player holds right-click/use on the incapacitated player to revive.
 - The reviver is crouch/action locked for `revive_seconds`.
 - Additional revivers can help the same target; each extra reviver doubles revive speed, halving the remaining revive time again.

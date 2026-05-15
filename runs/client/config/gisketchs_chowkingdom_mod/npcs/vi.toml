@@ -22,8 +22,10 @@ work_blocks = [
 [boss]
 enabled = true
 health = 100.0
-damage = 5.5
-template = "sword_user"
+damage = 3.2
+template = "forcemaster"
+main_hand = "forcemaster_rpg:unique_knuckle_1"
+off_hand = "forcemaster_rpg:unique_knuckle_0"
 
 [boss.balloons]
 chase = ["No running, {player}. Not from me.", "Come on. Move like you mean it.", "You think you can outrun these fists?", "Keep running. It makes the catch better.", "I chase criminals. You are cardio.", "Faster. I am barely jogging.", "You are not escaping. You are warming up.", "That pace is an insult to running.", "Run all you want. I like catching.", "You are just tiring yourself out."]

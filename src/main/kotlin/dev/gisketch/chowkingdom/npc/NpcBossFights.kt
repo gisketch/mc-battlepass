@@ -21,6 +21,7 @@ import net.minecraft.sounds.SoundEvent
 import net.minecraft.sounds.SoundSource
 import net.minecraft.world.BossEvent
 import net.minecraft.world.InteractionHand
+import net.minecraft.world.damagesource.DamageSource
 import net.minecraft.world.effect.MobEffectInstance
 import net.minecraft.world.effect.MobEffects
 import net.minecraft.world.entity.Entity
@@ -51,7 +52,7 @@ object NpcBossFights {
         val armory = bossArmory(boss)
         if (entity.isSleeping) entity.stopSleeping()
         entity.navigation.stop()
-        val health = boss.health.toFloat().coerceAtLeast(1.0f)
+        val health = bossFightHealth(boss.health.toFloat())
         val bossBar = ServerBossEvent(
             Component.literal("${definition.displayName()} | NPC mode: offense"),
             BossEvent.BossBarColor.RED,
@@ -94,7 +95,7 @@ object NpcBossFights {
         if (active.containsKey(entity.uuid)) return NpcBossStartResult(false, "$displayName is already in a boss fight.")
         if (active.values.any { fight -> fight.targetId == player.uuid }) return NpcBossStartResult(false, "You are already in an NPC boss fight.")
         entity.navigation.stop()
-        val health = moveset.health.toFloat().coerceAtLeast(1.0f)
+        val health = bossFightHealth(moveset.health.toFloat())
         val bossBar = ServerBossEvent(
             Component.literal("$displayName | NPC mode: offense"),
             BossEvent.BossBarColor.RED,
@@ -166,12 +167,29 @@ object NpcBossFights {
         if (!isActive(entity)) entity.updatePassThroughInteractions(false)
     }
 
-    fun handlePlayerDamagePre(target: ServerPlayer, sourceEntity: Entity?, directEntity: Entity?, damage: Float): Boolean {
-        val boss = bossDamageSource(sourceEntity) ?: bossDamageSource(directEntity) ?: return false
-        val fight = active[boss.uuid] ?: return false
-        if (fight.targetId != target.uuid || damage <= 0.0f) return false
+    fun handlePlayerDamagePre(target: ServerPlayer, source: DamageSource, damage: Float): Boolean {
+        val sourceEntity = source.entity
+        val directEntity = source.directEntity
+        val sourceBoss = bossDamageSource(sourceEntity) ?: bossDamageSource(directEntity)
+        val (boss, fight) = if (sourceBoss != null) {
+            val fight = active[sourceBoss.uuid] ?: return false
+            if (fight.targetId != target.uuid) return false
+            sourceBoss to fight
+        } else {
+            val entry = active.entries.firstOrNull { (_, fight) -> fight.targetId == target.uuid } ?: return false
+            val boss = bossEntity(target.server, entry.key) ?: return false
+            boss to entry.value
+        }
+        if (damage <= 0.0f) return false
         if (!wouldDefeatPlayer(target, damage)) return false
         bossVictory(boss, target, fight)
+        return true
+    }
+
+    fun handlePlayerDeath(target: ServerPlayer, source: DamageSource): Boolean {
+        val entry = active.entries.firstOrNull { (_, fight) -> fight.targetId == target.uuid } ?: return false
+        val boss = bossEntity(target.server, entry.key) ?: return false
+        bossVictory(boss, target, entry.value)
         return true
     }
 
@@ -216,12 +234,9 @@ object NpcBossFights {
         return when (fight.phase) {
             BossFightPhase.PHASE_DIALOGUE -> true
             BossFightPhase.RECOVERY -> {
-                if (fight.recoveryHitsTaken >= fight.moveset.recoveryHitsAllowed || fight.guardAfterHurtTick > 0) {
-                    startGuardReact(entity, target, fight)
-                    true
-                } else {
-                    false
-                }
+                val capped = fight.recoveryHitsTaken >= fight.moveset.recoveryHitsAllowed
+                if (capped) triggerReactiveGuard(entity, target, fight, force = false)
+                capped
             }
             BossFightPhase.GUARD_MODE -> {
                 startGuardReact(entity, target, fight)
@@ -248,7 +263,7 @@ object NpcBossFights {
         when (fight.phase) {
             BossFightPhase.PHASE_DIALOGUE -> Unit
             BossFightPhase.RECOVERY -> {
-                if (fight.recoveryHitsTaken >= fight.moveset.recoveryHitsAllowed || fight.guardAfterHurtTick > 0) startGuardReact(entity, target, fight) else acceptRecoveryHit(entity, target, fight, damage)
+                if (fight.recoveryHitsTaken < fight.moveset.recoveryHitsAllowed) acceptRecoveryHit(entity, target, fight, damage)
             }
             BossFightPhase.GUARD_MODE -> startGuardReact(entity, target, fight)
             BossFightPhase.GUARD_REACT,
@@ -447,9 +462,13 @@ object NpcBossFights {
         }
         if (elapsed < move.durationTicks) return true
         if (maybeAdvanceBossPhase(entity, target, fight)) return true
+        if (fight.reactiveGuardQueued) {
+            triggerReactiveGuard(entity, target, fight, force = true)
+            return true
+        }
         val continueOffense = fight.tacticPhase == BossTacticPhase.OFFENSE && fight.offenseAttacksRemaining > 0
         if (move.kind == NpcBossMoveKinds.ROLL || move.kind == NpcBossMoveKinds.DODGE || move.recoveryTicks <= 0) {
-            if (continueOffense) startChase(entity, target, fight) else startDefensePhase(entity, target, fight)
+            if (continueOffense) startChase(entity, target, fight) else startOffensePhase(entity, target, fight)
             return true
         }
         val recoveryTicks = if (continueOffense) {
@@ -480,10 +499,6 @@ object NpcBossFights {
         entity.debugTargetPos = target.blockPosition().immutable()
         updateStatus(entity, target, fight, "recovery")
         faceTarget(entity, target)
-        if (fight.guardAfterHurtTick > 0 && entity.tickCount >= fight.guardAfterHurtTick) {
-            startDefensePhase(entity, target, fight)
-            return true
-        }
         if (entity.tickCount < fight.hurtUntilTick) {
             entity.navigation.stop()
             return true
@@ -580,6 +595,12 @@ object NpcBossFights {
 
     private fun startGuardReact(entity: ChowNpcEntity, target: ServerPlayer, fight: ActiveBossFight) {
         fight.activeMove = null
+        fight.tacticPhase = BossTacticPhase.OFFENSE
+        fight.antiSpamPressure = 0.0
+        fight.reactiveGuardQueued = false
+        fight.reactiveGuardCooldownUntilTick = entity.tickCount + reactiveGuardCooldownTicks(fight)
+        fight.recoveryHitsTaken = 0
+        fight.hurtUntilTick = 0
         when (selectGuardResponse(entity, fight)) {
             GuardResponse.PARRY -> startParry(entity, target, fight)
             GuardResponse.ROLL -> startGuardRoll(entity, target, fight)
@@ -1055,7 +1076,8 @@ object NpcBossFights {
         val capRatio = move.selfHealCapHealthRatio.coerceAtMost(phaseCapRatio).toFloat()
         val cap = fight.maxHealth * capRatio
         val before = fight.health
-        fight.health = (fight.health + move.selfHealAmount.toFloat()).coerceAtMost(cap).coerceAtMost(fight.maxHealth)
+        if (before >= cap) return
+        fight.health = (before + move.selfHealAmount.toFloat()).coerceAtMost(cap).coerceAtMost(fight.maxHealth)
         if (fight.health <= before) return
         fight.supportUses[key] = used + 1
         updateBossBar(entity, target, fight)
@@ -1087,22 +1109,54 @@ object NpcBossFights {
     }
 
     private fun acceptAttackHit(entity: ChowNpcEntity, target: ServerPlayer, fight: ActiveBossFight, damage: Float) {
-        fight.health = (fight.health - damage.coerceAtLeast(0.0f)).coerceAtLeast(0.0f)
-        updateBossBar(entity, target, fight)
-        showBossBalloon(entity, target, fight, fight.balloons.tookDamage, "took_damage")
-        if (fight.health <= 0.0f) {
-            defeat(entity, target, fight)
+        val timing = attackDamageWindow(entity, fight)
+        val scaledDamage = damage.coerceAtLeast(0.0f) * attackDamageMultiplier(fight, timing).toFloat()
+        if (scaledDamage > 0.0f) {
+            applyPlayerBossDamage(fight, scaledDamage)
+            updateBossBar(entity, target, fight)
+            showBossBalloon(entity, target, fight, fight.balloons.tookDamage, "took_damage")
+            if (fight.health <= 0.0f) {
+                defeat(entity, target, fight)
+                return
+            }
+        } else {
+            blockBossHit(entity)
+        }
+        addAntiSpamPressure(entity, target, fight, base = ATTACK_HIT_PRESSURE * attackPressureMultiplier(fight, timing), deferGuard = true)
+    }
+
+    private fun attackDamageWindow(entity: ChowNpcEntity, fight: ActiveBossFight): AttackDamageWindow {
+        val move = fight.activeMove ?: return AttackDamageWindow.LATE
+        val elapsed = entity.tickCount - fight.phaseStartedTick
+        val firstHitTick = move.hitTicks.minOrNull() ?: (move.durationTicks / 2).coerceAtLeast(1)
+        val activeEndTick = (firstHitTick + ATTACK_ACTIVE_DAMAGE_TICKS).coerceAtMost(move.durationTicks)
+        return when {
+            elapsed < firstHitTick -> AttackDamageWindow.WINDUP
+            elapsed <= activeEndTick -> AttackDamageWindow.ACTIVE
+            else -> AttackDamageWindow.LATE
         }
     }
 
+    private fun attackDamageMultiplier(fight: ActiveBossFight, window: AttackDamageWindow): Double {
+        val timingMultiplier = when (window) {
+            AttackDamageWindow.WINDUP -> fight.moveset.attackWindupDamageMultiplier
+            AttackDamageWindow.ACTIVE -> fight.moveset.attackActiveDamageMultiplier
+            AttackDamageWindow.LATE -> fight.moveset.attackLateDamageMultiplier
+        }
+        return timingMultiplier.coerceAtMost(fight.moveset.attackPhaseDamageMultiplier)
+    }
+
+    private fun attackPressureMultiplier(fight: ActiveBossFight, window: AttackDamageWindow): Double = when (window) {
+        AttackDamageWindow.WINDUP -> fight.moveset.attackWindupPressureMultiplier
+        AttackDamageWindow.ACTIVE -> fight.moveset.attackActivePressureMultiplier
+        AttackDamageWindow.LATE -> 1.0
+    }
+
     private fun acceptRecoveryHit(entity: ChowNpcEntity, target: ServerPlayer, fight: ActiveBossFight, damage: Float) {
-        val shielded = damage.coerceAtMost(fight.absorptionHealth)
-        if (shielded > 0.0f) fight.absorptionHealth = (fight.absorptionHealth - shielded).coerceAtLeast(0.0f)
-        val healthDamage = (damage - shielded).coerceAtLeast(0.0f)
-        fight.health = (fight.health - healthDamage).coerceAtLeast(0.0f)
+        applyPlayerBossDamage(fight, damage.coerceAtLeast(0.0f))
         fight.recoveryHitsTaken++
         fight.hurtUntilTick = entity.tickCount + PLAYERLIKE_HURT_TICKS
-        fight.guardAfterHurtTick = if (fight.recoveryHitsTaken >= fight.moveset.recoveryHitsAllowed) fight.hurtUntilTick else 0
+        fight.guardAfterHurtTick = 0
         updateBossBar(entity, target, fight)
         playTemplate(entity, fight, hurtTemplate(fight), forceRestart = true)
         entity.navigation.stop()
@@ -1113,7 +1167,52 @@ object NpcBossFights {
             defeat(entity, target, fight)
             return
         }
+        val pressureTriggered = addAntiSpamPressure(entity, target, fight, base = RECOVERY_HIT_PRESSURE, deferGuard = false)
+        val capped = fight.recoveryHitsTaken >= fight.moveset.recoveryHitsAllowed
+        if (capped) {
+            triggerReactiveGuard(entity, target, fight, force = false)
+            return
+        }
+        if (pressureTriggered) {
+            return
+        }
         maybeAdvanceBossPhase(entity, target, fight)
+    }
+
+    private fun applyPlayerBossDamage(fight: ActiveBossFight, damage: Float) {
+        val shielded = damage.coerceAtMost(fight.absorptionHealth)
+        if (shielded > 0.0f) fight.absorptionHealth = (fight.absorptionHealth - shielded).coerceAtLeast(0.0f)
+        val healthDamage = (damage - shielded).coerceAtLeast(0.0f)
+        fight.health = (fight.health - healthDamage).coerceAtLeast(0.0f)
+    }
+
+    private fun addAntiSpamPressure(
+        entity: ChowNpcEntity,
+        target: ServerPlayer,
+        fight: ActiveBossFight,
+        base: Double,
+        deferGuard: Boolean,
+    ): Boolean {
+        if (entity.tickCount < fight.reactiveGuardCooldownUntilTick || fight.reactiveGuardQueued) return false
+        if (fight.lastPressureHitTick > 0 && entity.tickCount - fight.lastPressureHitTick > PRESSURE_DECAY_TICKS) {
+            fight.antiSpamPressure = (fight.antiSpamPressure - PRESSURE_DECAY_AMOUNT).coerceAtLeast(0.0)
+        }
+        val rapidBonus = if (fight.lastPressureHitTick > 0 && entity.tickCount - fight.lastPressureHitTick <= RAPID_HIT_TICKS) RAPID_HIT_PRESSURE_BONUS else 0.0
+        fight.lastPressureHitTick = entity.tickCount
+        fight.antiSpamPressure = (fight.antiSpamPressure + base + rapidBonus).coerceAtMost(MAX_ANTI_SPAM_PRESSURE)
+        if (fight.antiSpamPressure < antiSpamPressureThreshold(fight)) return false
+        if (deferGuard) {
+            fight.reactiveGuardQueued = true
+            return true
+        }
+        return triggerReactiveGuard(entity, target, fight, force = true)
+    }
+
+    private fun triggerReactiveGuard(entity: ChowNpcEntity, target: ServerPlayer, fight: ActiveBossFight, force: Boolean): Boolean {
+        if (!force && entity.tickCount < fight.reactiveGuardCooldownUntilTick) return false
+        if (fight.health <= 0.0f || fight.phase == BossFightPhase.PHASE_DIALOGUE) return false
+        startGuardReact(entity, target, fight)
+        return true
     }
 
     private fun blockBossHit(entity: ChowNpcEntity) {
@@ -1943,6 +2042,19 @@ object NpcBossFights {
     private fun phaseSpeed(fight: ActiveBossFight, speed: Double): Double =
         (speed * currentBossPhase(fight).speedMultiplier).coerceIn(0.05, 2.0)
 
+    private fun bossFightHealth(baseHealth: Float): Float =
+        (baseHealth.coerceAtLeast(1.0f) * BOSS_HEALTH_MULTIPLIER).coerceAtLeast(1.0f)
+
+    private fun antiSpamPressureThreshold(fight: ActiveBossFight): Double {
+        val phaseScale = if (fight.bossPhaseIndex > 0) PHASE_TWO_PRESSURE_THRESHOLD_SCALE else 1.0
+        return (fight.moveset.antiSpamPressureThreshold * phaseScale).coerceIn(1.0, MAX_ANTI_SPAM_PRESSURE)
+    }
+
+    private fun reactiveGuardCooldownTicks(fight: ActiveBossFight): Int {
+        val phaseScale = if (fight.bossPhaseIndex > 0) PHASE_TWO_REACTIVE_GUARD_COOLDOWN_SCALE else 1.0
+        return (fight.moveset.antiSpamReactiveGuardCooldownTicks * phaseScale).toInt().coerceAtLeast(MIN_REACTIVE_GUARD_COOLDOWN_TICKS)
+    }
+
     private fun updateBossBar(entity: ChowNpcEntity, target: ServerPlayer, fight: ActiveBossFight, forceMusic: Boolean = false) {
         fight.bossBar.setProgress((fight.health / fight.maxHealth).coerceIn(0.0f, 1.0f))
         NpcNetwork.syncBossBar(
@@ -2033,7 +2145,7 @@ object NpcBossFights {
             fight.recoveryReturnToOffense = false
             startChase(entity, target, fight)
         } else {
-            startDefensePhase(entity, target, fight)
+            startOffensePhase(entity, target, fight)
         }
     }
 
@@ -2078,11 +2190,27 @@ object NpcBossFights {
                 bossItemStack("simplyswords:ribboncleaver", ItemStack(Items.NETHERITE_SWORD)),
                 ItemStack.EMPTY,
             )
+            "forcemaster" -> NpcBossArmory(
+                bossItemStack("forcemaster_rpg:unique_knuckle_1", bossItemStack("forcemaster_rpg:wooden_knuckle", ItemStack.EMPTY)),
+                bossItemStack("forcemaster_rpg:unique_knuckle_0", bossItemStack("forcemaster_rpg:wooden_knuckle", ItemStack.EMPTY)),
+            )
             "wizard" -> NpcBossArmory(
                 bossItemStack("wizards:staff_wizard", ItemStack(Items.BLAZE_ROD)),
                 ItemStack.EMPTY,
             )
+            "water_wizard" -> NpcBossArmory(
+                ItemStack.EMPTY,
+                ItemStack.EMPTY,
+            )
             "arcane_wizard" -> NpcBossArmory(
+                ItemStack.EMPTY,
+                ItemStack.EMPTY,
+            )
+            "fire_wizard" -> NpcBossArmory(
+                ItemStack.EMPTY,
+                ItemStack.EMPTY,
+            )
+            "wind_wizard" -> NpcBossArmory(
                 ItemStack.EMPTY,
                 ItemStack.EMPTY,
             )
@@ -2191,6 +2319,10 @@ object NpcBossFights {
         val supportUses: MutableMap<String, Int> = linkedMapOf(),
         var absorptionHealth: Float = 0.0f,
         var absorptionUntilTick: Int = 0,
+        var antiSpamPressure: Double = 0.0,
+        var lastPressureHitTick: Int = 0,
+        var reactiveGuardQueued: Boolean = false,
+        var reactiveGuardCooldownUntilTick: Int = 0,
         val lastBalloonByKey: MutableMap<String, String> = linkedMapOf(),
         val debug: Boolean = false,
     )
@@ -2218,6 +2350,12 @@ object NpcBossFights {
         PARRY,
         ROLL,
         DODGE,
+    }
+
+    private enum class AttackDamageWindow {
+        WINDUP,
+        ACTIVE,
+        LATE,
     }
 
     private const val MAX_FIGHT_TICKS = 20 * 60 * 5
@@ -2272,6 +2410,18 @@ object NpcBossFights {
     private const val ARROW_VFX_STOPPED_SPEED_SQR = 0.0004
     private const val RECENT_ATTACK_MOVE_MEMORY = 2
     private const val MAX_RECOVERY_HITS = 1
+    private const val BOSS_HEALTH_MULTIPLIER = 2.0f
+    private const val ATTACK_ACTIVE_DAMAGE_TICKS = 6
+    private const val ATTACK_HIT_PRESSURE = 1.15
+    private const val RECOVERY_HIT_PRESSURE = 1.0
+    private const val RAPID_HIT_PRESSURE_BONUS = 0.75
+    private const val RAPID_HIT_TICKS = 12
+    private const val PRESSURE_DECAY_TICKS = 50
+    private const val PRESSURE_DECAY_AMOUNT = 1.0
+    private const val MAX_ANTI_SPAM_PRESSURE = 10.0
+    private const val PHASE_TWO_PRESSURE_THRESHOLD_SCALE = 0.8
+    private const val PHASE_TWO_REACTIVE_GUARD_COOLDOWN_SCALE = 0.7
+    private const val MIN_REACTIVE_GUARD_COOLDOWN_TICKS = 25
 
     private fun guardTauntDelay(entity: ChowNpcEntity, fight: ActiveBossFight): Int =
         fight.moveset.guardTauntMinTicks + entity.random.nextInt(fight.moveset.guardTauntRandomTicks + 1)

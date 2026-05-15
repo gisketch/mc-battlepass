@@ -1,0 +1,60 @@
+id = "forcemaster"
+display_name = "Forcemaster"
+health = 100.0
+damage = 3.2
+attack_start_distance = 7.0
+offense_chain_min = 3
+offense_chain_random = 1
+offense_chain_recovery_ticks = 6
+approach_animation_id = ""
+approach_animation_source = "natural"
+strafe_animation_id = ""
+strafe_animation_source = "natural"
+guard_animation_id = "forcemaster_rpg:stonehand_cast"
+parry_animation_id = "forcemaster_rpg:stonehand_cast"
+recovery_animation_id = ""
+recovery_animation_source = "natural"
+guard_roll_weight = 0
+guard_dodge_weight = 2
+guard_parry_weight = 3
+guard_dodge_animation_id = "spell_engine:dodge"
+guard_dodge_ticks = 10
+guard_dodge_iframe_ticks = 8
+guard_dodge_distance = 2.4
+guard_dodge_direction = "side"
+recovery_hits_allowed = 3
+parry_spell_id = "forcemaster_rpg:stonehand"
+parry_particle = "more_rpg_classes:stone_particle"
+parry_sound_id = "forcemaster_rpg:stonehand_cast"
+parry_damage = 0.9
+parry_knockback = 1.15
+
+phases = [
+  { id = "street_boxer", display_name = "Street Boxer", starts_at_health_ratio = 1.0, damage_multiplier = 1.0, speed_multiplier = 1.22, offense_chain_min = 3, offense_chain_random = 1, offense_chain_recovery_ticks = 6, transition_fallback = "", transition_llm_prompt = "", music_id = "cataclysm:enderguardian_music_1", music_volume = 0.54, music_pitch = 1.0, music_repeat_ticks = 3000 },
+  { id = "hextech_berserker", display_name = "Hextech Berserker", starts_at_health_ratio = 0.5, damage_multiplier = 1.16, speed_multiplier = 1.38, offense_chain_min = 4, offense_chain_random = 2, offense_chain_recovery_ticks = 5, transition_fallback = "Good. Now we stop playing nice.", transition_llm_prompt = "The duel has reached half health and you are entering a faster, harder Forcemaster boxer second phase. Reply as Vi with one short blunt battle line about fists, pressure, or keeping guard up.", music_id = "cataclysm:maledictus_music", music_volume = 0.6, music_pitch = 1.0, music_repeat_ticks = 3000 },
+]
+
+moves = [
+  { id = "jab_cross", kind = "melee", animation_id = "forcemaster_rpg:one_handed_knuckle_attack_1", release_animation_id = "forcemaster_rpg:one_handed_knuckle_attack_2", spell_id = "forcemaster_rpg:belial_smashing", duration_ticks = 16, hit_ticks = [6, 11], cooldown_ticks = 12, recovery_ticks = 9, damage = 1.05, range = 2.7, arc_degrees = 90.0, knockback = 0.35, weight = 8, min_distance = 0.0, max_distance = 3.1, cast_particle = "minecraft:crit", release_particle = "minecraft:sweep_attack", impact_particle = "minecraft:crit", release_sound_id = "minecraft:entity.player.attack.sweep", impact_sound_id = "minecraft:entity.player.attack.strong" },
+  { id = "hook_chain", kind = "melee", animation_id = "forcemaster_rpg:one_handed_knuckle_attack_3", release_animation_id = "forcemaster_rpg:one_handed_knuckle_attack_4", spell_id = "forcemaster_rpg:belial_smashing", duration_ticks = 20, hit_ticks = [8, 14], cooldown_ticks = 17, recovery_ticks = 11, damage = 1.25, range = 2.9, arc_degrees = 120.0, knockback = 0.55, weight = 7, min_distance = 0.0, max_distance = 3.3, cast_particle = "minecraft:crit", release_particle = "minecraft:sweep_attack", impact_particle = "minecraft:sweep_attack", release_sound_id = "minecraft:entity.player.attack.sweep", impact_sound_id = "minecraft:entity.player.attack.strong" },
+  { id = "straight_punch", kind = "melee", animation_id = "forcemaster_rpg:straight_punch", spell_id = "forcemaster_rpg:belial_smashing", duration_ticks = 18, hit_ticks = [9], cooldown_ticks = 22, recovery_ticks = 13, damage = 2.35, range = 3.2, arc_degrees = 65.0, knockback = 1.0, weight = 6, min_distance = 0.0, max_distance = 3.6, cast_particle = "minecraft:crit", release_particle = "minecraft:sweep_attack", impact_particle = "more_rpg_classes:stone_particle", release_sound_id = "minecraft:entity.player.attack.sweep", impact_sound_id = "minecraft:entity.player.attack.knockback" },
+  { id = "body_breaker", kind = "area", animation_id = "forcemaster_rpg:one_handed_knuckle_attack_2", spell_id = "forcemaster_rpg:stonehand", duration_ticks = 19, hit_ticks = [10], cooldown_ticks = 28, recovery_ticks = 13, damage = 1.75, range = 2.6, arc_degrees = 90.0, area_radius = 2.6, knockback = 0.65, weight = 5, min_distance = 0.0, max_distance = 3.0, cast_particle = "minecraft:crit", release_particle = "minecraft:crit", impact_particle = "more_rpg_classes:stone_particle", release_sound_id = "minecraft:entity.player.attack.sweep", impact_sound_id = "minecraft:entity.player.attack.crit", status_effect_id = "minecraft:weakness", status_effect_ticks = 45 },
+  { id = "burstcrack", kind = "area", animation_id = "forcemaster_rpg:burstcrack_cast", release_animation_id = "forcemaster_rpg:burstcrack_release", spell_id = "forcemaster_rpg:burstcrack", duration_ticks = 28, hit_ticks = [16], cooldown_ticks = 52, recovery_ticks = 20, damage = 2.45, range = 3.7, arc_degrees = 360.0, area_radius = 3.7, knockback = 1.05, weight = 4, min_distance = 0.0, max_distance = 4.2, cast_particle = "more_rpg_classes:stone_particle", release_particle = "forcemaster_rpg:ground_punch", impact_particle = "more_rpg_classes:stone_explosion", cast_sound_id = "forcemaster_rpg:burstcrack_cast", release_sound_id = "forcemaster_rpg:burstcrack_release", impact_sound_id = "minecraft:entity.generic.explode" },
+  { id = "stonehand", kind = "support", animation_id = "forcemaster_rpg:stonehand_cast", release_animation_id = "forcemaster_rpg:stonehand_cast", spell_id = "forcemaster_rpg:stonehand", duration_ticks = 24, hit_ticks = [13], cooldown_ticks = 76, recovery_ticks = 12, damage = 0.0, range = 6.0, arc_degrees = 360.0, weight = 2, min_distance = 0.0, max_distance = 6.0, cast_particle = "more_rpg_classes:stone_particle", support_particle = "more_rpg_classes:stone_particle", cast_sound_id = "forcemaster_rpg:stonehand_cast", release_sound_id = "forcemaster_rpg:stonehand_cast", impact_sound_id = "forcemaster_rpg:stonehand_cast", absorption_amount = 4.0, absorption_ticks = 70 },
+  { id = "belial_smashing", kind = "area", animation_id = "forcemaster_rpg:fist_rush", spell_id = "forcemaster_rpg:belial_smashing", duration_ticks = 30, hit_ticks = [17], cooldown_ticks = 64, recovery_ticks = 22, damage = 3.2, range = 3.8, arc_degrees = 115.0, area_radius = 3.8, knockback = 1.35, weight = 4, min_distance = 0.0, max_distance = 4.6, cast_particle = "more_rpg_classes:rage_particle", release_particle = "minecraft:sweep_attack", impact_particle = "more_rpg_classes:stone_explosion", release_sound_id = "minecraft:entity.player.attack.sweep", impact_sound_id = "minecraft:entity.generic.explode", min_phase_index = 1 },
+  { id = "asal", kind = "melee", animation_id = "forcemaster_rpg:asal_cast", release_animation_id = "forcemaster_rpg:asal_release", spell_id = "forcemaster_rpg:asal", duration_ticks = 38, hit_ticks = [25], cooldown_ticks = 90, recovery_ticks = 26, damage = 4.0, range = 3.5, arc_degrees = 75.0, knockback = 1.6, weight = 2, min_distance = 0.0, max_distance = 3.9, cast_particle = "more_rpg_classes:rage_particle", release_particle = "more_rpg_classes:stone_explosion", impact_particle = "more_rpg_classes:stone_explosion", cast_sound_id = "forcemaster_rpg:stonehand_cast", release_sound_id = "minecraft:entity.player.attack.strong", impact_sound_id = "minecraft:entity.generic.explode", min_phase_index = 1 },
+  { id = "weave_step", kind = "dodge", animation_id = "spell_engine:dodge", release_animation_id = "spell_engine:dodge", spell_id = "forcemaster_rpg:stonehand", duration_ticks = 10, hit_ticks = [], cooldown_ticks = 26, recovery_ticks = 0, damage = 0.0, weight = 3, min_distance = 0.0, max_distance = 14.0, roll_distance = 2.4, roll_direction = "side", iframe_start_tick = 0, iframe_end_tick = 10, support_particle = "minecraft:crit", release_sound_id = "minecraft:entity.player.attack.sweep" },
+  { id = "pressure_step", kind = "dodge", animation_id = "spell_engine:dodge", release_animation_id = "spell_engine:dodge", spell_id = "forcemaster_rpg:belial_smashing", duration_ticks = 10, hit_ticks = [], cooldown_ticks = 30, recovery_ticks = 0, damage = 0.0, weight = 2, min_distance = 0.0, max_distance = 14.0, roll_distance = 2.1, roll_direction = "forward", iframe_start_tick = 0, iframe_end_tick = 10, support_particle = "more_rpg_classes:rage_particle", release_sound_id = "minecraft:entity.player.attack.sweep" },
+]
+
+[balloons]
+chase = ["No running, {player}.", "Hands up.", "I am closing this gap."]
+attack = ["Coming through!", "Guard up!", "Eat gauntlet!"]
+recovery = ["There. Hit back.", "Your window.", "Opening. Use it."]
+taunt = ["You gonna swing or think all day?", "Come on. I left that open.", "Put your back into it."]
+guard_react = ["Saw that coming.", "Too obvious.", "Read. React. Repeat."]
+parry = ["Denied. My turn.", "Gauntlets say no.", "Parried. Now you are open."]
+hit_player = ["That one connected.", "Stay up.", "You felt that."]
+took_damage = ["Nice shot.", "Good. Do it again.", "Now we are fighting."]
+victory = ["I win. You are healed. Keep your guard up."]
+defeat = ["I yield. You hit hard.", "Good fight.", "You got me. Respect."]
