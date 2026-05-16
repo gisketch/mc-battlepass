@@ -66,6 +66,7 @@ object StoreShopFeature {
     fun register(modBus: IEventBus) {
         reloadDefinitions()
         ExplorerMapService.register()
+        ExplorerCompassService.register()
         modBus.addListener(::registerPayloads)
         net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(::onServerStarted)
     }
@@ -130,7 +131,7 @@ object StoreShopFeature {
         } else listOf(commandStockKey)
         val refreshedPools = if (pool == ShopViewPool.ALL) ShopViewPool.entries.toSet() else setOf(pool)
         stockKeys.forEach { key ->
-            refreshedPools.forEach { refreshed -> reroll(definition, key, refreshed) }
+            refreshedPools.forEach { refreshed -> reroll(definition, key, refreshed, player?.dimensionId(), player) }
         }
         if (definition.hasPlayerScopedOffers()) {
             context.source.server.playerList.players.forEach { online ->
@@ -165,8 +166,8 @@ object StoreShopFeature {
     fun openStore(player: ServerPlayer, storeId: String, stockKey: String, subtitle: String = "Server shared stock"): Boolean {
         reloadDefinitions()
         val definition = definitions[storeId.lowercase(Locale.ROOT)] ?: return false
-        val normalizedStockKey = scopedStockKey(player, definition, stockKey(stockKey, definition.id))
-        ensureActive(definition, normalizedStockKey)
+        val normalizedStockKey = runtimeStockKey(player, definition, stockKey(stockKey, definition.id))
+        ensureActive(definition, normalizedStockKey, player.dimensionId(), player)
         PacketDistributor.sendToPlayer(player, StoreShopOpenPayload(view(player, definition, normalizedStockKey, subtitle)))
         return true
     }
@@ -194,8 +195,8 @@ object StoreShopFeature {
 
     private fun buy(player: ServerPlayer, storeId: String, stockKey: String, lines: List<ShopViewCartLine>) {
         val definition = definitions[storeId] ?: return
-        ensureActive(definition, stockKey)
-        val activeOffers = activeOffers(definition, stockKey).associateBy { it.offer.id }
+        ensureActive(definition, stockKey, player.dimensionId(), player)
+        val activeOffers = activeOffers(definition, stockKey, player.dimensionId(), player).associateBy { it.offer.id }
         val requested = lines.filter { it.quantity > 0 }.take(100)
         if (requested.isEmpty()) return
         val purchases = requested.mapNotNull { line ->
@@ -205,6 +206,12 @@ object StoreShopFeature {
                 if (quantity <= 0) return@mapNotNull null
                 val stack = ExplorerMapService.purchaseStack(player, stockKey, active.pool, active.offer, periodKey(definition, active.pool))
                     ?: return@mapNotNull null
+                val total = active.offer.priceAmount.coerceAtLeast(0L)
+                PendingStoreBuy(active, quantity, total, stack)
+            } else if (ExplorerCompassService.isExplorerCompassOffer(active.offer)) {
+                val quantity = 1.coerceAtMost(stock(stockKey, active.pool, active.offer.id))
+                if (quantity <= 0) return@mapNotNull null
+                val stack = ExplorerCompassService.purchaseStack(player, storeId, stockKey, active.pool, active.offer) ?: return@mapNotNull null
                 val total = active.offer.priceAmount.coerceAtLeast(0L)
                 PendingStoreBuy(active, quantity, total, stack)
             } else {
@@ -233,6 +240,8 @@ object StoreShopFeature {
             decrement(stockKey, buy.active.pool, buy.active.offer.id, buy.quantity)
             if (ExplorerMapService.isExplorerMapOffer(buy.active.offer)) {
                 ExplorerMapService.recordPurchase(player, stockKey, buy.active.pool, buy.active.offer, periodKey(definition, buy.active.pool))
+            } else if (ExplorerCompassService.isExplorerCompassOffer(buy.active.offer)) {
+                ExplorerCompassService.recordPurchase(player, buy.active.offer)
             }
             stacks += buy.stack.copy()
         }
@@ -249,9 +258,21 @@ object StoreShopFeature {
 
     private fun view(player: ServerPlayer, definition: StoreDefinition, stockKey: String, subtitle: String): ShopViewModel {
         val categories = definition.categories.map { ShopViewCategory(it.id, labelFromId(it.id)) }
-        val entries = activeOffers(definition, stockKey).mapNotNull { active ->
+        val entries = activeOffers(definition, stockKey, player.dimensionId(), player).mapNotNull { active ->
             if (ExplorerMapService.isExplorerMapOffer(active.offer)) {
                 val preview = ExplorerMapService.preview(player, stockKey, active.pool, active.offer, periodKey(definition, active.pool))
+                    ?: return@mapNotNull null
+                ShopViewEntry(
+                    active.offer.id,
+                    active.category.id,
+                    active.pool,
+                    preview.stack,
+                    stock(stockKey, active.pool, active.offer.id).coerceAtMost(preview.stockCount),
+                    active.offer.priceAmount,
+                    definition.displayName,
+                )
+            } else if (ExplorerCompassService.isExplorerCompassOffer(active.offer)) {
+                val preview = ExplorerCompassService.preview(player, active.offer)
                     ?: return@mapNotNull null
                 ShopViewEntry(
                     active.offer.id,
@@ -278,8 +299,8 @@ object StoreShopFeature {
         return ShopViewModel(definition.id, stockKey, definition.displayName, subtitle, categories, pools, entries)
     }
 
-    private fun activeOffers(definition: StoreDefinition, stockKey: String): List<ActiveStoreOffer> {
-        ensureActive(definition, stockKey)
+    private fun activeOffers(definition: StoreDefinition, stockKey: String, dimensionId: String? = null, player: ServerPlayer? = null): List<ActiveStoreOffer> {
+        ensureActive(definition, stockKey, dimensionId, player)
         return ShopViewPool.entries.flatMap { pool ->
             val poolState = stateFor(stockKey).pools.getOrPut(pool.id) { StorePoolState() }
             definition.categories.flatMap { category ->
@@ -287,43 +308,43 @@ object StoreShopFeature {
                     ShopViewPool.ALL -> category.allItems.map(StoreOffer::id).toSet()
                     else -> poolState.selected[category.id].orEmpty().toSet()
                 }
-                offersFor(category, pool).filter { it.id in allowed }.map { offer -> ActiveStoreOffer(category, pool, offer) }
+                offersFor(category, pool, dimensionId, player).filter { it.id in allowed }.map { offer -> ActiveStoreOffer(category, pool, offer) }
             }
         }
     }
 
-    private fun ensureActive(definition: StoreDefinition, stockKey: String): Set<ShopViewPool> {
+    private fun ensureActive(definition: StoreDefinition, stockKey: String, dimensionId: String? = null, player: ServerPlayer? = null): Set<ShopViewPool> {
         val refreshed = mutableSetOf<ShopViewPool>()
         ShopViewPool.entries.forEach { pool ->
-            if (ensurePool(definition, stockKey, pool)) refreshed += pool
+            if (ensurePool(definition, stockKey, pool, dimensionId, player)) refreshed += pool
         }
         return refreshed
     }
 
-    private fun ensurePool(definition: StoreDefinition, stockKey: String, pool: ShopViewPool): Boolean {
+    private fun ensurePool(definition: StoreDefinition, stockKey: String, pool: ShopViewPool, dimensionId: String? = null, player: ServerPlayer? = null): Boolean {
         val period = periodKey(definition, pool)
         val poolState = stateFor(stockKey).pools.getOrPut(pool.id) { StorePoolState() }
-        if (poolState.period != period || missingSelectedCategories(definition, poolState, pool)) {
-            reroll(definition, stockKey, pool)
+        if (poolState.period != period || missingSelectedCategories(definition, poolState, pool, dimensionId, player)) {
+            reroll(definition, stockKey, pool, dimensionId, player)
             return true
         }
         return false
     }
 
     private fun prepareExplorerOffers(player: ServerPlayer, definition: StoreDefinition, stockKey: String, pools: Set<ShopViewPool>) {
-        activeOffers(definition, stockKey)
+        activeOffers(definition, stockKey, player.dimensionId(), player)
             .filter { active -> active.pool in pools && stock(stockKey, active.pool, active.offer.id) > 0 && ExplorerMapService.isExplorerMapOffer(active.offer) }
             .forEach { active -> ExplorerMapService.prepare(player, stockKey, active.pool, active.offer, periodKey(definition, active.pool)) }
     }
 
-    private fun missingSelectedCategories(definition: StoreDefinition, poolState: StorePoolState, pool: ShopViewPool): Boolean {
+    private fun missingSelectedCategories(definition: StoreDefinition, poolState: StorePoolState, pool: ShopViewPool, dimensionId: String? = null, player: ServerPlayer? = null): Boolean {
         if (pool == ShopViewPool.ALL) return false
         return definition.categories.any { category ->
-            val groups = rollGroupsFor(category, pool)
+            val groups = rollGroupsFor(category, pool, dimensionId, player)
             val selected = poolState.selected[category.id]
             val validOfferIds = groups.flatMap(StoreOfferRollGroup::offers).map(StoreOffer::id).toSet()
             val expectedGroups = itemTypesToSell(category, pool).coerceAtMost(groups.size)
-            groups.isNotEmpty() && (selected == null || selected.size < expectedGroups || selected.any { it !in validOfferIds })
+            groups.isNotEmpty() && (selected == null || selected.size != expectedGroups || selected.any { it !in validOfferIds })
         }
     }
 
@@ -336,13 +357,13 @@ object StoreShopFeature {
         return override?.coerceAtLeast(0) ?: category.itemTypesToSell.coerceAtLeast(1)
     }
 
-    private fun reroll(definition: StoreDefinition, stockKey: String, pool: ShopViewPool) {
+    private fun reroll(definition: StoreDefinition, stockKey: String, pool: ShopViewPool, dimensionId: String? = null, player: ServerPlayer? = null) {
         val poolState = stateFor(stockKey).pools.getOrPut(pool.id) { StorePoolState() }
         poolState.period = periodKey(definition, pool)
         poolState.selected.clear()
         poolState.stock.clear()
         definition.categories.forEach { category ->
-            val groups = rollGroupsFor(category, pool)
+            val groups = rollGroupsFor(category, pool, dimensionId, player)
             val selected = (if (pool == ShopViewPool.ALL) groups else weightedSampleGroups(groups, itemTypesToSell(category, pool)))
                 .flatMap(StoreOfferRollGroup::offers)
                 .distinctBy(StoreOffer::id)
@@ -351,24 +372,24 @@ object StoreShopFeature {
         }
     }
 
-    private fun offersFor(category: StoreCategoryDefinition, pool: ShopViewPool): List<StoreOffer> = when (pool) {
+    private fun offersFor(category: StoreCategoryDefinition, pool: ShopViewPool, dimensionId: String? = null, player: ServerPlayer? = null): List<StoreOffer> = when (pool) {
         ShopViewPool.ALL -> category.allItems + category.allSets.flatMap(StoreOfferSet::items)
         ShopViewPool.DAILY -> category.dailyItems + category.dailySets.flatMap(StoreOfferSet::items)
         ShopViewPool.WEEKLY -> category.weeklyItems + category.weeklySets.flatMap(StoreOfferSet::items)
-    }.filterValidOffers()
+    }.filterValidOffers().flatMap { offer -> ExplorerCompassService.expandOffers(player, offer) }.filter { offer -> offer.isAvailableInDimension(dimensionId) }
 
-    private fun rollGroupsFor(category: StoreCategoryDefinition, pool: ShopViewPool): List<StoreOfferRollGroup> {
+    private fun rollGroupsFor(category: StoreCategoryDefinition, pool: ShopViewPool, dimensionId: String? = null, player: ServerPlayer? = null): List<StoreOfferRollGroup> {
         val singles = when (pool) {
             ShopViewPool.ALL -> category.allItems
             ShopViewPool.DAILY -> category.dailyItems
             ShopViewPool.WEEKLY -> category.weeklyItems
-        }.filterValidOffers().map { offer -> StoreOfferRollGroup(offer.id, offer.weight, listOf(offer)) }
+        }.filterValidOffers().flatMap { offer -> ExplorerCompassService.expandOffers(player, offer) }.filter { offer -> offer.isAvailableInDimension(dimensionId) }.map { offer -> StoreOfferRollGroup(offer.id, offer.weight, listOf(offer)) }
         val sets = when (pool) {
             ShopViewPool.ALL -> category.allSets
             ShopViewPool.DAILY -> category.dailySets
             ShopViewPool.WEEKLY -> category.weeklySets
         }.mapNotNull { set ->
-            val offers = set.items.filterValidOffers().distinctBy(StoreOffer::id)
+            val offers = set.items.filterValidOffers().flatMap { offer -> ExplorerCompassService.expandOffers(player, offer) }.filter { offer -> offer.isAvailableInDimension(dimensionId) }.distinctBy(StoreOffer::id)
             if (set.id.isBlank() || offers.isEmpty()) null else StoreOfferRollGroup(set.id, set.weight, offers)
         }
         return singles + sets
@@ -378,6 +399,11 @@ object StoreShopFeature {
 
     private fun isValidOffer(offer: StoreOffer): Boolean {
         if (ExplorerMapService.isExplorerMapOffer(offer)) return offer.id.isNotBlank() && offer.targets.isNotEmpty()
+        if (ExplorerCompassService.isExplorerCompassOffer(offer)) {
+            return offer.id.isNotBlank() &&
+                (offer.targets.isNotEmpty() || offer.dimension.isNotBlank() || offer.dimensions.isNotEmpty()) &&
+                offer.targetType.trim().lowercase(Locale.ROOT) in setOf("biome", "structure")
+        }
         if (offer.id.isBlank() || offer.item.isBlank()) return false
         val id = runCatching { ResourceLocation.parse(offer.item) }
             .onFailure { if (warnedInvalidOfferItems.add(offer.item)) ChowKingdomMod.LOGGER.warn("Store offer {} has invalid item id {}; skipping offer.", offer.id, offer.item) }
@@ -398,6 +424,13 @@ object StoreShopFeature {
         poolState.stock[offerId] = (poolState.stock[offerId] ?: 0).minus(quantity).coerceAtLeast(0)
     }
 
+    fun restoreStock(storeId: String, stockKey: String, poolId: String, offerId: String, quantity: Int) {
+        if (quantity <= 0) return
+        val poolState = stateFor(stockKey).pools.getOrPut(poolId) { StorePoolState() }
+        poolState.stock[offerId] = (poolState.stock[offerId] ?: 0) + quantity
+        saveState()
+    }
+
     private fun stateFor(stockKey: String): StoreRuntimeState =
         state.stores.getOrPut(stockKey) { StoreRuntimeState() }
 
@@ -409,6 +442,13 @@ object StoreShopFeature {
         val suffix = player.uuid.toString().replace("-", "")
         if (base.endsWith("_$suffix")) return base
         return stockKey("${base.take(52)}_$suffix", definition.id)
+    }
+
+    private fun runtimeStockKey(player: ServerPlayer, definition: StoreDefinition, base: String): String {
+        val dimensionScoped = if (definition.hasDimensionScopedOffers()) {
+            stockKey("${base.take(44)}_${player.dimensionId().toStockKeyPart()}", definition.id)
+        } else base
+        return scopedStockKey(player, definition, dimensionScoped)
     }
 
     private fun weightedSample(offers: List<StoreOffer>, count: Int): List<StoreOffer> {
@@ -563,6 +603,13 @@ private fun StoreDefinition.hasPlayerScopedOffers(): Boolean =
             (category.allSets + category.dailySets + category.weeklySets).flatMap(StoreOfferSet::items).any(ExplorerMapService::isExplorerMapOffer)
     }
 
+private fun StoreDefinition.hasDimensionScopedOffers(): Boolean =
+    categories.any { category ->
+        (category.allItems + category.dailyItems + category.weeklyItems).any { offer -> ExplorerMapService.isExplorerMapOffer(offer) && offer.dimensions.isNotEmpty() } ||
+            (category.allSets + category.dailySets + category.weeklySets).flatMap(StoreOfferSet::items)
+                .any { offer -> ExplorerMapService.isExplorerMapOffer(offer) && offer.dimensions.isNotEmpty() }
+    }
+
 class StoreCategoryDefinition(
     @SerializedName("id") var id: String = "",
     @SerializedName("item_types_to_sell") var itemTypesToSell: Int = 1,
@@ -589,15 +636,33 @@ class StoreOffer(
     @SerializedName("offer_type") var offerType: String = "",
     @SerializedName("target_type") var targetType: String = "",
     @SerializedName("targets") var targets: MutableList<String> = mutableListOf(),
+    @SerializedName("dimensions") var dimensions: MutableList<String> = mutableListOf(),
+    @SerializedName("dimension") var dimension: String = "",
+    @SerializedName("category") var category: String = "",
+    @SerializedName("category_includes") var categoryIncludes: MutableList<String> = mutableListOf(),
+    @SerializedName("category_excludes") var categoryExcludes: MutableList<String> = mutableListOf(),
+    @SerializedName("distance_band") var distanceBand: String = "",
+    @SerializedName("distance_bands") var distanceBands: MutableList<String> = mutableListOf(),
     @SerializedName("label") var label: String = "",
     @SerializedName("map_scale") var mapScale: Int = 2,
     @SerializedName("marker") var marker: String = "",
     @SerializedName("min_distance_blocks") var minDistanceBlocks: Int = 512,
     @SerializedName("max_distance_blocks") var maxDistanceBlocks: Int = 12000,
+    @SerializedName("uses") var uses: Int = 1,
     @SerializedName("price_amount") var priceAmount: Long = 1L,
     @SerializedName("stock_count") var stockCount: Int = 1,
     @SerializedName("weight") var weight: Int = 1,
 )
+
+private fun StoreOffer.isAvailableInDimension(dimensionId: String?): Boolean {
+    if (ExplorerCompassService.isExplorerCompassOffer(this)) return true
+    if (dimensionId == null || dimensions.isEmpty()) return true
+    return dimensions.map { it.trim().lowercase(Locale.ROOT) }.filter(String::isNotBlank).contains(dimensionId.lowercase(Locale.ROOT))
+}
+
+private fun ServerPlayer.dimensionId(): String = level().dimension().location().toString()
+
+private fun String.toStockKeyPart(): String = lowercase(Locale.ROOT).replace(Regex("[^a-z0-9]+"), "_").trim('_').ifBlank { "dimension" }.take(40)
 
 class StoreStateFile(
     @SerializedName("stores") var stores: MutableMap<String, StoreRuntimeState> = linkedMapOf(),

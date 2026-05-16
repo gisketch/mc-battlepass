@@ -35,6 +35,8 @@ object DiscordInboundBridge {
     private var inFlight = false
     private var gateway: WebSocket? = null
     private var gatewayConnecting = false
+    private var nextGatewayConnectMillis = 0L
+    private var gatewayReconnectDelayMillis = MIN_GATEWAY_RECONNECT_DELAY_MILLIS
     private var heartbeatTask: ScheduledFuture<*>? = null
     private var sequence: Int? = null
     private var lastStatus = "idle"
@@ -52,6 +54,7 @@ object DiscordInboundBridge {
         "channel_id=${config.channelId.ifBlank { "missing" }}",
         "gateway_connected=${gateway != null}",
         "gateway_connecting=$gatewayConnecting",
+        "gateway_reconnect_delay_ms=$gatewayReconnectDelayMillis",
         "in_flight_poll=$inFlight",
         "last_status=$lastStatus",
         "last_error=${lastError.ifBlank { "none" }}",
@@ -102,6 +105,8 @@ object DiscordInboundBridge {
         lastSeenMessageId = null
         inFlight = false
         gatewayConnecting = false
+        nextGatewayConnectMillis = 0L
+        gatewayReconnectDelayMillis = MIN_GATEWAY_RECONNECT_DELAY_MILLIS
         sequence = null
         lastStatus = "reset"
         lastError = ""
@@ -130,6 +135,11 @@ object DiscordInboundBridge {
 
     private fun ensureGateway(server: MinecraftServer, config: DiscordInboundConfig) {
         if (gateway != null || gatewayConnecting) return
+        val now = System.currentTimeMillis()
+        if (now < nextGatewayConnectMillis) {
+            lastStatus = "gateway reconnect backoff ${nextGatewayConnectMillis - now}ms"
+            return
+        }
         gatewayConnecting = true
         lastStatus = "connecting gateway"
         client.newWebSocketBuilder()
@@ -141,7 +151,7 @@ object DiscordInboundBridge {
             }
             .exceptionally { exception ->
                 gatewayConnecting = false
-                lastStatus = "gateway connect failed"
+                scheduleGatewayReconnect("gateway connect failed")
                 lastError = exception.message.orEmpty()
                 ChowKingdomMod.LOGGER.warn("Failed to connect Discord gateway", exception)
                 null
@@ -180,11 +190,15 @@ object DiscordInboundBridge {
         payload.get("s")?.takeIf { !it.isJsonNull }?.asInt?.let { sequence = it }
         when (payload.get("op")?.asInt) {
             0 -> when (val eventType = payload.get("t")?.asString.orEmpty()) {
-                "READY" -> lastStatus = "gateway ready"
+                "READY" -> {
+                    gatewayReconnectDelayMillis = MIN_GATEWAY_RECONNECT_DELAY_MILLIS
+                    nextGatewayConnectMillis = 0L
+                    lastStatus = "gateway ready"
+                }
                 "MESSAGE_CREATE" -> handleGatewayMessage(server, config, payload.getAsJsonObject("d"))
                 else -> if (eventType.isNotBlank()) lastStatus = "gateway dispatch $eventType"
             }
-            7, 9 -> reset()
+            7, 9 -> reconnectGateway(socket, "gateway requested reconnect op=${payload.get("op")?.asInt}")
             10 -> {
                 val interval = payload.getAsJsonObject("d").get("heartbeat_interval").asLong
                 lastStatus = "gateway hello heartbeat=${interval}ms"
@@ -471,8 +485,8 @@ object DiscordInboundBridge {
             gateway = null
             heartbeatTask?.cancel(false)
             heartbeatTask = null
-            lastStatus = "gateway closed $statusCode"
             lastError = reason
+            scheduleGatewayReconnect("gateway closed $statusCode")
             return null
         }
 
@@ -480,10 +494,25 @@ object DiscordInboundBridge {
             gateway = null
             heartbeatTask?.cancel(false)
             heartbeatTask = null
-            lastStatus = "gateway error"
             lastError = error.message.orEmpty()
+            scheduleGatewayReconnect("gateway error")
             ChowKingdomMod.LOGGER.warn("Discord gateway error", error)
         }
+    }
+
+    private fun reconnectGateway(socket: WebSocket, reason: String) {
+        if (gateway === socket) gateway = null
+        heartbeatTask?.cancel(false)
+        heartbeatTask = null
+        sequence = null
+        scheduleGatewayReconnect(reason)
+        socket.sendClose(WebSocket.NORMAL_CLOSURE, reason.take(120))
+    }
+
+    private fun scheduleGatewayReconnect(status: String) {
+        lastStatus = status
+        nextGatewayConnectMillis = System.currentTimeMillis() + gatewayReconnectDelayMillis
+        gatewayReconnectDelayMillis = (gatewayReconnectDelayMillis * 2).coerceAtMost(MAX_GATEWAY_RECONNECT_DELAY_MILLIS)
     }
 
     private data class InboundMessage(val id: String, val authorId: String, val author: String, val content: String, val referencedMessageId: String? = null)
@@ -493,6 +522,8 @@ object DiscordInboundBridge {
     private const val DISCORD_INTENT_MESSAGE_CONTENT = 32768
     private const val DISCORD_ACTIVITY_CUSTOM = 4
     private const val DISCORD_ACTIVITY_TEXT_LIMIT = 128
+    private const val MIN_GATEWAY_RECONNECT_DELAY_MILLIS = 5_000L
+    private const val MAX_GATEWAY_RECONNECT_DELAY_MILLIS = 300_000L
     private val LINK_COMMAND = Regex("(?i)!link\\s+([a-z0-9-]{4,32})")
     private val TEMPLATE_TOKEN = Regex("\\{(author|discord_author|discord_id|message)\\}")
     private const val CHAT_MESSAGE_COLOR = 0xD7D9E0

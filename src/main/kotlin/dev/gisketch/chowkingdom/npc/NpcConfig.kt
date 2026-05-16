@@ -163,7 +163,7 @@ object NpcConfig {
         skin = "gisketchs_chowkingdom_mod:npc/finn",
         bodyType = NpcBodyTypes.NORMAL,
         mainPokemon = "cobblemon:growlithe",
-        store = "cosmetics",
+        store = "explorer",
         classId = "warrior",
         jobDefinition = NpcJobDefinition(scanIntervalTicks = 60, roamRadius = 7, workScanRadius = 9),
         schedule = NpcScheduleDefinition(

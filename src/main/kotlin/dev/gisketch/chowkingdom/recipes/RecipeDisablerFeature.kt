@@ -154,6 +154,10 @@ object RecipeDisablerConfig {
 class RecipeDisablerDefinition(
     @SerializedName("disabled_recipes") var disabledRecipes: MutableList<String> = mutableListOf(
         "minecraft:paper",
+        "naturescompass:natures_compass",
+        "naturescompass:repair_natures_compass",
+        "explorerscompass:explorers_compass",
+        "explorerscompass:repair_explorers_compass",
     ),
     var cosmeticize: MutableList<String> = mutableListOf(),
     @SerializedName("loot_table_destroyer") var lootTableDestroyer: MutableList<String> = mutableListOf(),

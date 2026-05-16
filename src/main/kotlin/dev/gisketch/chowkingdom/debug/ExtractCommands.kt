@@ -2,9 +2,9 @@ package dev.gisketch.chowkingdom.debug
 
 import com.mojang.brigadier.context.CommandContext
 import dev.gisketch.chowkingdom.discord.DiscordWebhookClient
+import dev.gisketch.chowkingdom.shops.ExplorerTargetCatalog
 import net.minecraft.commands.CommandSourceStack
 import net.minecraft.commands.Commands
-import net.minecraft.core.registries.Registries
 import net.minecraft.network.chat.Component
 import net.neoforged.neoforge.common.NeoForge
 import net.neoforged.neoforge.event.RegisterCommandsEvent
@@ -21,34 +21,36 @@ object ExtractCommands {
                 .then(Commands.literal("biome").executes(::sendBiomes))
                 .then(Commands.literal("biomes").executes(::sendBiomes))
                 .then(Commands.literal("structure").executes(::sendStructures))
-                .then(Commands.literal("structures").executes(::sendStructures)),
+                .then(Commands.literal("structures").executes(::sendStructures))
+                .then(Commands.literal("biome_structures").executes(::sendBiomesAndStructures))
+                .then(Commands.literal("worldgen").executes(::sendBiomesAndStructures)),
         )
     }
 
     private fun sendBiomes(context: CommandContext<CommandSourceStack>): Int {
-        val ids = context.source.server.registryAccess()
-            .registryOrThrow(Registries.BIOME)
-            .keySet()
-            .map { id -> id.toString() }
-            .sorted()
-        return sendRegistryReport(context, "Biomes", ids)
+        val lines = ExplorerTargetCatalog.biomeReportLines(context.source.server)
+        val count = ExplorerTargetCatalog.biomeIds(context.source.server).size
+        return sendRegistryReport(context, "Biomes", lines, count)
     }
 
     private fun sendStructures(context: CommandContext<CommandSourceStack>): Int {
-        val ids = context.source.server.registryAccess()
-            .registryOrThrow(Registries.STRUCTURE)
-            .keySet()
-            .map { id -> id.toString() }
-            .sorted()
-        return sendRegistryReport(context, "Structures", ids)
+        val lines = ExplorerTargetCatalog.structureReportLines(context.source.server)
+        val count = ExplorerTargetCatalog.structureIds(context.source.server).size
+        return sendRegistryReport(context, "Structures", lines, count)
     }
 
-    private fun sendRegistryReport(context: CommandContext<CommandSourceStack>, title: String, ids: List<String>): Int {
-        val chunks = codeblockChunks("$title (${ids.size})", ids.ifEmpty { listOf("none") })
-        context.source.sendSuccess({ Component.literal("Extracted ${ids.size} ${title.lowercase()} and sent to Discord.") }, true)
+    private fun sendBiomesAndStructures(context: CommandContext<CommandSourceStack>): Int {
+        val lines = ExplorerTargetCatalog.combinedReportLines(context.source.server)
+        val count = ExplorerTargetCatalog.biomeIds(context.source.server).size + ExplorerTargetCatalog.structureIds(context.source.server).size
+        return sendRegistryReport(context, "Biome/Structure Targets", lines, count)
+    }
+
+    private fun sendRegistryReport(context: CommandContext<CommandSourceStack>, title: String, lines: List<String>, count: Int): Int {
+        val chunks = codeblockChunks("$title ($count)", lines.ifEmpty { listOf("none") })
+        context.source.sendSuccess({ Component.literal("Extracted $count ${title.lowercase()} and sent to Discord.") }, true)
         chunks.forEach { chunk -> context.source.sendSuccess({ Component.literal(chunk) }, false) }
         chunks.forEach { chunk -> DiscordWebhookClient.send(chunk) }
-        return ids.size.coerceAtLeast(1)
+        return count.coerceAtLeast(1)
     }
 
     private fun codeblockChunks(title: String, ids: List<String>): List<String> {

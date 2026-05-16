@@ -3,6 +3,10 @@
 # cosmeticize uses item ids and removes wearable combat attributes so shop cosmetics stay cosmetic-only.
 
 disabled_recipes = [
+  "naturescompass:natures_compass",
+  "naturescompass:repair_natures_compass",
+  "explorerscompass:explorers_compass",
+  "explorerscompass:repair_explorers_compass",
   "fantasy_armor:eclipse_soldier_boots",
   "fantasy_armor:eclipse_soldier_chestplate",
   "fantasy_armor:eclipse_soldier_helmet",
