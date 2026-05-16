@@ -67,10 +67,12 @@ import net.minecraft.world.level.block.state.BlockBehaviour
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.level.block.state.properties.BedPart
 import net.minecraft.world.phys.AABB
+import net.minecraft.world.phys.EntityHitResult
 import net.minecraft.world.phys.Vec3
 import net.neoforged.bus.api.IEventBus
 import net.neoforged.bus.api.EventPriority
 import net.neoforged.neoforge.common.NeoForge
+import net.neoforged.neoforge.event.entity.ProjectileImpactEvent
 import net.neoforged.neoforge.event.RegisterCommandsEvent
 import net.neoforged.neoforge.event.ServerChatEvent
 import net.neoforged.neoforge.event.entity.EntityAttributeCreationEvent
@@ -149,6 +151,7 @@ object NpcFeature {
         NeoForge.EVENT_BUS.addListener(::onServerTick)
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, ::onAttackEntity)
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, ::onIncomingDamage)
+        NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, ::onProjectileImpact)
         NeoForge.EVENT_BUS.addListener(::onLivingDamagePre)
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, ::onLivingChangeTarget)
         NeoForge.EVENT_BUS.addListener(::onLivingDeath)
@@ -156,6 +159,7 @@ object NpcFeature {
         NeoForge.EVENT_BUS.addListener(::onPlayerLoggedOut)
         NeoForge.EVENT_BUS.addListener(::onPlayerChangedDimension)
         NeoForge.EVENT_BUS.addListener(::onServerChat)
+        NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, ::onBlockPlace)
         NeoForge.EVENT_BUS.addListener(::onBlockBreak)
         NeoForge.EVENT_BUS.addListener(::onRegisterCommands)
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, ::onRightClickBlock)
@@ -1718,6 +1722,10 @@ object NpcFeature {
 
     private fun onAttackEntity(event: AttackEntityEvent) {
         val player = event.entity as? ServerPlayer ?: return
+        if (NpcBossFights.shouldBlockDuelInteraction(player, player, event.target)) {
+            event.isCanceled = true
+            return
+        }
         if (NpcPokemonCompanions.isCompanion(event.target)) {
             event.isCanceled = true
             return
@@ -1750,7 +1758,15 @@ object NpcFeature {
             event.newAboutToBeSetTarget = null
             return
         }
-        if (NpcBossFights.shouldBlockDamage(target, event.entity, event.entity)) event.newAboutToBeSetTarget = null
+        if (NpcBossFights.shouldBlockDuelInteraction(event.entity, event.entity, target)) event.newAboutToBeSetTarget = null
+    }
+
+    private fun onProjectileImpact(event: ProjectileImpactEvent) {
+        val hit = event.rayTraceResult as? EntityHitResult ?: return
+        val owner = event.projectile.owner
+        if (!NpcBossFights.shouldBlockDuelInteraction(owner, event.projectile, hit.entity)) return
+        event.isCanceled = true
+        event.projectile.discard()
     }
 
     private fun onPlayerLoggedIn(event: PlayerEvent.PlayerLoggedInEvent) {
@@ -1847,6 +1863,12 @@ object NpcFeature {
     }
 
     private fun onBlockBreak(event: BlockEvent.BreakEvent) {
+        val breaker = event.player as? ServerPlayer
+        if (breaker != null && NpcBossFights.shouldBlockArenaBlockChange(breaker, event.pos)) {
+            event.isCanceled = true
+            SnackbarNetwork.send(breaker, SnackbarNotification.item(SnackbarIcons.ERROR, "BOSS ARENA LOCKED", "Terrain edits are blocked during the duel.", SnackbarType.ERROR, SnackbarSounds.ERROR))
+            return
+        }
         val level = event.level as? ServerLevel ?: return
         if (!event.state.`is`(BlockTags.BEDS)) return
         val npcId = homeOwnerAtBed(level, event.pos) ?: return
@@ -1870,6 +1892,13 @@ object NpcFeature {
         NpcStore.recordGlobalEvent("npc_home_lost", "$npcId lost assigned bed")
     }
 
+    private fun onBlockPlace(event: BlockEvent.EntityPlaceEvent) {
+        val player = event.entity as? ServerPlayer ?: return
+        if (!NpcBossFights.shouldBlockArenaBlockChange(player, event.pos)) return
+        event.isCanceled = true
+        SnackbarNetwork.send(player, SnackbarNotification.item(SnackbarIcons.ERROR, "BOSS ARENA LOCKED", "Terrain edits are blocked during the duel.", SnackbarType.ERROR, SnackbarSounds.ERROR))
+    }
+
     private fun onRegisterCommands(event: RegisterCommandsEvent) {
         event.dispatcher.register(npcRoot("npc"))
         event.dispatcher.register(Commands.literal("ck").then(npcRoot("npc")))
@@ -1882,6 +1911,12 @@ object NpcFeature {
         if (event.hand != InteractionHand.MAIN_HAND) return
         val player = event.entity
         val stack = player.getItemInHand(event.hand)
+        if (!player.level().isClientSide && player is ServerPlayer && isArenaMutatingUse(stack) && NpcBossFights.shouldBlockArenaBlockChange(player, event.pos)) {
+            event.isCanceled = true
+            event.cancellationResult = InteractionResult.FAIL
+            SnackbarNetwork.send(player, SnackbarNotification.item(SnackbarIcons.ERROR, "BOSS ARENA LOCKED", "Terrain edits are blocked during the duel.", SnackbarType.ERROR, SnackbarSounds.ERROR))
+            return
+        }
         val jobNpcId = NpcJobApplicationData.readNpcId(stack)
         if (jobNpcId.isNotBlank()) {
             event.isCanceled = true
@@ -1899,6 +1934,15 @@ object NpcFeature {
         if (player.level().isClientSide) return
         player as? ServerPlayer ?: return
         assignHome(player, npcId, event.pos, stack)
+    }
+
+    private fun isArenaMutatingUse(stack: ItemStack): Boolean {
+        val item = stack.item
+        return item == Items.WATER_BUCKET ||
+            item == Items.LAVA_BUCKET ||
+            item == Items.POWDER_SNOW_BUCKET ||
+            item == Items.FLINT_AND_STEEL ||
+            item == Items.FIRE_CHARGE
     }
 
     fun homeOwnerAtBed(level: Level, pos: BlockPos): String? {

@@ -10,6 +10,8 @@ import dev.gisketch.chowkingdom.snackbar.SnackbarSounds
 import dev.gisketch.chowkingdom.snackbar.SnackbarType
 import dev.gisketch.chowkingdom.roles.ClassMentorQuestService
 import net.minecraft.commands.arguments.EntityAnchorArgument
+import net.minecraft.core.BlockPos
+import net.minecraft.core.Direction
 import net.minecraft.core.particles.SimpleParticleType
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.core.particles.ParticleTypes
@@ -147,6 +149,51 @@ object NpcBossFights {
 
     fun isDuelist(entity: ChowNpcEntity, player: ServerPlayer): Boolean = active[entity.uuid]?.targetId == player.uuid
 
+    fun shouldBlockDuelInteraction(sourceEntity: Entity?, directEntity: Entity?, target: Entity): Boolean {
+        val sourceBoss = bossDamageSource(sourceEntity) ?: bossDamageSource(directEntity)
+        if (sourceBoss != null) {
+            val fight = active[sourceBoss.uuid] ?: return false
+            return target.uuid != fight.targetId
+        }
+
+        val sourcePlayer = participantPlayer(sourceEntity) ?: participantPlayer(directEntity)
+        if (sourcePlayer != null) {
+            val fight = active.entries.firstOrNull { entry -> entry.value.targetId == sourcePlayer.uuid } ?: return false
+            return target.uuid != fight.key
+        }
+
+        val targetBoss = target as? ChowNpcEntity
+        if (targetBoss != null) {
+            val fight = active[targetBoss.uuid] ?: return false
+            val attacker = participantPlayer(sourceEntity) ?: participantPlayer(directEntity)
+            return attacker?.uuid != fight.targetId
+        }
+
+        val targetPlayer = target as? ServerPlayer
+        if (targetPlayer != null) {
+            val fight = active.entries.firstOrNull { entry -> entry.value.targetId == targetPlayer.uuid } ?: return false
+            if (sourceEntity == null && directEntity == null) return false
+            val boss = bossDamageSource(sourceEntity) ?: bossDamageSource(directEntity)
+            return boss?.uuid != fight.key
+        }
+
+        return false
+    }
+
+    fun shouldBlockArenaBlockChange(player: ServerPlayer, pos: BlockPos): Boolean {
+        if (player.abilities.instabuild && player.hasPermissions(2)) return false
+        val level = player.level() as? ServerLevel ?: return false
+        val center = Vec3.atCenterOf(pos)
+        return active.any { (bossId, fight) ->
+            val boss = bossEntity(level.server, bossId) ?: return@any false
+            if (boss.level() != level) return@any false
+            val duelist = level.getPlayerByUUID(fight.targetId)
+            center.distanceToSqr(fight.startPos) <= ARENA_BUILD_LOCK_RADIUS_SQR ||
+                center.distanceToSqr(boss.position()) <= PARTICIPANT_BUILD_LOCK_RADIUS_SQR ||
+                (duelist != null && center.distanceToSqr(duelist.position()) <= PARTICIPANT_BUILD_LOCK_RADIUS_SQR)
+        }
+    }
+
     fun isResultProtected(entity: ChowNpcEntity): Boolean {
         val protection = resultProtection[entity.uuid] ?: return false
         if (entity.tickCount <= protection.untilTick) return true
@@ -203,8 +250,7 @@ object NpcBossFights {
             if (isResultProtected(targetBoss)) return true
             val fight = active[targetBoss.uuid] ?: return false
             if (targetBoss.tickCount <= fight.npcIframeUntilTick) return true
-            val attacker = (sourceEntity as? ServerPlayer) ?: (directEntity as? ServerPlayer)
-            return attacker?.uuid != fight.targetId
+            return shouldBlockDuelInteraction(sourceEntity, directEntity, target)
         }
 
         val targetPlayer = target as? ServerPlayer
@@ -215,19 +261,11 @@ object NpcBossFights {
                 if (sourceEntity == null && directEntity == null) return false
                 val sourceBoss = bossDamageSource(sourceEntity) ?: bossDamageSource(directEntity)
                 if (sourceBoss?.uuid == fight.key) return NpcCombatRollBridge.isRolling(targetPlayer)
-                return sourceEntity?.uuid != fight.key && directEntity?.uuid != fight.key
+                return shouldBlockDuelInteraction(sourceEntity, directEntity, target)
             }
         }
 
-        val sourcePlayer = (sourceEntity as? ServerPlayer) ?: (directEntity as? ServerPlayer)
-        if (sourcePlayer != null) {
-            val fight = active.entries.firstOrNull { entry -> entry.value.targetId == sourcePlayer.uuid } ?: return false
-            return target.uuid != fight.key
-        }
-
-        val sourceBoss = bossDamageSource(sourceEntity) ?: bossDamageSource(directEntity) ?: return false
-        val fight = active[sourceBoss.uuid] ?: return false
-        return target.uuid != fight.targetId
+        return shouldBlockDuelInteraction(sourceEntity, directEntity, target)
     }
 
     fun handleNpcAttackAttempt(entity: ChowNpcEntity, attacker: ServerPlayer?): Boolean {
@@ -337,6 +375,8 @@ object NpcBossFights {
         tickMagicProjectiles(entity, target, fight)
         tickTrackedArrows(entity, target, fight)
         if (active[entity.uuid] !== fight) return true
+        tickAntiCheese(entity, target, fight)
+        if (active[entity.uuid] !== fight) return true
         updateBossBar(entity, target, fight)
         return when (fight.phase) {
             BossFightPhase.CHASE -> tickChase(entity, target, fight)
@@ -361,6 +401,113 @@ object NpcBossFights {
         val vertical = (targetY - entity.y).coerceIn(-0.08, 0.08)
         entity.deltaMovement = Vec3(entity.deltaMovement.x, vertical, entity.deltaMovement.z)
         entity.hurtMarked = true
+    }
+
+    private fun tickAntiCheese(entity: ChowNpcEntity, target: ServerPlayer, fight: ActiveBossFight) {
+        if (fight.phase == BossFightPhase.PHASE_DIALOGUE || entity.tickCount < fight.nextAntiCheeseEscapeTick) {
+            resetAntiCheeseWatch(entity, fight)
+            return
+        }
+        val position = entity.position()
+        if (position.distanceToSqr(fight.antiCheeseWatchPos) > STUCK_WATCH_MOVE_RESET_SQR) {
+            resetAntiCheeseWatch(entity, fight)
+            return
+        }
+        val horizontalDistanceSqr = horizontalDistanceSqr(position, target.position())
+        val verticalGap = kotlin.math.abs(entity.y - target.y)
+        val targetDistance = entity.distanceTo(target).toDouble()
+        val lineBlocked = !entity.hasLineOfSight(target)
+        val suspiciousVertical = verticalGap >= VERTICAL_CHEESE_GAP && horizontalDistanceSqr <= VERTICAL_CHEESE_HORIZONTAL_SQR
+        val suspiciousLine = lineBlocked && targetDistance <= fight.moveset.attackStartDistance + LINE_STALL_RANGE_BUFFER
+        val suspiciousRange = targetDistance > fight.moveset.combatRangeMax + PATH_STALL_RANGE_BUFFER && entity.navigation.isDone
+        val suspiciousTrap = isBossLocallyTrapped(entity)
+        if (!suspiciousVertical && !suspiciousLine && !suspiciousRange && !suspiciousTrap) {
+            resetAntiCheeseWatch(entity, fight)
+            return
+        }
+        if (fight.antiCheeseStuckSince == 0) {
+            fight.antiCheeseStuckSince = entity.tickCount
+            fight.antiCheeseWatchPos = position
+            return
+        }
+        if (entity.tickCount - fight.antiCheeseStuckSince < STUCK_ESCAPE_TICKS) return
+        escapeAntiCheeseTrap(entity, target, fight)
+    }
+
+    private fun resetAntiCheeseWatch(entity: ChowNpcEntity, fight: ActiveBossFight) {
+        fight.antiCheeseStuckSince = 0
+        fight.antiCheeseWatchPos = entity.position()
+    }
+
+    private fun isBossLocallyTrapped(entity: ChowNpcEntity): Boolean {
+        val level = entity.level() as? ServerLevel ?: return false
+        val directions = listOf(
+            Vec3(1.0, 0.0, 0.0),
+            Vec3(-1.0, 0.0, 0.0),
+            Vec3(0.0, 0.0, 1.0),
+            Vec3(0.0, 0.0, -1.0),
+            Vec3(0.7, 0.0, 0.7),
+            Vec3(0.7, 0.0, -0.7),
+            Vec3(-0.7, 0.0, 0.7),
+            Vec3(-0.7, 0.0, -0.7),
+        )
+        return directions.none { direction ->
+            level.noCollision(entity, entity.boundingBox.move(direction.normalize().scale(LOCAL_TRAP_STEP)))
+        }
+    }
+
+    private fun escapeAntiCheeseTrap(entity: ChowNpcEntity, target: ServerPlayer, fight: ActiveBossFight) {
+        val level = entity.level() as? ServerLevel ?: return
+        val destination = findAntiCheeseEscapePosition(level, entity, target, fight) ?: run {
+            cancel(entity, fight, "Boss fight reset: no clean arena position.")
+            return
+        }
+        val from = entity.position()
+        level.sendParticles(ParticleTypes.POOF, from.x, from.y + 0.6, from.z, 24, 0.45, 0.45, 0.45, 0.04)
+        playBossSound(level, "minecraft:entity.enderman.teleport", SoundEvents.ENDERMAN_TELEPORT, from.x, from.y + 0.8, from.z, 0.55f, 1.35f)
+        entity.navigation.stop()
+        entity.teleportTo(destination.x, destination.y, destination.z)
+        entity.deltaMovement = Vec3.ZERO
+        entity.fallDistance = 0.0f
+        entity.hurtMarked = true
+        level.sendParticles(ParticleTypes.POOF, destination.x, destination.y + 0.6, destination.z, 32, 0.45, 0.45, 0.45, 0.04)
+        playBossSound(level, "minecraft:entity.enderman.teleport", SoundEvents.ENDERMAN_TELEPORT, destination.x, destination.y + 0.8, destination.z, 0.65f, 1.1f)
+        fight.nextAntiCheeseEscapeTick = entity.tickCount + STUCK_ESCAPE_COOLDOWN_TICKS
+        resetAntiCheeseWatch(entity, fight)
+        startChase(entity, target, fight)
+        entity.debugGoal = "anti_cheese_reposition"
+    }
+
+    private fun findAntiCheeseEscapePosition(level: ServerLevel, entity: ChowNpcEntity, target: ServerPlayer, fight: ActiveBossFight): Vec3? {
+        val baseAngle = kotlin.math.atan2(entity.z - target.z, entity.x - target.x)
+        val radii = listOf(2.6, 3.4, 4.4, 5.2, 1.8)
+        val angleOffsets = listOf(0.0, Math.PI / 3.0, -Math.PI / 3.0, Math.PI * 0.66, -Math.PI * 0.66, Math.PI)
+        for (radius in radii) {
+            for (angleOffset in angleOffsets) {
+                val angle = baseAngle + angleOffset
+                val x = target.x + kotlin.math.cos(angle) * radius
+                val z = target.z + kotlin.math.sin(angle) * radius
+                for (yOffset in 1 downTo -3) {
+                    val pos = BlockPos.containing(x, target.y + yOffset, z)
+                    val candidate = Vec3(pos.x + 0.5, pos.y.toDouble(), pos.z + 0.5)
+                    if (isSafeAntiCheeseEscapeSpot(level, entity, target, fight, candidate)) return candidate
+                }
+            }
+        }
+        return null
+    }
+
+    private fun isSafeAntiCheeseEscapeSpot(level: ServerLevel, entity: ChowNpcEntity, target: ServerPlayer, fight: ActiveBossFight, candidate: Vec3): Boolean {
+        if (candidate.distanceToSqr(fight.startPos) > TETHER_DISTANCE_SQR * 0.85) return false
+        val offset = candidate.subtract(entity.position())
+        if (!level.noCollision(entity, entity.boundingBox.move(offset))) return false
+        if (fight.moveset.hoverHeight <= 0.0) {
+            val floorPos = BlockPos.containing(candidate.x, candidate.y - 0.1, candidate.z)
+            if (!level.getBlockState(floorPos).isFaceSturdy(level, floorPos, Direction.UP)) return false
+        }
+        val eyeOffset = entity.eyeY - entity.y
+        val line = level.clip(ClipContext(candidate.add(0.0, eyeOffset, 0.0), target.getEyePosition(), ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, entity))
+        return line.type == HitResult.Type.MISS
     }
 
     private fun restoreBossGravity(entity: ChowNpcEntity, fight: ActiveBossFight) {
@@ -2095,6 +2242,12 @@ object NpcBossFights {
         else -> null
     }
 
+    private fun participantPlayer(entity: Entity?): ServerPlayer? = when (entity) {
+        is ServerPlayer -> entity
+        is Projectile -> entity.owner as? ServerPlayer
+        else -> null
+    }
+
     private fun spreadOffset(index: Int, count: Int, spreadDegrees: Double): Double {
         if (count <= 1 || spreadDegrees <= 0.0) return 0.0
         val center = (count - 1) * 0.5
@@ -2107,6 +2260,12 @@ object NpcBossFights {
         val sin = kotlin.math.sin(radians)
         val cos = kotlin.math.cos(radians)
         return Vec3(vector.x * cos - vector.z * sin, vector.y, vector.x * sin + vector.z * cos)
+    }
+
+    private fun horizontalDistanceSqr(first: Vec3, second: Vec3): Double {
+        val dx = first.x - second.x
+        val dz = first.z - second.z
+        return dx * dx + dz * dz
     }
 
     private fun magicProjectileLifetimeTicks(move: NpcBossMoveDefinition): Int =
@@ -2557,6 +2716,9 @@ object NpcBossFights {
         val trackedArrows: MutableList<TrackedBossArrow> = mutableListOf(),
         val areaHazards: MutableList<BossAreaHazard> = mutableListOf(),
         val supportUses: MutableMap<String, Int> = linkedMapOf(),
+        var antiCheeseWatchPos: Vec3 = startPos,
+        var antiCheeseStuckSince: Int = 0,
+        var nextAntiCheeseEscapeTick: Int = 0,
         var absorptionHealth: Float = 0.0f,
         var absorptionUntilTick: Int = 0,
         var antiSpamPressure: Double = 0.0,
@@ -2612,6 +2774,16 @@ object NpcBossFights {
     private const val MAX_FIGHT_TICKS = 20 * 60 * 5
     private const val TETHER_DISTANCE_SQR = 40.0 * 40.0
     private const val TETHER_GRACE_TICKS = 60
+    private const val ARENA_BUILD_LOCK_RADIUS_SQR = 40.0 * 40.0
+    private const val PARTICIPANT_BUILD_LOCK_RADIUS_SQR = 7.0 * 7.0
+    private const val STUCK_ESCAPE_TICKS = 45
+    private const val STUCK_ESCAPE_COOLDOWN_TICKS = 90
+    private const val STUCK_WATCH_MOVE_RESET_SQR = 0.35 * 0.35
+    private const val VERTICAL_CHEESE_GAP = 1.35
+    private const val VERTICAL_CHEESE_HORIZONTAL_SQR = 7.0 * 7.0
+    private const val LINE_STALL_RANGE_BUFFER = 2.0
+    private const val PATH_STALL_RANGE_BUFFER = 1.5
+    private const val LOCAL_TRAP_STEP = 0.75
     private const val RECOVERY_TICKS = 14
     private const val GUARD_REACT_TICKS = 6
     private const val GUARD_BAIT_MIN_TICKS = 60

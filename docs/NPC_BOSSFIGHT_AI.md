@@ -234,6 +234,7 @@ Live label: `NPC mode: dodging`
 - Player damage during `CHASE` is blocked.
 - Third-party damage into either participant stays blocked.
 - Fight participants cannot damage outside targets.
+- Boss and duelist combat is isolated as a duel: direct attacks, damage events, mob target changes, and projectile entity impacts are blocked unless the interaction is between the active boss and the active duelist.
 - If a boss hit would reduce the duelist to death/incapacitation, cancel that damage before the revive system, end the fight as an NPC victory, restore the player to full health, and open a close-only NPC victory dialog.
 
 ## Boss Balloons
@@ -265,6 +266,13 @@ Boss fights use the custom CKDM HUD bar instead of the vanilla boss overlay.
 ## Movement Rules
 
 Runtime footwork uses the per-moveset `movement_style`, `combat_range_min`, `combat_range_max`, `footwork_aggression`, `footwork_strafe_weight`, `footwork_retreat_weight`, and `footwork_advance_weight` fields. Movement intents rotate through strafe-left, strafe-right, retreat, advance, hold-angle, charge-in, and dash-out so bosses do not repeat the same positioning loop.
+
+Anti-cheese movement rules:
+
+- Active duel terrain is locked against survival block place, block break, bucket, flint-and-steel, and fire-charge edits inside the duel area. Creative/admin players can still intervene.
+- If the boss remains pinned in place while vertically separated from the player, locally boxed in, path-stalled, or line-of-sight stalled, the controller performs a short VFX reposition to a safe nearby point with line of sight.
+- Anti-cheese reposition is a failsafe, not a normal moveset action. Non-teleport bosses should still move naturally during regular chase, attack, recovery, roll, and dodge flow.
+- If no clean nearby point exists, the duel resets instead of letting the player farm a trapped boss.
 
 Recovery mode must use lock-on movement:
 
