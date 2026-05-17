@@ -642,14 +642,19 @@ private data class NpcBalloonIcon(val marker: String, val texture: ResourceLocat
     private val DISCORD_CHAT_ICON = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/fonts/discord.png")
 }
 
-private fun npcTexture(npcId: String): ResourceLocation {
-    val cleanId = npcId.trim().lowercase(Locale.ROOT).replace(Regex("[^a-z0-9_./-]"), "")
-    if (cleanId.isBlank() || cleanId == ChowNpcEntity.ANIMATION_DEBUG_NPC_ID) return STEVE_TEXTURE
-    val configuredSkin = NpcConfig.get(cleanId)?.skin?.takeIf(String::isNotBlank)
-    val debugSkin = bossFightDebugClassId(cleanId)
-        ?.let { classId -> NpcConfig.all().firstOrNull { definition -> NpcBossMovesets.normalizeId(definition.classId) == classId && definition.skin.isNotBlank() } }
-        ?.skin
-    return npcSkinTexture(configuredSkin ?: debugSkin ?: cleanId)
+private fun npcTexture(npcId: String): ResourceLocation = NpcTextures.texture(npcId)
+
+object NpcTextures {
+    @JvmStatic
+    fun texture(npcId: String): ResourceLocation {
+        val cleanId = npcId.trim().lowercase(Locale.ROOT).replace(Regex("[^a-z0-9_./-]"), "")
+        if (cleanId.isBlank() || cleanId == ChowNpcEntity.ANIMATION_DEBUG_NPC_ID) return STEVE_TEXTURE
+        val configuredSkin = NpcConfig.get(cleanId)?.skin?.takeIf(String::isNotBlank)
+        val debugSkin = bossFightDebugClassId(cleanId)
+            ?.let { classId -> NpcConfig.all().firstOrNull { definition -> NpcBossMovesets.normalizeId(definition.classId) == classId && definition.skin.isNotBlank() } }
+            ?.skin
+        return npcSkinTexture(configuredSkin ?: debugSkin ?: cleanId)
+    }
 }
 
 private val STEVE_TEXTURE = ResourceLocation.withDefaultNamespace("textures/entity/player/wide/steve.png")

@@ -4,6 +4,7 @@ import com.google.gson.GsonBuilder
 import dev.gisketch.chowkingdom.ChowKingdomMod
 import dev.gisketch.chowkingdom.npc.NpcQuestService
 import dev.gisketch.chowkingdom.revive.ReviveStore
+import dev.gisketch.chowkingdom.shipping.ShippingBinStore
 import dev.gisketch.chowkingdom.wallets.ChowcoinStore
 import net.minecraft.network.RegistryFriendlyByteBuf
 import net.minecraft.network.codec.StreamCodec
@@ -125,7 +126,7 @@ object BattlepassNetwork {
         }
         onlinePlayers.forEach { player -> lastKnownPlayerProgress[player.uuid] = player }
         val players = (lastKnownPlayerProgress.values + onlinePlayers).associateBy { player -> player.uuid }.values.toList()
-        return BattlepassSyncPayload(passes.map { pass -> gson.toJson(pass) }, players, activeMissionKeysByPass, receiver.uuid)
+        return BattlepassSyncPayload(passes.map { pass -> gson.toJson(pass) }, players, activeMissionKeysByPass, receiver.uuid, ShippingBinStore.totalItemsSold())
     }
 
     private fun eventProgress(player: ServerPlayer, passes: List<BattlepassPassDefinition>, eventId: String): Int =
@@ -184,6 +185,7 @@ data class BattlepassSyncPayload(
     val players: List<BattlepassPlayerProgressPayload>,
     val activeMissionKeysByPass: Map<String, List<String>>,
     val selfId: UUID,
+    val totalShippedItems: Long,
 ) : CustomPacketPayload {
     override fun type(): CustomPacketPayload.Type<BattlepassSyncPayload> = TYPE
 
@@ -198,7 +200,7 @@ data class BattlepassSyncPayload(
                     val passId = buffer.readUtf(MAX_STRING_LENGTH)
                     activeMissionKeysByPass[passId] = List(buffer.readVarInt()) { buffer.readUtf(MAX_STRING_LENGTH) }
                 }
-                return BattlepassSyncPayload(passes, players, activeMissionKeysByPass, buffer.readUUID())
+                return BattlepassSyncPayload(passes, players, activeMissionKeysByPass, buffer.readUUID(), buffer.readVarLong())
             }
 
             override fun encode(buffer: RegistryFriendlyByteBuf, value: BattlepassSyncPayload) {
@@ -213,6 +215,7 @@ data class BattlepassSyncPayload(
                     keys.forEach { key -> buffer.writeUtf(key, MAX_STRING_LENGTH) }
                 }
                 buffer.writeUUID(value.selfId)
+                buffer.writeVarLong(value.totalShippedItems)
             }
         }
     }

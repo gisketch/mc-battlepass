@@ -27,6 +27,10 @@
     "PunchyConfigParryMixin",
     "SimplyTooltipsGifRecorderMixin",
     "SystemToastMixin",
+    "XaeroMinimapNpcReaderMixin",
+    "XaeroMinimapNpcRendererMixin",
+    "XaeroWorldMapNpcReaderMixin",
+    "XaeroWorldMapNpcRendererMixin",
     "XaeroRadarColorHelperMixin",
     "XaeroRadarIconManagerMixin"
   ],

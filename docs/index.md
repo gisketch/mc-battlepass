@@ -8,6 +8,12 @@
 - [Quality](quality.md)
 - [Agent Targets](agent-targets.md)
 
+## Roadmaps And Plans
+
+- [CKDM Roadmap](ckdm-roadmap.md): canonical server roadmap, categorized by launch, economy, progression, combat, Cobblemon, world, social, and event backlog.
+- [NPC LLM V1 Plan](PLANV1LLM.md): focused NPC Talk / LLM feature plan.
+- [Execution Plans](exec-plans/README.md): active and completed implementation plans.
+
 ## Project Context
 
 - [Architecture](architecture/index.md)

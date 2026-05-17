@@ -135,11 +135,17 @@ object PlayerListHudClient {
 
     private fun renderFooter(guiGraphics: GuiGraphics, font: Font, panel: Rect) {
         val time = Minecraft.getInstance().level?.let { level -> ChowClock.displayTime(level, ChowClockConfig.current()) } ?: return
-        val component = ckdmText(time)
-        val x = panel.x + panel.width / 2 - font.width(component) / 2
+        val timeComponent = ckdmText(time)
+        val totalComponent = ckdmText("TOTAL: ${formatWhole(BattlepassClientState.totalShippedItems())}")
+        val iconSize = 10
+        val totalWidth = iconSize + FOOTER_ICON_GAP + font.width(totalComponent)
+        val groupWidth = font.width(timeComponent) + FOOTER_GROUP_GAP + totalWidth
+        val x = panel.x + panel.width / 2 - groupWidth / 2
         val y = panel.bottom - TABLE_PAD - FOOTER_HEIGHT + 5
-        guiGraphics.drawString(font, component, x + HEADER_SHADOW_OFFSET, y + HEADER_SHADOW_OFFSET, colorAlpha(HEADER_SHADOW), false)
-        guiGraphics.drawString(font, component, x, y, colorAlpha(HEADER_TEXT), false)
+        drawFooterText(guiGraphics, font, timeComponent, x, y)
+        val iconX = x + font.width(timeComponent) + FOOTER_GROUP_GAP
+        renderIcon(guiGraphics, CHOWCOIN_TEXTURE, iconX, y - 1, iconSize, ICON_TEXTURE_SIZE)
+        drawFooterText(guiGraphics, font, totalComponent, iconX + iconSize + FOOTER_ICON_GAP, y)
     }
 
     private fun playerRows(minecraft: Minecraft): List<PlayerRow> {
@@ -281,6 +287,11 @@ object PlayerListHudClient {
         guiGraphics.drawString(font, text, rect.x, y, colorAlpha(color), false)
     }
 
+    private fun drawFooterText(guiGraphics: GuiGraphics, font: Font, component: Component, x: Int, y: Int) {
+        guiGraphics.drawString(font, component, x + HEADER_SHADOW_OFFSET, y + HEADER_SHADOW_OFFSET, colorAlpha(HEADER_SHADOW), false)
+        guiGraphics.drawString(font, component, x, y, colorAlpha(HEADER_TEXT), false)
+    }
+
     private fun renderIcon(guiGraphics: GuiGraphics, texture: ResourceLocation, x: Int, y: Int, size: Int, textureSize: Int) {
         RenderSystem.enableBlend()
         RenderSystem.defaultBlendFunc()
@@ -371,6 +382,8 @@ object PlayerListHudClient {
         }
     }
 
+    private fun formatWhole(value: Long): String = String.format(Locale.US, "%,d", value.coerceAtLeast(0L))
+
     private fun pokeBallStack(): ItemStack = ItemStack(BuiltInRegistries.ITEM.getOptional(POKE_BALL_ITEM_ID).orElse(Items.BARRIER))
 
     private fun colorAlpha(color: Int): Int = (((color ushr 24) and 0xFF) * animationValue.coerceIn(0.0f, 1.0f)).toInt().coerceIn(0, 255) shl 24 or (color and 0x00FFFFFF)
@@ -433,6 +446,8 @@ object PlayerListHudClient {
     private const val CELL_PAD = 6
     private const val HEADER_ICON_SIZE = 12
     private const val HEADER_ICON_GAP = 4
+    private const val FOOTER_ICON_GAP = 3
+    private const val FOOTER_GROUP_GAP = 10
     private const val AVATAR_SIZE = 12
     private const val ICON_TEXTURE_SIZE = 16
     private const val QUICKSKIN_HEAD_TEXTURE_SIZE = 128

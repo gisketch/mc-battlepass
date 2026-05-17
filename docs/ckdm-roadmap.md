@@ -12,6 +12,20 @@ Core rule: reward exploration with stories, routes, trophies, cosmetics, tokens,
 - `TODO (Mod)`: needs Kotlin/resources implementation.
 - `TODO (Configuration)`: needs TOML/datapack/modpack tuning.
 - `NEED MORE BRAINSTORM`: design not settled enough to implement.
+- Read by category first, then by phase. Phase numbers are delivery order, not topic ownership.
+
+## Roadmap Categories
+
+| Category | Sections | Use For |
+|---|---|---|
+| Launch baseline | Phase 0, Launch Readiness Checklist, Questions For Owner | Balance audits, launch blockers, final decisions. |
+| Economy and sinks | Phase 1, Phase 8, Phase 11 | Shipping, shops, quotas, relics, tech economy pressure. |
+| Progression and rewards | Phase 2, Phase 9 | Battlepass, missions, classes, licenses, player unlocks. |
+| Combat and server events | Phase 3, Phase 4 | Mob scaling, boss events, shared server milestones. |
+| Cobblemon progression | Phase 5, parts of Phase 2 and Phase 6 | Riding license, legendary control, gyms, Pokemon event gates. |
+| World and exploration | Phase 7, parts of Phase 3 | Sky Lands, Overworld, structure loot, explorer rewards. |
+| Social and NPC life | Phase 10, NPC-focused side plans | NPC cast, friendship, stores, dialogue, commissions. |
+| Event backlog | Easy Good Ideas | Small server-feel improvements and later event modules. |
 
 ## Current Server Pillars
 
@@ -66,6 +80,8 @@ Core rule: reward exploration with stories, routes, trophies, cosmetics, tokens,
 
 ## Phase 0 - Balance Audit Before More Features
 
+Category: Launch baseline.
+
 TODO (Configuration):
 
 - [x] Audit `runs/client/config/gisketchs_chowkingdom_mod/battlepass/passes/cozy.toml`.
@@ -78,19 +94,15 @@ TODO (Configuration):
 - [x] Replace Combat Pass raw gear with arrows, food, repair materials, modest materials, and locked relic tokens.
 - [x] Audit weekly legendary mission goals. Current `weekly_catch_legendary` asks for 10/20/30 legendary catches, which conflicts with rare shared legendary design.
 - [x] Exclude legendary/mythical weekly catch loops until event/scanning support is settled.
-- [ ] Audit store prices against target income bands without replacing curated store catalogs.
-- [ ] Confirm seed shop prices are high enough because seeds create production.
-- [ ] Confirm Pokemon shop excludes Master Ball and other catch economy breakers.
-- [ ] Confirm cosmetics shop remains a long-term Chowcoin sink.
+- [x] Audit store prices against target income bands without replacing curated store catalogs.
+- [x] Confirm seed shop prices are high enough because seeds create production.
+- [x] Confirm Pokemon shop excludes Master Ball and other catch economy breakers.
+- [x] Confirm cosmetics shop remains a long-term Chowcoin sink.
 - [x] Audit relic pools and move battlepass roulette to Cozy/Combat pool configs instead of raw vanilla rare loot.
 
-TODO (Mod):
-
-- [ ] Add a `/ck economy audit` command later if manual config review becomes painful.
-- [ ] Add a config/report command to list all battlepass rewards by power tier.
-- [ ] Add a config/report command to find shipping items above configured price thresholds.
-
 ## Phase 1 - Economy Loop
+
+Category: Economy and sinks.
 
 Target income feel:
 
@@ -127,19 +139,14 @@ TODO (Configuration):
 - [ ] Keep weekly rare collectibles around 12,000-30,000 coins.
 - [ ] Keep prestige sinks at 50,000+ coins.
 
-TODO (Mod):
-
-- [ ] Add category quotas after per-item quotas if shipping still pays too much.
-- [ ] Add town demand board: daily/weekly boosted categories like carrots, cooked salmon, gold-quality wheat.
-- [ ] Add player shop/vendor taxes if player economy inflates.
-- [ ] Add optional store restock fees or vendor rent.
-
 NEED MORE BRAINSTORM:
 
 - [ ] Decide whether Chowcoins should ever buy power directly, or only access, cosmetics, convenience, and controlled progression.
 - [ ] Decide if late-game tech automation should reduce effort only, or also increase income with stricter caps.
 
 ## Phase 2 - Missions And Battlepass
+
+Category: Progression and rewards. Also owns Cozy Pass riding license unlock.
 
 DONE:
 
@@ -177,6 +184,8 @@ TODO (Mod):
 - [ ] Add snackbar-based mission/boss reward messaging where chat is too noisy.
 
 ## Phase 3 - Progressive Mob Scaling
+
+Category: Combat and server events, with world and exploration overlap.
 
 Design goal: exploration gets scarier farther from safe towns/spawn, but does not punish casual players inside cozy areas.
 
@@ -244,6 +253,8 @@ nearby player multiplier:
 Rule: normal mobs should get tougher, not spongey. If fights feel slow, lower health and add better AI/elite variants only in dungeons.
 
 ## Phase 4 - Server-Wide Boss Event System
+
+Category: Combat and server events.
 
 Design goal: bosses should feel like shared server moments even when only 1-5 players can play at a time.
 
@@ -327,6 +338,8 @@ Rule: group bosses should reward coordination, not punish attendance. Scale HP l
 
 ## Phase 5 - Pokemon Legendary And Mythical Control
 
+Category: Cobblemon progression.
+
 Problem: previous server had too many legendaries, making them feel normal.
 
 Design goal: legendary Pokemon are server memories. Mythicals can be slightly more available, but still rare.
@@ -366,6 +379,8 @@ NEED MORE BRAINSTORM:
 
 ## Phase 6 - NPC Gyms
 
+Category: Cobblemon progression, with social and NPC life overlap.
+
 Goal: Gym leaders are NPCs, using RCT API for Pokemon battles while CKDM owns progression, gating, rewards, and story state.
 
 TODO (Mod):
@@ -400,6 +415,8 @@ NEED MORE BRAINSTORM:
 - [ ] Decide if gyms unlock legendary event eligibility.
 
 ## Phase 7 - Exploration Reward Control
+
+Category: World and exploration.
 
 DONE:
 
@@ -436,6 +453,8 @@ NEED MORE BRAINSTORM:
 
 ## Phase 8 - Relic Roulette
 
+Category: Economy and sinks, with progression and rewards overlap.
+
 DONE:
 
 - [x] Locked common and rare relic tokens exist.
@@ -457,6 +476,8 @@ TODO (Mod):
 - [ ] Add optional accessory slot lock integration if a concrete accessory API becomes required.
 
 ## Phase 9 - Classes, Jobs, Skill Trees
+
+Category: Progression and rewards.
 
 DONE:
 
@@ -491,6 +512,8 @@ NEED MORE BRAINSTORM:
 
 ## Phase 10 - Social And NPC Life
 
+Category: Social and NPC life.
+
 DONE:
 
 - [x] NPC friendship/gifts/dialogue exist.
@@ -522,6 +545,8 @@ NEED MORE BRAINSTORM:
 
 ## Phase 11 - Tech Mods
 
+Category: Economy and sinks.
+
 Goal: tech mods add long-term projects and convenience without breaking the cozy economy.
 
 TODO (Configuration):
@@ -543,6 +568,8 @@ NEED MORE BRAINSTORM:
 - [ ] Decide if tech should unlock through Engineer job, NPC quests, stores, or normal recipes.
 
 ## Easy Good Ideas
+
+Category: Event backlog.
 
 These are small-ish ideas with high server feel payoff.
 

@@ -101,6 +101,17 @@ Definition:
 
 - Unscanned means the local Cobblemon client Pokedex has no species record, no loaded Pokedex data yet, or the species record knowledge is `NONE`.
 
+## Xaero + NPC Heads
+
+Chow Kingdom renders loaded CKDM NPCs as head-only tracker icons on Xaero World Map and Xaero Minimap.
+
+Behavior:
+
+- Loaded, alive, visible `ChowNpcEntity` instances appear as NPC skin heads.
+- NPC tracker entries do not render names and do not expose Xaero player right-click options.
+- The hook is client-only and optional. Chow Kingdom still loads without Xaero.
+- Unloaded/far NPCs are not synced in this pass.
+
 ## Female Gender Mod
 
 - CKDM onboarding has optional support for Wildfire's Female Gender Mod `Female-Gender-Mod-neoforge-1.21-3.2.2.jar` on Minecraft `1.21.1` NeoForge. The integration is reflection-based so CKDM still starts without `wildfire_gender`.
