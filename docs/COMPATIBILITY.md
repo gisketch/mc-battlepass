@@ -65,7 +65,7 @@ Behavior:
 - Paraglider's native stamina wheel remains the visible stamina HUD. Chow Kingdom no longer registers its custom Paraglider stamina bar.
 - Paragliding players get the raised-arm pose reapplied late in `HumanoidModel`/`PlayerModel` animation setup so player animation resource packs do not erase the Paraglider pose.
 - When Entity Model Features/Fresh Animations player CEM animations are present, CKDM pauses EMF player animation evaluation while Paraglider pose is active, then lets EMF resume after paragliding.
-- When Punchy and Shield n Parry are present, CKDM suppresses Punchy's first-person arm render while Shield n Parry's parry visual is active so Punchy does not duplicate the parry hand/item render.
+- When Punchy is present, CKDM suppresses Punchy's first-person arm render while Shield n Parry's parry visual is active or Better Combat is handling a local first-person attack animation, so Punchy does not duplicate the hand/item render.
 - When AzureLib Armor renders an entity that lacks AzureLib's animator accessor, CKDM makes the accessor lookup return null instead of throwing so AzureLib Armor can use its non-animated fallback path.
 - RPG Series / RPG-adjacent armor textures are mirrored into the vanilla armor texture path expected by the AzureLib fallback renderer, so armor from Archers, Bards RPG, Fantasy Armor, Forcemaster RPG, Paladins, Rogues, and Witcher RPG does not render as missing texture after the crash guard takes effect.
 - When Bosses'Rise / BlockFactory Bosses is present, CKDM disables its player dodge-roll functionality completely: the roll packet action is canceled, roll charges and roll GUI are hidden, active roll state is cleared, and roll invulnerability is disabled.
@@ -83,7 +83,7 @@ One Paraglider stamina wheel is 1000 stamina. Tune the JSON first before changin
 - The Paraglider pose compatibility hooks are client-only and check Paraglider movement/item state through reflection. The EMF hook is optional and still lets CKDM load without Entity Model Features.
 - ParCool/Epic Fight config patching happens on mod startup. Some client HUD settings may require a restart after first patch.
 - Epic Fight reflection hooks attach per player while the player is ticking server-side.
-- Punchy parry compatibility is client-only and optional. CKDM still loads without Punchy or Shield n Parry.
+- Punchy first-person suppression compatibility is client-only and optional. CKDM still loads without Punchy or Shield n Parry, and falls back to live Better Combat state checks if its client event bridge changes.
 - AzureLib Armor crash protection is client-only and optional. CKDM still loads without AzureLib Armor.
 - BlockFactory Bosses roll removal is optional. CKDM still loads without Bosses'Rise / BlockFactory Bosses.
 

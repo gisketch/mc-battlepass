@@ -67,7 +67,7 @@ public final class XaeroNpcMapCompat {
 
     public static boolean renderMinimapNpc(Object element, Object renderInfo, GuiGraphics guiGraphics, double depth) {
         TrackedNpc npc = trackedNpc(element);
-        if (npc == null || isMinimapInWorldRender(renderInfo)) {
+        if (npc == null || !isMinimapHudRender(renderInfo)) {
             return false;
         }
         PoseStack pose = guiGraphics.pose();
@@ -78,9 +78,21 @@ public final class XaeroNpcMapCompat {
         return true;
     }
 
-    private static boolean isMinimapInWorldRender(Object renderInfo) {
+    private static boolean isMinimapHudRender(Object renderInfo) {
         Object location = field(renderInfo, "location");
-        return location != null && "IN_WORLD".equals(String.valueOf(location));
+        return locationMatches(location, "IN_MINIMAP") || locationMatches(location, "OVER_MINIMAP");
+    }
+
+    private static boolean locationMatches(Object location, String constantName) {
+        if (location == null) {
+            return false;
+        }
+        try {
+            Field constant = location.getClass().getField(constantName);
+            return constant.get(null) == location;
+        } catch (ReflectiveOperationException | RuntimeException ignored) {
+            return false;
+        }
     }
 
     private static void onClientTick(ClientTickEvent.Post event) {

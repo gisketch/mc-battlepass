@@ -1,7 +1,7 @@
 package dev.gisketch.chowkingdom.mixin;
 
 import com.mojang.blaze3d.vertex.PoseStack;
-import dev.gisketch.chowkingdom.compat.PunchyParryClientBridge;
+import dev.gisketch.chowkingdom.compat.PunchyFirstPersonSuppressionBridge;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.ItemInHandRenderer;
 import net.minecraft.client.renderer.MultiBufferSource;
@@ -15,8 +15,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(targets = "punchy.client.render.PunchyArmRenderer", remap = false)
 public abstract class PunchyArmRendererParryMixin {
     @Inject(method = "renderFirstPerson", at = @At("HEAD"), cancellable = true, require = 0, remap = false)
-    private static void chowkingdom$skipPunchyFirstPersonDuringParry(ItemInHandRenderer renderer, LocalPlayer player, float partialTick, PoseStack poseStack, MultiBufferSource bufferSource, int packedLight, CallbackInfo callback) {
-        if (PunchyParryClientBridge.shouldDisablePunchyFirstPerson()) {
+    private static void chowkingdom$skipPunchyFirstPersonDuringConflictingAnimation(ItemInHandRenderer renderer, LocalPlayer player, float partialTick, PoseStack poseStack, MultiBufferSource bufferSource, int packedLight, CallbackInfo callback) {
+        if (PunchyFirstPersonSuppressionBridge.shouldDisablePunchyFirstPerson()) {
             callback.cancel();
         }
     }

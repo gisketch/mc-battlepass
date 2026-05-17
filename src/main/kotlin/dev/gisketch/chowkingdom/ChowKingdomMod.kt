@@ -21,6 +21,7 @@ import dev.gisketch.chowkingdom.client.ParagliderAttackInputClient
 import dev.gisketch.chowkingdom.client.PlayerListHudClient
 import dev.gisketch.chowkingdom.compat.SpellEngineClassLockBridge
 import dev.gisketch.chowkingdom.compat.SkillTreePackFeature
+import dev.gisketch.chowkingdom.compat.PunchyFirstPersonSuppressionBridge
 import dev.gisketch.chowkingdom.compat.UnifiedStaminaFeature
 import dev.gisketch.chowkingdom.compat.XaeroNpcMapCompat
 import dev.gisketch.chowkingdom.config.TomlConfigIO
@@ -112,6 +113,7 @@ class ChowKingdomMod(modBus: IEventBus, container: ModContainer) {
             SnackbarClient.register(modBus)
             NpcBossBarClient.register(modBus)
             NpcClient.register(modBus)
+            PunchyFirstPersonSuppressionBridge.register()
             XaeroNpcMapCompat.register()
         }
     }

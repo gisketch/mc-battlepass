@@ -33,8 +33,8 @@ public abstract class XaeroMinimapNpcRendererMixin {
         MultiBufferSource.BufferSource bufferSource,
         CallbackInfoReturnable<Boolean> callback
     ) {
-        if (XaeroNpcMapCompat.renderMinimapNpc(element, renderInfo, guiGraphics, depth)) {
-            callback.setReturnValue(true);
+        if (XaeroNpcMapCompat.isCkdmNpcElement(element)) {
+            callback.setReturnValue(XaeroNpcMapCompat.renderMinimapNpc(element, renderInfo, guiGraphics, depth));
         }
     }
 }
