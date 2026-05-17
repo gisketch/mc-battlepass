@@ -1,6 +1,17 @@
 package dev.gisketch.chowkingdom.npc
 
 import dev.gisketch.chowkingdom.compat.PehkuiScaleBridge
+import dev.gisketch.chowkingdom.roles.DEFAULT_BODY_MODEL
+import dev.gisketch.chowkingdom.roles.DEFAULT_FG_BOUNCE
+import dev.gisketch.chowkingdom.roles.DEFAULT_FG_BUST_SIZE
+import dev.gisketch.chowkingdom.roles.DEFAULT_FG_FLOPPY
+import dev.gisketch.chowkingdom.roles.DEFAULT_FG_PHYSICS
+import dev.gisketch.chowkingdom.roles.DEFAULT_FG_SHOW_IN_ARMOR
+import dev.gisketch.chowkingdom.roles.FemaleGenderChoice
+import dev.gisketch.chowkingdom.roles.normalizeBodyModel
+import dev.gisketch.chowkingdom.roles.normalizeFemaleGenderBounce
+import dev.gisketch.chowkingdom.roles.normalizeFemaleGenderBustSize
+import dev.gisketch.chowkingdom.roles.normalizeFemaleGenderFloppy
 import net.minecraft.core.BlockPos
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.network.chat.Component
@@ -45,6 +56,18 @@ class ChowNpcEntity(entityType: EntityType<out PathfinderMob>, level: Level) : P
     var bodyType: String
         get() = entityData.get(BODY_TYPE_DATA)
         set(value) = entityData.set(BODY_TYPE_DATA, NpcBodyTypes.normalize(value))
+    var bodyModel: String
+        get() = entityData.get(BODY_MODEL_DATA)
+        private set(value) = entityData.set(BODY_MODEL_DATA, normalizeBodyModel(value))
+    var fgBustSize: Double
+        get() = entityData.get(FG_BUST_SIZE_DATA).toDouble()
+        private set(value) = entityData.set(FG_BUST_SIZE_DATA, normalizeFemaleGenderBustSize(value).toFloat())
+    var fgBounce: Double
+        get() = entityData.get(FG_BOUNCE_DATA).toDouble()
+        private set(value) = entityData.set(FG_BOUNCE_DATA, normalizeFemaleGenderBounce(value).toFloat())
+    var fgFloppy: Double
+        get() = entityData.get(FG_FLOPPY_DATA).toDouble()
+        private set(value) = entityData.set(FG_FLOPPY_DATA, normalizeFemaleGenderFloppy(value).toFloat())
     var customAnimation: Boolean
         get() = entityData.get(CUSTOM_ANIMATION_DATA)
         private set(value) = entityData.set(CUSTOM_ANIMATION_DATA, value)
@@ -121,6 +144,10 @@ class ChowNpcEntity(entityType: EntityType<out PathfinderMob>, level: Level) : P
         super.defineSynchedData(builder)
         builder.define(NPC_ID_DATA, "finn")
         builder.define(BODY_TYPE_DATA, NpcBodyTypes.NORMAL)
+        builder.define(BODY_MODEL_DATA, DEFAULT_BODY_MODEL)
+        builder.define(FG_BUST_SIZE_DATA, DEFAULT_FG_BUST_SIZE.toFloat())
+        builder.define(FG_BOUNCE_DATA, DEFAULT_FG_BOUNCE.toFloat())
+        builder.define(FG_FLOPPY_DATA, DEFAULT_FG_FLOPPY.toFloat())
         builder.define(CUSTOM_ANIMATION_DATA, false)
         builder.define(CUSTOM_ANIMATION_KEY_DATA, "")
         builder.define(CUSTOM_ANIMATION_SPEED_DATA, 1.0f)
@@ -159,6 +186,10 @@ class ChowNpcEntity(entityType: EntityType<out PathfinderMob>, level: Level) : P
     fun configure(definition: NpcDefinition, camp: BlockPos) {
         npcId = definition.id
         bodyType = definition.bodyType
+        bodyModel = definition.bodyModel
+        fgBustSize = definition.fgBustSize
+        fgBounce = definition.fgBounce
+        fgFloppy = definition.fgFloppy
         campPos = camp.immutable()
         homePos = NpcStore.homePos(definition.id)
         customAnimation = definition.customAnimation
@@ -173,6 +204,10 @@ class ChowNpcEntity(entityType: EntityType<out PathfinderMob>, level: Level) : P
     fun configureAnimationDebug(camp: BlockPos) {
         npcId = ANIMATION_DEBUG_NPC_ID
         bodyType = NpcBodyTypes.NORMAL
+        bodyModel = DEFAULT_BODY_MODEL
+        fgBustSize = DEFAULT_FG_BUST_SIZE
+        fgBounce = DEFAULT_FG_BOUNCE
+        fgFloppy = DEFAULT_FG_FLOPPY
         campPos = camp.immutable()
         homePos = null
         customName = Component.literal("Animation Debug Steve")
@@ -183,6 +218,10 @@ class ChowNpcEntity(entityType: EntityType<out PathfinderMob>, level: Level) : P
     fun configureBossDebug(id: String, displayName: String, camp: BlockPos, debugBodyType: String = NpcBodyTypes.NORMAL) {
         npcId = id
         bodyType = debugBodyType
+        bodyModel = DEFAULT_BODY_MODEL
+        fgBustSize = DEFAULT_FG_BUST_SIZE
+        fgBounce = DEFAULT_FG_BOUNCE
+        fgFloppy = DEFAULT_FG_FLOPPY
         campPos = camp.immutable()
         homePos = null
         customName = Component.literal(displayName)
@@ -286,6 +325,22 @@ class ChowNpcEntity(entityType: EntityType<out PathfinderMob>, level: Level) : P
         setHeldItemDebugRotation(0.0f, 0.0f, 0.0f)
         setHeldItemDebugPosition(0.0f, 0.0f, 0.0f)
         updateHeldItemDebugScale(1.0f)
+    }
+
+    fun femaleGenderChoice(): FemaleGenderChoice = FemaleGenderChoice(
+        bodyModel = bodyModel,
+        bustSize = fgBustSize,
+        physics = DEFAULT_FG_PHYSICS,
+        showInArmor = DEFAULT_FG_SHOW_IN_ARMOR,
+        bounce = fgBounce,
+        floppy = fgFloppy,
+    )
+
+    fun updateFemaleGenderBody(model: String = bodyModel, bustSize: Double = fgBustSize, bounce: Double = fgBounce, floppy: Double = fgFloppy) {
+        bodyModel = model
+        fgBustSize = bustSize
+        fgBounce = bounce
+        fgFloppy = floppy
     }
 
     fun updatePassThroughInteractions(enabled: Boolean) {
@@ -403,6 +458,10 @@ class ChowNpcEntity(entityType: EntityType<out PathfinderMob>, level: Level) : P
         super.addAdditionalSaveData(tag)
         tag.putString(NPC_ID_TAG, npcId)
         tag.putString(BODY_TYPE_TAG, bodyType)
+        tag.putString(BODY_MODEL_TAG, bodyModel)
+        tag.putDouble(FG_BUST_SIZE_TAG, fgBustSize)
+        tag.putDouble(FG_BOUNCE_TAG, fgBounce)
+        tag.putDouble(FG_FLOPPY_TAG, fgFloppy)
         tag.putBoolean(CUSTOM_ANIMATION_TAG, customAnimation)
         tag.putString(CUSTOM_ANIMATION_KEY_TAG, customAnimationKey)
         tag.putBoolean(PLAYERLIKE_ANIMATION_TAG, playerlikeAnimation)
@@ -415,6 +474,10 @@ class ChowNpcEntity(entityType: EntityType<out PathfinderMob>, level: Level) : P
         super.readAdditionalSaveData(tag)
         npcId = tag.getString(NPC_ID_TAG).ifBlank { "finn" }
         bodyType = tag.getString(BODY_TYPE_TAG).ifBlank { NpcBodyTypes.NORMAL }
+        bodyModel = tag.getString(BODY_MODEL_TAG).ifBlank { DEFAULT_BODY_MODEL }
+        if (tag.contains(FG_BUST_SIZE_TAG)) fgBustSize = tag.getDouble(FG_BUST_SIZE_TAG) else fgBustSize = DEFAULT_FG_BUST_SIZE
+        if (tag.contains(FG_BOUNCE_TAG)) fgBounce = tag.getDouble(FG_BOUNCE_TAG) else fgBounce = DEFAULT_FG_BOUNCE
+        if (tag.contains(FG_FLOPPY_TAG)) fgFloppy = tag.getDouble(FG_FLOPPY_TAG) else fgFloppy = DEFAULT_FG_FLOPPY
         customAnimation = tag.getBoolean(CUSTOM_ANIMATION_TAG)
         customAnimationKey = tag.getString(CUSTOM_ANIMATION_KEY_TAG)
         playerlikeAnimation = tag.getBoolean(PLAYERLIKE_ANIMATION_TAG)
@@ -430,6 +493,10 @@ class ChowNpcEntity(entityType: EntityType<out PathfinderMob>, level: Level) : P
     companion object {
         private val NPC_ID_DATA: EntityDataAccessor<String> = SynchedEntityData.defineId(ChowNpcEntity::class.java, EntityDataSerializers.STRING)
         private val BODY_TYPE_DATA: EntityDataAccessor<String> = SynchedEntityData.defineId(ChowNpcEntity::class.java, EntityDataSerializers.STRING)
+        private val BODY_MODEL_DATA: EntityDataAccessor<String> = SynchedEntityData.defineId(ChowNpcEntity::class.java, EntityDataSerializers.STRING)
+        private val FG_BUST_SIZE_DATA: EntityDataAccessor<Float> = SynchedEntityData.defineId(ChowNpcEntity::class.java, EntityDataSerializers.FLOAT)
+        private val FG_BOUNCE_DATA: EntityDataAccessor<Float> = SynchedEntityData.defineId(ChowNpcEntity::class.java, EntityDataSerializers.FLOAT)
+        private val FG_FLOPPY_DATA: EntityDataAccessor<Float> = SynchedEntityData.defineId(ChowNpcEntity::class.java, EntityDataSerializers.FLOAT)
         private val CUSTOM_ANIMATION_DATA: EntityDataAccessor<Boolean> = SynchedEntityData.defineId(ChowNpcEntity::class.java, EntityDataSerializers.BOOLEAN)
         private val CUSTOM_ANIMATION_KEY_DATA: EntityDataAccessor<String> = SynchedEntityData.defineId(ChowNpcEntity::class.java, EntityDataSerializers.STRING)
         private val CUSTOM_ANIMATION_SPEED_DATA: EntityDataAccessor<Float> = SynchedEntityData.defineId(ChowNpcEntity::class.java, EntityDataSerializers.FLOAT)
@@ -454,6 +521,10 @@ class ChowNpcEntity(entityType: EntityType<out PathfinderMob>, level: Level) : P
         const val CUSTOM_ANIMATION_ATTACK = "attack"
         private const val NPC_ID_TAG = "NpcId"
         private const val BODY_TYPE_TAG = "BodyType"
+        private const val BODY_MODEL_TAG = "BodyModel"
+        private const val FG_BUST_SIZE_TAG = "FgBustSize"
+        private const val FG_BOUNCE_TAG = "FgBounce"
+        private const val FG_FLOPPY_TAG = "FgFloppy"
         private const val CUSTOM_ANIMATION_TAG = "CustomAnimation"
         private const val CUSTOM_ANIMATION_KEY_TAG = "CustomAnimationKey"
         private const val PLAYERLIKE_ANIMATION_TAG = "PlayerlikeAnimation"

@@ -61,9 +61,13 @@ Each NPC is one TOML file:
 - `title`: Display subtitle.
 - `skin`: Future skin resource id. Current renderer uses `textures/entity/npc/finn.png` for `finn` and a vanilla fallback for other NPC ids.
 - `body_type`: Player-model shape. Supported values: `normal`, `slim`.
+- `body_model`: Female Gender body overlay. Supported values: `boy`, `girl`. This is separate from `body_type`; `body_type` controls arm width, `body_model` controls the Female Gender layer.
+- `fg_bust_size`: Female Gender bust size for NPCs. Default `0.6`, clamped from `0.0` to `0.8`.
+- `fg_bounce`: Female Gender motion multiplier for NPCs. Default `0.333`, clamped from `0.0` to `0.5`.
+- `fg_floppy`: Female Gender motion multiplier for NPCs. Default `0.75`, clamped from `0.25` to `1.0`.
 - `height`: Pehkui height scale. Default `1.0`, clamped from `0.6` to `1.4`.
 - `weight`: Pehkui width scale. Default `1.0`, clamped from `0.6` to `1.4`.
-- Female Gender Mod body-model settings do not apply to NPCs yet. That requires a separate CKDM renderer compatibility pass because Female Gender 3.2.2 only adds its layer to vanilla player renderers and armor stands.
+- Female Gender Mod NPC visuals require the client mod. CKDM reflects the Female Gender render layer onto normal/playerlike NPC renderers and keeps physics/show-in-armor enabled for NPCs. Gecko custom-animation NPCs do not use this layer.
 - `custom_animation`: Uses the GeckoLib playerlike NPC renderer instead of the EMF-compatible renderer path. Default `false`.
 - `playerlike_animation`: Uses the Better Combat/Mob Player Animator-compatible playerlike renderer instead of Gecko custom animation. Default `false`.
 - `main_pokemon`: Optional Cobblemon species id, for example `main_pokemon = "cobblemon:growlithe"`. When Cobblemon is installed, CKDM keeps one tagged NPC-owned companion near the NPC. The companion follows the NPC, is not catchable, is not battleable, and is included in LLM prompt context so the NPC can sometimes talk about it.
@@ -442,6 +446,7 @@ Home beds are validated against live bed blocks. If the assigned bed is broken o
 - `/npc animation debug`: toggle a Steve-textured Chow Kingdom NPC debug entity for the command player.
 - `/npc animation custom_animation true|false`: toggle GeckoLib custom animation mode on the active debug Steve, or the NPC under the crosshair when no debug Steve is active.
 - `/npc animation playerlike true|false`: toggle the Better Combat-compatible playerlike animation renderer on the active debug Steve, or the NPC under the crosshair when no debug Steve is active.
+- `/npc animation body girl|boy <bust_size> [bounce] [floppy]`: set temporary Female Gender body values on the active debug Steve, or the NPC under the crosshair when no debug Steve is active. Example: `/npc animation body girl 0.8`.
 - `/npc animation list`: list Gecko animation ids normally; if the active animation target has `playerlike = true`, list PlayerAnimator animation ids instead.
 - `/npc animation idle`: enable custom animation mode and run the idle alias on the active debug Steve, or the NPC under the crosshair when no debug Steve is active.
 - `/npc animation walk`: enable custom animation mode and run the walk alias on the active debug Steve, or the NPC under the crosshair when no debug Steve is active. The current weapon-socket reset file only defines `idle`, so this command is expected to fail until walk clips are re-authored.

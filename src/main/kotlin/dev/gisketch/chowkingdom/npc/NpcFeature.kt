@@ -14,7 +14,15 @@ import dev.gisketch.chowkingdom.relicroulette.RelicRouletteFeature
 import dev.gisketch.chowkingdom.roles.ClassLicenses
 import dev.gisketch.chowkingdom.roles.ClassMentorQuestService
 import dev.gisketch.chowkingdom.roles.ClassMentorTrainingResult
+import dev.gisketch.chowkingdom.roles.BODY_MODEL_BOY
+import dev.gisketch.chowkingdom.roles.BODY_MODEL_GIRL
 import dev.gisketch.chowkingdom.roles.JobLevels
+import dev.gisketch.chowkingdom.roles.MAX_FG_BOUNCE
+import dev.gisketch.chowkingdom.roles.MAX_FG_BUST_SIZE
+import dev.gisketch.chowkingdom.roles.MAX_FG_FLOPPY
+import dev.gisketch.chowkingdom.roles.MIN_FG_BOUNCE
+import dev.gisketch.chowkingdom.roles.MIN_FG_BUST_SIZE
+import dev.gisketch.chowkingdom.roles.MIN_FG_FLOPPY
 import dev.gisketch.chowkingdom.roles.PerformerPerks
 import dev.gisketch.chowkingdom.roles.RoleClassEquipmentRules
 import dev.gisketch.chowkingdom.roles.RoleDefinition
@@ -2172,6 +2180,21 @@ object NpcFeature {
             Commands.literal("playerlike")
                 .then(Commands.argument("enabled", BoolArgumentType.bool()).executes(::animationPlayerlikeCommand)),
         )
+        .then(
+            Commands.literal("body")
+                .then(
+                    Commands.argument("model", StringArgumentType.word())
+                        .suggests(::suggestNpcBodyModels)
+                        .then(
+                            Commands.argument("bust_size", FloatArgumentType.floatArg(MIN_FG_BUST_SIZE.toFloat(), MAX_FG_BUST_SIZE.toFloat()))
+                                .executes(::animationBodyCommand)
+                                .then(
+                                    Commands.argument("bounce", FloatArgumentType.floatArg(MIN_FG_BOUNCE.toFloat(), MAX_FG_BOUNCE.toFloat()))
+                                        .then(Commands.argument("floppy", FloatArgumentType.floatArg(MIN_FG_FLOPPY.toFloat(), MAX_FG_FLOPPY.toFloat())).executes(::animationBodyCommand)),
+                                ),
+                        ),
+                ),
+        )
         .then(Commands.literal("list").executes(::animationListCommand))
         .then(Commands.literal("reload").executes(::animationReloadCommand))
         .then(
@@ -2225,6 +2248,9 @@ object NpcFeature {
 
     private fun suggestAnimationItemRotSpaces(context: CommandContext<CommandSourceStack>, builder: com.mojang.brigadier.suggestion.SuggestionsBuilder) =
         SharedSuggestionProvider.suggest(listOf("socket", "item"), builder)
+
+    private fun suggestNpcBodyModels(context: CommandContext<CommandSourceStack>, builder: com.mojang.brigadier.suggestion.SuggestionsBuilder) =
+        SharedSuggestionProvider.suggest(listOf(BODY_MODEL_GIRL, BODY_MODEL_BOY), builder)
 
     private fun llmStatusCommand(context: CommandContext<CommandSourceStack>): Int {
         val settings = NpcConfig.settings().llm
@@ -2614,6 +2640,25 @@ object NpcFeature {
         }
         npc.setPlayerlikeAnimationMode(enabled)
         context.source.sendSuccess({ Component.literal("${animationTargetName(npc)} playerlike=$enabled. Use /npc animations list for Better Combat animation ids.").withStyle(if (enabled) ChatFormatting.AQUA else ChatFormatting.GRAY) }, true)
+        return 1
+    }
+
+    private fun animationBodyCommand(context: CommandContext<CommandSourceStack>): Int {
+        val player = context.source.playerOrException
+        val npc = animationCommandTarget(player) ?: run {
+            context.source.sendFailure(Component.literal("No animation debug Steve or Chow Kingdom NPC under crosshair."))
+            return 0
+        }
+        val model = StringArgumentType.getString(context, "model").lowercase()
+        if (model != BODY_MODEL_GIRL && model != BODY_MODEL_BOY) {
+            context.source.sendFailure(Component.literal("Body model must be '$BODY_MODEL_GIRL' or '$BODY_MODEL_BOY'."))
+            return 0
+        }
+        val bustSize = FloatArgumentType.getFloat(context, "bust_size").toDouble()
+        val bounce = runCatching { FloatArgumentType.getFloat(context, "bounce").toDouble() }.getOrDefault(npc.fgBounce)
+        val floppy = runCatching { FloatArgumentType.getFloat(context, "floppy").toDouble() }.getOrDefault(npc.fgFloppy)
+        npc.updateFemaleGenderBody(model, bustSize, bounce, floppy)
+        context.source.sendSuccess({ Component.literal("${animationTargetName(npc)} body_model=${npc.bodyModel} fg_bust_size=${npc.fgBustSize} fg_bounce=${npc.fgBounce} fg_floppy=${npc.fgFloppy}.").withStyle(ChatFormatting.LIGHT_PURPLE) }, true)
         return 1
     }
 

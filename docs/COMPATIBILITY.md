@@ -106,4 +106,4 @@ Definition:
 - CKDM onboarding has optional support for Wildfire's Female Gender Mod `Female-Gender-Mod-neoforge-1.21-3.2.2.jar` on Minecraft `1.21.1` NeoForge. The integration is reflection-based so CKDM still starts without `wildfire_gender`.
 - Client install is required for the Girl/Boy model visuals. Dedicated server install is recommended when players should see each other's synced Female Gender settings.
 - Onboarding stores Girl/Boy plus bust size, physics, show-in-armor, bounce, and floppy settings. Girl maps to Female Gender `FEMALE`; Boy maps to `MALE`. The mod's `OTHER`, voice, and hurt-sound settings stay in the Female Gender menu.
-- NPCs are not integrated in this pass. Female Gender 3.2.2 adds its render layer to vanilla player renderers and armor stands, while CKDM NPCs use custom renderers.
+- NPC TOML can set `body_model`, `fg_bust_size`, `fg_bounce`, and `fg_floppy`. CKDM reflectively attaches Female Gender's layer to normal/playerlike NPC `PlayerModel` renderers and updates a UUID-keyed Female Gender config before render. Gecko custom-animation NPCs are excluded because they do not use a vanilla `HumanoidModel` parent.

@@ -1,6 +1,17 @@
 package dev.gisketch.chowkingdom.npc
 
 import com.google.gson.annotations.SerializedName
+import dev.gisketch.chowkingdom.roles.DEFAULT_BODY_MODEL
+import dev.gisketch.chowkingdom.roles.DEFAULT_FG_BOUNCE
+import dev.gisketch.chowkingdom.roles.DEFAULT_FG_BUST_SIZE
+import dev.gisketch.chowkingdom.roles.DEFAULT_FG_FLOPPY
+import dev.gisketch.chowkingdom.roles.DEFAULT_FG_PHYSICS
+import dev.gisketch.chowkingdom.roles.DEFAULT_FG_SHOW_IN_ARMOR
+import dev.gisketch.chowkingdom.roles.FemaleGenderChoice
+import dev.gisketch.chowkingdom.roles.normalizeBodyModel
+import dev.gisketch.chowkingdom.roles.normalizeFemaleGenderBounce
+import dev.gisketch.chowkingdom.roles.normalizeFemaleGenderBustSize
+import dev.gisketch.chowkingdom.roles.normalizeFemaleGenderFloppy
 
 class NpcDefinition(
     var id: String = "",
@@ -8,6 +19,10 @@ class NpcDefinition(
     var title: String = "",
     var skin: String = "",
     @SerializedName("body_type") var bodyType: String = NpcBodyTypes.NORMAL,
+    @SerializedName("body_model") var bodyModel: String = DEFAULT_BODY_MODEL,
+    @SerializedName("fg_bust_size") var fgBustSize: Double = DEFAULT_FG_BUST_SIZE,
+    @SerializedName("fg_bounce") var fgBounce: Double = DEFAULT_FG_BOUNCE,
+    @SerializedName("fg_floppy") var fgFloppy: Double = DEFAULT_FG_FLOPPY,
     @SerializedName("height") var height: Double = DEFAULT_NPC_BODY_SCALE,
     @SerializedName("weight") var weight: Double = DEFAULT_NPC_BODY_SCALE,
     @SerializedName("custom_animation") var customAnimation: Boolean = false,
@@ -39,6 +54,10 @@ class NpcDefinition(
         title = title.trim()
         skin = skin.trim()
         bodyType = NpcBodyTypes.normalize(bodyType)
+        bodyModel = normalizeBodyModel(bodyModel)
+        fgBustSize = normalizeFemaleGenderBustSize(fgBustSize)
+        fgBounce = normalizeFemaleGenderBounce(fgBounce)
+        fgFloppy = normalizeFemaleGenderFloppy(fgFloppy)
         height = normalizeNpcBodyScale(height)
         weight = normalizeNpcBodyScale(weight)
         mainPokemon = normalizeMainPokemon(mainPokemon)
@@ -71,6 +90,15 @@ class NpcDefinition(
     fun storeId(): String = store.trim().ifBlank { jobDefinition.store.orEmpty().trim() }
 
     fun storeStockKey(): String = "npc_$id".lowercase()
+
+    fun femaleGenderChoice(): FemaleGenderChoice = FemaleGenderChoice(
+        bodyModel = normalizeBodyModel(bodyModel),
+        bustSize = normalizeFemaleGenderBustSize(fgBustSize),
+        physics = DEFAULT_FG_PHYSICS,
+        showInArmor = DEFAULT_FG_SHOW_IN_ARMOR,
+        bounce = normalizeFemaleGenderBounce(fgBounce),
+        floppy = normalizeFemaleGenderFloppy(fgFloppy),
+    )
 
     private fun defaultHurtMessages(): List<String> = listOf(
         "Hey, watch it, {player}!",

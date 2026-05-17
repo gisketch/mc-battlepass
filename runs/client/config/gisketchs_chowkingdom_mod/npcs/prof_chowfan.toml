@@ -10,6 +10,10 @@ title = "Professor"
 skin = "gisketchs_chowkingdom_mod:npc/prof_chowfan"
 # Config value: body_type.
 body_type = "normal"
+body_model = "boy"
+fg_bust_size = 0.6
+fg_bounce = 0.333
+fg_floppy = 0.75
 # Config value: height.
 height = 0.98
 # Config value: weight.

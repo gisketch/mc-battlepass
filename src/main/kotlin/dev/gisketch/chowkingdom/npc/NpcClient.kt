@@ -711,10 +711,12 @@ private class ChowNpcBetterCombatPlayerlikeRenderer(context: EntityRendererProvi
             )
         )
         addLayer(ItemInHandLayer(this, context.itemInHandRenderer))
+        NpcFemaleGenderBridge.layer(this, context.modelManager)?.let(::addLayer)
     }
 
     override fun render(entity: ChowNpcEntity, entityYaw: Float, partialTicks: Float, poseStack: PoseStack, buffer: MultiBufferSource, packedLight: Int) {
         NpcClient.ensurePlayerlikeAnimationLayer(entity)
+        NpcFemaleGenderBridge.apply(entity)
         model = if (entity.bodyType == NpcBodyTypes.SLIM) slimModel else normalModel
         model.rightArmPose = if (entity.mainHandItem.isEmpty) HumanoidModel.ArmPose.EMPTY else HumanoidModel.ArmPose.ITEM
         model.leftArmPose = if (entity.offhandItem.isEmpty) HumanoidModel.ArmPose.EMPTY else HumanoidModel.ArmPose.ITEM
@@ -738,9 +740,11 @@ private class ChowNpcPlayerlikeRenderer(context: EntityRendererProvider.Context)
             )
         )
         addLayer(ItemInHandLayer(this, context.itemInHandRenderer))
+        NpcFemaleGenderBridge.layer(this, context.modelManager)?.let(::addLayer)
     }
 
     override fun render(entity: ChowNpcEntity, entityYaw: Float, partialTicks: Float, poseStack: PoseStack, buffer: MultiBufferSource, packedLight: Int) {
+        NpcFemaleGenderBridge.apply(entity)
         model = if (entity.bodyType == NpcBodyTypes.SLIM) slimModel else normalModel
         model.rightArmPose = if (entity.mainHandItem.isEmpty) HumanoidModel.ArmPose.EMPTY else HumanoidModel.ArmPose.ITEM
         model.leftArmPose = if (entity.offhandItem.isEmpty) HumanoidModel.ArmPose.EMPTY else HumanoidModel.ArmPose.ITEM
@@ -764,9 +768,11 @@ private class ChowNpcRenderer(context: EntityRendererProvider.Context) : MobRend
             )
         )
         addLayer(ItemInHandLayer(this, context.itemInHandRenderer))
+        NpcFemaleGenderBridge.layer(this, context.modelManager)?.let(::addLayer)
     }
 
     override fun render(entity: ChowNpcEntity, entityYaw: Float, partialTicks: Float, poseStack: PoseStack, buffer: MultiBufferSource, packedLight: Int) {
+        NpcFemaleGenderBridge.apply(entity)
         model = if (entity.bodyType == NpcBodyTypes.SLIM) slimModel else normalModel
         model.rightArmPose = if (entity.mainHandItem.isEmpty) HumanoidModel.ArmPose.EMPTY else HumanoidModel.ArmPose.ITEM
         model.leftArmPose = if (entity.offhandItem.isEmpty) HumanoidModel.ArmPose.EMPTY else HumanoidModel.ArmPose.ITEM

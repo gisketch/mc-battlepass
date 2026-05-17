@@ -897,8 +897,8 @@ private class RolesOnboardingScreen(private var payload: RolesSyncPayload) : Scr
                 rect.bottom - 8,
                 scale,
                 0.04f,
-                PAPER_DOLL_PITCH,
                 paperDollYaw,
+                PAPER_DOLL_PITCH,
                 player,
             )
         } finally {
@@ -946,7 +946,7 @@ private class RolesOnboardingScreen(private var payload: RolesSyncPayload) : Scr
         renderBodySlider(guiGraphics, rect, BodySlider.HEIGHT, "Height", selectedHeight, mouseX, mouseY, true, ::scaleLabel)
         renderBodySlider(guiGraphics, rect, BodySlider.WEIGHT, "Weight", selectedWeight, mouseX, mouseY, true, ::scaleLabel)
         val advancedEnabled = femaleGenderAdvancedEnabled()
-        drawCkdm(guiGraphics, "Advanced", rect.x + PAD, bodySliderRect(rect, BodySlider.BUST).y - 20, if (advancedEnabled) WHITE else DISABLED, CKDM_SMALL)
+        drawCkdm(guiGraphics, "Female Settings", rect.x + PAD, bodySliderRect(rect, BodySlider.BUST).y - 34, if (advancedEnabled) WHITE else DISABLED, CKDM_SMALL)
         renderBodySlider(guiGraphics, rect, BodySlider.BUST, "Bust Size", selectedFgBustSize, mouseX, mouseY, advancedEnabled, ::fgBustLabel)
         renderBodySlider(guiGraphics, rect, BodySlider.BOUNCE, "Bounce", selectedFgBounce, mouseX, mouseY, advancedEnabled, ::fgMotionLabel)
         renderBodySlider(guiGraphics, rect, BodySlider.FLOPPY, "Floppy", selectedFgFloppy, mouseX, mouseY, advancedEnabled, ::fgMotionLabel)
@@ -1131,9 +1131,9 @@ private class RolesOnboardingScreen(private var payload: RolesSyncPayload) : Scr
         val y = controls.y + when (slider) {
             BodySlider.HEIGHT -> 104
             BodySlider.WEIGHT -> 150
-            BodySlider.BUST -> 218
-            BodySlider.BOUNCE -> 264
-            BodySlider.FLOPPY -> 310
+            BodySlider.BUST -> 236
+            BodySlider.BOUNCE -> 282
+            BodySlider.FLOPPY -> 328
         }
         return Rect(controls.x + PAD, y, controls.width - PAD * 2, 22)
     }

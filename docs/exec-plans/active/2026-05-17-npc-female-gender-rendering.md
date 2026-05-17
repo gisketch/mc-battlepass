@@ -102,3 +102,4 @@ Add Female Gender-style body rendering to CKDM NPCs without turning NPCs into re
 ## Progress Log
 
 - 2026-05-17: Plan created after confirming CKDM NPCs already have normal/playerlike `PlayerModel` renderers, a Better Combat PlayerAnimator path, and a separate Gecko custom animation path.
+- 2026-05-17: Implemented NPC TOML fields, entity sync/NBT persistence, reflection layer attachment for normal/playerlike renderers, and explicit per-NPC config values. Gecko remains excluded.
