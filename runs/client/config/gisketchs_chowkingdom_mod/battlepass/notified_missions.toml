@@ -1,4 +1,0 @@
-# Chow Kingdom config: notified_missions.toml. Edit while the game is stopped, then run reload commands or restart.
-
-# Config value: keys.
-keys = ["cozy|daily:daily_catch_legendary|complete", "cozy|daily:daily_walk_blocks|complete", "cozy|permanent:permanent_animal_keeper|goal:150", "cozy|permanent:permanent_animal_keeper|goal:25", "cozy|permanent:permanent_animal_keeper|goal:75", "cozy|permanent:permanent_scan_pokedex|goal:100", "cozy|permanent:permanent_scan_pokedex|goal:150", "cozy|permanent:permanent_scan_pokedex|goal:25", "cozy|permanent:permanent_scan_pokedex|goal:50", "cozy|permanent:permanent_traveler|goal:1000", "cozy|permanent:permanent_traveler|goal:10000", "cozy|permanent:permanent_traveler|goal:5000", "cozy|weekly:weekly_breed_animals|complete", "cozy|weekly:weekly_cutting_board|complete", "cozy|weekly:weekly_go_fishing|complete", "cozy|weekly:weekly_harvest_crops|complete", "cozy|weekly:weekly_travel_blocks|complete"]

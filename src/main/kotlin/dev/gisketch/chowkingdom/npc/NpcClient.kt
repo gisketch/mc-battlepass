@@ -689,8 +689,8 @@ private class ChowNpcDelegatingRenderer(context: EntityRendererProvider.Context)
     override fun getTextureLocation(entity: ChowNpcEntity): ResourceLocation = rendererFor(entity).getTextureLocation(entity)
 
     private fun rendererFor(entity: ChowNpcEntity): EntityRenderer<ChowNpcEntity> = when {
-        entity.playerlikeAnimation -> betterCombatPlayerlikeRenderer
-        entity.customAnimation -> geckoRenderer
+        NpcConfig.get(entity.npcId)?.playerlikeAnimation ?: entity.playerlikeAnimation -> betterCombatPlayerlikeRenderer
+        NpcConfig.get(entity.npcId)?.customAnimation ?: entity.customAnimation -> geckoRenderer
         NpcConfig.settings().rendering.betterCombatPlayerlikeRenderer -> betterCombatPlayerlikeRenderer
         NpcConfig.settings().rendering.playerlikeRenderer -> playerlikeRenderer
         else -> vanillaRenderer
@@ -711,12 +711,11 @@ private class ChowNpcBetterCombatPlayerlikeRenderer(context: EntityRendererProvi
             )
         )
         addLayer(ItemInHandLayer(this, context.itemInHandRenderer))
-        NpcFemaleGenderBridge.layer(this, context.modelManager)?.let(::addLayer)
+        addLayer(NpcFemaleGenderLayer(this))
     }
 
     override fun render(entity: ChowNpcEntity, entityYaw: Float, partialTicks: Float, poseStack: PoseStack, buffer: MultiBufferSource, packedLight: Int) {
         NpcClient.ensurePlayerlikeAnimationLayer(entity)
-        NpcFemaleGenderBridge.apply(entity)
         model = if (entity.bodyType == NpcBodyTypes.SLIM) slimModel else normalModel
         model.rightArmPose = if (entity.mainHandItem.isEmpty) HumanoidModel.ArmPose.EMPTY else HumanoidModel.ArmPose.ITEM
         model.leftArmPose = if (entity.offhandItem.isEmpty) HumanoidModel.ArmPose.EMPTY else HumanoidModel.ArmPose.ITEM
@@ -740,11 +739,10 @@ private class ChowNpcPlayerlikeRenderer(context: EntityRendererProvider.Context)
             )
         )
         addLayer(ItemInHandLayer(this, context.itemInHandRenderer))
-        NpcFemaleGenderBridge.layer(this, context.modelManager)?.let(::addLayer)
+        addLayer(NpcFemaleGenderLayer(this))
     }
 
     override fun render(entity: ChowNpcEntity, entityYaw: Float, partialTicks: Float, poseStack: PoseStack, buffer: MultiBufferSource, packedLight: Int) {
-        NpcFemaleGenderBridge.apply(entity)
         model = if (entity.bodyType == NpcBodyTypes.SLIM) slimModel else normalModel
         model.rightArmPose = if (entity.mainHandItem.isEmpty) HumanoidModel.ArmPose.EMPTY else HumanoidModel.ArmPose.ITEM
         model.leftArmPose = if (entity.offhandItem.isEmpty) HumanoidModel.ArmPose.EMPTY else HumanoidModel.ArmPose.ITEM
@@ -768,11 +766,10 @@ private class ChowNpcRenderer(context: EntityRendererProvider.Context) : MobRend
             )
         )
         addLayer(ItemInHandLayer(this, context.itemInHandRenderer))
-        NpcFemaleGenderBridge.layer(this, context.modelManager)?.let(::addLayer)
+        addLayer(NpcFemaleGenderLayer(this))
     }
 
     override fun render(entity: ChowNpcEntity, entityYaw: Float, partialTicks: Float, poseStack: PoseStack, buffer: MultiBufferSource, packedLight: Int) {
-        NpcFemaleGenderBridge.apply(entity)
         model = if (entity.bodyType == NpcBodyTypes.SLIM) slimModel else normalModel
         model.rightArmPose = if (entity.mainHandItem.isEmpty) HumanoidModel.ArmPose.EMPTY else HumanoidModel.ArmPose.ITEM
         model.leftArmPose = if (entity.offhandItem.isEmpty) HumanoidModel.ArmPose.EMPTY else HumanoidModel.ArmPose.ITEM

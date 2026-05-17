@@ -53,6 +53,8 @@ object ShippingBinConfig {
         }
         .toMap(linkedMapOf())
 
+    fun sellableItemIds(): List<String> = pricedItemSnapshot().keys.sorted()
+
     private fun basePriceFor(stack: ItemStack): Long {
         val itemId = BuiltInRegistries.ITEM.getKey(stack.item).toString()
         config.entries.firstOrNull { entry -> entry.item == itemId }?.let { entry -> return entry.priceAmount.coerceAtLeast(0L) }

@@ -4,6 +4,7 @@ import dev.gisketch.chowkingdom.ParrySoundFeature
 import dev.gisketch.chowkingdom.compat.ShieldNParryStaminaBridge
 import dev.gisketch.chowkingdom.compat.StaminaCompatConfig
 import dev.gisketch.chowkingdom.compat.UnifiedStaminaFeature
+import dev.gisketch.chowkingdom.revive.ReviveFeature
 import dev.gisketch.chowkingdom.snackbar.SnackbarNetwork
 import dev.gisketch.chowkingdom.snackbar.SnackbarNotification
 import dev.gisketch.chowkingdom.snackbar.SnackbarSounds
@@ -1695,6 +1696,10 @@ object NpcBossFights {
     private fun chooseFootwork(entity: ChowNpcEntity, fight: ActiveBossFight, move: NpcBossMoveDefinition?, recovering: Boolean) {
         val candidates = footworkCandidates(fight, move, recovering)
         if (candidates.isEmpty()) return
+        if (isStrafeIntent(fight.committedStrafeIntent) && entity.tickCount < fight.strafeCommitUntilTick && candidates.any { candidate -> candidate.intent == fight.committedStrafeIntent }) {
+            fight.footworkIntent = fight.committedStrafeIntent
+            return
+        }
         val available = candidates.filterNot { candidate -> candidate.intent in fight.usedFootworkIntents }
             .ifEmpty {
                 fight.usedFootworkIntents.clear()
@@ -1710,6 +1715,7 @@ object NpcBossFights {
         }?.intent ?: available.last().intent
         fight.footworkIntent = selected
         fight.usedFootworkIntents += selected
+        commitFootworkStrafe(entity, fight, selected)
     }
 
     private fun footworkCandidates(fight: ActiveBossFight, move: NpcBossMoveDefinition?, recovering: Boolean): List<WeightedFootwork> {
@@ -1834,8 +1840,34 @@ object NpcBossFights {
 
     private fun prepareStrafe(entity: ChowNpcEntity, fight: ActiveBossFight) {
         fight.strafeSide = if (entity.random.nextBoolean()) 1 else -1
-        fight.nextStrafeFlipTick = entity.tickCount + STRAFE_MIN_FLIP_TICKS + entity.random.nextInt(STRAFE_RANDOM_FLIP_TICKS + 1)
+        scheduleNextStrafeFlip(entity, fight)
     }
+
+    private fun scheduleNextStrafeFlip(entity: ChowNpcEntity, fight: ActiveBossFight) {
+        fight.nextStrafeFlipTick = entity.tickCount + strafeCommitTicks(entity)
+    }
+
+    private fun strafeCommitTicks(entity: ChowNpcEntity): Int =
+        STRAFE_MIN_FLIP_TICKS + entity.random.nextInt(STRAFE_RANDOM_FLIP_TICKS + 1)
+
+    private fun maybeFlipStrafe(entity: ChowNpcEntity, fight: ActiveBossFight) {
+        if (entity.tickCount < fight.nextStrafeFlipTick) return
+        fight.strafeSide *= -1
+        fight.committedStrafeIntent = BossFootworkIntent.NONE
+        fight.strafeCommitUntilTick = 0
+        scheduleNextStrafeFlip(entity, fight)
+    }
+
+    private fun commitFootworkStrafe(entity: ChowNpcEntity, fight: ActiveBossFight, intent: BossFootworkIntent) {
+        if (!isStrafeIntent(intent)) return
+        fight.strafeSide = if (intent == BossFootworkIntent.STRAFE_LEFT) 1 else -1
+        fight.committedStrafeIntent = intent
+        fight.strafeCommitUntilTick = entity.tickCount + strafeCommitTicks(entity)
+        fight.nextStrafeFlipTick = fight.strafeCommitUntilTick
+    }
+
+    private fun isStrafeIntent(intent: BossFootworkIntent): Boolean =
+        intent == BossFootworkIntent.STRAFE_LEFT || intent == BossFootworkIntent.STRAFE_RIGHT
 
     private fun strafeAroundTarget(
         entity: ChowNpcEntity,
@@ -1847,10 +1879,7 @@ object NpcBossFights {
         innerRadius: Double = STRAFE_INNER_RADIUS,
         outerRadius: Double = STRAFE_OUTER_RADIUS,
     ) {
-        if (entity.tickCount >= fight.nextStrafeFlipTick) {
-            fight.strafeSide *= -1
-            fight.nextStrafeFlipTick = entity.tickCount + STRAFE_MIN_FLIP_TICKS + entity.random.nextInt(STRAFE_RANDOM_FLIP_TICKS + 1)
-        }
+        maybeFlipStrafe(entity, fight)
         val fromTargetRaw = Vec3(entity.x - target.x, 0.0, entity.z - target.z)
         val radial = when {
             fromTargetRaw.lengthSqr() > 0.0001 -> fromTargetRaw.normalize()
@@ -1869,10 +1898,7 @@ object NpcBossFights {
     }
 
     private fun holdRangedSpacing(entity: ChowNpcEntity, target: ServerPlayer, fight: ActiveBossFight) {
-        if (entity.tickCount >= fight.nextStrafeFlipTick) {
-            fight.strafeSide *= -1
-            fight.nextStrafeFlipTick = entity.tickCount + STRAFE_MIN_FLIP_TICKS + entity.random.nextInt(STRAFE_RANDOM_FLIP_TICKS + 1)
-        }
+        maybeFlipStrafe(entity, fight)
         val fromTargetRaw = Vec3(entity.x - target.x, 0.0, entity.z - target.z)
         val radial = when {
             fromTargetRaw.lengthSqr() > 0.0001 -> fromTargetRaw.normalize()
@@ -2462,7 +2488,10 @@ object NpcBossFights {
     }
 
     private fun settleDuelistAfterResult(player: ServerPlayer, heal: Boolean) {
-        if (heal) healDuelist(player) else {
+        if (heal) {
+            ReviveFeature.clearIncapacitatedForExternalHeal(player)
+            healDuelist(player)
+        } else {
             player.health = finitePositive(player.health, 1.0f).coerceAtLeast(1.0f)
             clearDuelistDanger(player)
         }
@@ -2697,6 +2726,8 @@ object NpcBossFights {
         var phaseDialogueUntilTick: Int = 0,
         var strafeSide: Int = 1,
         var nextStrafeFlipTick: Int = 0,
+        var committedStrafeIntent: BossFootworkIntent = BossFootworkIntent.NONE,
+        var strafeCommitUntilTick: Int = 0,
         var nextTauntTick: Int = 0,
         var activeTemplateId: String = "",
         var modeLabel: String = "",
@@ -2816,8 +2847,8 @@ object NpcBossFights {
     private const val STRAFE_INNER_RADIUS = 2.4
     private const val STRAFE_OUTER_RADIUS = 3.1
     private const val STRAFE_STEP = 1.7
-    private const val STRAFE_MIN_FLIP_TICKS = 18
-    private const val STRAFE_RANDOM_FLIP_TICKS = 18
+    private const val STRAFE_MIN_FLIP_TICKS = 24
+    private const val STRAFE_RANDOM_FLIP_TICKS = 20
     private const val RECOVERY_STRAFE_RADIUS = 2.9
     private const val RECOVERY_STRAFE_INNER_RADIUS = 2.6
     private const val RECOVERY_STRAFE_OUTER_RADIUS = 3.3

@@ -58,7 +58,7 @@ data class SnackbarProgress(val fromXp: Int, val toXp: Int, val tierSize: Int, v
 object SnackbarSounds {
     const val GENERIC = "minecraft:block.note_block.pling"
     const val SUCCESS = "minecraft:entity.experience_orb.pickup"
-    const val ERROR = "minecraft:entity.villager.no"
+    const val ERROR = "minecraft:block.note_block.bass"
     const val REWARD = "minecraft:entity.player.levelup"
     const val SALE = "minecraft:entity.experience_orb.pickup"
     const val TRADE = "minecraft:block.note_block.chime"

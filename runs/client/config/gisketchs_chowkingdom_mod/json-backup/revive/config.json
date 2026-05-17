@@ -1,7 +1,0 @@
-{
-  "revive_seconds": 7,
-  "incapacitated_seconds": 120,
-  "max_revive_distance": 3.0,
-  "revived_health": 1.0,
-  "revived_food_level": 1
-}

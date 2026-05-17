@@ -1,7 +1,0 @@
-# Chow Kingdom config: class_licenses.toml. Edit while the game is stopped, then run reload commands or restart.
-
-# Overall levels that grant starter class license slots.
-starter_license_unlock_overall_levels = [1, 100, 300, 500, 1000]
-
-# Overall levels that grant upgrade class license slots.
-upgrade_license_unlock_overall_levels = [75, 150, 250, 350, 450, 550, 650, 800, 1000]

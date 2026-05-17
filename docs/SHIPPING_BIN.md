@@ -22,7 +22,9 @@ Shipping bin is a Stardew-style sale container for Chow Kingdom.
 - Server broadcasts `<name> shipped items for <amount> chowcoins.`
 - After each shipping payout batch, the top seller is announced to players by snackbar and to Discord when Discord webhooks are enabled.
 - Server ops can run `/shippingbin sell` to sell their own bin immediately for testing.
+- Server ops can run `/shippingbin sellabletag` to regenerate the `#gisketchs_chowkingdom_mod:sellable` item tag from current shipping prices. Run `/reload` after changing shipping prices so EMI sees the refreshed `#sellable` search results.
 - Items priced by this config append a `coins.png <amount>` price row under the item name in hover tooltips.
+- Sellable items are also written to a generated world datapack tag so EMI can search them with `#sellable`.
 
 ## Config
 

@@ -1,5 +1,8 @@
 package dev.gisketch.chowkingdom.shipping
 
+import com.google.gson.GsonBuilder
+import com.google.gson.JsonArray
+import com.google.gson.JsonObject
 import com.mojang.brigadier.builder.LiteralArgumentBuilder
 import com.mojang.brigadier.context.CommandContext
 import dev.gisketch.chowkingdom.battlepass.BattlepassMissionEventBank
@@ -20,8 +23,10 @@ import net.minecraft.commands.Commands
 import net.minecraft.core.registries.Registries
 import net.minecraft.network.chat.Component
 import net.minecraft.server.level.ServerPlayer
+import net.minecraft.server.MinecraftServer
 import net.minecraft.world.item.BlockItem
 import net.minecraft.world.item.Item
+import net.minecraft.world.level.storage.LevelResource
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.level.block.state.BlockBehaviour
@@ -29,13 +34,16 @@ import net.neoforged.bus.api.IEventBus
 import net.neoforged.neoforge.common.NeoForge
 import net.neoforged.neoforge.event.RegisterCommandsEvent
 import net.neoforged.neoforge.event.entity.player.PlayerEvent
+import net.neoforged.neoforge.event.server.ServerAboutToStartEvent
 import net.neoforged.neoforge.event.server.ServerStartedEvent
 import net.neoforged.neoforge.event.tick.ServerTickEvent
 import net.neoforged.neoforge.registries.DeferredHolder
 import net.neoforged.neoforge.registries.DeferredRegister
+import java.nio.file.Files
 import java.util.function.Supplier
 
 object ShippingBinFeature {
+    private val GSON = GsonBuilder().setPrettyPrinting().create()
     private val BLOCKS: DeferredRegister<Block> = DeferredRegister.create(Registries.BLOCK, ChowKingdomMod.MOD_ID)
     private val ITEMS: DeferredRegister<Item> = DeferredRegister.create(Registries.ITEM, ChowKingdomMod.MOD_ID)
     private var lastAutoPayoutMinute = Long.MIN_VALUE
@@ -50,6 +58,7 @@ object ShippingBinFeature {
         ShippingBinNetwork.register(modBus)
         ShippingBinConfig.load()
         ShippingBinStore.load()
+        NeoForge.EVENT_BUS.addListener(::onServerAboutToStart)
         NeoForge.EVENT_BUS.addListener(::onServerStarted)
         NeoForge.EVENT_BUS.addListener(::onServerTick)
         NeoForge.EVENT_BUS.addListener(::onPlayerLoggedIn)
@@ -59,6 +68,12 @@ object ShippingBinFeature {
     private fun onServerStarted(event: ServerStartedEvent) {
         ShippingBinConfig.load()
         ShippingBinStore.load()
+        writeSellableTagDatapack(event.server)
+    }
+
+    private fun onServerAboutToStart(event: ServerAboutToStartEvent) {
+        ShippingBinConfig.load()
+        writeSellableTagDatapack(event.server)
     }
 
     private fun onServerTick(event: ServerTickEvent.Post) {
@@ -115,6 +130,7 @@ object ShippingBinFeature {
     private fun shippingBinRoot(name: String): LiteralArgumentBuilder<CommandSourceStack> = Commands.literal(name)
         .then(Commands.literal("sell").requires { source -> source.hasPermission(2) }.executes(::sellNow))
         .then(Commands.literal("audit").requires { source -> source.hasPermission(2) }.executes(::audit))
+        .then(Commands.literal("sellabletag").requires { source -> source.hasPermission(2) }.executes(::sellableTag))
 
     private fun sellNow(context: CommandContext<CommandSourceStack>): Int {
         val player = context.source.playerOrException
@@ -132,6 +148,13 @@ object ShippingBinFeature {
         val output = ShippingBinAudit.writeReport(context.source.server)
         context.source.sendSuccess({ Component.literal("Wrote shipping bin audit: ${output.toAbsolutePath()}") }, true)
         return 1
+    }
+
+    private fun sellableTag(context: CommandContext<CommandSourceStack>): Int {
+        ShippingBinConfig.load()
+        val count = writeSellableTagDatapack(context.source.server)
+        context.source.sendSuccess({ Component.literal("Wrote #${ChowKingdomMod.MOD_ID}:sellable with $count item(s). Run /reload before EMI sees changes.") }, true)
+        return count.coerceAtLeast(1)
     }
 
     private fun notifyReward(player: ServerPlayer, payout: ShippingBinPayout) {
@@ -166,6 +189,26 @@ object ShippingBinFeature {
         val content = "${top.playerName} sold ${top.payout.itemCount} items for ${top.payout.amount} chowcoins"
         SnackbarNetwork.sendToAllKnown(server, SnackbarNotification.item(SnackbarIcons.SHIPPING_BIN, "TOP SHIPPING SELLER", content, SnackbarType.SUCCESS, SnackbarSounds.SALE))
         DiscordRelay.shippingTopSeller(server, top.playerName, top.payout.itemCount, top.payout.amount)
+    }
+
+    private fun writeSellableTagDatapack(server: MinecraftServer): Int {
+        val ids = ShippingBinConfig.sellableItemIds()
+        val root = server.getWorldPath(LevelResource.DATAPACK_DIR).resolve("chowkingdom_sellable")
+        val tagDirectory = root.resolve("data").resolve(ChowKingdomMod.MOD_ID).resolve("tags").resolve("item")
+        runCatching {
+            Files.createDirectories(tagDirectory)
+            Files.writeString(root.resolve("pack.mcmeta"), """{"pack":{"pack_format":48,"description":"Chow Kingdom generated sellable item tag"}}""")
+            val values = JsonArray()
+            ids.forEach(values::add)
+            val tag = JsonObject().also { json ->
+                json.addProperty("replace", true)
+                json.add("values", values)
+            }
+            Files.writeString(tagDirectory.resolve("sellable.json"), GSON.toJson(tag))
+        }.onFailure { exception ->
+            ChowKingdomMod.LOGGER.warn("Failed to write sellable item datapack tag", exception)
+        }
+        return ids.size
     }
 
     private const val MINUTES_PER_HOUR = 60

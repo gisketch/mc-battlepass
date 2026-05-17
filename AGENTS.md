@@ -36,6 +36,8 @@ Codex reads this file first. Keep it short. It is the map, not the manual.
 - Default caveman mode: full
 - Agent targets: Codex
 - Main gameplay notification path: reusable snackbar system in `dev.gisketch.chowkingdom.snackbar`; prefer snackbar over chat/actionbar for new player-facing feature events.
+- Runtime test instance: `C:\Users\Arnel Glenn Jimenez\AppData\Roaming\gisketch\modsync\data\launchers\prismlauncher-cracked\11.0.2-1\instances\modsync-ckdm-2026\.minecraft`
+- Config work targets the Prism instance above, especially `.minecraft\config\gisketchs_chowkingdom_mod`; do not use repo `runs/` as source of truth.
 
 ## Work Loop
 

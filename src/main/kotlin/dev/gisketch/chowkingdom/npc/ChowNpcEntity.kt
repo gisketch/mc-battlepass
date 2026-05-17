@@ -485,7 +485,25 @@ class ChowNpcEntity(entityType: EntityType<out PathfinderMob>, level: Level) : P
         if (playerlikeAnimation) customAnimation = false
         if (tag.contains(CAMP_POS_TAG)) campPos = BlockPos.of(tag.getLong(CAMP_POS_TAG))
         if (tag.contains(HOME_POS_TAG)) homePos = BlockPos.of(tag.getLong(HOME_POS_TAG))
+        refreshConfigVisuals()
         setPersistenceRequired()
+    }
+
+    private fun refreshConfigVisuals() {
+        val definition = NpcConfig.get(npcId) ?: return
+        bodyType = definition.bodyType
+        updateFemaleGenderBody(
+            model = definition.bodyModel,
+            bustSize = definition.fgBustSize,
+            bounce = definition.fgBounce,
+            floppy = definition.fgFloppy,
+        )
+        customAnimation = definition.customAnimation
+        playerlikeAnimation = definition.playerlikeAnimation
+        if (playerlikeAnimation) customAnimation = false
+        customName = Component.literal(definition.displayName())
+        isCustomNameVisible = true
+        PehkuiScaleBridge.apply(this, definition.bodyScale())
     }
 
     override fun removeWhenFarAway(distanceToClosestPlayer: Double): Boolean = false

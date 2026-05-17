@@ -11,7 +11,7 @@ import kotlin.io.path.exists
 import kotlin.io.path.nameWithoutExtension
 
 object BattlepassPassRegistry {
-    private const val MAX_LEVEL = 1000
+    private const val MAX_LEVEL = 500
     private val passes: MutableMap<String, BattlepassPassDefinition> = linkedMapOf()
 
     val passDirectory: Path
@@ -130,7 +130,7 @@ object BattlepassPassRegistry {
             mission("weekly_combat_travel", "minecraft:blocks_traveled", "Travel {goal} Blocks", listOf(15000), listOf(260)),
             mission("weekly_catch_starter", "cobblemon:catch_starter_pokemon", "Catch {goal} Starter Pokemon", listOf(1), listOf(600)),
         )
-        progression = buildProgression(COMBAT_REWARDS, COMBAT_RELIC_LEVELS)
+        progression = buildProgression(COMBAT_REWARDS, COMBAT_RELIC_LEVELS, COMBAT_EXTRA_REWARDS)
     }
 
     private fun buildProgression(
@@ -148,9 +148,9 @@ object BattlepassPassRegistry {
     private fun rewardForLevel(level: Int, rewards: RewardTables, relicLevels: Map<Int, String>): BattlepassRewardDefinition {
         relicLevels[level]?.let { pool -> return relicReward(pool) }
         return when {
-            level in SPECIAL_LEVELS || level % 10 == 0 -> itemReward(rewards.prominent[level % rewards.prominent.size], prominent = true, level = level)
-            level % 5 == 0 -> itemReward(rewards.utility[level % rewards.utility.size], level = level)
-            else -> itemReward(rewards.normal[level % rewards.normal.size], level = level)
+            level in SPECIAL_LEVELS || level % 10 == 0 -> itemReward(rewards.prominent[(level - 1) % rewards.prominent.size], prominent = true, level = level)
+            level % 5 == 0 -> itemReward(rewards.utility[(level - 1) % rewards.utility.size], level = level)
+            else -> itemReward(rewards.normal[(level - 1) % rewards.normal.size], level = level)
         }
     }
 
@@ -165,19 +165,50 @@ object BattlepassPassRegistry {
     private fun relicReward(pool: String): BattlepassRewardDefinition =
         BattlepassRewardDefinition().apply {
             type = "relic_token"
-            item = "minecraft:air"
+            item = tokenItemForPool(pool)
             quantity = 1
             isProminent = true
             data = mutableMapOf("pool" to pool)
         }
 
-    private fun fixedItemReward(itemId: String): BattlepassRewardDefinition =
+    private fun tokenItemForPool(pool: String): String = when (pool) {
+        "common_cozy_relics" -> "${ChowKingdomMod.MOD_ID}:common_cozy_relic_token"
+        "rare_cozy_relics" -> "${ChowKingdomMod.MOD_ID}:rare_cozy_relic_token"
+        "common_combat_relics" -> "${ChowKingdomMod.MOD_ID}:common_combat_relic_token"
+        "rare_combat_relics" -> "${ChowKingdomMod.MOD_ID}:rare_combat_relic_token"
+        else -> "minecraft:air"
+    }
+
+    private fun fixedItemReward(itemId: String, quantity: Int = 1, prominent: Boolean = true): BattlepassRewardDefinition =
         BattlepassRewardDefinition().apply {
             type = "item"
             item = itemId
-            quantity = 1
-            isProminent = true
+            this.quantity = quantity
+            isProminent = prominent
         }
+
+    private fun chowcoinReward(amount: Int): BattlepassRewardDefinition =
+        BattlepassRewardDefinition().apply {
+            type = "chowcoin"
+            item = "minecraft:gold_ingot"
+            quantity = amount
+            isProminent = false
+        }
+
+    private fun withChowcoinRewards(base: Map<Int, List<BattlepassRewardDefinition>>): Map<Int, List<BattlepassRewardDefinition>> {
+        val rewards = base.mapValuesTo(linkedMapOf()) { (_, value) -> value.toMutableList() }
+        for (level in 25..MAX_LEVEL step 25) {
+            rewards.getOrPut(level) { mutableListOf() } += chowcoinReward(chowcoinAmountForLevel(level))
+        }
+        return rewards
+    }
+
+    private fun chowcoinAmountForLevel(level: Int): Int = when {
+        level <= 100 -> 250
+        level <= 250 -> 500
+        level <= 400 -> 1000
+        else -> 2000
+    }
 
     private fun mission(id: String, event: String, description: String, goals: List<Int>, xp: List<Int>): BattlepassXpEventDefinition =
         BattlepassXpEventDefinition().apply {
@@ -205,34 +236,46 @@ object BattlepassPassRegistry {
     private data class RewardEntry(val item: String, val quantity: Int, val maxQuantity: Int, val scaleEvery: Int = 200)
     private data class RewardTables(val normal: List<RewardEntry>, val utility: List<RewardEntry>, val prominent: List<RewardEntry>)
 
-    private val SPECIAL_LEVELS = setOf(25, 50, 75, 100, 150, 200, 250, 300, 400, 500, 650, 750, 900, 1000)
+    private val SPECIAL_LEVELS = setOf(25, 50, 75, 100, 150, 200, 250, 300, 350, 400, 500)
 
     private val COZY_RELIC_LEVELS = mapOf(
         50 to "common_cozy_relics",
         100 to "rare_cozy_relics",
         200 to "common_cozy_relics",
-        300 to "common_cozy_relics",
+        350 to "common_cozy_relics",
         500 to "rare_cozy_relics",
-        750 to "common_cozy_relics",
-        1000 to "rare_cozy_relics",
     )
 
     private val COMBAT_RELIC_LEVELS = mapOf(
         50 to "common_combat_relics",
         100 to "rare_combat_relics",
         200 to "common_combat_relics",
-        300 to "common_combat_relics",
+        350 to "common_combat_relics",
         500 to "rare_combat_relics",
-        750 to "common_combat_relics",
-        1000 to "rare_combat_relics",
     )
 
-    private val COZY_EXTRA_REWARDS = mapOf(
+    private val COZY_EXTRA_REWARDS = withChowcoinRewards(mapOf(
+        1 to listOf(fixedItemReward("minecraft:torch", 16, prominent = false)),
+        3 to listOf(fixedItemReward("paraglider:paraglider")),
+        10 to listOf(fixedItemReward("cobblemon:poke_bait", 8)),
         500 to listOf(fixedItemReward("minecraft:elytra")),
-    )
+    ))
+
+    private val COMBAT_EXTRA_REWARDS = withChowcoinRewards(mapOf(
+        1 to listOf(fixedItemReward("minecraft:arrow", 32, prominent = false)),
+        8 to listOf(fixedItemReward("sophisticatedbackpacks:backpack")),
+        28 to listOf(fixedItemReward("sophisticatedbackpacks:pickup_upgrade")),
+        64 to listOf(fixedItemReward("sophisticatedbackpacks:filter_upgrade")),
+        96 to listOf(fixedItemReward("sophisticatedbackpacks:deposit_upgrade")),
+        128 to listOf(fixedItemReward("sophisticatedbackpacks:refill_upgrade")),
+        165 to listOf(fixedItemReward("sophisticatedbackpacks:restock_upgrade")),
+        225 to listOf(fixedItemReward("sophisticatedbackpacks:crafting_upgrade")),
+        325 to listOf(fixedItemReward("sophisticatedbackpacks:jukebox_upgrade")),
+    ))
 
     private val COZY_REWARDS = RewardTables(
         normal = listOf(
+            RewardEntry("minecraft:bread", 2, 16),
             RewardEntry("minecraft:wheat_seeds", 4, 32),
             RewardEntry("minecraft:carrot", 3, 24),
             RewardEntry("minecraft:potato", 3, 24),
@@ -241,6 +284,10 @@ object BattlepassPassRegistry {
             RewardEntry("minecraft:apple", 2, 16),
             RewardEntry("minecraft:kelp", 6, 48),
             RewardEntry("minecraft:sugar_cane", 4, 32),
+            RewardEntry("minecraft:cocoa_beans", 3, 24),
+            RewardEntry("cobblemon:red_apricorn_seed", 1, 6, 100),
+            RewardEntry("cobblemon:blue_apricorn_seed", 1, 6, 100),
+            RewardEntry("cobblemon:green_apricorn_seed", 1, 6, 100),
         ),
         utility = listOf(
             RewardEntry("minecraft:bread", 4, 32),
@@ -251,6 +298,9 @@ object BattlepassPassRegistry {
             RewardEntry("minecraft:lantern", 1, 8),
             RewardEntry("minecraft:bone_meal", 8, 64),
             RewardEntry("minecraft:paper", 8, 64),
+            RewardEntry("cobblemon:poke_bait", 2, 16),
+            RewardEntry("cobblemon:oran_berry", 3, 24),
+            RewardEntry("create:andesite_alloy", 2, 16),
         ),
         prominent = listOf(
             RewardEntry("minecraft:fishing_rod", 1, 1, 10000),
@@ -263,11 +313,13 @@ object BattlepassPassRegistry {
             RewardEntry("farmersdelight:cutting_board", 1, 2, 10000),
             RewardEntry("create:andesite_alloy", 4, 24),
             RewardEntry("cobblemon:poke_ball", 3, 24),
+            RewardEntry("cobblemon:poke_bait", 6, 32),
         ),
     )
 
     private val COMBAT_REWARDS = RewardTables(
         normal = listOf(
+            RewardEntry("minecraft:bread", 2, 16),
             RewardEntry("minecraft:arrow", 8, 64),
             RewardEntry("minecraft:torch", 8, 64),
             RewardEntry("minecraft:bread", 3, 24),
@@ -286,6 +338,7 @@ object BattlepassPassRegistry {
             RewardEntry("minecraft:experience_bottle", 2, 16),
             RewardEntry("minecraft:cooked_beef", 3, 24),
             RewardEntry("minecraft:ender_pearl", 1, 8),
+            RewardEntry("minecraft:golden_carrot", 2, 16),
         ),
         prominent = listOf(
             RewardEntry("minecraft:shield", 1, 2, 10000),

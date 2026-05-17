@@ -25,6 +25,10 @@ When `/retrofit-sonata` runs, verify:
 - Windows multiplayer run: `.\scripts\run-multiplayer.ps1`
 - Unix-like multiplayer run: `./scripts/run-multiplayer.sh`
 
+The Windows client script builds the mod, installs the jar into the Prism instance, and launches `modsync-ckdm-2026`. Runtime configs should be tested in:
+
+`C:\Users\Arnel Glenn Jimenez\AppData\Roaming\gisketch\modsync\data\launchers\prismlauncher-cracked\11.0.2-1\instances\modsync-ckdm-2026\.minecraft\config\gisketchs_chowkingdom_mod`
+
 Run client/in-game smoke tests when UI, rendering, event hooks, or runtime-only integrations change.
 
 ## Gaps

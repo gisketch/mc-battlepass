@@ -1,4 +1,0 @@
-# Chow Kingdom config: client.toml. Edit while the game is stopped, then run reload commands or restart.
-
-# Config value: showOwnNameTag.
-showOwnNameTag = true

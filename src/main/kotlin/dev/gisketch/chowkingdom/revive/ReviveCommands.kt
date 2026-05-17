@@ -50,6 +50,11 @@ object ReviveCommands {
                 )
                 .then(Commands.literal("expire").then(Commands.argument("player", EntityArgument.player()).executes(::debugExpire)))
                 .then(
+                    Commands.literal("clear-glow")
+                        .executes(::debugClearGlowSelf)
+                        .then(Commands.argument("player", EntityArgument.player()).executes(::debugClearGlow)),
+                )
+                .then(
                     Commands.literal("dummy")
                         .then(Commands.literal("spawn").executes(::spawnDummy))
                         .then(Commands.literal("clear").executes(::clearDummies)),
@@ -149,6 +154,22 @@ object ReviveCommands {
             1
         } else {
             context.source.sendFailure(Component.literal("${target.gameProfile.name} is not incapacitated."))
+            0
+        }
+    }
+
+    private fun debugClearGlowSelf(context: CommandContext<CommandSourceStack>): Int =
+        debugClearGlow(context.source.playerOrException, context.source)
+
+    private fun debugClearGlow(context: CommandContext<CommandSourceStack>): Int =
+        debugClearGlow(EntityArgument.getPlayer(context, "player"), context.source)
+
+    private fun debugClearGlow(target: ServerPlayer, source: CommandSourceStack): Int {
+        return if (ReviveFeature.clearStaleIncapacitatedGlow(target)) {
+            source.sendSuccess({ Component.literal("Cleared stale revive glow for ${target.gameProfile.name}.").withStyle(ChatFormatting.GREEN) }, true)
+            1
+        } else {
+            source.sendFailure(Component.literal("${target.gameProfile.name} has no stale revive glow."))
             0
         }
     }

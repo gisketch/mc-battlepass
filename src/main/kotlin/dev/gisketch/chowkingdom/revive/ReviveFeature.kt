@@ -110,6 +110,22 @@ object ReviveFeature {
         return true
     }
 
+    fun clearIncapacitatedForExternalHeal(player: ServerPlayer): Boolean {
+        val state = incapacitated.remove(player.uuid)
+        cancelReviveForTarget(player.uuid, null)
+        if (state != null) {
+            clearIncapacitatedVisual(player, state)
+            clearIncapacitatedPose(player)
+            return true
+        }
+        return clearStaleIncapacitatedVisual(player, includeRawGlow = true)
+    }
+
+    fun clearStaleIncapacitatedGlow(player: ServerPlayer): Boolean {
+        if (incapacitated.containsKey(player.uuid)) return false
+        return clearStaleIncapacitatedVisual(player, includeRawGlow = true)
+    }
+
     fun debugIncapacitate(player: ServerPlayer, seconds: Int? = null): Boolean {
         if (incapacitated.containsKey(player.uuid)) return false
         val durationTicks = seconds?.coerceAtLeast(1)?.times(TICKS_PER_SECOND)
@@ -399,7 +415,7 @@ object ReviveFeature {
                 stabilizeIncapacitated(player)
                 syncIncapacitatedClient(player, state)
             }
-        }
+        } ?: clearStaleIncapacitatedVisual(player, includeRawGlow = true)
         syncActiveReviveProgressTo(player)
     }
 
@@ -424,7 +440,7 @@ object ReviveFeature {
             source,
             causeText,
             previousTeamName,
-            player.isCurrentlyGlowing,
+            player.hasEffect(MobEffects.GLOWING),
             PlayerAnchor(player.x, player.y, player.z),
             scoreboardName,
         )
@@ -500,14 +516,7 @@ object ReviveFeature {
         incapacitated.remove(target.uuid)
         clearIncapacitatedVisual(target, state)
         restoreMinimumVitals(target)
-        target.setForcedPose(null)
-        target.setSwimming(false)
-        target.pose = Pose.STANDING
-        target.refreshDimensions()
-        target.setShiftKeyDown(false)
-        target.isSprinting = false
-        target.removeEffect(MobEffects.MOVEMENT_SLOWDOWN)
-        target.removeEffect(MobEffects.DIG_SLOWDOWN)
+        clearIncapacitatedPose(target)
         target.playNotifySound(SoundEvents.PLAYER_LEVELUP, SoundSource.PLAYERS, 0.7f, 1.4f)
         ReviveStore.recordRevived(target, reviverIds.mapNotNull { target.server.playerList.getPlayer(it) })
         ReviveNetwork.syncComplete(target, reviverIds, reviverNames)
@@ -523,12 +532,7 @@ object ReviveFeature {
         incapacitated.remove(player.uuid)
         cancelReviveForTarget(player.uuid, null)
         clearIncapacitatedVisual(player, state)
-        player.setForcedPose(null)
-        player.setSwimming(false)
-        player.pose = Pose.STANDING
-        player.refreshDimensions()
-        player.setShiftKeyDown(false)
-        player.isSprinting = false
+        clearIncapacitatedPose(player)
         player.setDeltaMovement(0.0, 0.0, 0.0)
         sanitizePlayerHealth(player)
         finishingDeaths += player.uuid
@@ -739,14 +743,37 @@ object ReviveFeature {
 
     private fun clearIncapacitatedVisual(player: ServerPlayer, state: IncapacitatedPlayer) {
         ReviveNetwork.syncSelfState(player, active = false)
-        player.setGlowingTag(false)
         val scoreboard = player.server.scoreboard
         scoreboard.getPlayerTeam(REVIVE_TEAM_NAME)?.let { team ->
             if (team.players.contains(state.scoreboardName)) scoreboard.removePlayerFromTeam(state.scoreboardName, team)
         }
+        player.setGlowingTag(state.previousGlowing)
         state.previousTeamName?.let { previousName ->
             scoreboard.getPlayerTeam(previousName)?.let { previousTeam -> scoreboard.addPlayerToTeam(state.scoreboardName, previousTeam) }
         }
+    }
+
+    private fun clearStaleIncapacitatedVisual(player: ServerPlayer, includeRawGlow: Boolean = false): Boolean {
+        val scoreboard = player.server.scoreboard
+        val team = scoreboard.getPlayerTeam(REVIVE_TEAM_NAME)
+        val inReviveTeam = team?.players?.contains(player.scoreboardName) == true
+        val rawGlowOnly = includeRawGlow && player.isCurrentlyGlowing && !player.hasEffect(MobEffects.GLOWING)
+        if (!inReviveTeam && !rawGlowOnly) return false
+        ReviveNetwork.syncSelfState(player, active = false)
+        if (inReviveTeam) scoreboard.removePlayerFromTeam(player.scoreboardName, team)
+        player.setGlowingTag(false)
+        return true
+    }
+
+    private fun clearIncapacitatedPose(player: ServerPlayer) {
+        player.setForcedPose(null)
+        player.setSwimming(false)
+        player.pose = Pose.STANDING
+        player.refreshDimensions()
+        player.setShiftKeyDown(false)
+        player.isSprinting = false
+        player.removeEffect(MobEffects.MOVEMENT_SLOWDOWN)
+        player.removeEffect(MobEffects.DIG_SLOWDOWN)
     }
 
     private fun clearStaleReviveTeam(server: MinecraftServer) {

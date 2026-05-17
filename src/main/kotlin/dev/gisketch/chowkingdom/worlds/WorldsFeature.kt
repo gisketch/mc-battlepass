@@ -49,7 +49,7 @@ object WorldsFeature {
         when {
             isSkyLands(player.level()) && player.y <= SKY_LANDS_FALLTHROUGH_Y -> {
                 val overworld = player.server.overworld()
-                teleportToFallbackOrSpawn(player, overworld, player.x, OVERWORLD_FALLTHROUGH_Y, player.z, velocity)
+                teleportToOverworldSkyDrop(player, overworld, player.x, player.z, velocity)
             }
             player.level().dimension() == Level.OVERWORLD && player.y >= OVERWORLD_SKY_RETURN_Y -> {
                 val skyLands = player.server.getLevel(SKY_LANDS) ?: return
@@ -200,6 +200,27 @@ object WorldsFeature {
         player.hurtMarked = true
     }
 
+    private fun teleportToOverworldSkyDrop(
+        player: ServerPlayer,
+        level: ServerLevel,
+        x: Double,
+        z: Double,
+        velocity: net.minecraft.world.phys.Vec3,
+    ) {
+        val column = BlockPos.containing(x, level.minBuildHeight.toDouble(), z)
+        val surface = heightmapSafePos(level, column)
+        val targetX = surface?.let { x } ?: (level.sharedSpawnPos.x + 0.5)
+        val targetZ = surface?.let { z } ?: (level.sharedSpawnPos.z + 0.5)
+        val targetSurface = surface ?: safeSpawnPos(level, level.sharedSpawnPos)
+        val ceilingY = minOf(level.maxBuildHeight - OVERWORLD_SKY_DROP_TOP_MARGIN, OVERWORLD_SKY_RETURN_Y.toInt() - OVERWORLD_SKY_DROP_RETURN_GAP)
+        val desiredY = ceilingY
+        val minDropY = targetSurface.y + OVERWORLD_SKY_DROP_MIN_ABOVE_SURFACE
+        val targetY = if (minDropY <= ceilingY) desiredY.coerceIn(minDropY, ceilingY) else ceilingY
+        player.teleportTo(level, targetX, targetY.toDouble(), targetZ, player.yRot, player.xRot)
+        player.deltaMovement = if (velocity.y < 0.0) velocity else velocity.add(0.0, -0.08, 0.0)
+        player.hurtMarked = true
+    }
+
     private fun teleportToFeet(player: ServerPlayer, level: ServerLevel, pos: BlockPos, yaw: Float, pitch: Float) {
         player.teleportTo(level, pos.x + 0.5, pos.y.toDouble(), pos.z + 0.5, yaw, pitch)
         player.deltaMovement = player.deltaMovement.scale(0.0)
@@ -262,7 +283,9 @@ object WorldsFeature {
     private val SET_WORLD_SPAWN_DIMENSIONS = setOf(Level.OVERWORLD, COZY_WORLD, SKY_LANDS)
     private const val SKY_LANDS_FALLTHROUGH_Y = 48.0
     private const val SKY_LANDS_RETURN_Y = 64.0
-    private const val OVERWORLD_FALLTHROUGH_Y = 520.0
     private const val OVERWORLD_SKY_RETURN_Y = 600.0
+    private const val OVERWORLD_SKY_DROP_MIN_ABOVE_SURFACE = 48
+    private const val OVERWORLD_SKY_DROP_TOP_MARGIN = 16
+    private const val OVERWORLD_SKY_DROP_RETURN_GAP = 32
     private const val SAFE_SPAWN_SEARCH_RADIUS = 32
 }

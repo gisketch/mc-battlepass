@@ -329,7 +329,7 @@ object SnackbarClient {
     private fun playSound(raw: String) {
         val sound = when (raw) {
             SnackbarSounds.SUCCESS, SnackbarSounds.SALE -> SoundEvents.EXPERIENCE_ORB_PICKUP
-            SnackbarSounds.ERROR -> SoundEvents.VILLAGER_NO
+            SnackbarSounds.ERROR -> SoundEvents.NOTE_BLOCK_BASS.value()
             SnackbarSounds.REWARD -> SoundEvents.PLAYER_LEVELUP
             SnackbarSounds.TRADE -> SoundEvents.NOTE_BLOCK_CHIME.value()
             SnackbarSounds.GENERIC -> SoundEvents.NOTE_BLOCK_PLING.value()

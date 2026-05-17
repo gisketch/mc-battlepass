@@ -10,7 +10,7 @@ Add Female Gender-style body rendering to CKDM NPCs without turning NPCs into re
   - `body_model = "girl"` or `"boy"`, default `"boy"`.
   - `fg_bust_size`, `fg_bounce`, and `fg_floppy` with the same ranges as onboarding.
   - Physics and show-in-armor are always enabled for NPCs.
-- Playerlike NPC renderers show the female body layer when `body_model = "girl"` and Female Gender is installed.
+- Normal/playerlike NPC renderers show the female body layer when `body_model = "girl"` and Female Gender is installed.
 - CKDM still starts and renders NPCs when Female Gender is absent.
 - Existing NPC renderer modes still work:
   - normal `PlayerModel` path
@@ -43,20 +43,19 @@ Add Female Gender-style body rendering to CKDM NPCs without turning NPCs into re
    - Configure from `NpcDefinition`.
    - Save/load to NBT so debug/runtime-spawned NPCs preserve settings.
 
-3. Build an NPC Female Gender bridge.
-   - Do not use Female Gender's player UUID cache directly as the long-term source of truth.
-   - Preferred bridge: reflectively create or update a `PlayerConfig`/`EntityConfig`-compatible object keyed by the NPC UUID before render.
-   - Mark config as `FEMALE` for `girl`, `MALE` for `boy`.
-   - Always set breast physics and show-in-armor true.
+3. Build an NPC Female Gender availability bridge.
+   - Do not use Female Gender's player UUID cache as NPC state.
+   - Check for `wildfire_gender` without a hard dependency.
    - Fail closed when `wildfire_gender` is absent.
 
-4. Attach a Female Gender render layer to CKDM playerlike renderers.
+4. Attach a CKDM-owned Female Gender-style render layer to CKDM playerlike renderers.
    - Female Gender 3.2.2 only auto-adds `GenderLayer` to vanilla `PlayerRenderer` skins and armor stands.
    - CKDM must explicitly add an equivalent layer to:
      - `ChowNpcRenderer`
      - `ChowNpcPlayerlikeRenderer`
      - `ChowNpcBetterCombatPlayerlikeRenderer`
-   - Use reflection so CKDM does not hard-depend on `wildfire_gender`.
+   - Use NPC config as source of truth and NPC skin texture for the overlay.
+   - Draw simple static chest cuboids parented to the current `PlayerModel` body transform.
    - Do not attach to `ChowNpcGeoRenderer` in the first pass.
 
 5. Keep Gecko custom animation path out of scope for v1.
@@ -75,7 +74,7 @@ Add Female Gender-style body rendering to CKDM NPCs without turning NPCs into re
 
 ## Risks
 
-- Female Gender's `GenderLayer` may assume vanilla `PlayerRenderer` behavior. If reflection construction succeeds but rendering fails, CKDM needs a small owned copy/adapter layer instead of invoking the mod layer directly.
+- Female Gender's `GenderLayer` cannot be reused for CKDM NPCs because it only resolves breast textures for `AbstractClientPlayer`. CKDM uses a small owned NPC layer instead.
 - EMF/Fresh Animations may replace or wrap playerlike model parts. The safest first pass is to support CKDM playerlike renderers and verify EMF visually after.
 - Gecko custom animation cannot reuse Female Gender's layer cleanly because it is not a vanilla `PlayerModel`.
 
@@ -96,10 +95,13 @@ Add Female Gender-style body rendering to CKDM NPCs without turning NPCs into re
 ## Decision Log
 
 - Use CKDM NPC config as source of truth. Female Gender config storage stays player-focused and should not own NPC state.
-- Support playerlike `PlayerModel` renderers first. Gecko custom animation needs a separate pass.
-- Keep physics/show-in-armor always on for NPCs to avoid unnecessary config clutter.
+- Support non-Gecko `PlayerModel` renderers first. Gecko custom animation needs a separate pass.
+- Keep `fg_bounce` and `fg_floppy` stored for config parity, but v1 NPC rendering is static bust geometry only.
 
 ## Progress Log
 
 - 2026-05-17: Plan created after confirming CKDM NPCs already have normal/playerlike `PlayerModel` renderers, a Better Combat PlayerAnimator path, and a separate Gecko custom animation path.
-- 2026-05-17: Implemented NPC TOML fields, entity sync/NBT persistence, reflection layer attachment for normal/playerlike renderers, and explicit per-NPC config values. Gecko remains excluded.
+- 2026-05-17: Initial pass implemented NPC TOML fields, entity sync/NBT persistence, reflected layer attachment for normal/playerlike renderers, and explicit per-NPC config values. Gecko remained excluded.
+- 2026-05-17: Confirmed Female Gender `GenderLayer` returns no breast texture for `ChowNpcEntity` because it is not `AbstractClientPlayer`. Replaced the reflected layer path with a CKDM-owned NPC bust layer gated by `wildfire_gender` availability. Gecko remains excluded.
+- 2026-05-17: Fixed the `wildfire_gender` gate to use NeoForge `ModList`, and made saved configured NPCs refresh visual fields from TOML on load so old spawned entities do not stay on stale boy/default NBT.
+- 2026-05-17: Replaced the first cube bust with a Female Gender-style custom wedge mesh and made configured NPC render mode/body values fall back to TOML at render time, so stale NBT does not keep configured NPCs hidden or on Gecko unexpectedly.

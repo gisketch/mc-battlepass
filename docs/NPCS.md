@@ -61,13 +61,14 @@ Each NPC is one TOML file:
 - `title`: Display subtitle.
 - `skin`: Future skin resource id. Current renderer uses `textures/entity/npc/finn.png` for `finn` and a vanilla fallback for other NPC ids.
 - `body_type`: Player-model shape. Supported values: `normal`, `slim`.
-- `body_model`: Female Gender body overlay. Supported values: `boy`, `girl`. This is separate from `body_type`; `body_type` controls arm width, `body_model` controls the Female Gender layer.
+- `body_model`: Female Gender-style body overlay. Supported values: `boy`, `girl`. This is separate from `body_type`; `body_type` controls arm width, `body_model` controls the CKDM NPC body overlay.
 - `fg_bust_size`: Female Gender bust size for NPCs. Default `0.6`, clamped from `0.0` to `0.8`.
 - `fg_bounce`: Female Gender motion multiplier for NPCs. Default `0.333`, clamped from `0.0` to `0.5`.
 - `fg_floppy`: Female Gender motion multiplier for NPCs. Default `0.75`, clamped from `0.25` to `1.0`.
 - `height`: Pehkui height scale. Default `1.0`, clamped from `0.6` to `1.4`.
 - `weight`: Pehkui width scale. Default `1.0`, clamped from `0.6` to `1.4`.
-- Female Gender Mod NPC visuals require the client mod. CKDM reflects the Female Gender render layer onto normal/playerlike NPC renderers and keeps physics/show-in-armor enabled for NPCs. Gecko custom-animation NPCs do not use this layer.
+- Female Gender Mod NPC visuals require the client mod. CKDM checks for `wildfire_gender`, then renders its own Female Gender-style wedge bust layer on normal/playerlike NPC renderers using the NPC skin texture. Gecko custom-animation NPCs do not use this layer.
+- Saved configured NPCs refresh `body_type`, `body_model`, Female Gender values, renderer mode, name, and Pehkui body scale from TOML when loaded, so old spawned NPCs pick up visual config changes after a world reload.
 - `custom_animation`: Uses the GeckoLib playerlike NPC renderer instead of the EMF-compatible renderer path. Default `false`.
 - `playerlike_animation`: Uses the Better Combat/Mob Player Animator-compatible playerlike renderer instead of Gecko custom animation. Default `false`.
 - `main_pokemon`: Optional Cobblemon species id, for example `main_pokemon = "cobblemon:growlithe"`. When Cobblemon is installed, CKDM keeps one tagged NPC-owned companion near the NPC. The companion follows the NPC, is not catchable, is not battleable, and is included in LLM prompt context so the NPC can sometimes talk about it.
