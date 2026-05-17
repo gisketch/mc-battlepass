@@ -10,5 +10,5 @@
 - [x] Persist lifetime shipping-bin sold item count.
 - [x] Sync total to clients with battlepass TAB payload.
 - [x] Render footer total beside CKDM time.
-- [ ] Add generic `/extract` registry/tag commands.
-- [ ] Run Gradle build.
+- [x] Add generic `/extract` registry/tag commands.
+- [x] Run Gradle build.
