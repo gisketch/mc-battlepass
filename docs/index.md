@@ -15,6 +15,7 @@
 - [Module Guide](MODULE_GUIDE.md)
 - [Battlepass Events](PASS_EVENTS.md)
 - [CKDM Balance](CKDM_BALANCE.md)
+- [CKDM Pending In-Game Tests](CKDM_PENDING_INGAME_TESTS.md)
 - [Discord Integration](DISCORD.md)
 - [Shipping Bin](SHIPPING_BIN.md)
 - [Trading](TRADING.md)
