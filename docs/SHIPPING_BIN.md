@@ -40,11 +40,15 @@ Offline audit, no client/server launch:
 .\scripts\audit-shipping-bin.ps1
 ```
 
-Output:
+Outputs:
 
 ```text
 docs/generated/shipping-bin-offline-audit.md
+docs/generated/shipping-bin-full-audit.csv
+docs/generated/shipping-bin-price-suggestions.toml
 ```
+
+The offline report reads item names, item tags, and recipe/process JSON from `runs/client/mods`. It is the preferred balance audit path because it does not require a dedicated server to boot. The suggested TOML is review-only and should not be copied blindly.
 
 Server audit command, when a server-safe modlist can boot:
 
