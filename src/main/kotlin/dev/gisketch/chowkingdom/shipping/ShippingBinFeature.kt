@@ -114,6 +114,7 @@ object ShippingBinFeature {
 
     private fun shippingBinRoot(name: String): LiteralArgumentBuilder<CommandSourceStack> = Commands.literal(name)
         .then(Commands.literal("sell").requires { source -> source.hasPermission(2) }.executes(::sellNow))
+        .then(Commands.literal("audit").requires { source -> source.hasPermission(2) }.executes(::audit))
 
     private fun sellNow(context: CommandContext<CommandSourceStack>): Int {
         val player = context.source.playerOrException
@@ -125,6 +126,12 @@ object ShippingBinFeature {
             announceTopSeller(player.server, listOf(ShippingBinSaleResult(NicknameStore.displayName(player), payout)))
         }
         return payout.amount.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+    }
+
+    private fun audit(context: CommandContext<CommandSourceStack>): Int {
+        val output = ShippingBinAudit.writeReport(context.source.server)
+        context.source.sendSuccess({ Component.literal("Wrote shipping bin audit: ${output.toAbsolutePath()}") }, true)
+        return 1
     }
 
     private fun notifyReward(player: ServerPlayer, payout: ShippingBinPayout) {

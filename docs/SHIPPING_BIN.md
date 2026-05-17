@@ -32,6 +32,36 @@ File created on first load:
 config/gisketchs_chowkingdom_mod/shipping_bin/prices.toml
 ```
 
+## Audit
+
+Offline audit, no client/server launch:
+
+```powershell
+.\scripts\audit-shipping-bin.ps1
+```
+
+Output:
+
+```text
+docs/generated/shipping-bin-offline-audit.md
+```
+
+Server audit command, when a server-safe modlist can boot:
+
+```text
+/shippingbin audit
+/ck shippingbin audit
+/chowkingdom shippingbin audit
+```
+
+Output:
+
+```text
+docs/generated/shipping-bin-audit.md
+```
+
+The offline report is broad and useful for planning. The server command is more accurate because it uses the live registry and recipe manager, but it requires client-only mods to be removed from `runs/server/mods`.
+
 Versioned samples:
 
 - [docs/samples/shipping_bin_prices.json](samples/shipping_bin_prices.json)

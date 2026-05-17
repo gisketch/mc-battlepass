@@ -44,6 +44,15 @@ object ShippingBinConfig {
         return (basePrice * qualityFoodMultiplier(stack)).roundToLong().coerceAtLeast(0L)
     }
 
+    fun pricedItemSnapshot(): Map<String, Long> = BuiltInRegistries.ITEM.asSequence()
+        .map { item -> ItemStack(item) }
+        .filterNot(ItemStack::isEmpty)
+        .mapNotNull { stack ->
+            val price = priceFor(stack)
+            if (price > 0L) BuiltInRegistries.ITEM.getKey(stack.item).toString() to price else null
+        }
+        .toMap(linkedMapOf())
+
     private fun basePriceFor(stack: ItemStack): Long {
         val itemId = BuiltInRegistries.ITEM.getKey(stack.item).toString()
         config.entries.firstOrNull { entry -> entry.item == itemId }?.let { entry -> return entry.priceAmount.coerceAtLeast(0L) }
