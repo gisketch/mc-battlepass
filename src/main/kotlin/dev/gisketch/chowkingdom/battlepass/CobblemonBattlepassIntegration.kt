@@ -29,6 +29,7 @@ import kotlin.math.roundToInt
 
 object CobblemonBattlepassIntegration {
     private var registered = false
+    private val recentScanRewards: MutableMap<String, Long> = linkedMapOf()
 
     fun register() {
         if (registered) return
@@ -90,7 +91,10 @@ object CobblemonBattlepassIntegration {
         val manager = playerPokedexManager(player)
         val uniqueScans = manager?.let { registeredSpeciesRecords(it).count { record -> record.seen } } ?: 0
         val pokemon = pokemonFromScanEvent(event)
-        applyFieldResearcherScanRewards(player, pokemon?.let(::pokemonSpecies), uniqueScans)
+        val species = pokemon?.let(::pokemonSpecies)
+        if (claimScanRewardEvent(player, event, pokemon, species)) {
+            applyFieldResearcherScanRewards(player, species, uniqueScans)
+        }
         syncPokedexProgress(player)
     }
 
@@ -275,6 +279,34 @@ object CobblemonBattlepassIntegration {
         return runCatching { entity.javaClass.getMethod("getPokemon").invoke(entity) }.getOrNull()
     }
 
+    private fun claimScanRewardEvent(player: ServerPlayer, event: Any, pokemon: Any?, species: String?): Boolean {
+        val now = player.level().gameTime
+        recentScanRewards.entries.removeIf { (_, tick) -> now - tick > SCAN_REWARD_DEDUPE_TICKS }
+        val targetKey = scanRewardTargetKey(event, pokemon, species)
+        val key = "${player.uuid}|$targetKey"
+        val previous = recentScanRewards[key]
+        if (previous != null && now - previous <= SCAN_REWARD_DEDUPE_TICKS) return false
+        recentScanRewards[key] = now
+        return true
+    }
+
+    private fun scanRewardTargetKey(event: Any, pokemon: Any?, species: String?): String {
+        scanEventEntity(event)?.let { entity ->
+            runCatching { entity.javaClass.getMethod("getUUID").invoke(entity) as? UUID }.getOrNull()?.let { return "entity:$it" }
+            runCatching { entity.javaClass.getMethod("getId").invoke(entity) as? Number }.getOrNull()?.let { return "entity-id:${it.toInt()}" }
+        }
+        pokemon?.let { value ->
+            val uuid = runCatching { value.javaClass.getMethod("getUuid").invoke(value) as? UUID }.getOrNull()
+                ?: runCatching { value.javaClass.getMethod("getUUID").invoke(value) as? UUID }.getOrNull()
+            if (uuid != null) return "pokemon:$uuid"
+        }
+        return "species:${species ?: "unknown"}"
+    }
+
+    private fun scanEventEntity(event: Any): Any? =
+        listOf("getPokemonEntity", "getEntity", "getScannedEntity")
+            .firstNotNullOfOrNull { methodName -> runCatching { event.javaClass.getMethod(methodName).invoke(event) }.getOrNull() }
+
     private fun stackFromRewardId(raw: String): ItemStack? {
         val parts = raw.split("*", limit = 2)
         val id = parts[0].trim()
@@ -441,6 +473,7 @@ object CobblemonBattlepassIntegration {
     private const val MAX_FRIENDSHIP = 255
     private const val FIELD_RESEARCHER_PASS_ID = "cozy"
     private const val FIELD_NOTES_SCAN_INTERVAL = 10
+    private const val SCAN_REWARD_DEDUPE_TICKS = 10L
     private const val SURVEYOR_WEEKLY_CHOWCOIN_CAP = 500
     private val POKEDEX_SEEN_NAMES = setOf("seen", "encountered")
     private val POKEDEX_CAUGHT_NAMES = setOf("caught", "captured", "owned")

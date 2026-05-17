@@ -262,7 +262,7 @@ object WorldsFeature {
     private val SET_WORLD_SPAWN_DIMENSIONS = setOf(Level.OVERWORLD, COZY_WORLD, SKY_LANDS)
     private const val SKY_LANDS_FALLTHROUGH_Y = 48.0
     private const val SKY_LANDS_RETURN_Y = 64.0
-    private const val OVERWORLD_FALLTHROUGH_Y = 320.0
-    private const val OVERWORLD_SKY_RETURN_Y = 360.0
+    private const val OVERWORLD_FALLTHROUGH_Y = 520.0
+    private const val OVERWORLD_SKY_RETURN_Y = 600.0
     private const val SAFE_SPAWN_SEARCH_RADIUS = 32
 }

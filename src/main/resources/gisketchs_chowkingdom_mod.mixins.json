@@ -25,6 +25,8 @@
     "PlayerRendererRevivePoseMixin",
     "PunchyArmRendererParryMixin",
     "PunchyConfigParryMixin",
+    "SimplyTooltipsGifRecorderMixin",
+    "SystemToastMixin",
     "XaeroRadarColorHelperMixin",
     "XaeroRadarIconManagerMixin"
   ],
