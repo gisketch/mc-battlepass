@@ -39,7 +39,7 @@ object BattlepassClientState {
         val players: List<PlayerProgress>,
         val activeMissionKeysByPass: Map<String, List<String>>,
         val selfId: UUID,
-        val totalShippedItems: Long,
+        val totalShippedChowcoins: Long,
     )
 
     private val gson = GsonBuilder().create()
@@ -76,7 +76,7 @@ object BattlepassClientState {
             },
             payload.activeMissionKeysByPass,
             payload.selfId,
-            payload.totalShippedItems,
+            payload.totalShippedChowcoins,
         )
         if (previousSnapshot == null) {
             baselineNotifiedKeys(nextSnapshot)
@@ -92,7 +92,7 @@ object BattlepassClientState {
 
     fun selfId(): UUID? = snapshot?.selfId
 
-    fun totalShippedItems(): Long = snapshot?.totalShippedItems ?: 0L
+    fun totalShippedChowcoins(): Long = snapshot?.totalShippedChowcoins ?: 0L
 
     fun xpFor(playerId: UUID, passId: String): Int? = snapshot?.players?.firstOrNull { player -> player.uuid == playerId }?.xpByPass?.get(passId)
 

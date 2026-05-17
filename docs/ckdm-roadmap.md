@@ -267,16 +267,16 @@ TODO (Mod):
 - [ ] Create `bosses/` module.
 - [ ] Add boss event definitions under `config/gisketchs_chowkingdom_mod/bosses/events/*.toml`.
 - [ ] Add world data under `<world>/data/gisketchs_chowkingdom_mod/bosses/state.json`.
-- [ ] Track server-wide lifetime shipped item count from all players through the shipping bin.
-- [ ] Count shipped item quantity, not Chowcoin value, for server boss gates.
+- [ ] Track server-wide lifetime Chowcoin value sold by all players through the shipping bin.
+- [ ] Count Chowcoin payout value, not shipped item quantity, for server boss gates.
 - [ ] Persist boss gate progress in world data so restarts do not reset community shipping progress.
 - [ ] Track registered/eligible players.
 - [ ] Track per-boss per-player first-clear credit.
 - [ ] Track boss gate state: locked, available, active, defeated enough, fully cleared.
-- [ ] Add boss gate requirement type: total server shipped items.
-- [ ] Unlock first boss when total server shipped item count reaches the configured threshold.
-- [ ] Keep later bosses locked until their own higher total server shipped item thresholds are reached.
-- [ ] Add command/status output that shows current total server shipped item count and next boss threshold.
+- [ ] Add boss gate requirement type: total server shipped Chowcoin value.
+- [ ] Unlock first boss when total server shipped Chowcoin value reaches the configured threshold.
+- [ ] Keep later bosses locked until their own higher total server shipped Chowcoin thresholds are reached.
+- [ ] Add command/status output that shows current total server shipped Chowcoin value and next boss threshold.
 - [ ] Track helper participation separately from first-clear credit.
 - [ ] Track participating players at fight start and optionally during fight.
 - [ ] Add per-player boss HP scaling.
@@ -305,7 +305,7 @@ TODO (Mod):
 TODO (Configuration):
 
 - [ ] Do not hard-code Wither -> Ender Dragon yet. Build generic gates first.
-- [ ] Configure boss gates with cumulative server shipping thresholds. Example: first boss opens at 50,000 total shipped items, second boss opens at 100,000 total shipped items, later bosses keep increasing.
+- [ ] Configure boss gates with cumulative server shipping Chowcoin thresholds. Example: first boss opens at 50,000 total shipped Chowcoin value, second boss opens at 100,000 total shipped Chowcoin value, later bosses keep increasing.
 - [ ] Create sample `wither.toml` only as a test fixture.
 - [ ] Define default first-clear rewards as modest Chowcoins, BP XP, title/trophy, and controlled tokens.
 - [ ] Keep raw boss loot controlled. Avoid repeatable Nether Star/Dragon Egg inflation.

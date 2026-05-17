@@ -37,7 +37,7 @@ object ExtractCommands {
                 .then(
                     Commands.literal("entity_tag")
                         .then(
-                            Commands.argument("tag_id", StringArgumentType.word())
+                            Commands.argument("tag_id", StringArgumentType.greedyString())
                                 .suggests { context, builder -> suggestTagIds(context, builder, ENTITY_TYPE_REGISTRY) }
                                 .executes { context -> sendTagEntries(context, ENTITY_TYPE_REGISTRY, StringArgumentType.getString(context, "tag_id")) },
                         ),
@@ -64,7 +64,7 @@ object ExtractCommands {
                             Commands.argument("registry", StringArgumentType.word())
                                 .suggests { _, builder -> SharedSuggestionProvider.suggest(REGISTRY_SUGGESTIONS, builder) }
                                 .then(
-                                    Commands.argument("tag_id", StringArgumentType.word())
+                                    Commands.argument("tag_id", StringArgumentType.greedyString())
                                         .suggests { context, builder -> suggestTagIds(context, builder, StringArgumentType.getString(context, "registry")) }
                                         .executes { context -> sendTagEntries(context, StringArgumentType.getString(context, "registry"), StringArgumentType.getString(context, "tag_id")) },
                                 ),

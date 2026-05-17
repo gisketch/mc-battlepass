@@ -136,7 +136,7 @@ object PlayerListHudClient {
     private fun renderFooter(guiGraphics: GuiGraphics, font: Font, panel: Rect) {
         val time = Minecraft.getInstance().level?.let { level -> ChowClock.displayTime(level, ChowClockConfig.current()) } ?: return
         val timeComponent = ckdmText(time)
-        val totalComponent = ckdmText("TOTAL: ${formatWhole(BattlepassClientState.totalShippedItems())}")
+        val totalComponent = ckdmText("TOTAL: ${formatWhole(BattlepassClientState.totalShippedChowcoins())}")
         val iconSize = 10
         val totalWidth = iconSize + FOOTER_ICON_GAP + font.width(totalComponent)
         val groupWidth = font.width(timeComponent) + FOOTER_GROUP_GAP + totalWidth

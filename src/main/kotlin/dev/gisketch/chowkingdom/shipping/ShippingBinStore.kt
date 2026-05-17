@@ -44,6 +44,7 @@ object ShippingBinStore {
     private var lastPayoutDay = Long.MIN_VALUE
     private var quotaPeriodKey = ""
     private var totalItemsSold = 0L
+    private var totalChowcoinsSold = 0L
     private var loaded = false
 
     private val file: Path
@@ -61,6 +62,7 @@ object ShippingBinStore {
         lastPayoutDay = Long.MIN_VALUE
         quotaPeriodKey = currentQuotaPeriodKey()
         totalItemsSold = 0L
+        totalChowcoinsSold = 0L
         if (file.exists()) {
             try {
                 val data = TomlConfigIO.read(file, StoredShippingBins::class.java, ::StoredShippingBins)
@@ -80,6 +82,7 @@ object ShippingBinStore {
                 lastPayoutDay = data.lastPayoutDay
                 quotaPeriodKey = data.quotaPeriodKey.ifBlank { currentQuotaPeriodKey() }
                 totalItemsSold = data.totalItemsSold.coerceAtLeast(0L)
+                totalChowcoinsSold = data.totalChowcoinsSold.coerceAtLeast(0L)
             } catch (exception: Exception) {
                 ChowKingdomMod.LOGGER.warn("Failed to load shipping bin store {}", file, exception)
             }
@@ -139,6 +142,11 @@ object ShippingBinStore {
     fun totalItemsSold(): Long {
         if (!loaded) load()
         return totalItemsSold
+    }
+
+    fun totalChowcoinsSold(): Long {
+        if (!loaded) load()
+        return totalChowcoinsSold
     }
 
     fun hasDueSellableItems(day: Long): Boolean {
@@ -262,6 +270,7 @@ object ShippingBinStore {
         quotaDeltas.forEach { (itemKey, count) -> recordQuota(playerId, itemKey, count) }
         bins[key] = remaining.toMutableList()
         totalItemsSold += itemCount.toLong()
+        totalChowcoinsSold += total
         ChowcoinStore.add(playerId, total)
         save()
         return ShippingBinPayout(itemCount, total, qualityFoodItemCount, qualityFoodTotal, ironQualityFoodItemCount, goldQualityFoodItemCount, diamondQualityFoodItemCount)
@@ -366,7 +375,7 @@ object ShippingBinStore {
     }
 
     private fun save() {
-        TomlConfigIO.write(file, StoredShippingBins(lastPayoutDay, quotaPeriodKey, bins, pendingRewards, weeklyItemCounts, totalItemsSold))
+        TomlConfigIO.write(file, StoredShippingBins(lastPayoutDay, quotaPeriodKey, bins, pendingRewards, weeklyItemCounts, totalItemsSold, totalChowcoinsSold))
     }
 
     private const val SLOT_COUNT = ShippingBinRules.SLOT_COUNT
@@ -381,6 +390,7 @@ class StoredShippingBins(
     var pendingRewards: MutableMap<String, StoredPendingReward> = linkedMapOf(),
     var weeklyItemCounts: MutableMap<String, MutableMap<String, Int>> = linkedMapOf(),
     var totalItemsSold: Long = 0L,
+    var totalChowcoinsSold: Long = 0L,
 )
 
 data class ShippingBinPayout(
