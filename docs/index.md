@@ -4,6 +4,7 @@
 
 - [Project Brief](project-brief.md)
 - [Core Beliefs](core-beliefs.md)
+- [CKDM Roadmap](ckdm-roadmap.md)
 - [Quality](quality.md)
 - [Agent Targets](agent-targets.md)
 
@@ -13,6 +14,7 @@
 - [Detailed Architecture](ARCHITECTURE.md)
 - [Module Guide](MODULE_GUIDE.md)
 - [Battlepass Events](PASS_EVENTS.md)
+- [CKDM Balance](CKDM_BALANCE.md)
 - [Discord Integration](DISCORD.md)
 - [Shipping Bin](SHIPPING_BIN.md)
 - [Trading](TRADING.md)

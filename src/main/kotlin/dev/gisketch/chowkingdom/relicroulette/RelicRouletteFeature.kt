@@ -49,6 +49,10 @@ object RelicRouletteFeature {
 
     val COMMON_RELIC_TOKEN: DeferredHolder<Item, RelicTokenItem> = ITEMS.register("common_relic_token", Supplier { RelicTokenItem(Item.Properties().stacksTo(16)) })
     val RARE_RELIC_TOKEN: DeferredHolder<Item, RelicTokenItem> = ITEMS.register("rare_relic_token", Supplier { RelicTokenItem(Item.Properties().stacksTo(16)) })
+    val COMMON_COZY_RELIC_TOKEN: DeferredHolder<Item, RelicTokenItem> = ITEMS.register("common_cozy_relic_token", Supplier { RelicTokenItem(Item.Properties().stacksTo(16)) })
+    val RARE_COZY_RELIC_TOKEN: DeferredHolder<Item, RelicTokenItem> = ITEMS.register("rare_cozy_relic_token", Supplier { RelicTokenItem(Item.Properties().stacksTo(16)) })
+    val COMMON_COMBAT_RELIC_TOKEN: DeferredHolder<Item, RelicTokenItem> = ITEMS.register("common_combat_relic_token", Supplier { RelicTokenItem(Item.Properties().stacksTo(16)) })
+    val RARE_COMBAT_RELIC_TOKEN: DeferredHolder<Item, RelicTokenItem> = ITEMS.register("rare_combat_relic_token", Supplier { RelicTokenItem(Item.Properties().stacksTo(16)) })
 
     fun register(modBus: IEventBus) {
         ITEMS.register(modBus)

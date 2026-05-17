@@ -23,6 +23,10 @@ object RelicRouletteConfig {
         poolsDir.createDirectories()
         writeDefaultIfMissing("common_relics.toml", defaultCommonPool())
         writeDefaultIfMissing("rare_relics.toml", defaultRarePool())
+        writeDefaultIfMissing("common_cozy_relics.toml", defaultCommonCozyPool())
+        writeDefaultIfMissing("rare_cozy_relics.toml", defaultRareCozyPool())
+        writeDefaultIfMissing("common_combat_relics.toml", defaultCommonCombatPool())
+        writeDefaultIfMissing("rare_combat_relics.toml", defaultRareCombatPool())
         val loaded = poolsDir.listDirectoryEntries("*.toml")
             .filter { path -> path.isRegularFile() && path.extension.equals("toml", ignoreCase = true) }
             .mapNotNull(::readPool)
@@ -91,6 +95,101 @@ object RelicRouletteConfig {
             "minecraft:heart_of_the_sea",
             "minecraft:totem_of_undying",
             "minecraft:echo_shard",
+        ),
+    )
+
+    private fun defaultCommonCozyPool(): RelicPoolDefinition = RelicPoolDefinition(
+        id = "common_cozy_relics",
+        displayName = "Common Cozy Relic",
+        ticket = "${ChowKingdomMod.MOD_ID}:common_cozy_relic_token",
+        rarity = "common",
+        pool = mutableListOf(
+            "artifacts:anglers_hat",
+            "artifacts:cowboy_hat",
+            "artifacts:novelty_drinking_hat",
+            "artifacts:plastic_drinking_hat",
+            "artifacts:onion_ring",
+            "artifacts:snorkel",
+            "artifacts:umbrella",
+            "artifacts:villager_hat",
+            "artifacts:whoopee_cushion",
+            "artifacts:superstitious_hat",
+        ),
+    )
+
+    private fun defaultRareCozyPool(): RelicPoolDefinition = RelicPoolDefinition(
+        id = "rare_cozy_relics",
+        displayName = "Rare Cozy Relic",
+        ticket = "${ChowKingdomMod.MOD_ID}:rare_cozy_relic_token",
+        rarity = "rare",
+        pool = mutableListOf(
+            "artifacts:aqua_dashers",
+            "artifacts:flippers",
+            "artifacts:cloud_in_a_bottle",
+            "artifacts:helium_flamingo",
+            "artifacts:kitty_slippers",
+            "artifacts:running_shoes",
+            "artifacts:snowshoes",
+            "artifacts:strider_shoes",
+            "artifacts:rooted_boots",
+            "artifacts:golden_hook",
+            "artifacts:night_vision_goggles",
+            "artifacts:universal_attractor",
+            "artifacts:warp_drive",
+            "relics:chef_hat",
+            "relics:cut_glass_boot",
+            "relics:jellyfish_necklace",
+            "relics:leafy_mantle",
+            "relics:roller_skate",
+            "relics:springy_boot",
+            "relics:rider_flute",
+        ),
+    )
+
+    private fun defaultCommonCombatPool(): RelicPoolDefinition = RelicPoolDefinition(
+        id = "common_combat_relics",
+        displayName = "Common Combat Relic",
+        ticket = "${ChowKingdomMod.MOD_ID}:common_combat_relic_token",
+        rarity = "common",
+        pool = mutableListOf(
+            "artifacts:antidote_vessel",
+            "artifacts:obsidian_skull",
+            "artifacts:panic_necklace",
+            "artifacts:shock_pendant",
+            "artifacts:thorn_pendant",
+            "artifacts:withered_bracelet",
+            "artifacts:charm_of_sinking",
+            "artifacts:steadfast_spikes",
+            "relics:hunting_belt",
+            "relics:piglin_mask",
+        ),
+    )
+
+    private fun defaultRareCombatPool(): RelicPoolDefinition = RelicPoolDefinition(
+        id = "rare_combat_relics",
+        displayName = "Rare Combat Relic",
+        ticket = "${ChowKingdomMod.MOD_ID}:rare_combat_relic_token",
+        rarity = "rare",
+        pool = mutableListOf(
+            "artifacts:cross_necklace",
+            "artifacts:crystal_heart",
+            "artifacts:feral_claws",
+            "artifacts:fire_gauntlet",
+            "artifacts:flame_pendant",
+            "artifacts:lucky_scarf",
+            "artifacts:pickaxe_heater",
+            "artifacts:pocket_piston",
+            "artifacts:power_glove",
+            "artifacts:vampiric_glove",
+            "artifacts:scarf_of_invisibility",
+            "relics:chorus_staff",
+            "relics:experience_disperser",
+            "relics:golden_tooth",
+            "relics:kinetic_belt",
+            "relics:midnight_mantle",
+            "relics:pet_bone",
+            "relics:reflective_necklace",
+            "relics:sphere_of_self_sacrifice",
         ),
     )
 }

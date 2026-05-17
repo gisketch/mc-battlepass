@@ -6,8 +6,14 @@ Relic roulette is a battlepass-earned reward system. Players claim locked relic 
 
 - `gisketchs_chowkingdom_mod:common_relic_token`
 - `gisketchs_chowkingdom_mod:rare_relic_token`
+- `gisketchs_chowkingdom_mod:common_cozy_relic_token`
+- `gisketchs_chowkingdom_mod:rare_cozy_relic_token`
+- `gisketchs_chowkingdom_mod:common_combat_relic_token`
+- `gisketchs_chowkingdom_mod:rare_combat_relic_token`
 
-Tokens only roll when they were locked by the battlepass claim service. Plain/admin-spawned tokens are inert until code or commands add the CKDM relic lock data.
+The old common/rare token items stay registered for compatibility. New battlepass configs use the four Cozy/Combat tokens.
+
+Tokens only roll when they were locked by the battlepass claim service or `/relicroulette give-token`. Plain/admin-spawned tokens are inert until code or commands add the CKDM relic lock data.
 
 ## Config
 
@@ -19,6 +25,10 @@ Default files are generated if missing:
 
 - `common_relics.toml`
 - `rare_relics.toml`
+- `common_cozy_relics.toml`
+- `rare_cozy_relics.toml`
+- `common_combat_relics.toml`
+- `rare_combat_relics.toml`
 
 Pool shape:
 
@@ -69,7 +79,7 @@ Standard item rewards work for token grants:
 Dedicated pool-based token rewards also work:
 
 ```json
-{ "type": "relic_token", "data": { "pool": "common_relics" }, "quantity": 1 }
+{ "type": "relic_token", "data": { "pool": "common_cozy_relics" }, "quantity": 1 }
 ```
 
 When a player claims either form, CKDM locks the token to that player. The lock stores owner UUID/name, token/reward kind, pool id, and item id in `DataComponents.CUSTOM_DATA` under `CkdmRelicLock`.
@@ -99,9 +109,28 @@ Locked tokens and rolled rewards are soulbound. Current blocks:
 
 Accessories, Trinkets, and Curios are not compile dependencies here. The current compatibility path is generic use/equipment blocking; add direct optional API/reflection hooks later if a specific accessory mod needs earlier rejection.
 
+## CKDM Pool Rules
+
+- Cozy relics are farming, fishing, food, movement, exploration, utility, and funny/social relics.
+- Combat relics are damage, defense, survival, bossing, stealth, dangerous magic, or combat mobility relics.
+- Common pools should be safe earlier and less build-defining.
+- Rare pools may be stronger, but should still avoid one-item economy or combat breaks.
+- Relic pool validation skips missing optional mod items at runtime.
+
+Excluded/event-only for normal pass roulette:
+
+- `artifacts:mimic_spawn_egg`
+- `artifacts:eternal_steak`
+- `artifacts:everlasting_beef`
+- `relics:raw_meatball`
+- `relics:cooked_meatball`
+- `relics:relic_experience_bottle`
+- `relics:clot_of_time`
+- `relics:ring_of_the_seven_deadly_sins`
+
 ## Extension Points
 
-- Add more pools by adding JSON files under `relic_roulette/pools`.
+- Add more pools by adding TOML files under `relic_roulette/pools`.
 - Add more token items by registering another item and pointing a pool `ticket` at it.
 - Add richer reward metadata by extending `RelicLock` and `RelicRouletteStore`.
 - Add explicit accessory-mod integration if the server pack uses a concrete slot API.

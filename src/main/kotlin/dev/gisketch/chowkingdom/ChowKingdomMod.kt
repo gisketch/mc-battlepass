@@ -3,6 +3,7 @@ package dev.gisketch.chowkingdom
 import com.mojang.logging.LogUtils
 import dev.gisketch.chowkingdom.battlepass.BattlepassClient
 import dev.gisketch.chowkingdom.battlepass.BattlepassCommands
+import dev.gisketch.chowkingdom.battlepass.BattlepassElytraGate
 import dev.gisketch.chowkingdom.battlepass.BattlepassFarmersDelightEventIntegration
 import dev.gisketch.chowkingdom.battlepass.BattlepassMissionProgressStore
 import dev.gisketch.chowkingdom.battlepass.BattlepassNetwork
@@ -70,6 +71,7 @@ class ChowKingdomMod(modBus: IEventBus, container: ModContainer) {
         BattlepassQualityFoodEventIntegration.register()
         BattlepassFarmersDelightEventIntegration.register()
         CobblemonBattlepassIntegration.register()
+        BattlepassElytraGate.register()
         BattlepassCommands.register()
         ExtractCommands.register()
         WalletsFeature.register(modBus)

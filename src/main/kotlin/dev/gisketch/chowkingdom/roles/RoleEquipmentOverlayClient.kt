@@ -3,6 +3,7 @@ package dev.gisketch.chowkingdom.roles
 import com.mojang.blaze3d.systems.RenderSystem
 import dev.gisketch.chowkingdom.ChowKingdomMod
 import dev.gisketch.chowkingdom.battlepass.BattlepassClientState
+import dev.gisketch.chowkingdom.battlepass.BattlepassElytraGate
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.world.inventory.Slot
@@ -19,9 +20,8 @@ object RoleEquipmentOverlayClient {
     @JvmStatic
     fun renderContainerSlotOverlay(guiGraphics: GuiGraphics, slot: Slot, x: Int, y: Int) {
         val playerId = BattlepassClientState.selfId() ?: Minecraft.getInstance().player?.uuid ?: return
-        val activeClassIds = RolesClientState.activeClassIdsFor(playerId)
-        if (activeClassIds.isEmpty()) return
         if (!slot.isActive || !slot.hasItem()) return
+        val activeClassIds = RolesClientState.activeClassIdsFor(playerId)
         if (!shouldGreyOut(activeClassIds, slot.item)) return
         renderLockedOverlay(guiGraphics, x, y)
     }
@@ -32,7 +32,6 @@ object RoleEquipmentOverlayClient {
         val player = minecraft.player ?: return
         val playerId = BattlepassClientState.selfId() ?: player.uuid
         val activeClassIds = RolesClientState.activeClassIdsFor(playerId)
-        if (activeClassIds.isEmpty()) return
         val left = event.guiGraphics.guiWidth() / 2 - HOTBAR_HALF_WIDTH
         val y = event.guiGraphics.guiHeight() - HOTBAR_ITEM_BOTTOM_OFFSET
         for (slotIndex in 0 until HOTBAR_SLOT_COUNT) {
@@ -44,12 +43,20 @@ object RoleEquipmentOverlayClient {
     }
 
     private fun shouldGreyOut(activeClassIds: Set<String>, stack: net.minecraft.world.item.ItemStack): Boolean {
+        if (BattlepassElytraGate.isElytra(stack) && !canWearElytraClient()) return true
+        if (activeClassIds.isEmpty()) return false
         val syncedClasses = RolesClientState.classDefinitions()
         return if (syncedClasses.isNotEmpty()) {
             RoleClassEquipmentRules.shouldGreyOutForClassDefinitions(activeClassIds, syncedClasses, stack)
         } else {
             RoleClassEquipmentRules.shouldGreyOutForClasses(activeClassIds, stack)
         }
+    }
+
+    private fun canWearElytraClient(): Boolean {
+        val playerId = BattlepassClientState.selfId() ?: Minecraft.getInstance().player?.uuid ?: return false
+        val progress = BattlepassClientState.playerProgress(playerId) ?: return false
+        return progress.xpByPass.values.sum() / 100 >= BattlepassElytraGate.REQUIRED_LEVEL
     }
 
     private fun renderLockedOverlay(guiGraphics: GuiGraphics, x: Int, y: Int) {

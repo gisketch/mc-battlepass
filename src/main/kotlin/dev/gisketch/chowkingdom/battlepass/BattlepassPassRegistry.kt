@@ -11,6 +11,7 @@ import kotlin.io.path.exists
 import kotlin.io.path.nameWithoutExtension
 
 object BattlepassPassRegistry {
+    private const val MAX_LEVEL = 1000
     private val passes: MutableMap<String, BattlepassPassDefinition> = linkedMapOf()
 
     val passDirectory: Path
@@ -36,7 +37,7 @@ object BattlepassPassRegistry {
 
     private fun loadPass(path: Path) {
         try {
-        val pass = TomlConfigIO.read(path, BattlepassPassDefinition::class.java, ::BattlepassPassDefinition)
+            val pass = TomlConfigIO.read(path, BattlepassPassDefinition::class.java, ::BattlepassPassDefinition)
             if (pass.id.isBlank()) {
                 pass.id = path.nameWithoutExtension
             }
@@ -60,8 +61,8 @@ object BattlepassPassRegistry {
 
     private fun ensureDefaultPasses() {
         passDirectory.createDirectories()
-        writeDefault("cozy.toml", COZY_PASS)
-        writeDefault("combat.toml", COMBAT_PASS)
+        writeDefault("cozy.toml", defaultCozyPass())
+        writeDefault("combat.toml", defaultCombatPass())
     }
 
     private fun passFiles(): List<Path> {
@@ -74,573 +75,229 @@ object BattlepassPassRegistry {
         return paths.sorted()
     }
 
-    private fun writeDefault(fileName: String, content: String) {
+    private fun writeDefault(fileName: String, pass: BattlepassPassDefinition) {
         val path = passDirectory.resolve(fileName)
         if (path.exists()) return
-        TomlConfigIO.writeJson(path, content.trimIndent())
+        TomlConfigIO.write(path, pass)
     }
+
+    private fun defaultCozyPass(): BattlepassPassDefinition = BattlepassPassDefinition().apply {
+        id = "cozy"
+        displayName = "Cozy Pass"
+        description = "Long-season cozy progression from farming, cooking, fishing, shipping, and Cobblemon care."
+        titleTexture = "gisketchs_chowkingdom_mod:textures/gui/cozy_pass.png"
+        titleTextureWidth = 1024
+        titleTextureHeight = 230
+        categories = mutableListOf("cozy", "season_1")
+        permanentEvents = mutableListOf(
+            mission("permanent_scan_pokedex", "cobblemon:pokedex_scanned", "Scan {goal} Pokedex Entries", listOf(25, 100, 250, 500), listOf(200, 500, 1000, 2000)),
+            mission("permanent_crop_keeper", "minecraft:crop_harvested", "Harvest {goal} Crops", listOf(256, 1024, 4096), listOf(250, 700, 1500)),
+            mission("permanent_quality_crop_keeper", "quality_food:gold_quality_crop_harvested", "Harvest {goal} Gold Quality Crops", listOf(64, 256, 1024), listOf(300, 800, 1800)),
+            mission("permanent_fisher", "minecraft:fish_caught", "Catch {goal} Fish", listOf(50, 250, 1000), listOf(250, 700, 1500)),
+            mission("permanent_shipping_value", "gisketchs_chowkingdom_mod:shipping_bin_value_sold", "Ship {goal} Chowcoins Worth", listOf(10000, 50000, 200000), listOf(300, 800, 1800)),
+            mission("permanent_animal_keeper", "minecraft:animal_bred", "Breed {goal} Animals", listOf(25, 100, 300), listOf(200, 600, 1200)),
+            mission("permanent_traveler", "minecraft:blocks_traveled", "Travel {goal} Blocks", listOf(5000, 25000, 100000), listOf(200, 600, 1500)),
+        )
+        weeklyEvents = weekly(
+            mission("weekly_harvest_crops", "minecraft:crop_harvested", "Harvest {goal} Crops", listOf(512), listOf(220)),
+            mission("weekly_go_fishing", "minecraft:fish_caught", "Catch {goal} Fish", listOf(35), listOf(220)),
+            mission("weekly_cooking_pot_meals", "farmersdelight:cooking_pot_meal_cooked", "Cook {goal} Cooking Pot Meals", listOf(25), listOf(260)),
+            mission("weekly_ship_value", "gisketchs_chowkingdom_mod:shipping_bin_value_sold", "Ship {goal} Chowcoins Worth", listOf(50000), listOf(400)),
+            mission("weekly_friendship_starter", "cobblemon:max_friendship_starter_pokemon", "Max Friendship with {goal} Starter Pokemon", listOf(1), listOf(600)),
+        )
+        progression = buildProgression(COZY_REWARDS, COZY_RELIC_LEVELS, COZY_EXTRA_REWARDS)
+    }
+
+    private fun defaultCombatPass(): BattlepassPassDefinition = BattlepassPassDefinition().apply {
+        id = "combat"
+        displayName = "Combat Pass"
+        description = "Long-season combat progression from limited missions, exploration, and boss preparation."
+        titleTexture = "gisketchs_chowkingdom_mod:textures/gui/combat_pass.png"
+        titleTextureWidth = 1024
+        titleTextureHeight = 215
+        categories = mutableListOf("combat", "season_1")
+        permanentEvents = mutableListOf(
+            mission("permanent_monster_slayer", "minecraft:monster_killed", "Defeat {goal} Monsters", listOf(100, 500, 2000), listOf(250, 800, 2000)),
+            mission("permanent_skeleton_slayer", "minecraft:skeleton_killed", "Defeat {goal} Skeletons", listOf(50, 250, 1000), listOf(200, 700, 1800)),
+            mission("permanent_zombie_slayer", "minecraft:zombie_killed", "Defeat {goal} Zombies", listOf(50, 250, 1000), listOf(200, 700, 1800)),
+            mission("permanent_combat_traveler", "minecraft:blocks_traveled", "Travel {goal} Blocks", listOf(5000, 25000, 100000), listOf(200, 600, 1500)),
+            mission("permanent_starter_training", "cobblemon:max_friendship_starter_pokemon", "Train {goal} Starter Pokemon to Max Friendship", listOf(1, 3), listOf(500, 1200)),
+        )
+        weeklyEvents = weekly(
+            mission("weekly_hunt_mobs", "minecraft:monster_killed", "Defeat {goal} Monsters", listOf(150), listOf(260)),
+            mission("weekly_hunt_skeletons", "minecraft:skeleton_killed", "Defeat {goal} Skeletons", listOf(40), listOf(220)),
+            mission("weekly_hunt_zombies", "minecraft:zombie_killed", "Defeat {goal} Zombies", listOf(40), listOf(220)),
+            mission("weekly_combat_travel", "minecraft:blocks_traveled", "Travel {goal} Blocks", listOf(15000), listOf(260)),
+            mission("weekly_catch_starter", "cobblemon:catch_starter_pokemon", "Catch {goal} Starter Pokemon", listOf(1), listOf(600)),
+        )
+        progression = buildProgression(COMBAT_REWARDS, COMBAT_RELIC_LEVELS)
+    }
+
+    private fun buildProgression(
+        rewards: RewardTables,
+        relicLevels: Map<Int, String>,
+        extraRewards: Map<Int, List<BattlepassRewardDefinition>> = emptyMap(),
+    ): MutableList<BattlepassProgressionDefinition> =
+        (1..MAX_LEVEL).map { level ->
+            BattlepassProgressionDefinition().apply {
+                xp = level * 100
+                this.rewards = (listOf(rewardForLevel(level, rewards, relicLevels)) + extraRewards[level].orEmpty()).toMutableList()
+            }
+        }.toMutableList()
+
+    private fun rewardForLevel(level: Int, rewards: RewardTables, relicLevels: Map<Int, String>): BattlepassRewardDefinition {
+        relicLevels[level]?.let { pool -> return relicReward(pool) }
+        return when {
+            level in SPECIAL_LEVELS || level % 10 == 0 -> itemReward(rewards.prominent[level % rewards.prominent.size], prominent = true, level = level)
+            level % 5 == 0 -> itemReward(rewards.utility[level % rewards.utility.size], level = level)
+            else -> itemReward(rewards.normal[level % rewards.normal.size], level = level)
+        }
+    }
+
+    private fun itemReward(entry: RewardEntry, prominent: Boolean = false, level: Int): BattlepassRewardDefinition =
+        BattlepassRewardDefinition().apply {
+            type = "item"
+            item = entry.item
+            quantity = (entry.quantity + level / entry.scaleEvery).coerceAtMost(entry.maxQuantity)
+            isProminent = prominent
+        }
+
+    private fun relicReward(pool: String): BattlepassRewardDefinition =
+        BattlepassRewardDefinition().apply {
+            type = "relic_token"
+            item = "minecraft:air"
+            quantity = 1
+            isProminent = true
+            data = mutableMapOf("pool" to pool)
+        }
+
+    private fun fixedItemReward(itemId: String): BattlepassRewardDefinition =
+        BattlepassRewardDefinition().apply {
+            type = "item"
+            item = itemId
+            quantity = 1
+            isProminent = true
+        }
+
+    private fun mission(id: String, event: String, description: String, goals: List<Int>, xp: List<Int>): BattlepassXpEventDefinition =
+        BattlepassXpEventDefinition().apply {
+            this.id = id
+            this.event = event
+            type = "progressive"
+            eventDesc = description
+            progress = 0
+            progressGoals = goals.toMutableList()
+            progressXp = xp.toMutableList()
+        }
+
+    private fun weekly(vararg events: BattlepassXpEventDefinition): BattlepassRotatingMissionDefinition =
+        BattlepassRotatingMissionDefinition().apply {
+            count = 5
+            timeZone = "GMT+8"
+            resetHour = 5
+            resetMinute = 0
+            resetOnDay = "Sunday"
+            this.events = events.toMutableList()
+        }
 
     private fun normalizeId(id: String): String = id.trim().lowercase(Locale.ROOT)
 
-    private const val COZY_PASS = """
-        {
-          "id": "cozy",
-          "displayName": "Cozy Pass",
-          "description": "Progress from cozy tasks and peaceful rewards.",
-          "titleTexture": "gisketchs_chowkingdom_mod:textures/gui/cozy_pass.png",
-          "titleTextureWidth": 1024,
-          "titleTextureHeight": 230,
-          "categories": ["cozy", "season_1"],
-          "permanent_events": [
-            {
-              "id": "permanent_scan_pokedex",
-              "event": "cobblemon:pokedex_scanned",
-              "type": "progressive",
-              "event_desc": "Scan {goal} Pokedex Entries",
-              "progress": 0,
-              "progress_goals": [25, 50, 100],
-              "progress_xp": [300, 400, 800]
-            },
-            {
-              "id": "permanent_scan_kanto_pokemon",
-              "event": "cobblemon:scan_kanto_pokemon",
-              "type": "progressive",
-              "event_desc": "Scan All Kanto Pokemon",
-              "progress": 0,
-              "progress_goals": [151],
-              "progress_xp": [1200]
-            },
-            {
-              "id": "permanent_catch_kanto_pokemon",
-              "event": "cobblemon:catch_kanto_pokemon",
-              "type": "progressive",
-              "event_desc": "Catch All Kanto Pokemon",
-              "progress": 0,
-              "progress_goals": [151],
-              "progress_xp": [2400]
-            },
-            {
-              "id": "permanent_scan_johto_pokemon",
-              "event": "cobblemon:scan_johto_pokemon",
-              "type": "progressive",
-              "event_desc": "Scan All Johto Pokemon",
-              "progress": 0,
-              "progress_goals": [100],
-              "progress_xp": [800]
-            },
-            {
-              "id": "permanent_catch_johto_pokemon",
-              "event": "cobblemon:catch_johto_pokemon",
-              "type": "progressive",
-              "event_desc": "Catch All Johto Pokemon",
-              "progress": 0,
-              "progress_goals": [100],
-              "progress_xp": [1600]
-            },
-            {
-              "id": "permanent_scan_hoenn_pokemon",
-              "event": "cobblemon:scan_hoenn_pokemon",
-              "type": "progressive",
-              "event_desc": "Scan All Hoenn Pokemon",
-              "progress": 0,
-              "progress_goals": [135],
-              "progress_xp": [1000]
-            },
-            {
-              "id": "permanent_catch_hoenn_pokemon",
-              "event": "cobblemon:catch_hoenn_pokemon",
-              "type": "progressive",
-              "event_desc": "Catch All Hoenn Pokemon",
-              "progress": 0,
-              "progress_goals": [135],
-              "progress_xp": [2000]
-            },
-            {
-              "id": "permanent_scan_sinnoh_pokemon",
-              "event": "cobblemon:scan_sinnoh_pokemon",
-              "type": "progressive",
-              "event_desc": "Scan All Sinnoh Pokemon",
-              "progress": 0,
-              "progress_goals": [107],
-              "progress_xp": [900]
-            },
-            {
-              "id": "permanent_catch_sinnoh_pokemon",
-              "event": "cobblemon:catch_sinnoh_pokemon",
-              "type": "progressive",
-              "event_desc": "Catch All Sinnoh Pokemon",
-              "progress": 0,
-              "progress_goals": [107],
-              "progress_xp": [1800]
-            },
-            {
-              "id": "permanent_scan_unova_pokemon",
-              "event": "cobblemon:scan_unova_pokemon",
-              "type": "progressive",
-              "event_desc": "Scan All Unova Pokemon",
-              "progress": 0,
-              "progress_goals": [156],
-              "progress_xp": [1200]
-            },
-            {
-              "id": "permanent_catch_unova_pokemon",
-              "event": "cobblemon:catch_unova_pokemon",
-              "type": "progressive",
-              "event_desc": "Catch All Unova Pokemon",
-              "progress": 0,
-              "progress_goals": [156],
-              "progress_xp": [2400]
-            },
-            {
-              "id": "permanent_scan_kalos_pokemon",
-              "event": "cobblemon:scan_kalos_pokemon",
-              "type": "progressive",
-              "event_desc": "Scan All Kalos Pokemon",
-              "progress": 0,
-              "progress_goals": [72],
-              "progress_xp": [700]
-            },
-            {
-              "id": "permanent_catch_kalos_pokemon",
-              "event": "cobblemon:catch_kalos_pokemon",
-              "type": "progressive",
-              "event_desc": "Catch All Kalos Pokemon",
-              "progress": 0,
-              "progress_goals": [72],
-              "progress_xp": [1400]
-            },
-            {
-              "id": "permanent_scan_alola_pokemon",
-              "event": "cobblemon:scan_alola_pokemon",
-              "type": "progressive",
-              "event_desc": "Scan All Alola Pokemon",
-              "progress": 0,
-              "progress_goals": [88],
-              "progress_xp": [800]
-            },
-            {
-              "id": "permanent_catch_alola_pokemon",
-              "event": "cobblemon:catch_alola_pokemon",
-              "type": "progressive",
-              "event_desc": "Catch All Alola Pokemon",
-              "progress": 0,
-              "progress_goals": [88],
-              "progress_xp": [1600]
-            },
-            {
-              "id": "permanent_scan_galar_pokemon",
-              "event": "cobblemon:scan_galar_pokemon",
-              "type": "progressive",
-              "event_desc": "Scan All Galar Pokemon",
-              "progress": 0,
-              "progress_goals": [96],
-              "progress_xp": [850]
-            },
-            {
-              "id": "permanent_catch_galar_pokemon",
-              "event": "cobblemon:catch_galar_pokemon",
-              "type": "progressive",
-              "event_desc": "Catch All Galar Pokemon",
-              "progress": 0,
-              "progress_goals": [96],
-              "progress_xp": [1700]
-            },
-            {
-              "id": "permanent_scan_paldea_pokemon",
-              "event": "cobblemon:scan_paldea_pokemon",
-              "type": "progressive",
-              "event_desc": "Scan All Paldea Pokemon",
-              "progress": 0,
-              "progress_goals": [120],
-              "progress_xp": [1000]
-            },
-            {
-              "id": "permanent_catch_paldea_pokemon",
-              "event": "cobblemon:catch_paldea_pokemon",
-              "type": "progressive",
-              "event_desc": "Catch All Paldea Pokemon",
-              "progress": 0,
-              "progress_goals": [120],
-              "progress_xp": [2000]
-            },
-            {
-              "id": "permanent_monster_slayer",
-              "event": "minecraft:monster_killed",
-              "type": "progressive",
-              "event_desc": "Defeat {goal} Monsters",
-              "progress": 0,
-              "progress_goals": [100, 250, 500],
-              "progress_xp": [300, 600, 1000]
-            },
-            {
-              "id": "permanent_crop_keeper",
-              "event": "minecraft:crop_harvested",
-              "type": "progressive",
-              "event_desc": "Harvest {goal} Crops",
-              "progress": 0,
-              "progress_goals": [128, 512, 1024],
-              "progress_xp": [250, 500, 900]
-            },
-            {
-              "id": "permanent_iron_quality_crop_keeper",
-              "event": "quality_food:iron_quality_crop_harvested",
-              "type": "progressive",
-              "event_desc": "Harvest {goal} Iron Quality Crops",
-              "progress": 0,
-              "progress_goals": [32, 128, 256],
-              "progress_xp": [300, 600, 1000]
-            },
-            {
-              "id": "permanent_gold_quality_crop_keeper",
-              "event": "quality_food:gold_quality_crop_harvested",
-              "type": "progressive",
-              "event_desc": "Harvest {goal} Gold Quality Crops",
-              "progress": 0,
-              "progress_goals": [24, 96, 192],
-              "progress_xp": [350, 700, 1100]
-            },
-            {
-              "id": "permanent_diamond_quality_crop_keeper",
-              "event": "quality_food:diamond_quality_crop_harvested",
-              "type": "progressive",
-              "event_desc": "Harvest {goal} Diamond Quality Crops",
-              "progress": 0,
-              "progress_goals": [12, 48, 96],
-              "progress_xp": [400, 800, 1200]
-            },
-            {
-              "id": "permanent_shipping_value",
-              "event": "gisketchs_chowkingdom_mod:shipping_bin_value_sold",
-              "type": "progressive",
-              "event_desc": "Ship {goal} Chowcoins Worth",
-              "progress": 0,
-              "progress_goals": [10000, 50000, 100000],
-              "progress_xp": [300, 700, 1200]
-            },
-            {
-              "id": "permanent_animal_keeper",
-              "event": "minecraft:animal_bred",
-              "type": "progressive",
-              "event_desc": "Breed {goal} Animals",
-              "progress": 0,
-              "progress_goals": [25, 75, 150],
-              "progress_xp": [250, 450, 850]
-            },
-            {
-              "id": "permanent_traveler",
-              "event": "minecraft:blocks_traveled",
-              "type": "progressive",
-              "event_desc": "Travel {goal} Blocks",
-              "progress": 0,
-              "progress_goals": [1000, 5000, 10000],
-              "progress_xp": [250, 600, 1200]
-            }
-          ],
-          "daily_events": {
-            "count": 0,
-            "events": []
-          },
-          "weekly_events": {
-            "count": 5,
-            "time_zone": "GMT+8",
-            "reset_hour": 5,
-            "reset_minute": 0,
-            "reset_on_day": "Sunday",
-            "events": [
-              { "id": "weekly_harvest_iron_quality_crops", "event": "quality_food:iron_quality_crop_harvested", "type": "progressive", "event_desc": "Harvest {goal} Iron Quality Crops", "progress": 0, "progress_goals": [64], "progress_xp": [250] },
-              { "id": "weekly_harvest_gold_quality_crops", "event": "quality_food:gold_quality_crop_harvested", "type": "progressive", "event_desc": "Harvest {goal} Gold Quality Crops", "progress": 0, "progress_goals": [48], "progress_xp": [300] },
-              { "id": "weekly_harvest_diamond_quality_crops", "event": "quality_food:diamond_quality_crop_harvested", "type": "progressive", "event_desc": "Harvest {goal} Diamond Quality Crops", "progress": 0, "progress_goals": [24], "progress_xp": [350] },
-              { "id": "weekly_cook_iron_quality_food", "event": "quality_food:iron_quality_food_cooked", "type": "progressive", "event_desc": "Cook {goal} Iron Quality Foods", "progress": 0, "progress_goals": [64], "progress_xp": [250] },
-              { "id": "weekly_cook_gold_quality_food", "event": "quality_food:gold_quality_food_cooked", "type": "progressive", "event_desc": "Cook {goal} Gold Quality Foods", "progress": 0, "progress_goals": [48], "progress_xp": [300] },
-              { "id": "weekly_cook_diamond_quality_food", "event": "quality_food:diamond_quality_food_cooked", "type": "progressive", "event_desc": "Cook {goal} Diamond Quality Foods", "progress": 0, "progress_goals": [24], "progress_xp": [350] },
-              { "id": "weekly_ship_iron_quality_food", "event": "gisketchs_chowkingdom_mod:shipping_bin_iron_quality_food_sold", "type": "progressive", "event_desc": "Ship {goal} Iron Quality Foods", "progress": 0, "progress_goals": [32], "progress_xp": [250] },
-              { "id": "weekly_ship_gold_quality_food", "event": "gisketchs_chowkingdom_mod:shipping_bin_gold_quality_food_sold", "type": "progressive", "event_desc": "Ship {goal} Gold Quality Foods", "progress": 0, "progress_goals": [32], "progress_xp": [300] },
-              { "id": "weekly_ship_diamond_quality_food", "event": "gisketchs_chowkingdom_mod:shipping_bin_diamond_quality_food_sold", "type": "progressive", "event_desc": "Ship {goal} Diamond Quality Foods", "progress": 0, "progress_goals": [16], "progress_xp": [350] },
-              { "id": "weekly_ship_value", "event": "gisketchs_chowkingdom_mod:shipping_bin_value_sold", "type": "progressive", "event_desc": "Ship {goal} Chowcoins Worth", "progress": 0, "progress_goals": [50000], "progress_xp": [350] },
-              { "id": "weekly_eat_iron_quality_food", "event": "quality_food:iron_quality_food_eaten", "type": "progressive", "event_desc": "Eat {goal} Iron Quality Foods", "progress": 0, "progress_goals": [32], "progress_xp": [250] },
-              { "id": "weekly_eat_gold_quality_food", "event": "quality_food:gold_quality_food_eaten", "type": "progressive", "event_desc": "Eat {goal} Gold Quality Foods", "progress": 0, "progress_goals": [24], "progress_xp": [300] },
-              { "id": "weekly_eat_diamond_quality_food", "event": "quality_food:diamond_quality_food_eaten", "type": "progressive", "event_desc": "Eat {goal} Diamond Quality Foods", "progress": 0, "progress_goals": [12], "progress_xp": [350] },
-              { "id": "weekly_hunt_mobs", "event": "minecraft:monster_killed", "type": "progressive", "event_desc": "Defeat {goal} Monsters", "progress": 0, "progress_goals": [100], "progress_xp": [250] },
-              { "id": "weekly_harvest_crops", "event": "minecraft:crop_harvested", "type": "progressive", "event_desc": "Harvest {goal} Crops", "progress": 0, "progress_goals": [512], "progress_xp": [250] },
-              { "id": "weekly_travel_blocks", "event": "minecraft:blocks_traveled", "type": "progressive", "event_desc": "Travel {goal} Blocks", "progress": 0, "progress_goals": [10000], "progress_xp": [250] },
-              { "id": "weekly_breed_animals", "event": "minecraft:animal_bred", "type": "progressive", "event_desc": "Breed {goal} Animals", "progress": 0, "progress_goals": [25], "progress_xp": [250] },
-              { "id": "weekly_trade_villagers", "event": "minecraft:villager_traded", "type": "progressive", "event_desc": "Trade with Villagers {goal} Times", "progress": 0, "progress_goals": [30], "progress_xp": [250] },
-              { "id": "weekly_go_fishing", "event": "minecraft:fish_caught", "type": "progressive", "event_desc": "Catch {goal} Fish", "progress": 0, "progress_goals": [25], "progress_xp": [250] },
-              { "id": "weekly_cutting_board", "event": "farmersdelight:cutting_board_used", "type": "progressive", "event_desc": "Use a Cutting Board {goal} Times", "progress": 0, "progress_goals": [25], "progress_xp": [250] },
-              { "id": "weekly_cooking_pot_meals", "event": "farmersdelight:cooking_pot_meal_cooked", "type": "progressive", "event_desc": "Cook {goal} Cooking Pot Meals", "progress": 0, "progress_goals": [25], "progress_xp": [250] },
-              { "id": "weekly_catch_normal_type", "event": "cobblemon:catch_normal_type", "type": "progressive", "event_desc": "Catch {goal} Normal Pokemon", "progress": 0, "progress_goals": [10], "progress_xp": [250] },
-              { "id": "weekly_catch_fire_type", "event": "cobblemon:catch_fire_type", "type": "progressive", "event_desc": "Catch {goal} Fire Pokemon", "progress": 0, "progress_goals": [10], "progress_xp": [250] },
-              { "id": "weekly_catch_water_type", "event": "cobblemon:catch_water_type", "type": "progressive", "event_desc": "Catch {goal} Water Pokemon", "progress": 0, "progress_goals": [10], "progress_xp": [250] },
-              { "id": "weekly_catch_grass_type", "event": "cobblemon:catch_grass_type", "type": "progressive", "event_desc": "Catch {goal} Grass Pokemon", "progress": 0, "progress_goals": [10], "progress_xp": [250] },
-              { "id": "weekly_catch_electric_type", "event": "cobblemon:catch_electric_type", "type": "progressive", "event_desc": "Catch {goal} Electric Pokemon", "progress": 0, "progress_goals": [10], "progress_xp": [250] },
-              { "id": "weekly_catch_ice_type", "event": "cobblemon:catch_ice_type", "type": "progressive", "event_desc": "Catch {goal} Ice Pokemon", "progress": 0, "progress_goals": [10], "progress_xp": [250] },
-              { "id": "weekly_catch_fighting_type", "event": "cobblemon:catch_fighting_type", "type": "progressive", "event_desc": "Catch {goal} Fighting Pokemon", "progress": 0, "progress_goals": [10], "progress_xp": [250] },
-              { "id": "weekly_catch_poison_type", "event": "cobblemon:catch_poison_type", "type": "progressive", "event_desc": "Catch {goal} Poison Pokemon", "progress": 0, "progress_goals": [10], "progress_xp": [250] },
-              { "id": "weekly_catch_ground_type", "event": "cobblemon:catch_ground_type", "type": "progressive", "event_desc": "Catch {goal} Ground Pokemon", "progress": 0, "progress_goals": [10], "progress_xp": [250] },
-              { "id": "weekly_catch_flying_type", "event": "cobblemon:catch_flying_type", "type": "progressive", "event_desc": "Catch {goal} Flying Pokemon", "progress": 0, "progress_goals": [10], "progress_xp": [250] },
-              { "id": "weekly_catch_psychic_type", "event": "cobblemon:catch_psychic_type", "type": "progressive", "event_desc": "Catch {goal} Psychic Pokemon", "progress": 0, "progress_goals": [10], "progress_xp": [250] },
-              { "id": "weekly_catch_bug_type", "event": "cobblemon:catch_bug_type", "type": "progressive", "event_desc": "Catch {goal} Bug Pokemon", "progress": 0, "progress_goals": [10], "progress_xp": [250] },
-              { "id": "weekly_catch_rock_type", "event": "cobblemon:catch_rock_type", "type": "progressive", "event_desc": "Catch {goal} Rock Pokemon", "progress": 0, "progress_goals": [10], "progress_xp": [250] },
-              { "id": "weekly_catch_ghost_type", "event": "cobblemon:catch_ghost_type", "type": "progressive", "event_desc": "Catch {goal} Ghost Pokemon", "progress": 0, "progress_goals": [10], "progress_xp": [250] },
-              { "id": "weekly_catch_dragon_type", "event": "cobblemon:catch_dragon_type", "type": "progressive", "event_desc": "Catch {goal} Dragon Pokemon", "progress": 0, "progress_goals": [10], "progress_xp": [250] },
-              { "id": "weekly_catch_dark_type", "event": "cobblemon:catch_dark_type", "type": "progressive", "event_desc": "Catch {goal} Dark Pokemon", "progress": 0, "progress_goals": [10], "progress_xp": [250] },
-              { "id": "weekly_catch_steel_type", "event": "cobblemon:catch_steel_type", "type": "progressive", "event_desc": "Catch {goal} Steel Pokemon", "progress": 0, "progress_goals": [10], "progress_xp": [250] },
-              { "id": "weekly_catch_fairy_type", "event": "cobblemon:catch_fairy_type", "type": "progressive", "event_desc": "Catch {goal} Fairy Pokemon", "progress": 0, "progress_goals": [10], "progress_xp": [250] },
-              { "id": "weekly_catch_legendary", "event": "cobblemon:catch_legendary_pokemon", "type": "progressive", "event_desc": "Catch {goal} Legendary Pokemon", "progress": 0, "progress_goals": [10, 20, 30], "progress_xp": [900, 1900, 3000] },
-              { "id": "weekly_catch_mythical", "event": "cobblemon:catch_mythical_pokemon", "type": "progressive", "event_desc": "Catch {goal} Mythical Pokemon", "progress": 0, "progress_goals": [1], "progress_xp": [900] },
-              { "id": "weekly_catch_starter", "event": "cobblemon:catch_starter_pokemon", "type": "progressive", "event_desc": "Catch {goal} Starter Pokemon", "progress": 0, "progress_goals": [1], "progress_xp": [600] },
-              { "id": "weekly_friendship_normal_type", "event": "cobblemon:max_friendship_normal_type", "type": "progressive", "event_desc": "Max Friendship with {goal} Normal Pokemon", "progress": 0, "progress_goals": [10], "progress_xp": [300] },
-              { "id": "weekly_friendship_fire_type", "event": "cobblemon:max_friendship_fire_type", "type": "progressive", "event_desc": "Max Friendship with {goal} Fire Pokemon", "progress": 0, "progress_goals": [10], "progress_xp": [300] },
-              { "id": "weekly_friendship_water_type", "event": "cobblemon:max_friendship_water_type", "type": "progressive", "event_desc": "Max Friendship with {goal} Water Pokemon", "progress": 0, "progress_goals": [10], "progress_xp": [300] },
-              { "id": "weekly_friendship_grass_type", "event": "cobblemon:max_friendship_grass_type", "type": "progressive", "event_desc": "Max Friendship with {goal} Grass Pokemon", "progress": 0, "progress_goals": [10], "progress_xp": [300] },
-              { "id": "weekly_friendship_electric_type", "event": "cobblemon:max_friendship_electric_type", "type": "progressive", "event_desc": "Max Friendship with {goal} Electric Pokemon", "progress": 0, "progress_goals": [10], "progress_xp": [300] },
-              { "id": "weekly_friendship_ice_type", "event": "cobblemon:max_friendship_ice_type", "type": "progressive", "event_desc": "Max Friendship with {goal} Ice Pokemon", "progress": 0, "progress_goals": [10], "progress_xp": [300] },
-              { "id": "weekly_friendship_fighting_type", "event": "cobblemon:max_friendship_fighting_type", "type": "progressive", "event_desc": "Max Friendship with {goal} Fighting Pokemon", "progress": 0, "progress_goals": [10], "progress_xp": [300] },
-              { "id": "weekly_friendship_poison_type", "event": "cobblemon:max_friendship_poison_type", "type": "progressive", "event_desc": "Max Friendship with {goal} Poison Pokemon", "progress": 0, "progress_goals": [10], "progress_xp": [300] },
-              { "id": "weekly_friendship_ground_type", "event": "cobblemon:max_friendship_ground_type", "type": "progressive", "event_desc": "Max Friendship with {goal} Ground Pokemon", "progress": 0, "progress_goals": [10], "progress_xp": [300] },
-              { "id": "weekly_friendship_flying_type", "event": "cobblemon:max_friendship_flying_type", "type": "progressive", "event_desc": "Max Friendship with {goal} Flying Pokemon", "progress": 0, "progress_goals": [10], "progress_xp": [300] },
-              { "id": "weekly_friendship_psychic_type", "event": "cobblemon:max_friendship_psychic_type", "type": "progressive", "event_desc": "Max Friendship with {goal} Psychic Pokemon", "progress": 0, "progress_goals": [10], "progress_xp": [300] },
-              { "id": "weekly_friendship_bug_type", "event": "cobblemon:max_friendship_bug_type", "type": "progressive", "event_desc": "Max Friendship with {goal} Bug Pokemon", "progress": 0, "progress_goals": [10], "progress_xp": [300] },
-              { "id": "weekly_friendship_rock_type", "event": "cobblemon:max_friendship_rock_type", "type": "progressive", "event_desc": "Max Friendship with {goal} Rock Pokemon", "progress": 0, "progress_goals": [10], "progress_xp": [300] },
-              { "id": "weekly_friendship_ghost_type", "event": "cobblemon:max_friendship_ghost_type", "type": "progressive", "event_desc": "Max Friendship with {goal} Ghost Pokemon", "progress": 0, "progress_goals": [10], "progress_xp": [300] },
-              { "id": "weekly_friendship_dragon_type", "event": "cobblemon:max_friendship_dragon_type", "type": "progressive", "event_desc": "Max Friendship with {goal} Dragon Pokemon", "progress": 0, "progress_goals": [10], "progress_xp": [300] },
-              { "id": "weekly_friendship_dark_type", "event": "cobblemon:max_friendship_dark_type", "type": "progressive", "event_desc": "Max Friendship with {goal} Dark Pokemon", "progress": 0, "progress_goals": [10], "progress_xp": [300] },
-              { "id": "weekly_friendship_steel_type", "event": "cobblemon:max_friendship_steel_type", "type": "progressive", "event_desc": "Max Friendship with {goal} Steel Pokemon", "progress": 0, "progress_goals": [10], "progress_xp": [300] },
-              { "id": "weekly_friendship_fairy_type", "event": "cobblemon:max_friendship_fairy_type", "type": "progressive", "event_desc": "Max Friendship with {goal} Fairy Pokemon", "progress": 0, "progress_goals": [10], "progress_xp": [300] },
-              { "id": "weekly_friendship_legendary", "event": "cobblemon:max_friendship_legendary_pokemon", "type": "progressive", "event_desc": "Max Friendship with {goal} Legendary Pokemon", "progress": 0, "progress_goals": [1], "progress_xp": [900] },
-              { "id": "weekly_friendship_mythical", "event": "cobblemon:max_friendship_mythical_pokemon", "type": "progressive", "event_desc": "Max Friendship with {goal} Mythical Pokemon", "progress": 0, "progress_goals": [1], "progress_xp": [900] },
-              { "id": "weekly_friendship_starter", "event": "cobblemon:max_friendship_starter_pokemon", "type": "progressive", "event_desc": "Max Friendship with {goal} Starter Pokemon", "progress": 0, "progress_goals": [1], "progress_xp": [600] }
-            ]
-          },
-          "progression": [
-            {
-              "xp": 100,
-              "rewards": [
-                {
-                  "type": "item",
-                  "item": "minecraft:diamond",
-                  "quantity": 1
-                }
-              ]
-            },
-            {
-              "xp": 200,
-              "rewards": [
-                {
-                  "type": "item",
-                  "item": "minecraft:emerald",
-                  "quantity": 3
-                }
-              ]
-            },
-            {
-              "xp": 300,
-              "rewards": [
-                {
-                  "type": "item",
-                  "item": "minecraft:golden_apple",
-                  "quantity": 1
-                }
-              ]
-            },
-            {
-              "xp": 400,
-              "rewards": [
-                {
-                  "type": "item",
-                  "item": "minecraft:lapis_lazuli",
-                  "quantity": 16
-                }
-              ]
-            },
-            {
-              "xp": 500,
-              "rewards": [
-                {
-                  "type": "item",
-                  "item": "minecraft:amethyst_shard",
-                  "quantity": 8
-                }
-              ]
-            },
-            {
-              "xp": 600,
-              "rewards": [
-                {
-                  "type": "item",
-                  "item": "minecraft:experience_bottle",
-                  "quantity": 12
-                }
-              ]
-            },
-            {
-              "xp": 700,
-              "rewards": [
-                {
-                  "type": "item",
-                  "item": "minecraft:name_tag",
-                  "quantity": 1
-                }
-              ]
-            },
-            {
-              "xp": 800,
-              "rewards": [
-                {
-                  "type": "item",
-                  "item": "minecraft:ender_pearl",
-                  "quantity": 8
-                }
-              ]
-            },
-            {
-              "xp": 900,
-              "rewards": [
-                {
-                  "type": "item",
-                  "item": "minecraft:netherite_scrap",
-                  "quantity": 1
-                }
-              ]
-            },
-            {
-              "xp": 1000,
-              "rewards": [
-                {
-                  "type": "item",
-                  "item": "minecraft:nether_star",
-                  "quantity": 1
-                }
-              ]
-            }
-          ]
-        }
-    """
+    private data class RewardEntry(val item: String, val quantity: Int, val maxQuantity: Int, val scaleEvery: Int = 200)
+    private data class RewardTables(val normal: List<RewardEntry>, val utility: List<RewardEntry>, val prominent: List<RewardEntry>)
 
-    private const val COMBAT_PASS = """
-        {
-          "id": "combat",
-          "displayName": "Combat Pass",
-          "description": "Progress from normal Minecraft combat and gathering events.",
-          "titleTexture": "gisketchs_chowkingdom_mod:textures/gui/combat_pass.png",
-          "titleTextureWidth": 1024,
-          "titleTextureHeight": 215,
-          "categories": ["combat", "gathering"],
-          "xpEvents": [
-            {
-              "event": "minecraft:monster_killed",
-              "xp": 5
-            },
-            {
-              "event": "minecraft:block_harvested",
-              "xp": 1,
-              "filters": {
-                "blockTag": "minecraft:mineable/pickaxe"
-              }
-            }
-          ],
-          "progression": [
-            {
-              "xp": 100,
-              "rewards": [
-                {
-                  "type": "item",
-                  "item": "minecraft:iron_ingot",
-                  "quantity": 16
-                }
-              ]
-            },
-            {
-              "xp": 200,
-              "rewards": [
-                {
-                  "type": "item",
-                  "item": "minecraft:arrow",
-                  "quantity": 32
-                }
-              ]
-            },
-            {
-              "xp": 300,
-              "rewards": [
-                {
-                  "type": "item",
-                  "item": "minecraft:shield",
-                  "quantity": 1
-                }
-              ]
-            },
-            {
-              "xp": 400,
-              "rewards": [
-                {
-                  "type": "item",
-                  "item": "minecraft:bow",
-                  "quantity": 1
-                }
-              ]
-            },
-            {
-              "xp": 500,
-              "rewards": [
-                {
-                  "type": "item",
-                  "item": "minecraft:diamond",
-                  "quantity": 2
-                }
-              ]
-            },
-            {
-              "xp": 600,
-              "rewards": [
-                {
-                  "type": "item",
-                  "item": "minecraft:enchanted_book",
-                  "quantity": 1
-                }
-              ]
-            },
-            {
-              "xp": 700,
-              "rewards": [
-                {
-                  "type": "item",
-                  "item": "minecraft:golden_apple",
-                  "quantity": 2
-                }
-              ]
-            },
-            {
-              "xp": 800,
-              "rewards": [
-                {
-                  "type": "item",
-                  "item": "minecraft:diamond_sword",
-                  "quantity": 1
-                }
-              ]
-            },
-            {
-              "xp": 900,
-              "rewards": [
-                {
-                  "type": "item",
-                  "item": "minecraft:totem_of_undying",
-                  "quantity": 1
-                }
-              ]
-            },
-            {
-              "xp": 1000,
-              "rewards": [
-                {
-                  "type": "item",
-                  "item": "minecraft:netherite_ingot",
-                  "quantity": 1
-                }
-              ]
-            }
-          ]
-        }
-    """
+    private val SPECIAL_LEVELS = setOf(25, 50, 75, 100, 150, 200, 250, 300, 400, 500, 650, 750, 900, 1000)
+
+    private val COZY_RELIC_LEVELS = mapOf(
+        50 to "common_cozy_relics",
+        100 to "rare_cozy_relics",
+        200 to "common_cozy_relics",
+        300 to "common_cozy_relics",
+        500 to "rare_cozy_relics",
+        750 to "common_cozy_relics",
+        1000 to "rare_cozy_relics",
+    )
+
+    private val COMBAT_RELIC_LEVELS = mapOf(
+        50 to "common_combat_relics",
+        100 to "rare_combat_relics",
+        200 to "common_combat_relics",
+        300 to "common_combat_relics",
+        500 to "rare_combat_relics",
+        750 to "common_combat_relics",
+        1000 to "rare_combat_relics",
+    )
+
+    private val COZY_EXTRA_REWARDS = mapOf(
+        500 to listOf(fixedItemReward("minecraft:elytra")),
+    )
+
+    private val COZY_REWARDS = RewardTables(
+        normal = listOf(
+            RewardEntry("minecraft:wheat_seeds", 4, 32),
+            RewardEntry("minecraft:carrot", 3, 24),
+            RewardEntry("minecraft:potato", 3, 24),
+            RewardEntry("minecraft:beetroot_seeds", 4, 32),
+            RewardEntry("minecraft:sweet_berries", 3, 24),
+            RewardEntry("minecraft:apple", 2, 16),
+            RewardEntry("minecraft:kelp", 6, 48),
+            RewardEntry("minecraft:sugar_cane", 4, 32),
+        ),
+        utility = listOf(
+            RewardEntry("minecraft:bread", 4, 32),
+            RewardEntry("minecraft:string", 6, 48),
+            RewardEntry("minecraft:bowl", 4, 32),
+            RewardEntry("minecraft:cookie", 6, 48),
+            RewardEntry("minecraft:torch", 8, 64),
+            RewardEntry("minecraft:lantern", 1, 8),
+            RewardEntry("minecraft:bone_meal", 8, 64),
+            RewardEntry("minecraft:paper", 8, 64),
+        ),
+        prominent = listOf(
+            RewardEntry("minecraft:fishing_rod", 1, 1, 10000),
+            RewardEntry("minecraft:campfire", 1, 4),
+            RewardEntry("minecraft:compass", 1, 4),
+            RewardEntry("minecraft:name_tag", 1, 4),
+            RewardEntry("minecraft:saddle", 1, 2, 10000),
+            RewardEntry("farmersdelight:cooking_pot", 1, 2, 10000),
+            RewardEntry("farmersdelight:skillet", 1, 2, 10000),
+            RewardEntry("farmersdelight:cutting_board", 1, 2, 10000),
+            RewardEntry("create:andesite_alloy", 4, 24),
+            RewardEntry("cobblemon:poke_ball", 3, 24),
+        ),
+    )
+
+    private val COMBAT_REWARDS = RewardTables(
+        normal = listOf(
+            RewardEntry("minecraft:arrow", 8, 64),
+            RewardEntry("minecraft:torch", 8, 64),
+            RewardEntry("minecraft:bread", 3, 24),
+            RewardEntry("minecraft:coal", 4, 32),
+            RewardEntry("minecraft:bone", 4, 32),
+            RewardEntry("minecraft:string", 4, 32),
+            RewardEntry("minecraft:flint", 4, 32),
+            RewardEntry("minecraft:leather", 3, 24),
+        ),
+        utility = listOf(
+            RewardEntry("minecraft:spectral_arrow", 6, 48),
+            RewardEntry("minecraft:iron_ingot", 3, 24),
+            RewardEntry("minecraft:gold_ingot", 2, 18),
+            RewardEntry("minecraft:lapis_lazuli", 8, 64),
+            RewardEntry("minecraft:redstone", 8, 64),
+            RewardEntry("minecraft:experience_bottle", 2, 16),
+            RewardEntry("minecraft:cooked_beef", 3, 24),
+            RewardEntry("minecraft:ender_pearl", 1, 8),
+        ),
+        prominent = listOf(
+            RewardEntry("minecraft:shield", 1, 2, 10000),
+            RewardEntry("minecraft:bow", 1, 2, 10000),
+            RewardEntry("minecraft:crossbow", 1, 2, 10000),
+            RewardEntry("minecraft:iron_ingot", 8, 48),
+            RewardEntry("minecraft:gold_ingot", 6, 36),
+            RewardEntry("minecraft:amethyst_shard", 8, 48),
+            RewardEntry("minecraft:experience_bottle", 4, 24),
+            RewardEntry("minecraft:ender_pearl", 2, 12),
+            RewardEntry("minecraft:golden_apple", 1, 3, 500),
+            RewardEntry("minecraft:diamond", 1, 4, 500),
+        ),
+    )
 }
