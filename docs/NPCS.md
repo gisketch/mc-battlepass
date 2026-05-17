@@ -63,6 +63,7 @@ Each NPC is one TOML file:
 - `body_type`: Player-model shape. Supported values: `normal`, `slim`.
 - `height`: Pehkui height scale. Default `1.0`, clamped from `0.6` to `1.4`.
 - `weight`: Pehkui width scale. Default `1.0`, clamped from `0.6` to `1.4`.
+- Female Gender Mod body-model settings do not apply to NPCs yet. That requires a separate CKDM renderer compatibility pass because Female Gender 3.2.2 only adds its layer to vanilla player renderers and armor stands.
 - `custom_animation`: Uses the GeckoLib playerlike NPC renderer instead of the EMF-compatible renderer path. Default `false`.
 - `playerlike_animation`: Uses the Better Combat/Mob Player Animator-compatible playerlike renderer instead of Gecko custom animation. Default `false`.
 - `main_pokemon`: Optional Cobblemon species id, for example `main_pokemon = "cobblemon:growlithe"`. When Cobblemon is installed, CKDM keeps one tagged NPC-owned companion near the NPC. The companion follows the NPC, is not catchable, is not battleable, and is included in LLM prompt context so the NPC can sometimes talk about it.

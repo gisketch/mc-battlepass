@@ -29,12 +29,27 @@ object RolesNetwork {
         server.playerList.players.forEach { player -> syncTo(player, openOnboarding = player.uuid in openOnboardingFor) }
     }
 
-    fun choose(jobId: String, classId: String, height: Double, weight: Double) {
-        runCatching { PacketDistributor.sendToServer(RolesChoosePayload(jobId, classId, normalizeBodyScale(height), normalizeBodyScale(weight))) }
+    fun choose(jobId: String, classId: String, height: Double, weight: Double, femaleGender: FemaleGenderChoice) {
+        runCatching {
+            PacketDistributor.sendToServer(
+                RolesChoosePayload(
+                    jobId,
+                    classId,
+                    normalizeBodyScale(height),
+                    normalizeBodyScale(weight),
+                    normalizeBodyModel(femaleGender.bodyModel),
+                    normalizeFemaleGenderBustSize(femaleGender.bustSize),
+                    femaleGender.physics,
+                    femaleGender.showInArmor,
+                    normalizeFemaleGenderBounce(femaleGender.bounce),
+                    normalizeFemaleGenderFloppy(femaleGender.floppy),
+                ),
+            )
+        }
     }
 
     private fun registerPayloads(event: RegisterPayloadHandlersEvent) {
-        val registrar = event.registrar("5")
+        val registrar = event.registrar("6")
         registrar.playToClient(RolesSyncPayload.TYPE, RolesSyncPayload.STREAM_CODEC, ::handleSyncClient)
         registrar.playToServer(RolesChoosePayload.TYPE, RolesChoosePayload.STREAM_CODEC, ::handleChoose)
     }
@@ -53,7 +68,7 @@ object RolesNetwork {
 
     private fun handleChoose(payload: RolesChoosePayload, context: IPayloadContext) {
         val player = context.player() as? ServerPlayer ?: return
-        RolesFeature.applyOnboardingChoice(player, payload.jobId, payload.classId, payload.height, payload.weight)
+        RolesFeature.applyOnboardingChoice(player, payload.jobId, payload.classId, payload.height, payload.weight, payload.femaleGenderChoice())
     }
 
     private fun createSyncPayload(player: ServerPlayer, openOnboarding: Boolean): RolesSyncPayload {
@@ -68,6 +83,12 @@ object RolesNetwork {
             openOnboarding = openOnboarding,
             height = record.height,
             weight = record.weight,
+            bodyModel = normalizeBodyModel(record.bodyModel),
+            fgBustSize = normalizeFemaleGenderBustSize(record.fgBustSize),
+            fgPhysics = record.fgPhysics,
+            fgShowInArmor = record.fgShowInArmor,
+            fgBounce = normalizeFemaleGenderBounce(record.fgBounce),
+            fgFloppy = normalizeFemaleGenderFloppy(record.fgFloppy),
             jobRankUnlockOverallLevels = JobLevels.jobRankUnlockOverallLevels(),
             catchRateBonusPercentByRank = JobLevels.catchRateBonusPercentByRank(),
             mountSpeedBonusPercentByRank = JobLevels.mountSpeedBonusPercentByRank(),
@@ -135,11 +156,26 @@ data class RolesSyncPayload(
     val openOnboarding: Boolean,
     val height: Double,
     val weight: Double,
+    val bodyModel: String,
+    val fgBustSize: Double,
+    val fgPhysics: Boolean,
+    val fgShowInArmor: Boolean,
+    val fgBounce: Double,
+    val fgFloppy: Double,
     val jobRankUnlockOverallLevels: List<Int>,
     val catchRateBonusPercentByRank: List<Double>,
     val mountSpeedBonusPercentByRank: List<Double>,
 ) : CustomPacketPayload {
     override fun type(): CustomPacketPayload.Type<RolesSyncPayload> = TYPE
+
+    fun femaleGenderChoice(): FemaleGenderChoice = FemaleGenderChoice(
+        bodyModel = normalizeBodyModel(bodyModel),
+        bustSize = normalizeFemaleGenderBustSize(fgBustSize),
+        physics = fgPhysics,
+        showInArmor = fgShowInArmor,
+        bounce = normalizeFemaleGenderBounce(fgBounce),
+        floppy = normalizeFemaleGenderFloppy(fgFloppy),
+    )
 
     companion object {
         val TYPE: CustomPacketPayload.Type<RolesSyncPayload> = CustomPacketPayload.Type(ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "roles/sync"))
@@ -154,6 +190,12 @@ data class RolesSyncPayload(
                 openOnboarding = buffer.readBoolean(),
                 height = normalizeBodyScale(buffer.readDouble()),
                 weight = normalizeBodyScale(buffer.readDouble()),
+                bodyModel = normalizeBodyModel(buffer.readUtf(MAX_ID_LENGTH)),
+                fgBustSize = normalizeFemaleGenderBustSize(buffer.readDouble()),
+                fgPhysics = buffer.readBoolean(),
+                fgShowInArmor = buffer.readBoolean(),
+                fgBounce = normalizeFemaleGenderBounce(buffer.readDouble()),
+                fgFloppy = normalizeFemaleGenderFloppy(buffer.readDouble()),
                 jobRankUnlockOverallLevels = readIntList(buffer, MAX_JOB_RANKS),
                 catchRateBonusPercentByRank = readDoubleList(buffer, MAX_JOB_RANKS),
                 mountSpeedBonusPercentByRank = readDoubleList(buffer, MAX_JOB_RANKS),
@@ -175,6 +217,12 @@ data class RolesSyncPayload(
                 buffer.writeBoolean(value.openOnboarding)
                 buffer.writeDouble(normalizeBodyScale(value.height))
                 buffer.writeDouble(normalizeBodyScale(value.weight))
+                buffer.writeUtf(normalizeBodyModel(value.bodyModel), MAX_ID_LENGTH)
+                buffer.writeDouble(normalizeFemaleGenderBustSize(value.fgBustSize))
+                buffer.writeBoolean(value.fgPhysics)
+                buffer.writeBoolean(value.fgShowInArmor)
+                buffer.writeDouble(normalizeFemaleGenderBounce(value.fgBounce))
+                buffer.writeDouble(normalizeFemaleGenderFloppy(value.fgFloppy))
                 writeIntList(buffer, value.jobRankUnlockOverallLevels, MAX_JOB_RANKS)
                 writeDoubleList(buffer, value.catchRateBonusPercentByRank, MAX_JOB_RANKS)
                 writeDoubleList(buffer, value.mountSpeedBonusPercentByRank, MAX_JOB_RANKS)
@@ -340,8 +388,23 @@ data class RolesChoosePayload(
     val classId: String,
     val height: Double,
     val weight: Double,
+    val bodyModel: String,
+    val fgBustSize: Double,
+    val fgPhysics: Boolean,
+    val fgShowInArmor: Boolean,
+    val fgBounce: Double,
+    val fgFloppy: Double,
 ) : CustomPacketPayload {
     override fun type(): CustomPacketPayload.Type<RolesChoosePayload> = TYPE
+
+    fun femaleGenderChoice(): FemaleGenderChoice = FemaleGenderChoice(
+        bodyModel = normalizeBodyModel(bodyModel),
+        bustSize = normalizeFemaleGenderBustSize(fgBustSize),
+        physics = fgPhysics,
+        showInArmor = fgShowInArmor,
+        bounce = normalizeFemaleGenderBounce(fgBounce),
+        floppy = normalizeFemaleGenderFloppy(fgFloppy),
+    )
 
     companion object {
         val TYPE: CustomPacketPayload.Type<RolesChoosePayload> = CustomPacketPayload.Type(ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "roles/choose"))
@@ -351,6 +414,12 @@ data class RolesChoosePayload(
                 classId = buffer.readUtf(MAX_ID_LENGTH),
                 height = normalizeBodyScale(buffer.readDouble()),
                 weight = normalizeBodyScale(buffer.readDouble()),
+                bodyModel = normalizeBodyModel(buffer.readUtf(MAX_ID_LENGTH)),
+                fgBustSize = normalizeFemaleGenderBustSize(buffer.readDouble()),
+                fgPhysics = buffer.readBoolean(),
+                fgShowInArmor = buffer.readBoolean(),
+                fgBounce = normalizeFemaleGenderBounce(buffer.readDouble()),
+                fgFloppy = normalizeFemaleGenderFloppy(buffer.readDouble()),
             )
 
             override fun encode(buffer: RegistryFriendlyByteBuf, value: RolesChoosePayload) {
@@ -358,6 +427,12 @@ data class RolesChoosePayload(
                 buffer.writeUtf(value.classId.take(MAX_ID_LENGTH), MAX_ID_LENGTH)
                 buffer.writeDouble(normalizeBodyScale(value.height))
                 buffer.writeDouble(normalizeBodyScale(value.weight))
+                buffer.writeUtf(normalizeBodyModel(value.bodyModel), MAX_ID_LENGTH)
+                buffer.writeDouble(normalizeFemaleGenderBustSize(value.fgBustSize))
+                buffer.writeBoolean(value.fgPhysics)
+                buffer.writeBoolean(value.fgShowInArmor)
+                buffer.writeDouble(normalizeFemaleGenderBounce(value.fgBounce))
+                buffer.writeDouble(normalizeFemaleGenderFloppy(value.fgFloppy))
             }
         }
     }

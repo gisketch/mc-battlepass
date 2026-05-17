@@ -79,6 +79,7 @@ neoForge {
         create("client") {
             client()
             gameDirectory = file("runs/client")
+            jvmArgument("-Xmx8G")
             systemProperty("forge.logging.console.level", "debug")
         }
 

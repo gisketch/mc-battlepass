@@ -16,9 +16,11 @@ For step-by-step creation and tuning, see [Jobs And Classes Creation Guide](ROLE
 
 ## First Login Onboarding
 
-Players with no active job and no active class keep an empty role record and get a fullscreen onboarding stepper on login. They pick one job, one class, then height and weight. The server validates the selected ids, persists the role and body choices, applies Pehkui scale, and grants configured class starter items.
+Players with no active job and no active class keep an empty role record and get a fullscreen onboarding stepper on login. They pick one job, one class, then height, weight, and body model. The server validates the selected ids, persists the role and body choices, applies Pehkui scale, and grants configured class starter items.
 
 Pehkui is a required runtime dependency. Height maps to Pehkui height scale, weight maps to Pehkui width scale, and both are clamped from `0.6` to `1.4`.
+
+When Wildfire's Female Gender Mod `Female-Gender-Mod-neoforge-1.21-3.2.2.jar` is installed, CKDM onboarding can apply the player's selected body model locally. `Girl` maps to Female Gender `FEMALE` and exposes bust size, physics, show-in-armor, bounce, and floppy settings with the mod's defaults. `Boy` maps to `MALE`; the same advanced controls stay visible but disabled. CKDM stores these values even when `wildfire_gender` is absent, so the player can install the visual mod later without losing the onboarding choice. Install the Female Gender jar on clients for visuals and on the dedicated server when player-to-player setting sync is desired.
 
 The source defaults create editable job/class TOML, but they no longer auto-assign those roles to brand-new players.
 

@@ -103,6 +103,12 @@ ordering="AFTER"
 side="CLIENT"
 
 [[dependencies."${mod_id}"]]
+modId="wildfire_gender"
+type="optional"
+ordering="AFTER"
+side="BOTH"
+
+[[dependencies."${mod_id}"]]
 modId="puffish_skills"
 type="optional"
 ordering="AFTER"

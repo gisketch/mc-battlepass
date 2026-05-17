@@ -136,7 +136,14 @@ object RolesFeature {
         RolesNetwork.syncAllPlayers(openOnboardingFor = onboardingPlayers)
     }
 
-    fun applyOnboardingChoice(player: ServerPlayer, jobId: String, classId: String, height: Double = DEFAULT_BODY_SCALE, weight: Double = DEFAULT_BODY_SCALE): Boolean {
+    fun applyOnboardingChoice(
+        player: ServerPlayer,
+        jobId: String,
+        classId: String,
+        height: Double = DEFAULT_BODY_SCALE,
+        weight: Double = DEFAULT_BODY_SCALE,
+        femaleGender: FemaleGenderChoice = FemaleGenderChoice(),
+    ): Boolean {
         if (!RoleStore.needsOnboarding(player)) {
             RolesNetwork.syncTo(player, openOnboarding = false)
             return false
@@ -151,7 +158,7 @@ object RolesFeature {
             RolesNetwork.syncTo(player, openOnboarding = true)
             return false
         }
-        RoleStore.setPrimaryRoles(player, job.id, roleClass.id, height, weight)
+        RoleStore.setPrimaryRoles(player, job.id, roleClass.id, height, weight, femaleGender)
         PehkuiScaleBridge.apply(player, RoleStore.bodyScale(player))
         RoleClassEquipmentRules.grantStartingItems(player, roleClass.id)
         applyJobRankEffect(player)

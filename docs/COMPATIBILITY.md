@@ -100,3 +100,10 @@ Behavior:
 Definition:
 
 - Unscanned means the local Cobblemon client Pokedex has no species record, no loaded Pokedex data yet, or the species record knowledge is `NONE`.
+
+## Female Gender Mod
+
+- CKDM onboarding has optional support for Wildfire's Female Gender Mod `Female-Gender-Mod-neoforge-1.21-3.2.2.jar` on Minecraft `1.21.1` NeoForge. The integration is reflection-based so CKDM still starts without `wildfire_gender`.
+- Client install is required for the Girl/Boy model visuals. Dedicated server install is recommended when players should see each other's synced Female Gender settings.
+- Onboarding stores Girl/Boy plus bust size, physics, show-in-armor, bounce, and floppy settings. Girl maps to Female Gender `FEMALE`; Boy maps to `MALE`. The mod's `OTHER`, voice, and hurt-sound settings stay in the Female Gender menu.
+- NPCs are not integrated in this pass. Female Gender 3.2.2 adds its render layer to vanilla player renderers and armor stands, while CKDM NPCs use custom renderers.

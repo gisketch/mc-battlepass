@@ -57,6 +57,7 @@ object RolesClient {
     fun sync(payload: RolesSyncPayload) {
         RolesClientState.apply(payload)
         val minecraft = Minecraft.getInstance()
+        minecraft.player?.uuid?.let { playerId -> FemaleGenderOnboardingBridge.applyCached(playerId, payload.femaleGenderChoice()) }
         val current = minecraft.screen as? RolesOnboardingScreen
         current?.updatePayload(payload)
         if (payload.openOnboarding && current == null) {
@@ -393,7 +394,7 @@ private const val INVENTORY_HEIGHT = 166
 
 private class RolesOnboardingScreen(private var payload: RolesSyncPayload) : Screen(Component.literal("Roles Onboarding")) {
     private enum class Step { WELCOME, JOB, CLASS, BODY }
-    private enum class BodySlider { HEIGHT, WEIGHT }
+    private enum class BodySlider { HEIGHT, WEIGHT, BUST, BOUNCE, FLOPPY }
 
     private data class Rect(val x: Int, val y: Int, val width: Int, val height: Int) {
         val right: Int get() = x + width
@@ -418,7 +419,13 @@ private class RolesOnboardingScreen(private var payload: RolesSyncPayload) : Scr
     private var selectedClassId: String? = payload.activeClassIds.firstOrNull()
     private var selectedHeight = payload.height
     private var selectedWeight = payload.weight
+    private var selectedBodyModel = normalizeBodyModel(payload.bodyModel)
+    private var selectedFgBustSize = normalizeFemaleGenderBustSize(payload.fgBustSize)
+    private var selectedFgBounce = normalizeFemaleGenderBounce(payload.fgBounce)
+    private var selectedFgFloppy = normalizeFemaleGenderFloppy(payload.fgFloppy)
     private var draggingSlider: BodySlider? = null
+    private var draggingPaperDoll = false
+    private var paperDollYaw = 0.0f
     private var hoveredRoleId: String? = null
     private var jobScroll = 0
     private var classScroll = 0
@@ -437,6 +444,10 @@ private class RolesOnboardingScreen(private var payload: RolesSyncPayload) : Scr
         if (step != Step.BODY || draggingSlider == null) {
             selectedHeight = next.height
             selectedWeight = next.weight
+            selectedBodyModel = normalizeBodyModel(next.bodyModel)
+            selectedFgBustSize = normalizeFemaleGenderBustSize(next.fgBustSize)
+            selectedFgBounce = normalizeFemaleGenderBounce(next.fgBounce)
+            selectedFgFloppy = normalizeFemaleGenderFloppy(next.fgFloppy)
         }
         if (!next.openOnboarding && Minecraft.getInstance().screen === this) {
             Minecraft.getInstance().setScreen(null)
@@ -480,16 +491,33 @@ private class RolesOnboardingScreen(private var payload: RolesSyncPayload) : Scr
 
         if (step == Step.BODY) {
             val controls = bodyControlsRect()
+            if (girlButtonRect(controls).contains(x, y)) {
+                selectedBodyModel = BODY_MODEL_GIRL
+                playClick()
+                return true
+            }
+            if (boyButtonRect(controls).contains(x, y)) {
+                selectedBodyModel = BODY_MODEL_BOY
+                playClick()
+                return true
+            }
             BodySlider.entries.firstOrNull { slider -> bodySliderRect(controls, slider).contains(x, y) }?.let { slider ->
+                if (!bodySliderEnabled(slider)) return true
                 draggingSlider = slider
                 updateBodySlider(slider, x)
                 playClick()
                 return true
             }
+            if (selectionLayout().center.contains(x, y)) {
+                draggingPaperDoll = true
+                return true
+            }
             if (continueRect().contains(x, y)) {
                 val jobId = selectedJobId ?: return true
                 val classId = selectedClassId ?: return true
-                RolesNetwork.choose(jobId, classId, selectedHeight, selectedWeight)
+                val femaleGender = selectedFemaleGenderChoice()
+                Minecraft.getInstance().player?.uuid?.let { playerId -> FemaleGenderOnboardingBridge.save(playerId, femaleGender) }
+                RolesNetwork.choose(jobId, classId, selectedHeight, selectedWeight, femaleGender)
                 minecraft?.setScreen(null)
                 playClick()
                 return true
@@ -501,6 +529,11 @@ private class RolesOnboardingScreen(private var payload: RolesSyncPayload) : Scr
             if (isLockedClassSlot(slot)) return true
             setSelectedRole(slot.role?.id)
             playClick()
+            return true
+        }
+
+        if (selectionLayout().center.contains(x, y)) {
+            draggingPaperDoll = true
             return true
         }
 
@@ -521,13 +554,19 @@ private class RolesOnboardingScreen(private var payload: RolesSyncPayload) : Scr
     }
 
     override fun mouseDragged(mouseX: Double, mouseY: Double, button: Int, dragX: Double, dragY: Double): Boolean {
+        if (draggingPaperDoll && button == 0) {
+            paperDollYaw = wrapRadians(paperDollYaw + (dragX * PAPER_DOLL_DRAG_SENSITIVITY).toFloat())
+            return true
+        }
         val slider = draggingSlider ?: return super.mouseDragged(mouseX, mouseY, button, dragX, dragY)
+        if (!bodySliderEnabled(slider)) return true
         updateBodySlider(slider, mouseX.toInt())
         return true
     }
 
     override fun mouseReleased(mouseX: Double, mouseY: Double, button: Int): Boolean {
         draggingSlider = null
+        draggingPaperDoll = false
         return super.mouseReleased(mouseX, mouseY, button)
     }
 
@@ -835,6 +874,9 @@ private class RolesOnboardingScreen(private var payload: RolesSyncPayload) : Scr
         val bodyHeight = if (step == Step.BODY) selectedHeight.toFloat() else 1.0f
         val bodyWeight = if (step == Step.BODY) selectedWeight.toFloat() else 1.0f
         val scale = (dollHeight / 2.25f / MAX_BODY_SCALE).toInt().coerceIn(42, 116)
+        if (step == Step.BODY) {
+            FemaleGenderOnboardingBridge.applyCached(player.uuid, selectedFemaleGenderChoice())
+        }
         val pose = guiGraphics.pose()
         pose.pushPose()
         val centerX = (rect.x + rect.right) / 2.0f
@@ -847,7 +889,7 @@ private class RolesOnboardingScreen(private var payload: RolesSyncPayload) : Scr
                 player.setItemInHand(InteractionHand.MAIN_HAND, previewStack.copyWithCount(1))
                 player.setItemInHand(InteractionHand.OFF_HAND, ItemStack.EMPTY)
             }
-            InventoryScreen.renderEntityInInventoryFollowsMouse(
+            InventoryScreen.renderEntityInInventoryFollowsAngle(
                 guiGraphics,
                 rect.x + 4,
                 rect.y + 6,
@@ -855,8 +897,8 @@ private class RolesOnboardingScreen(private var payload: RolesSyncPayload) : Scr
                 rect.bottom - 8,
                 scale,
                 0.04f,
-                (rect.x + rect.right) / 2.0f,
-                (rect.y + rect.bottom) / 2.0f,
+                PAPER_DOLL_PITCH,
+                paperDollYaw,
                 player,
             )
         } finally {
@@ -878,9 +920,13 @@ private class RolesOnboardingScreen(private var payload: RolesSyncPayload) : Scr
         cursorY += 8
         cursorY = renderBodyRoleRow(guiGraphics, Rect(contentX, cursorY, contentWidth, BODY_ROLE_ROW_HEIGHT), "Class", selectedClass())
         cursorY += 14
+        drawCkdmPair(guiGraphics, "Model", if (selectedBodyModel == BODY_MODEL_GIRL) "Girl" else "Boy", contentX + 2, cursorY, contentWidth - 4)
+        cursorY += 18
         drawCkdmPair(guiGraphics, "Height", scaleLabel(selectedHeight), contentX + 2, cursorY, contentWidth - 4)
         cursorY += 18
         drawCkdmPair(guiGraphics, "Weight", scaleLabel(selectedWeight), contentX + 2, cursorY, contentWidth - 4)
+        cursorY += 18
+        drawCkdmPair(guiGraphics, "Bust", fgBustLabel(selectedFgBustSize), contentX + 2, cursorY, contentWidth - 4)
     }
 
     private fun renderBodyRoleRow(guiGraphics: GuiGraphics, row: Rect, label: String, role: RoleUiDefinitionPayload?): Int {
@@ -895,23 +941,42 @@ private class RolesOnboardingScreen(private var payload: RolesSyncPayload) : Scr
 
     private fun renderBodyControls(guiGraphics: GuiGraphics, rect: Rect, mouseX: Int, mouseY: Int) {
         renderNineSlice(guiGraphics, YELLOW_CONTAINER_TEXTURE, rect, CONTAINER_TEXTURE_WIDTH, CONTAINER_TEXTURE_HEIGHT, CONTAINER_SOURCE_CORNER, CONTAINER_DEST_CORNER, 0.96f)
-        drawCenteredCkdm(guiGraphics, "HEIGHT AND WEIGHT", rect.x + PAD, rect.y + 20, rect.width - PAD * 2, WHITE, CKDM_BOLD)
-        renderBodySlider(guiGraphics, rect, BodySlider.HEIGHT, "Height", selectedHeight, mouseX, mouseY)
-        renderBodySlider(guiGraphics, rect, BodySlider.WEIGHT, "Weight", selectedWeight, mouseX, mouseY)
+        drawCenteredCkdm(guiGraphics, "BODY MODEL", rect.x + PAD, rect.y + 16, rect.width - PAD * 2, WHITE, CKDM_BOLD)
+        renderBodyModelButtons(guiGraphics, rect, mouseX, mouseY)
+        renderBodySlider(guiGraphics, rect, BodySlider.HEIGHT, "Height", selectedHeight, mouseX, mouseY, true, ::scaleLabel)
+        renderBodySlider(guiGraphics, rect, BodySlider.WEIGHT, "Weight", selectedWeight, mouseX, mouseY, true, ::scaleLabel)
+        val advancedEnabled = femaleGenderAdvancedEnabled()
+        drawCkdm(guiGraphics, "Advanced", rect.x + PAD, bodySliderRect(rect, BodySlider.BUST).y - 20, if (advancedEnabled) WHITE else DISABLED, CKDM_SMALL)
+        renderBodySlider(guiGraphics, rect, BodySlider.BUST, "Bust Size", selectedFgBustSize, mouseX, mouseY, advancedEnabled, ::fgBustLabel)
+        renderBodySlider(guiGraphics, rect, BodySlider.BOUNCE, "Bounce", selectedFgBounce, mouseX, mouseY, advancedEnabled, ::fgMotionLabel)
+        renderBodySlider(guiGraphics, rect, BodySlider.FLOPPY, "Floppy", selectedFgFloppy, mouseX, mouseY, advancedEnabled, ::fgMotionLabel)
     }
 
-    private fun renderBodySlider(guiGraphics: GuiGraphics, controls: Rect, slider: BodySlider, label: String, value: Double, mouseX: Int, mouseY: Int) {
+    private fun renderBodyModelButtons(guiGraphics: GuiGraphics, controls: Rect, mouseX: Int, mouseY: Int) {
+        renderSegmentButton(guiGraphics, girlButtonRect(controls), "Girl", selectedBodyModel == BODY_MODEL_GIRL, mouseX, mouseY)
+        renderSegmentButton(guiGraphics, boyButtonRect(controls), "Boy", selectedBodyModel == BODY_MODEL_BOY, mouseX, mouseY)
+    }
+
+    private fun renderSegmentButton(guiGraphics: GuiGraphics, rect: Rect, label: String, selected: Boolean, mouseX: Int, mouseY: Int) {
+        val hovered = rect.contains(mouseX, mouseY)
+        val texture = if (selected) GOLD_CONTAINER_TEXTURE else GREY_CONTAINER_TEXTURE
+        renderNineSlice(guiGraphics, texture, rect, CONTAINER_TEXTURE_WIDTH, CONTAINER_TEXTURE_HEIGHT, CONTAINER_SOURCE_CORNER, TILE_DEST_CORNER, if (hovered || selected) 1.0f else 0.84f)
+        drawCenteredCkdm(guiGraphics, label, rect.x, rect.y + 6, rect.width, if (selected) WHITE else WHITE_MUTED, CKDM_SMALL)
+    }
+
+    private fun renderBodySlider(guiGraphics: GuiGraphics, controls: Rect, slider: BodySlider, label: String, value: Double, mouseX: Int, mouseY: Int, enabled: Boolean, valueLabel: (Double) -> String) {
         val track = bodySliderRect(controls, slider)
-        val hovered = track.contains(mouseX, mouseY) || draggingSlider == slider
-        drawCkdm(guiGraphics, label, track.x, track.y - 16, WHITE, CKDM_SMALL)
-        val valueText = scaleLabel(value)
-        guiGraphics.drawString(font, Component.literal(valueText), track.right - font.width(valueText), track.y - 16, colorWithRenderAlpha(GOLD), false)
-        renderNineSlice(guiGraphics, GREY_CONTAINER_TEXTURE, track, CONTAINER_TEXTURE_WIDTH, CONTAINER_TEXTURE_HEIGHT, CONTAINER_SOURCE_CORNER, TILE_DEST_CORNER, if (hovered) 1.0f else 0.82f)
-        val fillWidth = ((track.width - 8) * scaleProgress(value)).toInt().coerceIn(0, track.width - 8)
-        guiGraphics.fill(track.x + 4, track.y + 5, track.x + 4 + fillWidth, track.bottom - 5, colorWithRenderAlpha(GOLD))
+        val hovered = enabled && (track.contains(mouseX, mouseY) || draggingSlider == slider)
+        val color = if (enabled) WHITE else DISABLED
+        drawCkdm(guiGraphics, label, track.x, track.y - 16, color, CKDM_SMALL)
+        val valueText = valueLabel(value)
+        guiGraphics.drawString(font, Component.literal(valueText), track.right - font.width(valueText), track.y - 16, colorWithRenderAlpha(if (enabled) GOLD else DISABLED), false)
+        renderNineSlice(guiGraphics, GREY_CONTAINER_TEXTURE, track, CONTAINER_TEXTURE_WIDTH, CONTAINER_TEXTURE_HEIGHT, CONTAINER_SOURCE_CORNER, TILE_DEST_CORNER, if (hovered) 1.0f else 0.72f)
+        val fillWidth = ((track.width - 8) * bodySliderProgress(slider, value)).toInt().coerceIn(0, track.width - 8)
+        guiGraphics.fill(track.x + 4, track.y + 5, track.x + 4 + fillWidth, track.bottom - 5, colorWithRenderAlpha(if (enabled) GOLD else DISABLED))
         val handleX = track.x + 4 + fillWidth - BODY_SLIDER_HANDLE_WIDTH / 2
         val handle = Rect(handleX.coerceIn(track.x + 2, track.right - BODY_SLIDER_HANDLE_WIDTH - 2), track.y + 2, BODY_SLIDER_HANDLE_WIDTH, track.height - 4)
-        renderNineSlice(guiGraphics, GOLD_CONTAINER_TEXTURE, handle, CONTAINER_TEXTURE_WIDTH, CONTAINER_TEXTURE_HEIGHT, CONTAINER_SOURCE_CORNER, TILE_DEST_CORNER, if (hovered) 1.0f else 0.92f)
+        renderNineSlice(guiGraphics, if (enabled) GOLD_CONTAINER_TEXTURE else GREY_CONTAINER_TEXTURE, handle, CONTAINER_TEXTURE_WIDTH, CONTAINER_TEXTURE_HEIGHT, CONTAINER_SOURCE_CORNER, TILE_DEST_CORNER, if (hovered) 1.0f else 0.92f)
     }
 
     private fun renderRoleIcon(guiGraphics: GuiGraphics, rawIcon: String, rect: Rect) {
@@ -1063,8 +1128,24 @@ private class RolesOnboardingScreen(private var payload: RolesSyncPayload) : Scr
     private fun bodyControlsRect(): Rect = selectionLayout().right
 
     private fun bodySliderRect(controls: Rect, slider: BodySlider): Rect {
-        val y = controls.y + if (slider == BodySlider.HEIGHT) 78 else 132
+        val y = controls.y + when (slider) {
+            BodySlider.HEIGHT -> 104
+            BodySlider.WEIGHT -> 150
+            BodySlider.BUST -> 218
+            BodySlider.BOUNCE -> 264
+            BodySlider.FLOPPY -> 310
+        }
         return Rect(controls.x + PAD, y, controls.width - PAD * 2, 22)
+    }
+
+    private fun girlButtonRect(controls: Rect): Rect {
+        val width = (controls.width - PAD * 2 - GRID_GAP) / 2
+        return Rect(controls.x + PAD, controls.y + 48, width, 24)
+    }
+
+    private fun boyButtonRect(controls: Rect): Rect {
+        val girl = girlButtonRect(controls)
+        return Rect(girl.right + GRID_GAP, girl.y, girl.width, girl.height)
     }
 
     private fun stepTitle(): String = if (step == Step.JOB) "CHOOSE YOUR JOB" else "CHOOSE YOUR CLASS"
@@ -1123,13 +1204,62 @@ private class RolesOnboardingScreen(private var payload: RolesSyncPayload) : Scr
     private fun updateBodySlider(slider: BodySlider, mouseX: Int) {
         val track = bodySliderRect(bodyControlsRect(), slider)
         val progress = ((mouseX - (track.x + 4)).toDouble() / (track.width - 8).coerceAtLeast(1)).coerceIn(0.0, 1.0)
-        val value = round((MIN_BODY_SCALE + (MAX_BODY_SCALE - MIN_BODY_SCALE) * progress) * 100.0) / 100.0
-        if (slider == BodySlider.HEIGHT) selectedHeight = value else selectedWeight = value
+        val value = bodySliderValue(slider, progress)
+        when (slider) {
+            BodySlider.HEIGHT -> selectedHeight = value
+            BodySlider.WEIGHT -> selectedWeight = value
+            BodySlider.BUST -> selectedFgBustSize = value
+            BodySlider.BOUNCE -> selectedFgBounce = value
+            BodySlider.FLOPPY -> selectedFgFloppy = value
+        }
     }
 
     private fun scaleProgress(value: Double): Double = ((value - MIN_BODY_SCALE) / (MAX_BODY_SCALE - MIN_BODY_SCALE)).coerceIn(0.0, 1.0)
 
     private fun scaleLabel(value: Double): String = String.format(Locale.ROOT, "%.0f%%", value * 100.0)
+
+    private fun bodySliderEnabled(slider: BodySlider): Boolean = slider == BodySlider.HEIGHT || slider == BodySlider.WEIGHT || femaleGenderAdvancedEnabled()
+
+    private fun femaleGenderAdvancedEnabled(): Boolean = selectedBodyModel == BODY_MODEL_GIRL
+
+    private fun bodySliderValue(slider: BodySlider, progress: Double): Double {
+        val range = bodySliderRange(slider)
+        return round((range.first + (range.second - range.first) * progress) * 1000.0) / 1000.0
+    }
+
+    private fun bodySliderProgress(slider: BodySlider, value: Double): Double {
+        if (slider == BodySlider.HEIGHT || slider == BodySlider.WEIGHT) return scaleProgress(value)
+        val range = bodySliderRange(slider)
+        return ((value - range.first) / (range.second - range.first)).coerceIn(0.0, 1.0)
+    }
+
+    private fun bodySliderRange(slider: BodySlider): Pair<Double, Double> = when (slider) {
+        BodySlider.HEIGHT, BodySlider.WEIGHT -> MIN_BODY_SCALE to MAX_BODY_SCALE
+        BodySlider.BUST -> MIN_FG_BUST_SIZE to MAX_FG_BUST_SIZE
+        BodySlider.BOUNCE -> MIN_FG_BOUNCE to MAX_FG_BOUNCE
+        BodySlider.FLOPPY -> MIN_FG_FLOPPY to MAX_FG_FLOPPY
+    }
+
+    private fun fgBustLabel(value: Double): String = String.format(Locale.ROOT, "%.2f", normalizeFemaleGenderBustSize(value))
+
+    private fun fgMotionLabel(value: Double): String = String.format(Locale.ROOT, "%.3f", value)
+
+    private fun wrapRadians(value: Float): Float {
+        val fullTurn = (Math.PI * 2.0).toFloat()
+        var wrapped = value % fullTurn
+        if (wrapped > Math.PI.toFloat()) wrapped -= fullTurn
+        if (wrapped < -Math.PI.toFloat()) wrapped += fullTurn
+        return wrapped
+    }
+
+    private fun selectedFemaleGenderChoice(): FemaleGenderChoice = FemaleGenderChoice(
+        bodyModel = selectedBodyModel,
+        bustSize = selectedFgBustSize,
+        physics = DEFAULT_FG_PHYSICS,
+        showInArmor = DEFAULT_FG_SHOW_IN_ARMOR,
+        bounce = selectedFgBounce,
+        floppy = selectedFgFloppy,
+    )
 
     private fun goTo(next: Step) {
         skipPanelEntrance = step == Step.JOB && next == Step.CLASS
@@ -1314,6 +1444,8 @@ private class RolesOnboardingScreen(private var payload: RolesSyncPayload) : Scr
         private const val MIN_BODY_SCALE = 0.6
         private const val MAX_BODY_SCALE = 1.4
         private const val BODY_SLIDER_HANDLE_WIDTH = 10
+        private const val PAPER_DOLL_PITCH = 0.04f
+        private const val PAPER_DOLL_DRAG_SENSITIVITY = 0.018f
         private const val CONTAINER_TEXTURE_WIDTH = 1646
         private const val CONTAINER_TEXTURE_HEIGHT = 256
         private const val CONTAINER_SOURCE_CORNER = 75
