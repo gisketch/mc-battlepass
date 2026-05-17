@@ -18,7 +18,7 @@ $foodMods = @(
 $cropWords = @("wheat", "carrot", "potato", "beetroot", "cabbage", "tomato", "onion", "rice", "berry", "berries", "corn", "pepper", "asparagus", "cranberr", "grape", "apricorn", "apple", "cherry", "lemon", "peanut", "cinnamon", "tea", "coffee", "cocoa", "pumpkin", "melon")
 $fishWords = @("cod", "salmon", "fish", "puffer", "mussel", "squid", "guardian", "shrimp", "crab", "lobster", "clam")
 $animalWords = @("egg", "milk", "honey", "cheese", "bacon", "beef", "chicken", "mutton", "pork", "ham", "wool")
-$mealWords = @("soup", "stew", "pie", "salad", "sandwich", "burger", "pasta", "roll", "rice", "cake", "cookie", "feast", "platter", "meal", "skewer", "wrap", "noodles", "dumpling", "ratatouille", "toast", "frittata", "casserole")
+$mealWords = @("soup", "stew", "pie", "salad", "sandwich", "burger", "pasta", "roll", "rice", "cake", "cookie", "feast", "platter", "meal", "skewer", "wrap", "noodles", "dumpling", "ratatouille", "toast", "frittata", "casserole", "steak", "ham", "stuffed", "glazed", "roast", "mac", "chops")
 $drinkWords = @("juice", "wine", "cider", "mead", "_tea", "tea_", "coffee", "cocktail", "smoothie", "milkshake", "brew")
 $rareWords = @("guardian", "elder_guardian", "nether", "blaze", "dragon", "chorus", "starf", "lansat", "enigma", "custap", "micle", "rowap", "jaboca", "netherite", "diamond")
 $blockedWords = @(
@@ -35,6 +35,14 @@ $containerPrices = @{
     "minecraft:bucket" = 8
     "minecraft:milk_bucket" = 18
     "vinery:wine_bottle" = 12
+}
+$ingredientBasePrices = @{
+    "minecraft:sugar" = 7
+    "minecraft:snowball" = 1
+    "minecraft:arrow" = 2
+    "minecraft:fermented_spider_eye" = 15
+    "minecraft:chorus_fruit" = 12
+    "minecraft:apple" = 12
 }
 $toolLike = @("knife", "cutting_board", "pot", "pan", "skillet", "basket", "cup", "glass")
 $blockedNamespaces = @(
@@ -68,13 +76,23 @@ function Is-Blocked([string]$ItemId) {
     if ($exactBlocked -contains $ItemId) { return $true }
     if ($blockedNamespaces -contains (Namespace-Of $ItemId)) { return $true }
     $path = Item-Path $ItemId
-    if (Has-Any $path $blockedWords) { return $true }
+    foreach ($word in $blockedWords) {
+        if ($path -eq $word -or $path.StartsWith("${word}_") -or $path.EndsWith("_${word}") -or $path.Contains("_${word}_")) { return $true }
+    }
     if ($path.EndsWith("_bag") -or $path.Contains("_crate") -or $path.Contains("_box")) { return $true }
     return $false
 }
 
 function Is-RareLike([string]$ItemId) {
     return Has-Any (Item-Path $ItemId) $rareWords
+}
+
+function Cobblemon-BerryPrice([string]$ItemId) {
+    $path = Item-Path $ItemId
+    if ((Namespace-Of $ItemId) -ne "cobblemon" -or -not $path.EndsWith("_berry")) { return $null }
+    if ($path -match '^(custap|enigma|jaboca|lansat|micle|rowap|starf)_berry$') { return 120 }
+    if ($path -match '^(apicot|ganlon|kee|liechi|maranga|petaya|salac)_berry$') { return 60 }
+    return $null
 }
 
 function Category-Of([string]$ItemId) {
@@ -84,6 +102,7 @@ function Category-Of([string]$ItemId) {
     if (Is-SeedLike $ItemId) { return "seed" }
     if (Has-Any $path $drinkWords) { return "drink" }
     if ($path.Contains("feast") -or $path.EndsWith("_block") -or $path.Contains("platter")) { return "feast" }
+    if ($path.Contains("_and_")) { return "meal" }
     if (Has-Any $path $mealWords) { return "meal" }
     if ($path.StartsWith("cooked_") -or $path.Contains("_cooked_") -or $path.Contains("baked_") -or $path.Contains("fried_") -or $path.Contains("grilled_") -or $path.Contains("roasted_")) { return "cooked" }
     if (Has-Any $path $fishWords) { return "fish" }
@@ -102,6 +121,8 @@ function Is-SellCandidate([string]$ItemId, [bool]$CurrentlyPriced) {
 }
 
 function Category-Cap([string]$Category, [string]$ItemId) {
+    $berryPrice = Cobblemon-BerryPrice $ItemId
+    if ($null -ne $berryPrice) { return [int]$berryPrice }
     if (Is-RareLike $ItemId) { return 1200 }
     switch ($Category) {
         "seed" { return 2 }
@@ -147,6 +168,9 @@ function Round-Price([double]$Value) {
 }
 
 function Heuristic-BasePrice([string]$ItemId) {
+    $berryPrice = Cobblemon-BerryPrice $ItemId
+    if ($null -ne $berryPrice) { return [int]$berryPrice }
+    if ($ingredientBasePrices.ContainsKey($ItemId)) { return [int]$ingredientBasePrices[$ItemId] }
     if ($containerPrices.ContainsKey($ItemId)) { return [int]$containerPrices[$ItemId] }
     $category = Category-Of $ItemId
     switch ($category) {
@@ -403,6 +427,11 @@ foreach ($itemId in $itemsSeen) {
 foreach ($key in $containerPrices.Keys) {
     $value[$key] = [int]$containerPrices[$key]
     $source[$key] = "container"
+    $steps[$key] = 0
+}
+foreach ($key in $ingredientBasePrices.Keys) {
+    $value[$key] = [int]$ingredientBasePrices[$key]
+    $source[$key] = "ingredient-base"
     $steps[$key] = 0
 }
 

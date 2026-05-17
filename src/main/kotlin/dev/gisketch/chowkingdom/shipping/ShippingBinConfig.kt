@@ -111,9 +111,9 @@ object ShippingBinConfig {
         payoutHour = 5,
         payoutMinute = 0,
         entries = mutableListOf(
-            ShippingBinPriceEntry(item = "minecraft:wheat", priceAmount = 100),
-            ShippingBinPriceEntry(item = "minecraft:carrot", priceAmount = 75),
-            ShippingBinPriceEntry(tag = "minecraft:crops", priceAmount = 50),
+            ShippingBinPriceEntry(item = "minecraft:wheat", priceAmount = 8),
+            ShippingBinPriceEntry(item = "minecraft:carrot", priceAmount = 10),
+            ShippingBinPriceEntry(tag = "minecraft:crops", priceAmount = 8),
         ),
         qualityFood = ShippingBinQualityFoodConfig(),
     )
@@ -128,9 +128,9 @@ class ShippingBinPriceConfig(
 
 class ShippingBinQualityFoodConfig(
     var enabled: Boolean = true,
-    @SerializedName("iron_quality") var ironQuality: Double = 1.1,
-    @SerializedName("gold_quality") var goldQuality: Double = 1.25,
-    @SerializedName("diamond_quality") var diamondQuality: Double = 1.5,
+    @SerializedName("iron_quality") var ironQuality: Double = 1.25,
+    @SerializedName("gold_quality") var goldQuality: Double = 1.6,
+    @SerializedName("diamond_quality") var diamondQuality: Double = 2.25,
 )
 
 class ShippingBinPriceEntry(

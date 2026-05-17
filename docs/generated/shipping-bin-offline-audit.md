@@ -7,9 +7,9 @@ Generated from `runs/client/mods` jar item/tag/recipe data and current `shipping
 - Mod jars scanned: 277
 - Recipe/process outputs parsed: 19556
 - Current priced item entries: 476
-- Sell candidates discovered: 1848
-- Suspicious priced entries: 158
-- Missing candidates: 1378
+- Sell candidates discovered: 1998
+- Suspicious priced entries: 87
+- Missing candidates: 1523
 - Full CSV: `docs/generated/shipping-bin-full-audit.csv`
 - Suggested TOML draft: `docs/generated/shipping-bin-price-suggestions.toml`
 
@@ -24,74 +24,11 @@ Generated from `runs/client/mods` jar item/tag/recipe data and current `shipping
 
 | Item | Name | Cat | Current | Suggested | Cost | Source | Steps | Recipes | Process | Flags |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|
-| `oceansdelight:bowl_of_guardian_soup` | Bowl of Guardian Soup | blocked | 2200 | ? | ? |  | 0 | 0 |  | priced but blocked/weak signal |
-| `oceansdelight:cabbage_wrapped_elder_guardian` | Cabbage Wrapped Elder Guardian | meal | 2200 | 60 | 41 | recipe | 2 | 1 | recipe | over 2x suggested, over category cap |
-| `farmersdelight:honey_glazed_ham_block` | Honey Glazed Ham | feast | 1800 | 120 | 80 | recipe | 2 | 1 | recipe | over 2x suggested, over category cap, high non-rare shipping price |
-| `farmersdelight:shepherds_pie_block` | Shepherd's Pie | feast | 1800 | 230 | 163 | recipe | 1 | 1 | recipe | over 2x suggested, over category cap, high non-rare shipping price |
-| `farmersdelight:gleaming_salad_block` | Gleaming Salad | feast | 1800 | 440 | 320 | heuristic | 0 | 1 | recipe | over 2x suggested, over category cap, high non-rare shipping price |
-| `farmersdelight:roast_chicken_block` | Roast Chicken | feast | 1800 | 440 | 320 | heuristic | 0 | 1 | recipe | over 2x suggested, over category cap, high non-rare shipping price |
-| `farmersdelight:stuffed_pumpkin_block` | Stuffed Pumpkin | feast | 1800 | 440 | 320 | heuristic | 0 | 1 | farmersdelight | over 2x suggested, over category cap, high non-rare shipping price |
-| `farmersdelight:rice_roll_medley_block` | Rice Roll Medley | feast | 1800 | 600 | 407 | recipe | 3 | 1 | recipe | over 2x suggested, over category cap, high non-rare shipping price |
-| `farmersdelight:stuffed_pumpkin` | Bowl of Stuffed Pumpkin | crop | 1200 | 10 | 10 | heuristic | 0 | 0 |  | over 2x suggested, over category cap, high non-rare shipping price |
-| `farmersdelight:honey_glazed_ham` | Plate of Honey Glazed Ham | animal | 1200 | 24 | 24 | heuristic | 0 | 0 |  | over 2x suggested, over category cap, high non-rare shipping price |
-| `farmersdelight:roast_chicken` | Plate of Roast Chicken | animal | 1200 | 24 | 24 | heuristic | 0 | 0 |  | over 2x suggested, over category cap, high non-rare shipping price |
-| `farmersdelight:gleaming_salad` | Bowl of Gleaming Salad | meal | 1200 | 120 | 90 | heuristic | 0 | 0 |  | over 2x suggested, over category cap, high non-rare shipping price |
-| `farmersdelight:shepherds_pie` | Plate of Shepherd's Pie | meal | 1200 | 120 | 90 | heuristic | 0 | 0 |  | over 2x suggested, over category cap, high non-rare shipping price |
-| `oceansdelight:elder_guardian_roll` | Roll of Elder Guardian | meal | 700 | 110 | 78 | recipe | 2 | 1 | recipe | over 2x suggested |
-| `oceansdelight:fugu_roll` | Fugu Roll | meal | 700 | 120 | 90 | heuristic | 0 | 1 | recipe | over 2x suggested, over category cap |
-| `create:blaze_cake` | Blaze Cake | meal | 650 | 120 | 90 | recipe | 1 | 1 | create | over 2x suggested |
-| `create:blaze_cake_base` | Blaze Cake Base | meal | 650 | 120 | 90 | heuristic | 0 | 1 | create | over 2x suggested |
-| `ubesdelight:milk_tea_ube_feast` | Bowl of Ube Milk Tea | drink | 650 | 180 | 129 | recipe | 1 | 1 | recipe | over 2x suggested, over category cap |
-| `vinery:eiswein` | Eiswein | manual | 420 | ? | ? |  | 0 | 1 | vinery_wine | unknown cost/manual review, manual category |
-| `vinery:jo_special_mixture` | Jo's Special Mixture | manual | 420 | ? | ? |  | 0 | 1 | vinery_wine | unknown cost/manual review, manual category |
-| `vinery:villagers_fright` | A Bottle of 'Villagers Fright' | manual | 420 | ? | ? |  | 0 | 1 | vinery_wine | unknown cost/manual review, manual category |
-| `cobblemon:apicot_berry` | Apicot Berry | crop | 420 | 10 | 10 | heuristic | 0 | 0 |  | over 2x suggested, over category cap |
-| `cobblemon:ganlon_berry` | Ganlon Berry | crop | 420 | 10 | 10 | heuristic | 0 | 0 |  | over 2x suggested, over category cap |
-| `cobblemon:kee_berry` | Kee Berry | crop | 420 | 10 | 10 | heuristic | 0 | 0 |  | over 2x suggested, over category cap |
-| `cobblemon:liechi_berry` | Liechi Berry | crop | 420 | 10 | 10 | heuristic | 0 | 0 |  | over 2x suggested, over category cap |
-| `cobblemon:maranga_berry` | Maranga Berry | crop | 420 | 10 | 10 | heuristic | 0 | 0 |  | over 2x suggested, over category cap |
-| `cobblemon:petaya_berry` | Petaya Berry | crop | 420 | 10 | 10 | heuristic | 0 | 0 |  | over 2x suggested, over category cap |
-| `cobblemon:salac_berry` | Salac Berry | crop | 420 | 10 | 10 | heuristic | 0 | 0 |  | over 2x suggested, over category cap |
-| `ubesdelight:ube_cake` | Ube Cake | meal | 650 | 250 | 630 | recipe | 1 | 2 | recipe | over 2x suggested, over category cap |
-| `vinery:aegis_wine` | Aegis Wine | drink | 520 | 140 | 40 | heuristic | 0 | 1 | vinery_wine | over 2x suggested, over category cap |
-| `vinery:apple_cider` | Cider | drink | 520 | 140 | 40 | heuristic | 0 | 1 | vinery_wine | over 2x suggested, over category cap |
-| `vinery:chenet_wine` | Chenet Wine | drink | 520 | 140 | 40 | heuristic | 0 | 1 | vinery_wine | over 2x suggested, over category cap |
-| `vinery:clark_wine` | Clark Wine | drink | 520 | 140 | 40 | heuristic | 0 | 1 | vinery_wine | over 2x suggested, over category cap |
-| `vinery:cristel_wine` | Cristel Wine | drink | 520 | 140 | 40 | heuristic | 0 | 1 | vinery_wine | over 2x suggested, over category cap |
-| `vinery:kelp_cider` | Kelp Cider | drink | 520 | 140 | 40 | heuristic | 0 | 1 | vinery_wine | over 2x suggested, over category cap |
-| `vinery:mead` | Mead | drink | 520 | 140 | 40 | heuristic | 0 | 1 | vinery_wine | over 2x suggested, over category cap |
-| `vinery:mellohi_wine` | Mellohi Wine | drink | 520 | 140 | 40 | heuristic | 0 | 1 | vinery_wine | over 2x suggested, over category cap |
-| `vinery:red_wine` | Red Wine | drink | 520 | 140 | 40 | heuristic | 0 | 1 | vinery_wine | over 2x suggested, over category cap |
-| `vinery:stal_wine` | Stal Wine | drink | 520 | 140 | 40 | heuristic | 0 | 1 | vinery_wine | over 2x suggested, over category cap |
-| `vinery:strad_wine` | Strad Wine | drink | 520 | 140 | 40 | heuristic | 0 | 1 | vinery_wine | over 2x suggested, over category cap |
-| `vinery:apple_wine` | Apple Wine | drink | 520 | 150 | 42 | recipe | 3 | 1 | vinery_wine | over 2x suggested, over category cap |
-| `vinery:glowing_wine` | Sun-kissed Wine | drink | 520 | 160 | 49 | recipe | 2 | 1 | vinery_wine | over 2x suggested, over category cap |
-| `vinery:magnetic_wine` | Magnetic Wine | drink | 520 | 160 | 48 | recipe | 3 | 1 | vinery_wine | over 2x suggested, over category cap |
-| `vinery:bolvar_wine` | Bolvar Wine | drink | 520 | 190 | 62 | recipe | 1 | 1 | vinery_wine | over 2x suggested, over category cap |
-| `farmersdelight:steak_and_potatoes` | Steak and Potatoes | crop | 360 | 40 | 78 | recipe | 2 | 1 | recipe | over 2x suggested, over category cap |
-| `farmersdelight:grilled_salmon` | Grilled Salmon | cooked | 360 | 45 | 37 | recipe | 1 | 1 | recipe | over 2x suggested, over category cap |
-| `farmersdelight:roasted_mutton_chops` | Roasted Mutton Chops | cooked | 360 | 45 | 36 | heuristic | 0 | 1 | recipe | over 2x suggested, over category cap |
-| `vinery:chorus_wine` | Chorus Wine | drink | 520 | 210 | 54 | recipe | 2 | 1 | vinery_wine | over 2x suggested |
-| `vinery:bottle_mojang_noir` | A Bottle of 'Mojang Noir' | manual | 420 | 120 | 142 | recipe | 1 | 1 | vinery_wine | over 2x suggested, over category cap, manual category |
-| `vinery:creepers_crush` | A Bottle of 'Creepers Crush' | manual | 420 | 120 | 60 | recipe | 3 | 1 | vinery_wine | over 2x suggested, over category cap, manual category |
-| `vinery:noir_wine` | Noir Wine | drink | 520 | 240 | 89 | recipe | 2 | 1 | vinery_wine | over 2x suggested, over category cap |
-| `vinery:cherry_wine` | Cherry Wine | drink | 520 | 250 | 92 | recipe | 2 | 1 | vinery_wine | over 2x suggested, over category cap |
-| `vinery:solaris_wine` | Solaris Wine | drink | 520 | 260 | 99 | recipe | 1 | 1 | vinery_wine | over category cap |
-| `vinery:lilitu_wine` | Miss Lilitus Wine | drink | 520 | 270 | 102 | recipe | 1 | 1 | vinery_wine | over category cap |
-| `farmersdelight:hamburger` | Hamburger | meal | 360 | 120 | 90 | heuristic | 0 | 1 | recipe | over 2x suggested, over category cap |
-| `farmersdelight:ratatouille` | Ratatouille | meal | 360 | 120 | 90 | heuristic | 0 | 1 | farmersdelight | over 2x suggested, over category cap |
-| `farmersdelight:squid_ink_pasta` | Squid Ink Pasta | meal | 360 | 120 | 90 | heuristic | 0 | 1 | farmersdelight | over 2x suggested, over category cap |
-| `ubesdelight:bangsilog` | Bangsilog | blocked | 135 | ? | ? |  | 0 | 2 | farmersdelight | priced but blocked/weak signal |
+| `ubesdelight:bangsilog` | Bangsilog | manual | 135 | ? | ? |  | 0 | 2 | farmersdelight | unknown cost/manual review, manual category |
 | `ubesdelight:bulalo` | Bulalo | manual | 135 | ? | ? |  | 0 | 1 | farmersdelight | unknown cost/manual review, manual category |
 | `ubesdelight:mechado` | Mechado | manual | 135 | ? | ? |  | 0 | 1 | farmersdelight | unknown cost/manual review, manual category |
 | `ubesdelight:sisig` | Sisig | manual | 135 | ? | ? |  | 0 | 1 | farmersdelight | unknown cost/manual review, manual category |
-| `ubesdelight:tosilog` | Tosilog | blocked | 135 | ? | ? |  | 0 | 1 | farmersdelight | priced but blocked/weak signal |
-| `farmersdelight:vegetable_noodles` | Vegetable Noodles | blocked | 120 | ? | ? |  | 0 | 1 | farmersdelight | priced but blocked/weak signal |
-| `farmersdelight:vegetable_soup` | Vegetable Soup | blocked | 120 | ? | ? |  | 0 | 1 | farmersdelight | priced but blocked/weak signal |
-| `ubesdelight:chicken_inasal` | Chicken Inasal | animal | 135 | 24 | 24 | heuristic | 0 | 1 | farmersdelight | over 2x suggested, over category cap |
-| `expandeddelight:cranberry_chicken` | Cranberry Chicken | animal | 135 | 37 | 37 | recipe | 1 | 1 | farmersdelight | over category cap |
-| `expandeddelight:chili_pepper_salmon` | Chili Pepper Salmon | fish | 135 | 38 | 38 | recipe | 1 | 1 | farmersdelight | over category cap |
-| `expandeddelight:mac_and_cheese` | Mac and Cheese | animal | 120 | 24 | 24 | heuristic | 0 | 1 | farmersdelight | over category cap |
+| `ubesdelight:tosilog` | Tosilog | manual | 135 | ? | ? |  | 0 | 1 | farmersdelight | unknown cost/manual review, manual category |
 | `expandeddelight:snickerdoodle` | Snickerdoodle | manual | 95 | ? | ? |  | 0 | 1 | recipe | unknown cost/manual review, manual category |
 | `farmersdelight:barbecue_stick` | Barbecue on a Stick | manual | 95 | ? | ? |  | 0 | 1 | recipe | unknown cost/manual review, manual category |
 | `oceansdelight:braised_sea_pickle` | Braised Sea Pickle | manual | 95 | ? | ? |  | 0 | 1 | farmersdelight | unknown cost/manual review, manual category |
@@ -100,50 +37,29 @@ Generated from `runs/client/mods` jar item/tag/recipe data and current `shipping
 | `ubesdelight:lumpia` | Lumpia | manual | 95 | ? | ? |  | 0 | 1 | farmersdelight | unknown cost/manual review, manual category |
 | `ubesdelight:sinangag` | Sinangag | manual | 95 | ? | ? |  | 0 | 1 | farmersdelight | unknown cost/manual review, manual category |
 | `ubesdelight:tocino` | Tocino | manual | 95 | ? | ? |  | 0 | 1 | farmersdelight | unknown cost/manual review, manual category |
-| `minecraft:cooked_beef` | cooked_beef | cooked | 135 | 45 | 36 | heuristic | 0 | 0 |  | over category cap |
-| `minecraft:cooked_salmon` | cooked_salmon | cooked | 135 | 45 | 36 | heuristic | 0 | 0 |  | over category cap |
-| `create:chocolate_glazed_berries` | Chocolate Glazed Berries | crop | 95 | 7 | 7 | recipe | 1 | 1 | create | over category cap |
-| `expandeddelight:cinnamon_apples` | Cinnamon Apples | crop | 95 | 10 | 10 | heuristic | 0 | 1 | farmersdelight | over category cap |
 | `ubesdelight:ensaymada` | Ensaymada | manual | 85 | ? | ? |  | 0 | 3 | cooking | unknown cost/manual review, manual category |
 | `ubesdelight:ensaymada_ube` | Ube Ensaymada | manual | 85 | ? | ? |  | 0 | 3 | cooking | unknown cost/manual review, manual category |
 | `ubesdelight:hopia_munggo` | Hopia Munggo | manual | 85 | ? | ? |  | 0 | 3 | cooking | unknown cost/manual review, manual category |
 | `ubesdelight:hopia_ube` | Hopia Ube | manual | 85 | ? | ? |  | 0 | 3 | cooking | unknown cost/manual review, manual category |
-| `ubesdelight:leche_flan` | Leche Flan Slice | manual | 85 | ? | ? |  | 0 | 1 | farmersdelight | unknown cost/manual review, manual category |
 | `ubesdelight:pandesal` | Pandesal | manual | 85 | ? | ? |  | 0 | 3 | cooking | unknown cost/manual review, manual category |
 | `ubesdelight:pandesal_ube` | Ube Pandesal | manual | 85 | ? | ? |  | 0 | 3 | cooking | unknown cost/manual review, manual category |
 | `ubesdelight:polvorone` | Polvorone | manual | 85 | ? | ? |  | 0 | 0 |  | unknown cost/manual review, manual category |
 | `ubesdelight:polvorone_cc` | Cookies and Cream Polvorone | manual | 85 | ? | ? |  | 0 | 0 |  | unknown cost/manual review, manual category |
 | `ubesdelight:polvorone_pinipig` | Pinipig Polvorone | manual | 85 | ? | ? |  | 0 | 0 |  | unknown cost/manual review, manual category |
 | `ubesdelight:polvorone_ube` | Ube Polvorone | manual | 85 | ? | ? |  | 0 | 0 |  | unknown cost/manual review, manual category |
-| `create:honeyed_apple` | Honeyed Apple | animal | 95 | 24 | 24 | heuristic | 0 | 1 | create | over category cap |
-| `oceansdelight:kelp_encrusted_cod` | Kelp Encrusted Cod | fish | 95 | 24 | 24 | heuristic | 0 | 1 | farmersdelight | over category cap |
-| `oceansdelight:stuffed_cod` | Stuffed Cod | fish | 95 | 24 | 24 | heuristic | 0 | 1 | recipe | over category cap |
-| `oceansdelight:stuffed_squid` | Stuffed Squid | fish | 95 | 24 | 24 | heuristic | 0 | 1 | recipe | over category cap |
-| `vinery:jellie_wine` | Jellie Wine | drink | 520 | 450 | 266 | recipe | 4 | 1 | vinery_wine | over category cap |
-| `farmersdelight:bacon_and_eggs` | Bacon and Eggs | animal | 135 | 78 | 78 | recipe | 1 | 1 | recipe | over category cap |
-| `minecraft:bread` | bread | manual | 60 | 5 | 4 | recipe | 2 | 7 | cooking | manual category |
-| `expandeddelight:cranberry_cobbler_slice` | Slice of Cranberry Cobbler | crop | 60 | 10 | 10 | heuristic | 0 | 0 |  | over category cap |
-| `farmersdelight:stuffed_potato` | Stuffed Potato | crop | 80 | 40 | 71 | recipe | 1 | 1 | recipe | over category cap |
 | `minecraft:rabbit_foot` | rabbit_foot | manual | 38 | ? | ? |  | 0 | 0 |  | unknown cost/manual review, manual category |
 | `oceansdelight:elder_guardian_slab` | Slab of Elder Guardian | blocked | 38 | ? | ? |  | 0 | 0 |  | priced but blocked/weak signal |
 | `oceansdelight:fugu_slice` | Fugu Slice | manual | 38 | ? | ? |  | 0 | 0 |  | unknown cost/manual review, manual category |
 | `minecraft:rabbit` | rabbit | manual | 26 | ? | ? |  | 0 | 0 |  | unknown cost/manual review, manual category |
 | `oceansdelight:tentacle_on_a_stick` | Tentacle on a Stick | manual | 26 | ? | ? |  | 0 | 1 | recipe | unknown cost/manual review, manual category |
-| `expandeddelight:asparagus_and_bacon_cheesy` | Cheesy Asparagus and Bacon | animal | 95 | 71 | 71 | recipe | 1 | 1 | farmersdelight | over category cap |
-| `minecraft:slime_ball` | slime_ball | manual | 38 | 17 | 14 | recipe | 2 | 3 | create,recipe | manual category |
 | `farmersdelight:bone_broth` | Bone Broth | manual | 14 | ? | ? |  | 0 | 1 | farmersdelight | unknown cost/manual review, manual category |
 | `beachparty:coconut` | Coconut | manual | 12 | ? | ? |  | 0 | 0 |  | unknown cost/manual review, manual category |
 | `beachparty:coconut_open` | Open Coconut | manual | 12 | ? | ? |  | 0 | 0 |  | unknown cost/manual review, manual category |
 | `cobblemon:blue_mint_leaf` | Blue Mint Leaf | manual | 12 | ? | ? |  | 0 | 0 |  | unknown cost/manual review, manual category |
-| `cobblemon:clover_sweet` | Clover Sweet | manual | 12 | ? | ? |  | 0 | 1 | recipe | unknown cost/manual review, manual category |
 | `cobblemon:cyan_mint_leaf` | Cyan Mint Leaf | manual | 12 | ? | ? |  | 0 | 0 |  | unknown cost/manual review, manual category |
-| `cobblemon:flower_sweet` | Flower Sweet | manual | 12 | ? | ? |  | 0 | 1 | recipe | unknown cost/manual review, manual category |
 | `cobblemon:green_mint_leaf` | Green Mint Leaf | manual | 12 | ? | ? |  | 0 | 0 |  | unknown cost/manual review, manual category |
-| `cobblemon:love_sweet` | Love Sweet | manual | 12 | ? | ? |  | 0 | 1 | recipe | unknown cost/manual review, manual category |
 | `cobblemon:pink_mint_leaf` | Pink Mint Leaf | manual | 12 | ? | ? |  | 0 | 0 |  | unknown cost/manual review, manual category |
 | `cobblemon:red_mint_leaf` | Red Mint Leaf | manual | 12 | ? | ? |  | 0 | 0 |  | unknown cost/manual review, manual category |
-| `cobblemon:ribbon_sweet` | Ribbon Sweet | manual | 12 | ? | ? |  | 0 | 1 | recipe | unknown cost/manual review, manual category |
-| `cobblemon:star_sweet` | Star Sweet | manual | 12 | ? | ? |  | 0 | 1 | recipe | unknown cost/manual review, manual category |
 | `cobblemon:white_mint_leaf` | White Mint Leaf | manual | 12 | ? | ? |  | 0 | 0 |  | unknown cost/manual review, manual category |
 | `expandeddelight:salt` | Salt | manual | 12 | ? | ? |  | 0 | 0 |  | unknown cost/manual review, manual category |
 | `expandeddelight:salt_rock` | Salt Rock | manual | 12 | ? | ? |  | 0 | 4 | cooking | unknown cost/manual review, manual category |
@@ -157,11 +73,8 @@ Generated from `runs/client/mods` jar item/tag/recipe data and current `shipping
 | `ubesdelight:garlic_chop` | Chopped Garlic | manual | 10 | ? | ? |  | 0 | 0 |  | unknown cost/manual review, manual category |
 | `ubesdelight:ginger` | Ginger | manual | 10 | ? | ? |  | 0 | 2 | recipe | unknown cost/manual review, manual category |
 | `ubesdelight:ginger_chop` | Chopped Ginger | manual | 10 | ? | ? |  | 0 | 0 |  | unknown cost/manual review, manual category |
-| `ubesdelight:sugar_brown` | Brown Sugar | manual | 10 | ? | ? |  | 0 | 4 | cooking,farmersdelight | unknown cost/manual review, manual category |
 | `ubesdelight:ube` | Ube | manual | 10 | ? | ? |  | 0 | 1 | recipe | unknown cost/manual review, manual category |
 | `minecraft:dried_kelp` | dried_kelp | manual | 7 | ? | ? |  | 0 | 0 |  | unknown cost/manual review, manual category |
-| `minecraft:sugar` | sugar | manual | 7 | ? | ? |  | 0 | 3 | create,recipe | unknown cost/manual review, manual category |
-| `create:dough` | Dough | manual | 10 | 5 | 4 | recipe | 1 | 4 | create,recipe | manual category |
 | `minecraft:kelp` | kelp | manual | 4 | ? | ? |  | 0 | 0 |  | unknown cost/manual review, manual category |
 | `minecraft:sugar_cane` | sugar_cane | manual | 4 | ? | ? |  | 0 | 0 |  | unknown cost/manual review, manual category |
 | `ubesdelight:ensaymada_raw` | Raw Ensaymada | manual | 4 | ? | ? |  | 0 | 0 |  | unknown cost/manual review, manual category |
@@ -170,17 +83,33 @@ Generated from `runs/client/mods` jar item/tag/recipe data and current `shipping
 | `ubesdelight:hopia_ube_raw` | Raw Hopia Ube | manual | 4 | ? | ? |  | 0 | 0 |  | unknown cost/manual review, manual category |
 | `ubesdelight:pandesal_raw` | Raw Pandesal | manual | 4 | ? | ? |  | 0 | 0 |  | unknown cost/manual review, manual category |
 | `ubesdelight:pandesal_ube_raw` | Raw Ube Pandesal | manual | 4 | ? | ? |  | 0 | 0 |  | unknown cost/manual review, manual category |
-| `ubesdelight:raw_polvorone` | Raw Polvorone | manual | 4 | ? | ? |  | 0 | 1 | farmersdelight | unknown cost/manual review, manual category |
-| `ubesdelight:raw_polvorone_cc` | Raw Cookies and Cream Polvorone | manual | 4 | ? | ? |  | 0 | 1 | farmersdelight | unknown cost/manual review, manual category |
-| `ubesdelight:raw_polvorone_pinipig` | Raw Pinipig Polvorone | manual | 4 | ? | ? |  | 0 | 1 | farmersdelight | unknown cost/manual review, manual category |
 | `ubesdelight:raw_polvorone_ube` | Raw Ube Polvorone | manual | 4 | ? | ? |  | 0 | 1 | farmersdelight | unknown cost/manual review, manual category |
 | `farmersdelight:earthworm` | Earthworm | manual | 2 | ? | ? |  | 0 | 0 |  | unknown cost/manual review, manual category |
-| `farmersdelight:straw` | Straw | manual | 4 | 2 | 1 | recipe | 15 | 3 | create,recipe | manual category |
 | `farmersdelight:tree_bark` | Tree Bark | manual | 1 | ? | ? |  | 0 | 0 |  | unknown cost/manual review, manual category |
 | `minecraft:pitcher_pod` | pitcher_pod | manual | 1 | ? | ? |  | 0 | 0 |  | unknown cost/manual review, manual category |
 | `ubesdelight:poisonous_ube` | Poisonous Ube | manual | 1 | ? | ? |  | 0 | 0 |  | unknown cost/manual review, manual category |
-| `minecraft:chorus_fruit` | chorus_fruit | manual | 12 | 14 | 12 | recipe | 1 | 1 | create | manual category |
+| `create:dough` | Dough | manual | 5 | 5 | 4 | recipe | 1 | 4 | create,recipe | manual category |
+| `farmersdelight:straw` | Straw | manual | 2 | 2 | 1 | recipe | 15 | 3 | create,recipe | manual category |
+| `minecraft:bread` | bread | manual | 5 | 5 | 4 | recipe | 2 | 7 | cooking | manual category |
+| `minecraft:slime_ball` | slime_ball | manual | 17 | 17 | 14 | recipe | 2 | 3 | create,recipe | manual category |
+| `ubesdelight:leche_flan` | Leche Flan Slice | manual | 13 | 13 | 11 | recipe | 1 | 1 | farmersdelight | manual category |
+| `ubesdelight:sugar_brown` | Brown Sugar | manual | 9 | 9 | 7 | recipe | 1 | 4 | cooking,farmersdelight | manual category |
+| `vinery:bottle_mojang_noir` | A Bottle of 'Mojang Noir' | manual | 120 | 120 | 142 | recipe | 1 | 1 | vinery_wine | manual category |
+| `vinery:creepers_crush` | A Bottle of 'Creepers Crush' | manual | 120 | 120 | 60 | recipe | 3 | 1 | vinery_wine | manual category |
+| `vinery:eiswein` | Eiswein | manual | 120 | 120 | 43 | recipe | 2 | 1 | vinery_wine | manual category |
+| `vinery:jo_special_mixture` | Jo's Special Mixture | manual | 120 | 120 | 57 | recipe | 2 | 1 | vinery_wine | manual category |
+| `vinery:villagers_fright` | A Bottle of 'Villagers Fright' | manual | 120 | 120 | 84 | recipe | 2 | 1 | vinery_wine | manual category |
+| `minecraft:chorus_fruit` | chorus_fruit | manual | 12 | 14 | 12 | ingredient-base | 0 | 1 | create | manual category |
+| `minecraft:sugar` | sugar | manual | 7 | 9 | 7 | ingredient-base | 0 | 3 | create,recipe | manual category |
+| `ubesdelight:raw_polvorone` | Raw Polvorone | manual | 4 | 6 | 5 | recipe | 1 | 1 | farmersdelight | manual category |
+| `ubesdelight:raw_polvorone_pinipig` | Raw Pinipig Polvorone | manual | 4 | 6 | 5 | recipe | 1 | 1 | farmersdelight | manual category |
+| `cobblemon:ribbon_sweet` | Ribbon Sweet | manual | 12 | 30 | 24 | recipe | 1 | 1 | recipe | manual category |
+| `cobblemon:clover_sweet` | Clover Sweet | manual | 12 | 35 | 29 | recipe | 1 | 1 | recipe | manual category |
+| `cobblemon:flower_sweet` | Flower Sweet | manual | 12 | 35 | 29 | recipe | 1 | 1 | recipe | manual category |
+| `cobblemon:love_sweet` | Love Sweet | manual | 12 | 35 | 29 | recipe | 1 | 1 | recipe | manual category |
+| `cobblemon:star_sweet` | Star Sweet | manual | 12 | 35 | 29 | recipe | 1 | 1 | recipe | manual category |
 | `expandeddelight:peperonata` | Peperonata | manual | 95 | 120 | 103 | recipe | 1 | 1 | farmersdelight | manual category |
+| `ubesdelight:raw_polvorone_cc` | Raw Cookies and Cream Polvorone | manual | 4 | 35 | 27 | recipe | 1 | 1 | farmersdelight | manual category |
 | `herbalbrews:herbal_infusion` | Herbal Infusion | manual | 10 | 120 | 360 | recipe | 1 | 1 | recipe | manual category |
 
 ## Vinery Wine And Farming Audit
@@ -204,41 +133,41 @@ Generated from `runs/client/mods` jar item/tag/recipe data and current `shipping
 | `vinery:taiga_red_grape` | taiga_red_grape | crop | - | 10 | 10 | heuristic | 0 | 0 |  | missing candidate |
 | `vinery:taiga_white_grape` | taiga_white_grape | crop | - | 10 | 10 | heuristic | 0 | 0 |  | missing candidate |
 | `vinery:white_grape` | White Grape | crop | 7 | 7 | 7 | current-base | 0 | 1 | recipe |  |
-| `vinery:aegis_wine` | Aegis Wine | drink | 520 | 140 | 40 | heuristic | 0 | 1 | vinery_wine | over 2x suggested, over category cap |
-| `vinery:apple_cider` | Cider | drink | 520 | 140 | 40 | heuristic | 0 | 1 | vinery_wine | over 2x suggested, over category cap |
-| `vinery:apple_juice` | Apple Juice | drink | 24 | 20 | 14 | recipe | 2 | 1 | vinery_process |  |
-| `vinery:apple_wine` | Apple Wine | drink | 520 | 150 | 42 | recipe | 3 | 1 | vinery_wine | over 2x suggested, over category cap |
-| `vinery:bolvar_wine` | Bolvar Wine | drink | 520 | 190 | 62 | recipe | 1 | 1 | vinery_wine | over 2x suggested, over category cap |
-| `vinery:chenet_wine` | Chenet Wine | drink | 520 | 140 | 40 | heuristic | 0 | 1 | vinery_wine | over 2x suggested, over category cap |
-| `vinery:cherry_wine` | Cherry Wine | drink | 520 | 250 | 92 | recipe | 2 | 1 | vinery_wine | over 2x suggested, over category cap |
-| `vinery:chorus_wine` | Chorus Wine | drink | 520 | 210 | 54 | recipe | 2 | 1 | vinery_wine | over 2x suggested |
-| `vinery:clark_wine` | Clark Wine | drink | 520 | 140 | 40 | heuristic | 0 | 1 | vinery_wine | over 2x suggested, over category cap |
-| `vinery:cristel_wine` | Cristel Wine | drink | 520 | 140 | 40 | heuristic | 0 | 1 | vinery_wine | over 2x suggested, over category cap |
-| `vinery:glowing_wine` | Sun-kissed Wine | drink | 520 | 160 | 49 | recipe | 2 | 1 | vinery_wine | over 2x suggested, over category cap |
-| `vinery:jellie_wine` | Jellie Wine | drink | 520 | 450 | 266 | recipe | 4 | 1 | vinery_wine | over category cap |
-| `vinery:kelp_cider` | Kelp Cider | drink | 520 | 140 | 40 | heuristic | 0 | 1 | vinery_wine | over 2x suggested, over category cap |
-| `vinery:lilitu_wine` | Miss Lilitus Wine | drink | 520 | 270 | 102 | recipe | 1 | 1 | vinery_wine | over category cap |
-| `vinery:magnetic_wine` | Magnetic Wine | drink | 520 | 160 | 48 | recipe | 3 | 1 | vinery_wine | over 2x suggested, over category cap |
-| `vinery:mead` | Mead | drink | 520 | 140 | 40 | heuristic | 0 | 1 | vinery_wine | over 2x suggested, over category cap |
-| `vinery:mellohi_wine` | Mellohi Wine | drink | 520 | 140 | 40 | heuristic | 0 | 1 | vinery_wine | over 2x suggested, over category cap |
-| `vinery:noir_wine` | Noir Wine | drink | 520 | 240 | 89 | recipe | 2 | 1 | vinery_wine | over 2x suggested, over category cap |
+| `vinery:aegis_wine` | Aegis Wine | drink | 140 | 140 | 40 | heuristic | 0 | 1 | vinery_wine |  |
+| `vinery:apple_cider` | Cider | drink | 140 | 140 | 37 | recipe | 3 | 1 | vinery_wine |  |
+| `vinery:apple_juice` | Apple Juice | drink | 20 | 20 | 14 | recipe | 2 | 1 | vinery_process |  |
+| `vinery:apple_wine` | Apple Wine | drink | 150 | 150 | 42 | recipe | 3 | 1 | vinery_wine |  |
+| `vinery:bolvar_wine` | Bolvar Wine | drink | 190 | 190 | 62 | recipe | 1 | 1 | vinery_wine |  |
+| `vinery:chenet_wine` | Chenet Wine | drink | 140 | 140 | 40 | heuristic | 0 | 1 | vinery_wine |  |
+| `vinery:cherry_wine` | Cherry Wine | drink | 250 | 250 | 92 | recipe | 2 | 1 | vinery_wine |  |
+| `vinery:chorus_wine` | Chorus Wine | drink | 210 | 210 | 54 | recipe | 2 | 1 | vinery_wine |  |
+| `vinery:clark_wine` | Clark Wine | drink | 140 | 160 | 49 | recipe | 2 | 1 | vinery_wine |  |
+| `vinery:cristel_wine` | Cristel Wine | drink | 140 | 140 | 40 | heuristic | 0 | 1 | vinery_wine |  |
+| `vinery:glowing_wine` | Sun-kissed Wine | drink | 160 | 160 | 49 | recipe | 2 | 1 | vinery_wine |  |
+| `vinery:jellie_wine` | Jellie Wine | drink | 450 | 450 | 266 | recipe | 4 | 1 | vinery_wine |  |
+| `vinery:kelp_cider` | Kelp Cider | drink | 140 | 140 | 40 | heuristic | 0 | 1 | vinery_wine |  |
+| `vinery:lilitu_wine` | Miss Lilitus Wine | drink | 270 | 270 | 102 | recipe | 1 | 1 | vinery_wine |  |
+| `vinery:magnetic_wine` | Magnetic Wine | drink | 160 | 160 | 48 | recipe | 3 | 1 | vinery_wine |  |
+| `vinery:mead` | Mead | drink | 130 | 130 | 35 | recipe | 3 | 1 | vinery_wine |  |
+| `vinery:mellohi_wine` | Mellohi Wine | drink | 140 | 140 | 40 | heuristic | 0 | 1 | vinery_wine |  |
+| `vinery:noir_wine` | Noir Wine | drink | 240 | 240 | 89 | recipe | 2 | 1 | vinery_wine |  |
 | `vinery:red_grapejuice` | Red Grapejuice | drink | 24 | 55 | 40 | heuristic | 0 | 0 |  |  |
 | `vinery:red_jungle_grapejuice` | Red Jungle Grapejuice | drink | 24 | 55 | 40 | heuristic | 0 | 0 |  |  |
 | `vinery:red_savanna_grapejuice` | Red Savanna Grapejuice | drink | 24 | 55 | 40 | heuristic | 0 | 0 |  |  |
 | `vinery:red_taiga_grapejuice` | Red Taiga Grapejuice | drink | 24 | 55 | 40 | heuristic | 0 | 0 |  |  |
-| `vinery:red_wine` | Red Wine | drink | 520 | 140 | 40 | heuristic | 0 | 1 | vinery_wine | over 2x suggested, over category cap |
-| `vinery:solaris_wine` | Solaris Wine | drink | 520 | 260 | 99 | recipe | 1 | 1 | vinery_wine | over category cap |
-| `vinery:stal_wine` | Stal Wine | drink | 520 | 140 | 40 | heuristic | 0 | 1 | vinery_wine | over 2x suggested, over category cap |
-| `vinery:strad_wine` | Strad Wine | drink | 520 | 140 | 40 | heuristic | 0 | 1 | vinery_wine | over 2x suggested, over category cap |
+| `vinery:red_wine` | Red Wine | drink | 140 | 160 | 49 | recipe | 2 | 1 | vinery_wine |  |
+| `vinery:solaris_wine` | Solaris Wine | drink | 260 | 260 | 99 | recipe | 1 | 1 | vinery_wine |  |
+| `vinery:stal_wine` | Stal Wine | drink | 140 | 170 | 53 | recipe | 2 | 1 | vinery_wine |  |
+| `vinery:strad_wine` | Strad Wine | drink | 140 | 170 | 53 | recipe | 2 | 1 | vinery_wine |  |
 | `vinery:white_grapejuice` | White Grapejuice | drink | 24 | 55 | 40 | heuristic | 0 | 0 |  |  |
 | `vinery:white_jungle_grapejuice` | White Jungle Grapejuice | drink | 24 | 55 | 40 | heuristic | 0 | 0 |  |  |
 | `vinery:white_savanna_grapejuice` | White Savanna Grapejuice | drink | 24 | 55 | 40 | heuristic | 0 | 0 |  |  |
 | `vinery:white_taiga_grapejuice` | White Taiga Grapejuice | drink | 24 | 55 | 40 | heuristic | 0 | 0 |  |  |
-| `vinery:bottle_mojang_noir` | A Bottle of 'Mojang Noir' | manual | 420 | 120 | 142 | recipe | 1 | 1 | vinery_wine | over 2x suggested, over category cap, manual category |
-| `vinery:creepers_crush` | A Bottle of 'Creepers Crush' | manual | 420 | 120 | 60 | recipe | 3 | 1 | vinery_wine | over 2x suggested, over category cap, manual category |
-| `vinery:eiswein` | Eiswein | manual | 420 | ? | ? |  | 0 | 1 | vinery_wine | unknown cost/manual review, manual category |
-| `vinery:jo_special_mixture` | Jo's Special Mixture | manual | 420 | ? | ? |  | 0 | 1 | vinery_wine | unknown cost/manual review, manual category |
-| `vinery:villagers_fright` | A Bottle of 'Villagers Fright' | manual | 420 | ? | ? |  | 0 | 1 | vinery_wine | unknown cost/manual review, manual category |
+| `vinery:bottle_mojang_noir` | A Bottle of 'Mojang Noir' | manual | 120 | 120 | 142 | recipe | 1 | 1 | vinery_wine | manual category |
+| `vinery:creepers_crush` | A Bottle of 'Creepers Crush' | manual | 120 | 120 | 60 | recipe | 3 | 1 | vinery_wine | manual category |
+| `vinery:eiswein` | Eiswein | manual | 120 | 120 | 43 | recipe | 2 | 1 | vinery_wine | manual category |
+| `vinery:jo_special_mixture` | Jo's Special Mixture | manual | 120 | 120 | 57 | recipe | 2 | 1 | vinery_wine | manual category |
+| `vinery:villagers_fright` | A Bottle of 'Villagers Fright' | manual | 120 | 120 | 84 | recipe | 2 | 1 | vinery_wine | manual category |
 | `vinery:jungle_grape_seeds_red` | Red Jungle Grape Seeds | seed | 1 | 1 | 1 | current-base | 0 | 1 | recipe |  |
 | `vinery:jungle_grape_seeds_white` | White Jungle Grape Seeds | seed | 1 | 1 | 1 | current-base | 0 | 1 | recipe |  |
 | `vinery:red_grape_seeds` | Red Grape Seeds | seed | 1 | 1 | 1 | current-base | 0 | 1 | recipe |  |
@@ -252,36 +181,27 @@ Generated from `runs/client/mods` jar item/tag/recipe data and current `shipping
 
 | Item | Name | Cat | Current | Suggested | Cost | Source | Steps | Recipes | Process | Flags |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|
-| `bayou_blues:honey_glazed_gooseberries` | honey_glazed_gooseberries | animal | - | 24 | 24 | heuristic | 0 | 0 |  | missing candidate |
 | `betternether:egg_plant` | egg_plant | animal | - | 24 | 24 | heuristic | 0 | 0 |  | missing candidate |
 | `cobblemon:eggant_berry` | Eggant Berry | animal | 22 | 22 | 22 | current-base | 0 | 0 |  |  |
 | `cobblemon:lucky_egg` | Lucky Egg | animal | - | 24 | 24 | heuristic | 0 | 0 |  | missing candidate |
 | `cobblemon:moomoo_milk` | Moomoo Milk | animal | 34 | 34 | 34 | current-base | 0 | 0 |  |  |
 | `create:honey` | Honey | animal | - | 12 | 12 | recipe | 1 | 2 | create | missing candidate |
 | `create:honey_bucket` | Honey Bucket | animal | - | 24 | 24 | heuristic | 0 | 0 |  | missing candidate |
-| `create:honeyed_apple` | Honeyed Apple | animal | 95 | 24 | 24 | heuristic | 0 | 1 | create | over category cap |
-| `expandeddelight:asparagus_and_bacon_cheesy` | Cheesy Asparagus and Bacon | animal | 95 | 71 | 71 | recipe | 1 | 1 | farmersdelight | over category cap |
+| `create:honeyed_apple` | Honeyed Apple | animal | 24 | 24 | 24 | current-base | 0 | 1 | create |  |
 | `expandeddelight:cheese_slice` | Slice of Cheese | animal | 34 | 34 | 34 | current-base | 0 | 0 |  |  |
 | `expandeddelight:cheese_wheel` | Cheese Wheel | animal | - | 24 | 24 | heuristic | 0 | 0 |  | missing candidate |
-| `expandeddelight:cranberry_chicken` | Cranberry Chicken | animal | 135 | 37 | 37 | recipe | 1 | 1 | farmersdelight | over category cap |
+| `expandeddelight:cranberry_chicken` | Cranberry Chicken | animal | 37 | 37 | 37 | current-base | 0 | 1 | farmersdelight |  |
 | `expandeddelight:goat_cheese_slice` | Slice of Goat Cheese | animal | 34 | 34 | 34 | current-base | 0 | 0 |  |  |
 | `expandeddelight:goat_cheese_wheel` | Goat Cheese Wheel | animal | - | 24 | 24 | heuristic | 0 | 0 |  | missing candidate |
-| `expandeddelight:goat_milk_bottle` | Goat Milk Bottle | animal | 34 | 13 | 13 | recipe | 1 | 1 | recipe |  |
+| `expandeddelight:goat_milk_bottle` | Goat Milk Bottle | animal | 13 | 13 | 13 | current-base | 0 | 1 | recipe |  |
 | `expandeddelight:goat_milk_bucket` | Goat Milk Bucket | animal | 34 | 34 | 34 | current-base | 0 | 0 |  |  |
-| `expandeddelight:honeyed_goat_cheese_tart` | Honeyed Goat Cheese Tart | animal | - | 90 | 164 | recipe | 3 | 2 | recipe | missing candidate |
+| `expandeddelight:honeyed_goat_cheese_tart` | Honeyed Goat Cheese Tart | animal | - | 90 | 162 | recipe | 2 | 2 | recipe | missing candidate |
 | `expandeddelight:honeyed_goat_cheese_tart_slice` | Slice of Honeyed Goat Cheese Tart | animal | 60 | 60 | 60 | current-base | 0 | 0 |  |  |
-| `expandeddelight:mac_and_cheese` | Mac and Cheese | animal | 120 | 24 | 24 | heuristic | 0 | 1 | farmersdelight | over category cap |
 | `farmersdelight:bacon` | Raw Bacon | animal | 26 | 26 | 26 | current-base | 0 | 0 |  |  |
-| `farmersdelight:bacon_and_eggs` | Bacon and Eggs | animal | 135 | 78 | 78 | recipe | 1 | 1 | recipe | over category cap |
-| `farmersdelight:beef_patty` | Beef Patty | animal | 34 | 26 | 26 | recipe | 1 | 3 | cooking |  |
+| `farmersdelight:beef_patty` | Beef Patty | animal | 26 | 26 | 26 | current-base | 0 | 3 | cooking |  |
 | `farmersdelight:chicken_cuts` | Raw Chicken Cuts | animal | 26 | 26 | 26 | current-base | 0 | 0 |  |  |
-| `farmersdelight:ham` | Ham | animal | 34 | 34 | 34 | current-base | 0 | 0 |  |  |
-| `farmersdelight:honey_glazed_ham` | Plate of Honey Glazed Ham | animal | 1200 | 24 | 24 | heuristic | 0 | 0 |  | over 2x suggested, over category cap, high non-rare shipping price |
-| `farmersdelight:milk_bottle` | Milk Bottle | animal | 34 | 9 | 9 | recipe | 1 | 2 | create,recipe |  |
+| `farmersdelight:milk_bottle` | Milk Bottle | animal | 9 | 9 | 9 | current-base | 0 | 2 | create,recipe |  |
 | `farmersdelight:minced_beef` | Minced Beef | animal | 26 | 26 | 26 | current-base | 0 | 0 |  |  |
-| `farmersdelight:mutton_chops` | Raw Mutton Chops | animal | 26 | 26 | 26 | current-base | 0 | 0 |  |  |
-| `farmersdelight:roast_chicken` | Plate of Roast Chicken | animal | 1200 | 24 | 24 | heuristic | 0 | 0 |  | over 2x suggested, over category cap, high non-rare shipping price |
-| `farmersdelight:smoked_ham` | Smoked Ham | animal | 34 | 34 | 34 | current-base | 0 | 1 | cooking |  |
 | `hearthandharvest:goat_cheese_slice` | goat_cheese_slice | animal | - | 24 | 24 | heuristic | 0 | 0 |  | missing candidate |
 | `minecraft:beef` | beef | animal | 26 | 26 | 26 | current-base | 0 | 0 |  |  |
 | `minecraft:black_wool` | black_wool | animal | - | 24 | 24 | heuristic | 0 | 0 |  | missing candidate |
@@ -318,9 +238,9 @@ Generated from `runs/client/mods` jar item/tag/recipe data and current `shipping
 | `simplehats:eggonhead` | Egg on Head | animal | - | 24 | 24 | heuristic | 0 | 0 |  | missing candidate |
 | `simplehats:stackofeggs` | Egg Stack | animal | - | 24 | 24 | heuristic | 0 | 0 |  | missing candidate |
 | `simplehats:stinkycheeseman` | Stinky Cheese Man | animal | - | 24 | 24 | heuristic | 0 | 0 |  | missing candidate |
-| `ubesdelight:chicken_inasal` | Chicken Inasal | animal | 135 | 24 | 24 | heuristic | 0 | 1 | farmersdelight | over 2x suggested, over category cap |
-| `ubesdelight:condensed_milk_bottle` | Condensed Milk Bottle | animal | 14 | 14 | 14 | current-base | 0 | 2 | farmersdelight |  |
-| `ubesdelight:milk_powder` | Milk Powder | animal | 10 | 9 | 9 | recipe | 1 | 4 | cooking,farmersdelight |  |
+| `ubesdelight:chicken_inasal` | Chicken Inasal | animal | 24 | 24 | 24 | current-base | 0 | 1 | farmersdelight |  |
+| `ubesdelight:condensed_milk_bottle` | Condensed Milk Bottle | animal | 12 | 12 | 12 | current-base | 0 | 2 | farmersdelight |  |
+| `ubesdelight:milk_powder` | Milk Powder | animal | 9 | 9 | 9 | current-base | 0 | 4 | cooking,farmersdelight |  |
 | `yuushya:audio_egg_cobblestone` | audio_egg_cobblestone | animal | - | 24 | 24 | heuristic | 0 | 1 | cutting | missing candidate |
 | `yuushya:audio_large_egg_cobblestone` | audio_large_egg_cobblestone | animal | - | 24 | 24 | heuristic | 0 | 1 | cutting | missing candidate |
 | `yuushya:backpack_black_wool` | backpack_black_wool | animal | - | 24 | 24 | heuristic | 0 | 1 | cutting | missing candidate |
@@ -371,8 +291,8 @@ Generated from `runs/client/mods` jar item/tag/recipe data and current `shipping
 | `yuushya:basket_red_wool` | basket_red_wool | animal | - | 24 | 24 | heuristic | 0 | 1 | cutting | missing candidate |
 | `yuushya:basket_white_wool` | basket_white_wool | animal | - | 24 | 24 | heuristic | 0 | 1 | cutting | missing candidate |
 | `yuushya:basket_yellow_wool` | basket_yellow_wool | animal | - | 24 | 24 | heuristic | 0 | 1 | cutting | missing candidate |
-| `yuushya:beef` | Beef | animal | - | 3 | 3 | recipe | 6 | 1 | cutting | missing candidate |
-| `yuushya:beef_plate` | beef_plate | animal | - | 3 | 3 | recipe | 6 | 1 | cutting | missing candidate |
+| `yuushya:beef` | Beef | animal | - | 3 | 3 | recipe | 7 | 1 | cutting | missing candidate |
+| `yuushya:beef_plate` | beef_plate | animal | - | 3 | 3 | recipe | 7 | 1 | cutting | missing candidate |
 | `yuushya:bicycle_black_wool` | bicycle_black_wool | animal | - | 24 | 24 | heuristic | 0 | 1 | cutting | missing candidate |
 | `yuushya:bicycle_blue_wool` | bicycle_blue_wool | animal | - | 24 | 24 | heuristic | 0 | 1 | cutting | missing candidate |
 | `yuushya:bicycle_brown_wool` | bicycle_brown_wool | animal | - | 24 | 24 | heuristic | 0 | 1 | cutting | missing candidate |
@@ -405,8 +325,8 @@ Generated from `runs/client/mods` jar item/tag/recipe data and current `shipping
 | `yuushya:board_red_wool` | board_red_wool | animal | - | 24 | 24 | heuristic | 0 | 1 | cutting | missing candidate |
 | `yuushya:board_white_wool` | board_white_wool | animal | - | 24 | 24 | heuristic | 0 | 1 | cutting | missing candidate |
 | `yuushya:board_yellow_wool` | board_yellow_wool | animal | - | 24 | 24 | heuristic | 0 | 1 | cutting | missing candidate |
-| `yuushya:bread_with_egg` | Bread with Egg | animal | - | 3 | 3 | recipe | 6 | 1 | cutting | missing candidate |
-| `yuushya:chocolate_milk` | Chocolate Milk | animal | - | 3 | 3 | recipe | 6 | 1 | cutting | missing candidate |
+| `yuushya:bread_with_egg` | Bread with Egg | animal | - | 3 | 3 | recipe | 7 | 1 | cutting | missing candidate |
+| `yuushya:chocolate_milk` | Chocolate Milk | animal | - | 3 | 3 | recipe | 7 | 1 | cutting | missing candidate |
 | `yuushya:column_black_wool` | column_black_wool | animal | - | 24 | 24 | heuristic | 0 | 1 | cutting | missing candidate |
 | `yuushya:column_blue_wool` | column_blue_wool | animal | - | 24 | 24 | heuristic | 0 | 1 | cutting | missing candidate |
 | `yuushya:column_brown_wool` | column_brown_wool | animal | - | 24 | 24 | heuristic | 0 | 1 | cutting | missing candidate |
@@ -472,133 +392,142 @@ Generated from `runs/client/mods` jar item/tag/recipe data and current `shipping
 | `yuushya:couch_red_wool` | couch_red_wool | animal | - | 24 | 24 | heuristic | 0 | 1 | cutting | missing candidate |
 | `yuushya:couch_white_wool` | couch_white_wool | animal | - | 24 | 24 | heuristic | 0 | 1 | cutting | missing candidate |
 | `yuushya:couch_yellow_wool` | couch_yellow_wool | animal | - | 24 | 24 | heuristic | 0 | 1 | cutting | missing candidate |
+| `yuushya:cushion_armchair_black_wool` | cushion_armchair_black_wool | animal | - | 24 | 24 | heuristic | 0 | 1 | cutting | missing candidate |
+| `yuushya:cushion_armchair_blue_wool` | cushion_armchair_blue_wool | animal | - | 24 | 24 | heuristic | 0 | 1 | cutting | missing candidate |
+| `yuushya:cushion_armchair_brown_wool` | cushion_armchair_brown_wool | animal | - | 24 | 24 | heuristic | 0 | 1 | cutting | missing candidate |
+| `yuushya:cushion_armchair_cyan_wool` | cushion_armchair_cyan_wool | animal | - | 24 | 24 | heuristic | 0 | 1 | cutting | missing candidate |
+| `yuushya:cushion_armchair_decorative_black_wool` | cushion_armchair_decorative_black_wool | animal | - | 24 | 24 | heuristic | 0 | 1 | cutting | missing candidate |
+| `yuushya:cushion_armchair_decorative_blue_wool` | cushion_armchair_decorative_blue_wool | animal | - | 24 | 24 | heuristic | 0 | 1 | cutting | missing candidate |
+| `yuushya:cushion_armchair_decorative_brown_wool` | cushion_armchair_decorative_brown_wool | animal | - | 24 | 24 | heuristic | 0 | 1 | cutting | missing candidate |
+| `yuushya:cushion_armchair_decorative_cyan_wool` | cushion_armchair_decorative_cyan_wool | animal | - | 24 | 24 | heuristic | 0 | 1 | cutting | missing candidate |
+| `yuushya:cushion_armchair_decorative_gray_wool` | cushion_armchair_decorative_gray_wool | animal | - | 24 | 24 | heuristic | 0 | 1 | cutting | missing candidate |
 
-_Showing 220 of 1094. See CSV for full data._
+_Showing 220 of 1128. See CSV for full data._
 
 ## Most Expensive Current Sellables
 
 | Item | Name | Cat | Current | Suggested | Cost | Source | Steps | Recipes | Process | Flags |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|
-| `oceansdelight:cabbage_wrapped_elder_guardian` | Cabbage Wrapped Elder Guardian | meal | 2200 | 60 | 41 | recipe | 2 | 1 | recipe | over 2x suggested, over category cap |
-| `oceansdelight:bowl_of_guardian_soup` | Bowl of Guardian Soup | blocked | 2200 | ? | ? |  | 0 | 0 |  | priced but blocked/weak signal |
-| `farmersdelight:honey_glazed_ham_block` | Honey Glazed Ham | feast | 1800 | 120 | 80 | recipe | 2 | 1 | recipe | over 2x suggested, over category cap, high non-rare shipping price |
-| `farmersdelight:stuffed_pumpkin_block` | Stuffed Pumpkin | feast | 1800 | 440 | 320 | heuristic | 0 | 1 | farmersdelight | over 2x suggested, over category cap, high non-rare shipping price |
-| `farmersdelight:rice_roll_medley_block` | Rice Roll Medley | feast | 1800 | 600 | 407 | recipe | 3 | 1 | recipe | over 2x suggested, over category cap, high non-rare shipping price |
-| `farmersdelight:roast_chicken_block` | Roast Chicken | feast | 1800 | 440 | 320 | heuristic | 0 | 1 | recipe | over 2x suggested, over category cap, high non-rare shipping price |
-| `farmersdelight:gleaming_salad_block` | Gleaming Salad | feast | 1800 | 440 | 320 | heuristic | 0 | 1 | recipe | over 2x suggested, over category cap, high non-rare shipping price |
-| `farmersdelight:shepherds_pie_block` | Shepherd's Pie | feast | 1800 | 230 | 163 | recipe | 1 | 1 | recipe | over 2x suggested, over category cap, high non-rare shipping price |
-| `farmersdelight:gleaming_salad` | Bowl of Gleaming Salad | meal | 1200 | 120 | 90 | heuristic | 0 | 0 |  | over 2x suggested, over category cap, high non-rare shipping price |
-| `farmersdelight:roast_chicken` | Plate of Roast Chicken | animal | 1200 | 24 | 24 | heuristic | 0 | 0 |  | over 2x suggested, over category cap, high non-rare shipping price |
-| `farmersdelight:stuffed_pumpkin` | Bowl of Stuffed Pumpkin | crop | 1200 | 10 | 10 | heuristic | 0 | 0 |  | over 2x suggested, over category cap, high non-rare shipping price |
-| `farmersdelight:shepherds_pie` | Plate of Shepherd's Pie | meal | 1200 | 120 | 90 | heuristic | 0 | 0 |  | over 2x suggested, over category cap, high non-rare shipping price |
-| `farmersdelight:honey_glazed_ham` | Plate of Honey Glazed Ham | animal | 1200 | 24 | 24 | heuristic | 0 | 0 |  | over 2x suggested, over category cap, high non-rare shipping price |
-| `cobblemon:rowap_berry` | Rowap Berry | crop | 700 | 700 | 700 | current-base | 0 | 0 |  |  |
-| `oceansdelight:fugu_roll` | Fugu Roll | meal | 700 | 120 | 90 | heuristic | 0 | 1 | recipe | over 2x suggested, over category cap |
-| `cobblemon:enigma_berry` | Enigma Berry | crop | 700 | 700 | 700 | current-base | 0 | 0 |  |  |
-| `cobblemon:micle_berry` | Micle Berry | crop | 700 | 700 | 700 | current-base | 0 | 0 |  |  |
-| `oceansdelight:elder_guardian_roll` | Roll of Elder Guardian | meal | 700 | 110 | 78 | recipe | 2 | 1 | recipe | over 2x suggested |
-| `cobblemon:jaboca_berry` | Jaboca Berry | crop | 700 | 700 | 700 | current-base | 0 | 0 |  |  |
-| `cobblemon:starf_berry` | Starf Berry | crop | 700 | 700 | 700 | current-base | 0 | 0 |  |  |
-| `cobblemon:custap_berry` | Custap Berry | crop | 700 | 700 | 700 | current-base | 0 | 0 |  |  |
-| `cobblemon:lansat_berry` | Lansat Berry | crop | 700 | 700 | 700 | current-base | 0 | 0 |  |  |
-| `ubesdelight:halo_halo_feast` | Bowl of Halo Halo | feast | 650 | 440 | 320 | heuristic | 0 | 1 | recipe |  |
-| `ubesdelight:lumpia_feast` | Lumpia Leaf Feast | feast | 650 | 440 | 320 | heuristic | 0 | 1 | recipe |  |
-| `ubesdelight:leaf_feast_sinangag` | Sinangag Leaf Feast | feast | 650 | 440 | 320 | heuristic | 0 | 2 | recipe |  |
-| `ubesdelight:milk_tea_ube_feast` | Bowl of Ube Milk Tea | drink | 650 | 180 | 129 | recipe | 1 | 1 | recipe | over 2x suggested, over category cap |
-| `ubesdelight:leaf_feast_pandesal_ube` | Ube Pandesal Leaf Feast | feast | 650 | 440 | 320 | recipe | 1 | 2 | recipe |  |
-| `create:blaze_cake` | Blaze Cake | meal | 650 | 120 | 90 | recipe | 1 | 1 | create | over 2x suggested |
-| `ubesdelight:leaf_feast_pandesal` | Pandesal Leaf Feast | feast | 650 | 440 | 320 | recipe | 1 | 2 | recipe |  |
-| `ubesdelight:leaf_feast_hopia_ube` | Hopia Ube Leaf Feast | feast | 650 | 440 | 320 | heuristic | 0 | 2 | recipe |  |
-| `ubesdelight:leaf_feast_hopia_munggo` | Hopia Munggo Leaf Feast | feast | 650 | 440 | 320 | heuristic | 0 | 2 | recipe |  |
 | `ubesdelight:leaf_feast_fried_rice` | Fried Rice Leaf Feast | feast | 650 | 700 | 860 | recipe | 1 | 2 | recipe |  |
-| `ubesdelight:leaf_feast_ensaymada_ube` | Ube Ensaymada Leaf Feast | feast | 650 | 440 | 320 | heuristic | 0 | 2 | recipe |  |
-| `ubesdelight:leaf_feast_ensaymada` | Ensaymada Leaf Feast | feast | 650 | 440 | 320 | heuristic | 0 | 2 | recipe |  |
-| `ubesdelight:leaf_feast_cooked_rice` | Cooked Rice Leaf Feast | feast | 650 | 470 | 332 | recipe | 2 | 2 | recipe |  |
-| `ubesdelight:ube_cake` | Ube Cake | meal | 650 | 250 | 630 | recipe | 1 | 2 | recipe | over 2x suggested, over category cap |
-| `ubesdelight:leche_flan_feast` | Leche Flan | feast | 650 | 440 | 320 | heuristic | 0 | 1 | recipe |  |
-| `create:blaze_cake_base` | Blaze Cake Base | meal | 650 | 120 | 90 | heuristic | 0 | 1 | create | over 2x suggested |
-| `vinery:magnetic_wine` | Magnetic Wine | drink | 520 | 160 | 48 | recipe | 3 | 1 | vinery_wine | over 2x suggested, over category cap |
-| `vinery:jellie_wine` | Jellie Wine | drink | 520 | 450 | 266 | recipe | 4 | 1 | vinery_wine | over category cap |
-| `vinery:glowing_wine` | Sun-kissed Wine | drink | 520 | 160 | 49 | recipe | 2 | 1 | vinery_wine | over 2x suggested, over category cap |
-| `vinery:cristel_wine` | Cristel Wine | drink | 520 | 140 | 40 | heuristic | 0 | 1 | vinery_wine | over 2x suggested, over category cap |
-| `vinery:noir_wine` | Noir Wine | drink | 520 | 240 | 89 | recipe | 2 | 1 | vinery_wine | over 2x suggested, over category cap |
-| `vinery:mellohi_wine` | Mellohi Wine | drink | 520 | 140 | 40 | heuristic | 0 | 1 | vinery_wine | over 2x suggested, over category cap |
-| `vinery:clark_wine` | Clark Wine | drink | 520 | 140 | 40 | heuristic | 0 | 1 | vinery_wine | over 2x suggested, over category cap |
-| `vinery:chorus_wine` | Chorus Wine | drink | 520 | 210 | 54 | recipe | 2 | 1 | vinery_wine | over 2x suggested |
-| `vinery:cherry_wine` | Cherry Wine | drink | 520 | 250 | 92 | recipe | 2 | 1 | vinery_wine | over 2x suggested, over category cap |
-| `vinery:chenet_wine` | Chenet Wine | drink | 520 | 140 | 40 | heuristic | 0 | 1 | vinery_wine | over 2x suggested, over category cap |
-| `vinery:mead` | Mead | drink | 520 | 140 | 40 | heuristic | 0 | 1 | vinery_wine | over 2x suggested, over category cap |
-| `vinery:lilitu_wine` | Miss Lilitus Wine | drink | 520 | 270 | 102 | recipe | 1 | 1 | vinery_wine | over category cap |
-| `vinery:bolvar_wine` | Bolvar Wine | drink | 520 | 190 | 62 | recipe | 1 | 1 | vinery_wine | over 2x suggested, over category cap |
-| `vinery:solaris_wine` | Solaris Wine | drink | 520 | 260 | 99 | recipe | 1 | 1 | vinery_wine | over category cap |
-| `vinery:apple_wine` | Apple Wine | drink | 520 | 150 | 42 | recipe | 3 | 1 | vinery_wine | over 2x suggested, over category cap |
-| `vinery:kelp_cider` | Kelp Cider | drink | 520 | 140 | 40 | heuristic | 0 | 1 | vinery_wine | over 2x suggested, over category cap |
-| `vinery:stal_wine` | Stal Wine | drink | 520 | 140 | 40 | heuristic | 0 | 1 | vinery_wine | over 2x suggested, over category cap |
-| `vinery:aegis_wine` | Aegis Wine | drink | 520 | 140 | 40 | heuristic | 0 | 1 | vinery_wine | over 2x suggested, over category cap |
-| `vinery:apple_cider` | Cider | drink | 520 | 140 | 40 | heuristic | 0 | 1 | vinery_wine | over 2x suggested, over category cap |
-| `vinery:strad_wine` | Strad Wine | drink | 520 | 140 | 40 | heuristic | 0 | 1 | vinery_wine | over 2x suggested, over category cap |
-| `vinery:red_wine` | Red Wine | drink | 520 | 140 | 40 | heuristic | 0 | 1 | vinery_wine | over 2x suggested, over category cap |
-| `cobblemon:salac_berry` | Salac Berry | crop | 420 | 10 | 10 | heuristic | 0 | 0 |  | over 2x suggested, over category cap |
-| `cobblemon:petaya_berry` | Petaya Berry | crop | 420 | 10 | 10 | heuristic | 0 | 0 |  | over 2x suggested, over category cap |
-| `vinery:villagers_fright` | A Bottle of 'Villagers Fright' | manual | 420 | ? | ? |  | 0 | 1 | vinery_wine | unknown cost/manual review, manual category |
-| `vinery:jo_special_mixture` | Jo's Special Mixture | manual | 420 | ? | ? |  | 0 | 1 | vinery_wine | unknown cost/manual review, manual category |
-| `cobblemon:maranga_berry` | Maranga Berry | crop | 420 | 10 | 10 | heuristic | 0 | 0 |  | over 2x suggested, over category cap |
-| `vinery:eiswein` | Eiswein | manual | 420 | ? | ? |  | 0 | 1 | vinery_wine | unknown cost/manual review, manual category |
-| `vinery:creepers_crush` | A Bottle of 'Creepers Crush' | manual | 420 | 120 | 60 | recipe | 3 | 1 | vinery_wine | over 2x suggested, over category cap, manual category |
-| `cobblemon:liechi_berry` | Liechi Berry | crop | 420 | 10 | 10 | heuristic | 0 | 0 |  | over 2x suggested, over category cap |
-| `cobblemon:kee_berry` | Kee Berry | crop | 420 | 10 | 10 | heuristic | 0 | 0 |  | over 2x suggested, over category cap |
-| `vinery:bottle_mojang_noir` | A Bottle of 'Mojang Noir' | manual | 420 | 120 | 142 | recipe | 1 | 1 | vinery_wine | over 2x suggested, over category cap, manual category |
-| `cobblemon:ganlon_berry` | Ganlon Berry | crop | 420 | 10 | 10 | heuristic | 0 | 0 |  | over 2x suggested, over category cap |
-| `cobblemon:apicot_berry` | Apicot Berry | crop | 420 | 10 | 10 | heuristic | 0 | 0 |  | over 2x suggested, over category cap |
-| `farmersdelight:grilled_salmon` | Grilled Salmon | cooked | 360 | 45 | 37 | recipe | 1 | 1 | recipe | over 2x suggested, over category cap |
-| `farmersdelight:steak_and_potatoes` | Steak and Potatoes | crop | 360 | 40 | 78 | recipe | 2 | 1 | recipe | over 2x suggested, over category cap |
-| `farmersdelight:roasted_mutton_chops` | Roasted Mutton Chops | cooked | 360 | 45 | 36 | heuristic | 0 | 1 | recipe | over 2x suggested, over category cap |
-| `farmersdelight:ratatouille` | Ratatouille | meal | 360 | 120 | 90 | heuristic | 0 | 1 | farmersdelight | over 2x suggested, over category cap |
-| `farmersdelight:squid_ink_pasta` | Squid Ink Pasta | meal | 360 | 120 | 90 | heuristic | 0 | 1 | farmersdelight | over 2x suggested, over category cap |
-| `farmersdelight:hamburger` | Hamburger | meal | 360 | 120 | 90 | heuristic | 0 | 1 | recipe | over 2x suggested, over category cap |
-| `ubesdelight:tosilog` | Tosilog | blocked | 135 | ? | ? |  | 0 | 1 | farmersdelight | priced but blocked/weak signal |
+| `farmersdelight:rice_roll_medley_block` | Rice Roll Medley | feast | 600 | 600 | 407 | recipe | 3 | 1 | recipe |  |
+| `ubesdelight:leaf_feast_cooked_rice` | Cooked Rice Leaf Feast | feast | 460 | 460 | 326 | recipe | 2 | 2 | recipe |  |
+| `vinery:jellie_wine` | Jellie Wine | drink | 450 | 450 | 266 | recipe | 4 | 1 | vinery_wine |  |
+| `ubesdelight:leaf_feast_pandesal` | Pandesal Leaf Feast | feast | 440 | 440 | 320 | recipe | 1 | 2 | recipe |  |
+| `ubesdelight:leaf_feast_hopia_ube` | Hopia Ube Leaf Feast | feast | 440 | 440 | 320 | heuristic | 0 | 2 | recipe |  |
+| `ubesdelight:leaf_feast_hopia_munggo` | Hopia Munggo Leaf Feast | feast | 440 | 440 | 320 | heuristic | 0 | 2 | recipe |  |
+| `farmersdelight:gleaming_salad_block` | Gleaming Salad | feast | 440 | 440 | 320 | heuristic | 0 | 1 | recipe |  |
+| `ubesdelight:lumpia_feast` | Lumpia Leaf Feast | feast | 440 | 440 | 320 | heuristic | 0 | 1 | recipe |  |
+| `ubesdelight:leaf_feast_sinangag` | Sinangag Leaf Feast | feast | 440 | 440 | 320 | heuristic | 0 | 2 | recipe |  |
+| `farmersdelight:stuffed_pumpkin_block` | Stuffed Pumpkin | feast | 440 | 440 | 320 | heuristic | 0 | 1 | farmersdelight |  |
+| `ubesdelight:leaf_feast_ensaymada_ube` | Ube Ensaymada Leaf Feast | feast | 440 | 440 | 320 | heuristic | 0 | 2 | recipe |  |
+| `farmersdelight:roast_chicken_block` | Roast Chicken | feast | 440 | 440 | 320 | heuristic | 0 | 1 | recipe |  |
+| `ubesdelight:leaf_feast_ensaymada` | Ensaymada Leaf Feast | feast | 440 | 440 | 320 | heuristic | 0 | 2 | recipe |  |
+| `ubesdelight:halo_halo_feast` | Bowl of Halo Halo | feast | 440 | 440 | 320 | heuristic | 0 | 1 | recipe |  |
+| `ubesdelight:leaf_feast_pandesal_ube` | Ube Pandesal Leaf Feast | feast | 440 | 440 | 320 | recipe | 1 | 2 | recipe |  |
+| `vinery:lilitu_wine` | Miss Lilitus Wine | drink | 270 | 270 | 102 | recipe | 1 | 1 | vinery_wine |  |
+| `farmersdelight:shepherds_pie_block` | Shepherd's Pie | feast | 270 | 270 | 193 | recipe | 1 | 1 | recipe |  |
+| `vinery:solaris_wine` | Solaris Wine | drink | 260 | 260 | 99 | recipe | 1 | 1 | vinery_wine |  |
+| `vinery:cherry_wine` | Cherry Wine | drink | 250 | 250 | 92 | recipe | 2 | 1 | vinery_wine |  |
+| `ubesdelight:ube_cake` | Ube Cake | meal | 250 | 250 | 630 | recipe | 1 | 2 | recipe |  |
+| `vinery:noir_wine` | Noir Wine | drink | 240 | 240 | 89 | recipe | 2 | 1 | vinery_wine |  |
+| `vinery:chorus_wine` | Chorus Wine | drink | 210 | 210 | 54 | recipe | 2 | 1 | vinery_wine |  |
+| `farmersdelight:honey_glazed_ham_block` | Honey Glazed Ham | feast | 190 | 200 | 136 | recipe | 2 | 1 | recipe |  |
+| `vinery:bolvar_wine` | Bolvar Wine | drink | 190 | 190 | 62 | recipe | 1 | 1 | vinery_wine |  |
+| `ubesdelight:milk_tea_ube_feast` | Bowl of Ube Milk Tea | drink | 180 | 180 | 129 | recipe | 1 | 1 | recipe |  |
+| `vinery:magnetic_wine` | Magnetic Wine | drink | 160 | 160 | 48 | recipe | 3 | 1 | vinery_wine |  |
+| `vinery:glowing_wine` | Sun-kissed Wine | drink | 160 | 160 | 49 | recipe | 2 | 1 | vinery_wine |  |
+| `vinery:apple_wine` | Apple Wine | drink | 150 | 150 | 42 | recipe | 3 | 1 | vinery_wine |  |
+| `vinery:aegis_wine` | Aegis Wine | drink | 140 | 140 | 40 | heuristic | 0 | 1 | vinery_wine |  |
+| `vinery:apple_cider` | Cider | drink | 140 | 140 | 37 | recipe | 3 | 1 | vinery_wine |  |
+| `vinery:kelp_cider` | Kelp Cider | drink | 140 | 140 | 40 | heuristic | 0 | 1 | vinery_wine |  |
+| `vinery:clark_wine` | Clark Wine | drink | 140 | 160 | 49 | recipe | 2 | 1 | vinery_wine |  |
+| `vinery:cristel_wine` | Cristel Wine | drink | 140 | 140 | 40 | heuristic | 0 | 1 | vinery_wine |  |
+| `vinery:mellohi_wine` | Mellohi Wine | drink | 140 | 140 | 40 | heuristic | 0 | 1 | vinery_wine |  |
+| `vinery:red_wine` | Red Wine | drink | 140 | 160 | 49 | recipe | 2 | 1 | vinery_wine |  |
+| `vinery:stal_wine` | Stal Wine | drink | 140 | 170 | 53 | recipe | 2 | 1 | vinery_wine |  |
+| `vinery:strad_wine` | Strad Wine | drink | 140 | 170 | 53 | recipe | 2 | 1 | vinery_wine |  |
+| `vinery:chenet_wine` | Chenet Wine | drink | 140 | 140 | 40 | heuristic | 0 | 1 | vinery_wine |  |
 | `ubesdelight:mechado` | Mechado | manual | 135 | ? | ? |  | 0 | 1 | farmersdelight | unknown cost/manual review, manual category |
-| `expandeddelight:chili_pepper_salmon` | Chili Pepper Salmon | fish | 135 | 38 | 38 | recipe | 1 | 1 | farmersdelight | over category cap |
-| `expandeddelight:cranberry_chicken` | Cranberry Chicken | animal | 135 | 37 | 37 | recipe | 1 | 1 | farmersdelight | over category cap |
-| `minecraft:cooked_salmon` | cooked_salmon | cooked | 135 | 45 | 36 | heuristic | 0 | 0 |  | over category cap |
-| `ubesdelight:bangsilog` | Bangsilog | blocked | 135 | ? | ? |  | 0 | 2 | farmersdelight | priced but blocked/weak signal |
-| `ubesdelight:bulalo` | Bulalo | manual | 135 | ? | ? |  | 0 | 1 | farmersdelight | unknown cost/manual review, manual category |
 | `ubesdelight:sisig` | Sisig | manual | 135 | ? | ? |  | 0 | 1 | farmersdelight | unknown cost/manual review, manual category |
-| `minecraft:cooked_beef` | cooked_beef | cooked | 135 | 45 | 36 | heuristic | 0 | 0 |  | over category cap |
-| `ubesdelight:chicken_inasal` | Chicken Inasal | animal | 135 | 24 | 24 | heuristic | 0 | 1 | farmersdelight | over 2x suggested, over category cap |
-| `farmersdelight:bacon_and_eggs` | Bacon and Eggs | animal | 135 | 78 | 78 | recipe | 1 | 1 | recipe | over category cap |
-| `ubesdelight:chicken_inasal_rice` | Chicken Inasal Plate | meal | 135 | 120 | 90 | heuristic | 0 | 1 | farmersdelight |  |
-| `farmersdelight:fish_stew` | Fish Stew | meal | 120 | 120 | 90 | heuristic | 0 | 1 | farmersdelight |  |
-| `farmersdelight:chicken_soup` | Chicken Soup | meal | 120 | 120 | 90 | heuristic | 0 | 1 | farmersdelight |  |
-| `farmersdelight:vegetable_soup` | Vegetable Soup | blocked | 120 | ? | ? |  | 0 | 1 | farmersdelight | priced but blocked/weak signal |
-| `expandeddelight:asparagus_frittata` | Asparagus Frittata | meal | 120 | 120 | 90 | heuristic | 0 | 1 | farmersdelight |  |
+| `ubesdelight:bulalo` | Bulalo | manual | 135 | ? | ? |  | 0 | 1 | farmersdelight | unknown cost/manual review, manual category |
+| `ubesdelight:tosilog` | Tosilog | manual | 135 | ? | ? |  | 0 | 1 | farmersdelight | unknown cost/manual review, manual category |
+| `ubesdelight:bangsilog` | Bangsilog | manual | 135 | ? | ? |  | 0 | 2 | farmersdelight | unknown cost/manual review, manual category |
+| `vinery:mead` | Mead | drink | 130 | 130 | 35 | recipe | 3 | 1 | vinery_wine |  |
+| `farmersdelight:gleaming_salad` | Bowl of Gleaming Salad | meal | 120 | 120 | 90 | heuristic | 0 | 0 |  |  |
+| `farmersdelight:onion_soup` | Onion Soup | meal | 120 | 120 | 90 | heuristic | 0 | 1 | farmersdelight |  |
+| `create:blaze_cake_base` | Blaze Cake Base | meal | 120 | 120 | 90 | heuristic | 0 | 1 | create |  |
+| `farmersdelight:hamburger` | Hamburger | meal | 120 | 120 | 90 | heuristic | 0 | 1 | recipe |  |
+| `farmersdelight:honey_glazed_ham` | Plate of Honey Glazed Ham | meal | 120 | 120 | 90 | heuristic | 0 | 0 |  |  |
+| `farmersdelight:pumpkin_soup` | Pumpkin Soup | meal | 120 | 120 | 90 | heuristic | 0 | 1 | farmersdelight |  |
+| `create:blaze_cake` | Blaze Cake | meal | 120 | 120 | 90 | recipe | 1 | 1 | create |  |
+| `minecraft:rabbit_stew` | rabbit_stew | meal | 120 | 120 | 90 | heuristic | 0 | 3 | farmersdelight,recipe |  |
+| `oceansdelight:bowl_of_guardian_soup` | Bowl of Guardian Soup | meal | 120 | 120 | 90 | heuristic | 0 | 0 |  |  |
+| `farmersdelight:pasta_with_mutton_chop` | Pasta with Mutton Chop | meal | 120 | 160 | 118 | recipe | 1 | 1 | farmersdelight |  |
+| `cobblemon:starf_berry` | Starf Berry | crop | 120 | 120 | 120 | current-base | 0 | 0 |  |  |
+| `oceansdelight:fugu_roll` | Fugu Roll | meal | 120 | 120 | 90 | heuristic | 0 | 1 | recipe |  |
+| `cobblemon:rowap_berry` | Rowap Berry | crop | 120 | 120 | 120 | current-base | 0 | 0 |  |  |
 | `farmersdelight:noodle_soup` | Noodle Soup | meal | 120 | 120 | 90 | heuristic | 0 | 1 | farmersdelight |  |
+| `farmersdelight:ratatouille` | Ratatouille | meal | 120 | 120 | 90 | heuristic | 0 | 1 | farmersdelight |  |
+| `farmersdelight:fish_stew` | Fish Stew | meal | 120 | 120 | 90 | heuristic | 0 | 1 | farmersdelight |  |
+| `farmersdelight:roast_chicken` | Plate of Roast Chicken | meal | 120 | 120 | 90 | heuristic | 0 | 0 |  |  |
+| `expandeddelight:asparagus_frittata` | Asparagus Frittata | meal | 120 | 120 | 90 | heuristic | 0 | 1 | farmersdelight |  |
 | `expandeddelight:asparagus_mushroom_pasta` | Asparagus Mushroom Pasta | meal | 120 | 120 | 90 | heuristic | 0 | 1 | farmersdelight |  |
 | `expandeddelight:asparagus_soup` | Asparagus Soup | meal | 120 | 120 | 90 | heuristic | 0 | 1 | farmersdelight |  |
-| `minecraft:rabbit_stew` | rabbit_stew | meal | 120 | 120 | 90 | heuristic | 0 | 3 | farmersdelight,recipe |  |
-| `farmersdelight:pumpkin_soup` | Pumpkin Soup | meal | 120 | 120 | 90 | heuristic | 0 | 1 | farmersdelight |  |
-| `minecraft:mushroom_stew` | mushroom_stew | meal | 120 | 120 | 90 | heuristic | 0 | 2 | farmersdelight,recipe |  |
-| `farmersdelight:vegetable_noodles` | Vegetable Noodles | blocked | 120 | ? | ? |  | 0 | 1 | farmersdelight | priced but blocked/weak signal |
-| `farmersdelight:baked_cod_stew` | Baked Cod Stew | meal | 120 | 120 | 90 | heuristic | 0 | 1 | farmersdelight |  |
-| `expandeddelight:mac_and_cheese` | Mac and Cheese | animal | 120 | 24 | 24 | heuristic | 0 | 1 | farmersdelight | over category cap |
-| `farmersdelight:pasta_with_mutton_chop` | Pasta with Mutton Chop | meal | 120 | 160 | 118 | recipe | 2 | 1 | farmersdelight |  |
-| `expandeddelight:peanut_honey_soup` | Honey Peanut Soup | meal | 120 | 50 | 35 | recipe | 1 | 1 | farmersdelight |  |
-| `farmersdelight:onion_soup` | Onion Soup | meal | 120 | 120 | 90 | heuristic | 0 | 1 | farmersdelight |  |
-| `farmersdelight:pasta_with_meatballs` | Pasta with Meatballs | meal | 120 | 160 | 118 | recipe | 2 | 1 | farmersdelight |  |
-| `minecraft:beetroot_soup` | beetroot_soup | meal | 120 | 65 | 50 | recipe | 1 | 2 | farmersdelight,recipe |  |
-| `farmersdelight:beef_stew` | Beef Stew | meal | 120 | 120 | 90 | heuristic | 0 | 1 | farmersdelight |  |
-| `expandeddelight:sweet_potato_casserole` | Sweet Potato Casserole | meal | 120 | 120 | 90 | heuristic | 0 | 1 | farmersdelight |  |
+| `farmersdelight:chicken_soup` | Chicken Soup | meal | 120 | 120 | 90 | heuristic | 0 | 1 | farmersdelight |  |
+| `farmersdelight:roasted_mutton_chops` | Roasted Mutton Chops | meal | 120 | 120 | 90 | heuristic | 0 | 1 | recipe |  |
+| `farmersdelight:shepherds_pie` | Plate of Shepherd's Pie | meal | 120 | 120 | 90 | heuristic | 0 | 0 |  |  |
 | `expandeddelight:asparagus_soup_creamy` | Creamy Asparagus Soup | meal | 120 | 120 | 90 | heuristic | 0 | 1 | farmersdelight |  |
-| `farmersdelight:barbecue_stick` | Barbecue on a Stick | manual | 95 | ? | ? |  | 0 | 1 | recipe | unknown cost/manual review, manual category |
-| `ubesdelight:lumpia` | Lumpia | manual | 95 | ? | ? |  | 0 | 1 | farmersdelight | unknown cost/manual review, manual category |
-| `expandeddelight:cinnamon_rice` | Cinnamon Rice | meal | 95 | 19 | 14 | recipe | 1 | 1 | farmersdelight |  |
-| `expandeddelight:cinnamon_apples` | Cinnamon Apples | crop | 95 | 10 | 10 | heuristic | 0 | 1 | farmersdelight | over category cap |
-| `oceansdelight:stuffed_cod` | Stuffed Cod | fish | 95 | 24 | 24 | heuristic | 0 | 1 | recipe | over category cap |
-| `oceansdelight:stuffed_squid` | Stuffed Squid | fish | 95 | 24 | 24 | heuristic | 0 | 1 | recipe | over category cap |
+| `expandeddelight:mac_and_cheese` | Mac and Cheese | meal | 120 | 120 | 90 | heuristic | 0 | 1 | farmersdelight |  |
+| `farmersdelight:vegetable_soup` | Vegetable Soup | meal | 120 | 120 | 90 | heuristic | 0 | 1 | farmersdelight |  |
+| `farmersdelight:vegetable_noodles` | Vegetable Noodles | meal | 120 | 120 | 90 | heuristic | 0 | 1 | farmersdelight |  |
+| `farmersdelight:stuffed_pumpkin` | Bowl of Stuffed Pumpkin | meal | 120 | 120 | 90 | heuristic | 0 | 0 |  |  |
+| `farmersdelight:squid_ink_pasta` | Squid Ink Pasta | meal | 120 | 120 | 90 | heuristic | 0 | 1 | farmersdelight |  |
+| `farmersdelight:baked_cod_stew` | Baked Cod Stew | meal | 120 | 120 | 90 | heuristic | 0 | 1 | farmersdelight |  |
+| `farmersdelight:beef_stew` | Beef Stew | meal | 120 | 120 | 90 | heuristic | 0 | 1 | farmersdelight |  |
+| `minecraft:mushroom_stew` | mushroom_stew | meal | 120 | 120 | 90 | heuristic | 0 | 2 | farmersdelight,recipe |  |
+| `farmersdelight:pasta_with_meatballs` | Pasta with Meatballs | meal | 120 | 160 | 118 | recipe | 1 | 1 | farmersdelight |  |
+| `ubesdelight:chicken_inasal_rice` | Chicken Inasal Plate | meal | 120 | 120 | 90 | heuristic | 0 | 1 | farmersdelight |  |
+| `cobblemon:lansat_berry` | Lansat Berry | crop | 120 | 120 | 120 | current-base | 0 | 0 |  |  |
+| `cobblemon:enigma_berry` | Enigma Berry | crop | 120 | 120 | 120 | current-base | 0 | 0 |  |  |
+| `cobblemon:custap_berry` | Custap Berry | crop | 120 | 120 | 120 | current-base | 0 | 0 |  |  |
+| `vinery:bottle_mojang_noir` | A Bottle of 'Mojang Noir' | manual | 120 | 120 | 142 | recipe | 1 | 1 | vinery_wine | manual category |
+| `vinery:creepers_crush` | A Bottle of 'Creepers Crush' | manual | 120 | 120 | 60 | recipe | 3 | 1 | vinery_wine | manual category |
+| `vinery:eiswein` | Eiswein | manual | 120 | 120 | 43 | recipe | 2 | 1 | vinery_wine | manual category |
+| `vinery:jo_special_mixture` | Jo's Special Mixture | manual | 120 | 120 | 57 | recipe | 2 | 1 | vinery_wine | manual category |
+| `vinery:villagers_fright` | A Bottle of 'Villagers Fright' | manual | 120 | 120 | 84 | recipe | 2 | 1 | vinery_wine | manual category |
+| `cobblemon:micle_berry` | Micle Berry | crop | 120 | 120 | 120 | current-base | 0 | 0 |  |  |
+| `cobblemon:jaboca_berry` | Jaboca Berry | crop | 120 | 120 | 120 | current-base | 0 | 0 |  |  |
+| `farmersdelight:steak_and_potatoes` | Steak and Potatoes | meal | 110 | 110 | 77 | recipe | 2 | 1 | recipe |  |
+| `farmersdelight:bacon_and_eggs` | Bacon and Eggs | meal | 110 | 110 | 78 | recipe | 1 | 1 | recipe |  |
+| `oceansdelight:elder_guardian_roll` | Roll of Elder Guardian | meal | 110 | 110 | 78 | recipe | 2 | 1 | recipe |  |
 | `expandeddelight:peperonata` | Peperonata | manual | 95 | 120 | 103 | recipe | 1 | 1 | farmersdelight | manual category |
 | `expandeddelight:snickerdoodle` | Snickerdoodle | manual | 95 | ? | ? |  | 0 | 1 | recipe | unknown cost/manual review, manual category |
-| `farmersdelight:mushroom_rice` | Mushroom Rice | meal | 95 | 120 | 90 | heuristic | 0 | 1 | farmersdelight |  |
+| `farmersdelight:bacon_sandwich` | Bacon Sandwich | meal | 95 | 120 | 90 | heuristic | 0 | 1 | recipe |  |
+| `ubesdelight:sinangag` | Sinangag | manual | 95 | ? | ? |  | 0 | 1 | farmersdelight | unknown cost/manual review, manual category |
+| `ubesdelight:lumpia` | Lumpia | manual | 95 | ? | ? |  | 0 | 1 | farmersdelight | unknown cost/manual review, manual category |
+| `farmersdelight:barbecue_stick` | Barbecue on a Stick | manual | 95 | ? | ? |  | 0 | 1 | recipe | unknown cost/manual review, manual category |
+| `ubesdelight:tocino` | Tocino | manual | 95 | ? | ? |  | 0 | 1 | farmersdelight | unknown cost/manual review, manual category |
+| `ubesdelight:arroz_caldo` | Arroz Caldo | manual | 95 | ? | ? |  | 0 | 1 | farmersdelight | unknown cost/manual review, manual category |
+| `ubesdelight:kinilaw` | Kinilaw | manual | 95 | ? | ? |  | 0 | 2 | recipe | unknown cost/manual review, manual category |
+| `farmersdelight:chicken_sandwich` | Chicken Sandwich | meal | 95 | 120 | 90 | heuristic | 0 | 1 | recipe |  |
+| `oceansdelight:stuffed_squid` | Stuffed Squid | meal | 95 | 120 | 90 | heuristic | 0 | 1 | recipe |  |
+| `expandeddelight:asparagus_and_bacon_cheesy` | Cheesy Asparagus and Bacon | meal | 95 | 95 | 71 | recipe | 1 | 1 | farmersdelight |  |
+| `oceansdelight:braised_sea_pickle` | Braised Sea Pickle | manual | 95 | ? | ? |  | 0 | 1 | farmersdelight | unknown cost/manual review, manual category |
+| `oceansdelight:cooked_stuffed_squid` | Cooked Stuffed Squid | meal | 95 | 120 | 90 | recipe | 1 | 3 | cooking |  |
+| `oceansdelight:stuffed_cod` | Stuffed Cod | meal | 95 | 120 | 90 | heuristic | 0 | 1 | recipe |  |
 | `farmersdelight:mutton_wrap` | Mutton Wrap | meal | 95 | 120 | 90 | heuristic | 0 | 1 | recipe |  |
+| `oceansdelight:cooked_stuffed_cod` | Cooked Stuffed Cod | meal | 95 | 120 | 90 | recipe | 1 | 3 | cooking |  |
+| `farmersdelight:mushroom_rice` | Mushroom Rice | meal | 95 | 120 | 90 | heuristic | 0 | 1 | farmersdelight |  |
+| `ubesdelight:ensaymada_ube` | Ube Ensaymada | manual | 85 | ? | ? |  | 0 | 3 | cooking | unknown cost/manual review, manual category |
+| `ubesdelight:pandesal` | Pandesal | manual | 85 | ? | ? |  | 0 | 3 | cooking | unknown cost/manual review, manual category |
+| `ubesdelight:polvorone_ube` | Ube Polvorone | manual | 85 | ? | ? |  | 0 | 0 |  | unknown cost/manual review, manual category |
+| `ubesdelight:ensaymada` | Ensaymada | manual | 85 | ? | ? |  | 0 | 3 | cooking | unknown cost/manual review, manual category |
+| `farmersdelight:pumpkin_pie_slice` | Slice of Pumpkin Pie | meal | 85 | 120 | 90 | heuristic | 0 | 0 |  |  |
+| `ubesdelight:polvorone_pinipig` | Pinipig Polvorone | manual | 85 | ? | ? |  | 0 | 0 |  | unknown cost/manual review, manual category |
+| `ubesdelight:polvorone_cc` | Cookies and Cream Polvorone | manual | 85 | ? | ? |  | 0 | 0 |  | unknown cost/manual review, manual category |
+| `farmersdelight:sweet_berry_cheesecake_slice` | Slice of Sweet Berry Cheesecake | meal | 85 | 120 | 90 | heuristic | 0 | 0 |  |  |
+| `ubesdelight:hopia_munggo` | Hopia Munggo | manual | 85 | ? | ? |  | 0 | 3 | cooking | unknown cost/manual review, manual category |
+| `ubesdelight:ube_cake_slice` | Ube Cake Slice | meal | 85 | 120 | 90 | heuristic | 0 | 0 |  |  |
 
 ## Missing Sellable Candidates
 
@@ -624,6 +553,10 @@ _Showing 220 of 1094. See CSV for full data._
 | `adorn:cobblemon/saccharine_step` | cobblemon/saccharine_step | crop | - | 10 | 10 | heuristic | 0 | 1 | recipe | missing candidate |
 | `ae2:sky_stone_block` | sky_stone_block | feast | - | 440 | 320 | heuristic | 0 | 0 |  | missing candidate |
 | `alexsmobs:fish_oil` | fish_oil | fish | - | 24 | 24 | heuristic | 0 | 0 |  | missing candidate |
+| `archers:spell_scroll/archer` | Archery Scroll | meal | - | 120 | 90 | heuristic | 0 | 0 |  | missing candidate |
+| `archers_expansion:spell_scroll/deadeye` | Deadeye Scroll | meal | - | 120 | 90 | heuristic | 0 | 0 |  | missing candidate |
+| `archers_expansion:spell_scroll/tundra_hunter` | Tundra Hunter Scroll | meal | - | 120 | 90 | heuristic | 0 | 0 |  | missing candidate |
+| `archers_expansion:spell_scroll/war_archer` | War Archer Scroll | meal | - | 120 | 90 | heuristic | 0 | 0 |  | missing candidate |
 | `ashenwheat:ash_cookie` | ash_cookie | meal | - | 120 | 90 | heuristic | 0 | 0 |  | missing candidate |
 | `ashenwheat:scintilla_cookie` | scintilla_cookie | meal | - | 120 | 90 | heuristic | 0 | 0 |  | missing candidate |
 | `autumnity:cooked_turkey` | cooked_turkey | cooked | - | 45 | 36 | heuristic | 0 | 0 |  | missing candidate |
@@ -641,14 +574,16 @@ _Showing 220 of 1094. See CSV for full data._
 | `bards_rpg:iron_rapier` | Iron Rapier | meal | - | 120 | 90 | heuristic | 0 | 1 | recipe | missing candidate |
 | `bards_rpg:netherite_rapier` | Netherite Rapier | meal | - | 120 | 90 | heuristic | 0 | 0 |  | missing candidate |
 | `bards_rpg:ruby_rapier` | Ruby Rapier | meal | - | 120 | 90 | heuristic | 0 | 0 |  | missing candidate |
+| `bards_rpg:spell_scroll/bard` | Bard Ballad | meal | - | 120 | 90 | heuristic | 0 | 0 |  | missing candidate |
 | `bards_rpg:unique_rapier_0` | Singing Blade | meal | - | 120 | 90 | heuristic | 0 | 0 |  | missing candidate |
 | `bards_rpg:unique_rapier_1` | Duelist's Rapier | meal | - | 120 | 90 | heuristic | 0 | 0 |  | missing candidate |
 | `bards_rpg:wither_rapier` | Withered Rapier | meal | - | 120 | 90 | heuristic | 0 | 0 |  | missing candidate |
-| `bayou_blues:honey_glazed_gooseberries` | honey_glazed_gooseberries | animal | - | 24 | 24 | heuristic | 0 | 0 |  | missing candidate |
 | `bayou_blues:gooseberry_jam_cookie` | gooseberry_jam_cookie | meal | - | 120 | 90 | heuristic | 0 | 0 |  | missing candidate |
+| `bayou_blues:honey_glazed_gooseberries` | honey_glazed_gooseberries | meal | - | 120 | 90 | heuristic | 0 | 0 |  | missing candidate |
 | `beachparty:seashell_block` | Seashell | feast | - | 440 | 320 | heuristic | 0 | 0 |  | missing candidate |
 | `beachparty:wet_hay_block` | Wet Hay Block | feast | - | 440 | 320 | heuristic | 0 | 0 |  | missing candidate |
 | `berserker_rpg:elder_guardian_berserker_axe` | Sunken Captain | fish | - | 24 | 24 | heuristic | 0 | 0 |  | missing candidate |
+| `berserker_rpg:spell_scroll/berserker` | Berserker Rune Scroll | meal | - | 120 | 90 | heuristic | 0 | 0 |  | missing candidate |
 | `betterendforge:salteago` | salteago | crop | - | 10 | 10 | heuristic | 0 | 0 |  | missing candidate |
 | `betterendforge:amber_root_seed` | amber_root_seed | seed | - | 1 | 1 | heuristic | 0 | 0 |  | missing candidate |
 | `betterendforge:blossom_berry_seed` | blossom_berry_seed | seed | - | 1 | 1 | heuristic | 0 | 0 |  | missing candidate |
@@ -665,7 +600,7 @@ _Showing 220 of 1094. See CSV for full data._
 | `biomeswevegone:aloe_vera_juice` | aloe_vera_juice | drink | - | 55 | 40 | heuristic | 0 | 0 |  | missing candidate |
 | `biomeswevegone:allium_oddion_soup` | allium_oddion_soup | meal | - | 120 | 90 | heuristic | 0 | 0 |  | missing candidate |
 | `biomeswevegone:white_puffball_stew` | white_puffball_stew | meal | - | 120 | 90 | heuristic | 0 | 0 |  | missing candidate |
-| `block_factorys_bosses:rope_roll` | Rope Roll | meal | - | 190 | 144 | recipe | 1 | 1 | recipe | missing candidate |
+| `block_factorys_bosses:rope_roll` | Rope Roll | meal | - | 250 | 192 | recipe | 1 | 1 | recipe | missing candidate |
 | `blue_skies:cherry_grass` | cherry_grass | crop | - | 10 | 10 | heuristic | 0 | 0 |  | missing candidate |
 | `botania:mana_cookie` | mana_cookie | meal | - | 120 | 90 | heuristic | 0 | 0 |  | missing candidate |
 | `buddycardsexp:buddycookie` | buddycookie | meal | - | 120 | 90 | heuristic | 0 | 0 |  | missing candidate |
@@ -675,9 +610,8 @@ _Showing 220 of 1094. See CSV for full data._
 | `byg:sythian_stalk_block` | sythian_stalk_block | feast | - | 440 | 320 | heuristic | 0 | 0 |  | missing candidate |
 | `cinderscapes:bramble_berries` | bramble_berries | crop | - | 10 | 10 | heuristic | 0 | 0 |  | missing candidate |
 | `cobblemon:lucky_egg` | Lucky Egg | animal | - | 24 | 24 | heuristic | 0 | 0 |  | missing candidate |
-| `cobblemon:roasted_leek` | Roasted Leek | cooked | - | 45 | 36 | heuristic | 0 | 3 | cooking | missing candidate |
 | `cobblemon:candied_apple` | Candied Apple | crop | - | 10 | 10 | heuristic | 0 | 1 | recipe | missing candidate |
-| `cobblemon:old_gateau` | Old Gateau | crop | - | 10 | 10 | heuristic | 0 | 1 | recipe | missing candidate |
+| `cobblemon:old_gateau` | Old Gateau | crop | - | 37 | 37 | recipe | 1 | 1 | recipe | missing candidate |
 | `cobblemon:potato_mochi` | Potato Mochi | crop | - | 10 | 10 | heuristic | 0 | 1 | recipe | missing candidate |
 | `cobblemon:syrupy_apple` | Syrupy Apple | crop | - | 10 | 10 | heuristic | 0 | 0 |  | missing candidate |
 | `cobblemon:tart_apple` | Tart Apple | crop | - | 10 | 10 | heuristic | 0 | 0 |  | missing candidate |
@@ -707,10 +641,13 @@ _Showing 220 of 1094. See CSV for full data._
 | `cobblemon:thunder_stone_block` | Thunder Stone Block | feast | - | 460 | 324 | recipe | 2 | 1 | recipe | missing candidate |
 | `cobblemon:tumblestone_block` | Block of Tumblestone | feast | - | 450 | 320 | recipe | 2 | 1 | recipe | missing candidate |
 | `cobblemon:water_stone_block` | Water Stone Block | feast | - | 460 | 324 | recipe | 2 | 1 | recipe | missing candidate |
+| `cobblemon:fossilized_fish` | Fossilized Fish | fish | - | 24 | 24 | heuristic | 0 | 0 |  | missing candidate |
+| `cobblemon:healing_machine` | Healing Machine | meal | - | 120 | 90 | heuristic | 0 | 1 | recipe | missing candidate |
 | `cobblemon:lava_cookie` | Lava Cookie | meal | - | 120 | 90 | heuristic | 0 | 1 | recipe | missing candidate |
-| `cobblemon:leek_and_potato_stew` | Leek and Potato Stew | meal | - | 100 | 74 | recipe | 1 | 2 | recipe | missing candidate |
+| `cobblemon:leek_and_potato_stew` | Leek and Potato Stew | meal | - | 170 | 128 | recipe | 1 | 2 | recipe | missing candidate |
 | `cobblemon:open_faced_sandwich` | Open-Faced Sandwich | meal | - | 120 | 90 | heuristic | 0 | 1 | recipe | missing candidate |
 | `cobblemon:poke_cake` | Poké Cake | meal | - | 120 | 90 | heuristic | 0 | 0 |  | missing candidate |
+| `cobblemon:roasted_leek` | Roasted Leek | meal | - | 120 | 90 | heuristic | 0 | 3 | cooking | missing candidate |
 | `cobblemon:blue_mint_seeds` | blue_mint_seeds | seed | - | 1 | 1 | heuristic | 0 | 0 |  | missing candidate |
 | `cobblemon:cyan_mint_seeds` | cyan_mint_seeds | seed | - | 1 | 1 | heuristic | 0 | 0 |  | missing candidate |
 | `cobblemon:electric_seed` | Electric Seed | seed | - | 1 | 1 | heuristic | 0 | 0 |  | missing candidate |
@@ -759,33 +696,34 @@ _Showing 220 of 1094. See CSV for full data._
 | `create:linked_controller` | Linked Controller | meal | - | 120 | 90 | heuristic | 0 | 1 | recipe | missing candidate |
 | `create:mechanical_roller` | Mechanical Roller | meal | - | 120 | 90 | heuristic | 0 | 1 | recipe | missing candidate |
 | `create:rotation_speed_controller` | Rotation Speed Controller | meal | - | 120 | 90 | heuristic | 0 | 1 | recipe | missing candidate |
+| `create:schematic_and_quill` | Schematic And Quill | meal | - | 120 | 90 | heuristic | 0 | 1 | recipe | missing candidate |
 | `create_enchantment_industry:super_experience_block` | Block of Super Experience | feast | - | 460 | 324 | recipe | 2 | 1 | recipe | missing candidate |
 | `create_enchantment_industry:experience_cake` | Cake o' Enchanting | meal | - | 120 | 90 | recipe | 1 | 1 | create | missing candidate |
 | `create_enchantment_industry:experience_cake_base` | Cake Base o' Enchanting | meal | - | 120 | 90 | heuristic | 0 | 1 | create | missing candidate |
 | `create_enchantment_industry:experience_cake_slice` | Cake Slice o' Enchanting | meal | - | 30 | 23 | recipe | 1 | 1 | create | missing candidate |
 | `createaddition:biomass_pellet_block` | Biomass Pallet | feast | - | 30 | 18 | recipe | 3 | 1 | recipe | missing candidate |
 | `createaddition:electrum_block` | Electrum Block | feast | - | 440 | 320 | recipe | 1 | 2 | create,recipe | missing candidate |
-| `createaddition:cake_base` | Cake Base | meal | - | 120 | 90 | heuristic | 0 | 1 | create | missing candidate |
-| `createaddition:cake_base_baked` | Baked Cake Base | meal | - | 120 | 90 | recipe | 1 | 1 | cooking | missing candidate |
-| `createaddition:chocolate_cake` | Chocolate Cake | meal | - | 130 | 90 | recipe | 2 | 1 | create | missing candidate |
-| `createaddition:honey_cake` | Honey Cake | meal | - | 130 | 90 | recipe | 2 | 1 | create | missing candidate |
+| `createaddition:cake_base` | Cake Base | meal | - | 45 | 30 | recipe | 2 | 1 | create | missing candidate |
+| `createaddition:cake_base_baked` | Baked Cake Base | meal | - | 45 | 30 | recipe | 3 | 1 | cooking | missing candidate |
+| `createaddition:chocolate_cake` | Chocolate Cake | meal | - | 45 | 30 | recipe | 4 | 1 | create | missing candidate |
+| `createaddition:honey_cake` | Honey Cake | meal | - | 45 | 30 | recipe | 4 | 1 | create | missing candidate |
 | `createaddition:rolling_mill` | Rolling Mill | meal | - | 120 | 90 | heuristic | 0 | 1 | recipe | missing candidate |
-| `createdeco:corner_blue_brick_wall` | Corner Blue Brick Wall | crop | - | 10 | 10 | recipe | 3 | 10 | cutting,recipe | missing candidate |
-| `createdeco:corner_blue_bricks` | Corner Blue Bricks | crop | - | 10 | 10 | recipe | 4 | 4 | cutting | missing candidate |
+| `createdeco:corner_blue_brick_wall` | Corner Blue Brick Wall | crop | - | 10 | 10 | recipe | 6 | 10 | cutting,recipe | missing candidate |
+| `createdeco:corner_blue_bricks` | Corner Blue Bricks | crop | - | 10 | 10 | recipe | 2 | 4 | cutting | missing candidate |
 | `createdeco:corner_dean_brick_wall` | Corner Dean Brick Wall | crop | - | 10 | 10 | recipe | 2 | 10 | cutting,recipe | missing candidate |
 | `createdeco:corner_dean_bricks` | Corner Dean Bricks | crop | - | 10 | 10 | recipe | 2 | 4 | cutting | missing candidate |
-| `createdeco:corner_dusk_brick_wall` | Corner Dusk Brick Wall | crop | - | 10 | 10 | recipe | 4 | 10 | cutting,recipe | missing candidate |
+| `createdeco:corner_dusk_brick_wall` | Corner Dusk Brick Wall | crop | - | 10 | 10 | recipe | 2 | 10 | cutting,recipe | missing candidate |
 | `createdeco:corner_dusk_bricks` | Corner Dusk Bricks | crop | - | 10 | 10 | recipe | 2 | 4 | cutting | missing candidate |
 | `createdeco:corner_pearl_brick_wall` | Corner Pearl Brick Wall | crop | - | 10 | 10 | recipe | 1 | 10 | cutting,recipe | missing candidate |
-| `createdeco:corner_pearl_bricks` | Corner Pearl Bricks | crop | - | 10 | 10 | recipe | 3 | 4 | cutting | missing candidate |
+| `createdeco:corner_pearl_bricks` | Corner Pearl Bricks | crop | - | 10 | 10 | recipe | 2 | 4 | cutting | missing candidate |
 | `createdeco:corner_red_brick_wall` | Corner Red Brick Wall | crop | - | 10 | 10 | recipe | 1 | 9 | cutting,recipe | missing candidate |
 | `createdeco:corner_red_bricks` | Corner Red Bricks | crop | - | 10 | 10 | recipe | 3 | 4 | cutting | missing candidate |
 | `createdeco:corner_scarlet_brick_wall` | Corner Scarlet Brick Wall | crop | - | 10 | 10 | recipe | 3 | 10 | cutting,recipe | missing candidate |
 | `createdeco:corner_scarlet_bricks` | Corner Scarlet Bricks | crop | - | 10 | 10 | recipe | 2 | 4 | cutting | missing candidate |
-| `createdeco:corner_umber_brick_wall` | Corner Umber Brick Wall | crop | - | 10 | 10 | recipe | 5 | 10 | cutting,recipe | missing candidate |
+| `createdeco:corner_umber_brick_wall` | Corner Umber Brick Wall | crop | - | 10 | 10 | recipe | 3 | 10 | cutting,recipe | missing candidate |
 | `createdeco:corner_umber_bricks` | Corner Umber Bricks | crop | - | 10 | 10 | recipe | 2 | 4 | cutting | missing candidate |
 | `createdeco:corner_verdant_brick_wall` | Corner Verdant Brick Wall | crop | - | 10 | 10 | recipe | 3 | 10 | cutting,recipe | missing candidate |
-| `createdeco:corner_verdant_bricks` | Corner Verdant Bricks | crop | - | 10 | 10 | recipe | 3 | 4 | cutting | missing candidate |
+| `createdeco:corner_verdant_bricks` | Corner Verdant Bricks | crop | - | 10 | 10 | recipe | 2 | 4 | cutting | missing candidate |
 | `croptopia:nutty_cookie` | nutty_cookie | meal | - | 120 | 90 | heuristic | 0 | 0 |  | missing candidate |
 | `croptopia:raisin_oatmeal_cookie` | raisin_oatmeal_cookie | meal | - | 120 | 90 | heuristic | 0 | 0 |  | missing candidate |
 | `cspirit:gingerbread_cookie_circle` | gingerbread_cookie_circle | meal | - | 120 | 90 | heuristic | 0 | 0 |  | missing candidate |
@@ -798,11 +736,14 @@ _Showing 220 of 1094. See CSV for full data._
 | `dynamictreesplus:pillar_cactus_seed` | pillar_cactus_seed | seed | - | 1 | 1 | heuristic | 0 | 0 |  | missing candidate |
 | `dynamictreesplus:pipe_cactus_seed` | pipe_cactus_seed | seed | - | 1 | 1 | heuristic | 0 | 0 |  | missing candidate |
 | `dynamictreesplus:saguaro_cactus_seed` | saguaro_cactus_seed | seed | - | 1 | 1 | heuristic | 0 | 0 |  | missing candidate |
+| `elemental_wizards_rpg:spell_scroll/aqua` | Water Spell Scroll | meal | - | 120 | 90 | heuristic | 0 | 0 |  | missing candidate |
+| `elemental_wizards_rpg:spell_scroll/terra` | Earth Spell Scroll | meal | - | 120 | 90 | heuristic | 0 | 0 |  | missing candidate |
+| `elemental_wizards_rpg:spell_scroll/wind` | Wind Spell Scroll | meal | - | 120 | 90 | heuristic | 0 | 0 |  | missing candidate |
 | `environmental:cherry_hedge` | cherry_hedge | crop | - | 10 | 10 | heuristic | 0 | 0 |  | missing candidate |
 | `environmental:cattail_seeds` | cattail_seeds | seed | - | 1 | 1 | heuristic | 0 | 0 |  | missing candidate |
 | `expandeddelight:cheese_wheel` | Cheese Wheel | animal | - | 24 | 24 | heuristic | 0 | 0 |  | missing candidate |
 | `expandeddelight:goat_cheese_wheel` | Goat Cheese Wheel | animal | - | 24 | 24 | heuristic | 0 | 0 |  | missing candidate |
-| `expandeddelight:honeyed_goat_cheese_tart` | Honeyed Goat Cheese Tart | animal | - | 90 | 164 | recipe | 3 | 2 | recipe | missing candidate |
+| `expandeddelight:honeyed_goat_cheese_tart` | Honeyed Goat Cheese Tart | animal | - | 90 | 162 | recipe | 2 | 2 | recipe | missing candidate |
 | `expandeddelight:asparagus_crop` | Asparagus | crop | - | 10 | 10 | heuristic | 0 | 0 |  | missing candidate |
 | `expandeddelight:chili_pepper_crop` | Chili Peppers | crop | - | 10 | 10 | heuristic | 0 | 0 |  | missing candidate |
 | `expandeddelight:cranberry_cobbler` | Cranberry Cobbler | crop | - | 40 | 40 | recipe | 1 | 2 | recipe | missing candidate |
@@ -827,19 +768,21 @@ _Showing 220 of 1094. See CSV for full data._
 | `farmersdelight:wild_potatoes` | Wild Potato | crop | - | 10 | 10 | heuristic | 0 | 0 |  | missing candidate |
 | `farmersdelight:wild_tomatoes` | Tomato Shrub | crop | - | 10 | 10 | heuristic | 0 | 0 |  | missing candidate |
 | `farmersdelight:apple_pie` | Apple Pie | meal | - | 250 | 360 | recipe | 1 | 2 | recipe | missing candidate |
-| `farmersdelight:chocolate_pie` | Chocolate Pie | meal | - | 250 | 360 | recipe | 1 | 3 | create,recipe | missing candidate |
+| `farmersdelight:chocolate_pie` | Chocolate Pie | meal | - | 120 | 83 | recipe | 2 | 3 | create,recipe | missing candidate |
 | `farmersdelight:peanut_butter_cookie` | peanut_butter_cookie | meal | - | 120 | 90 | heuristic | 0 | 0 |  | missing candidate |
 | `farmersdelight:pumpkin_pie` | Pumpkin Pie | meal | - | 120 | 90 | heuristic | 0 | 0 |  | missing candidate |
 | `farmersdelight:rice_bale` | Rice Bale | meal | - | 14 | 9 | recipe | 15 | 1 | recipe | missing candidate |
 | `farmersdelight:rice_panicles` | Rice Panicles | meal | - | 120 | 90 | heuristic | 0 | 0 |  | missing candidate |
-| `farmersdelight:sweet_berry_cheesecake` | Sweet Berry Cheesecake | meal | - | 130 | 90 | recipe | 3 | 2 | recipe | missing candidate |
+| `farmersdelight:sweet_berry_cheesecake` | Sweet Berry Cheesecake | meal | - | 130 | 90 | recipe | 2 | 2 | recipe | missing candidate |
 | `farmersdelight:wild_rice` | Wild Rice | meal | - | 120 | 90 | heuristic | 0 | 0 |  | missing candidate |
 | `farmersrespite:green_tea_cookie` | green_tea_cookie | drink | - | 55 | 40 | heuristic | 0 | 0 |  | missing candidate |
+| `fdbosses:fire_and_ice_core` | Fire and Ice Core | meal | - | 120 | 90 | heuristic | 0 | 0 |  | missing candidate |
 | `feywild:magical_honey_cookie` | magical_honey_cookie | meal | - | 120 | 90 | heuristic | 0 | 0 |  | missing candidate |
 | `fireworkcapsules:sticker_block` | Sticker | feast | - | 440 | 320 | heuristic | 0 | 0 |  | missing candidate |
 | `fluffy_farmer:berry_cookie` | berry_cookie | meal | - | 120 | 90 | heuristic | 0 | 0 |  | missing candidate |
 | `fluffy_farmer:chocolate_cookie` | chocolate_cookie | meal | - | 120 | 90 | heuristic | 0 | 0 |  | missing candidate |
 | `forcemaster_rpg:elder_guardian_knuckle` | Fist of Tides | fish | - | 24 | 24 | heuristic | 0 | 0 |  | missing candidate |
+| `forcemaster_rpg:spell_scroll/forcemaster` | Forcemaster Skill Scroll | meal | - | 120 | 90 | heuristic | 0 | 0 |  | missing candidate |
 | `fruitful:apple_oak_hedge` | apple_oak_hedge | crop | - | 10 | 10 | heuristic | 0 | 0 |  | missing candidate |
 | `fruitfulfun:lemon_roast_chicken_block` | lemon_roast_chicken_block | feast | - | 440 | 320 | heuristic | 0 | 0 |  | missing candidate |
 | `galosphere:allurite_block` | allurite_block | feast | - | 440 | 320 | heuristic | 0 | 0 |  | missing candidate |
@@ -847,9 +790,9 @@ _Showing 220 of 1094. See CSV for full data._
 | `galosphere:lumiere_block` | lumiere_block | feast | - | 440 | 320 | heuristic | 0 | 0 |  | missing candidate |
 | `hauntedharvest:rotten_apple` | rotten_apple | crop | - | 12 | 12 | recipe | 1 | 1 | create | missing candidate |
 | `hearthandharvest:goat_cheese_slice` | goat_cheese_slice | animal | - | 24 | 24 | heuristic | 0 | 0 |  | missing candidate |
-| `herbalbrews:black_tea` | black_tea | drink | - | 55 | 40 | heuristic | 0 | 1 | recipe | missing candidate |
+| `herbalbrews:black_tea` | black_tea | drink | - | 70 | 51 | recipe | 1 | 1 | recipe | missing candidate |
 | `herbalbrews:black_tea_leaf_block` | Black Tea Leaf Block | drink | - | 55 | 40 | heuristic | 0 | 0 |  | missing candidate |
-| `herbalbrews:coffee` | coffee | drink | - | 65 | 44 | recipe | 2 | 1 | recipe | missing candidate |
+| `herbalbrews:coffee` | coffee | drink | - | 60 | 44 | recipe | 1 | 1 | recipe | missing candidate |
 | `herbalbrews:coffee_beans` | coffee_beans | drink | - | 55 | 40 | recipe | 1 | 1 | recipe | missing candidate |
 | `herbalbrews:coffee_plant` | Coffee Beans | drink | - | 55 | 40 | heuristic | 0 | 0 |  | missing candidate |
 | `herbalbrews:copper_tea_kettle` | Copper Tea Kettle | drink | - | 55 | 40 | heuristic | 0 | 1 | recipe | missing candidate |
@@ -860,7 +803,7 @@ _Showing 220 of 1094. See CSV for full data._
 | `herbalbrews:herbalbrews_banner` | Completionist Banner: §aHerbal Brews | drink | - | 55 | 40 | heuristic | 0 | 0 |  | missing candidate |
 | `herbalbrews:hibiscus_tea` | hibiscus_tea | drink | - | 55 | 40 | heuristic | 0 | 1 | recipe | missing candidate |
 | `herbalbrews:lavender_tea` | lavender_tea | drink | - | 55 | 40 | heuristic | 0 | 1 | recipe | missing candidate |
-| `herbalbrews:milk_coffee` | milk_coffee | drink | - | 80 | 58 | recipe | 1 | 1 | recipe | missing candidate |
+| `herbalbrews:milk_coffee` | milk_coffee | drink | - | 90 | 62 | recipe | 2 | 1 | recipe | missing candidate |
 | `herbalbrews:mixed_tea_leaf_block` | Mixed Tea Leaf Block | drink | - | 440 | 320 | recipe | 1 | 1 | recipe | missing candidate |
 | `herbalbrews:oolong_tea` | oolong_tea | drink | - | 60 | 44 | recipe | 1 | 1 | recipe | missing candidate |
 | `herbalbrews:oolong_tea_leaf_block` | Oolong Tea Leaf Block | drink | - | 55 | 40 | heuristic | 0 | 0 |  | missing candidate |
@@ -890,20 +833,6 @@ _Showing 220 of 1094. See CSV for full data._
 | `minecraft:brown_wool` | brown_wool | animal | - | 24 | 24 | heuristic | 0 | 0 |  | missing candidate |
 | `minecraft:cyan_wool` | cyan_wool | animal | - | 24 | 24 | heuristic | 0 | 0 |  | missing candidate |
 | `minecraft:gray_wool` | gray_wool | animal | - | 24 | 24 | heuristic | 0 | 0 |  | missing candidate |
-| `minecraft:green_wool` | green_wool | animal | - | 24 | 24 | heuristic | 0 | 0 |  | missing candidate |
-| `minecraft:honeycomb` | honeycomb | animal | - | 80 | 80 | recipe | 1 | 1 | vinery_process | missing candidate |
-| `minecraft:light_blue_wool` | light_blue_wool | animal | - | 24 | 24 | heuristic | 0 | 0 |  | missing candidate |
-| `minecraft:light_gray_wool` | light_gray_wool | animal | - | 24 | 24 | heuristic | 0 | 0 |  | missing candidate |
-| `minecraft:lime_wool` | lime_wool | animal | - | 24 | 24 | heuristic | 0 | 0 |  | missing candidate |
-| `minecraft:magenta_wool` | magenta_wool | animal | - | 24 | 24 | heuristic | 0 | 0 |  | missing candidate |
-| `minecraft:orange_wool` | orange_wool | animal | - | 24 | 24 | heuristic | 0 | 0 |  | missing candidate |
-| `minecraft:pink_wool` | pink_wool | animal | - | 24 | 24 | heuristic | 0 | 0 |  | missing candidate |
-| `minecraft:purple_wool` | purple_wool | animal | - | 24 | 24 | heuristic | 0 | 0 |  | missing candidate |
-| `minecraft:red_wool` | red_wool | animal | - | 24 | 24 | heuristic | 0 | 0 |  | missing candidate |
-| `minecraft:sniffer_egg` | sniffer_egg | animal | - | 24 | 24 | heuristic | 0 | 0 |  | missing candidate |
-| `minecraft:white_wool` | white_wool | animal | - | 24 | 24 | heuristic | 0 | 3 | create,recipe | missing candidate |
-| `minecraft:yellow_wool` | yellow_wool | animal | - | 24 | 24 | heuristic | 0 | 0 |  | missing candidate |
-| `minecraft:carved_pumpkin` | carved_pumpkin | crop | - | 10 | 10 | heuristic | 0 | 0 |  | missing candidate |
 
-_Showing 300 of 1378. See CSV for full data._
+_Showing 300 of 1523. See CSV for full data._
 

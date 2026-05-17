@@ -4,21 +4,21 @@
   "entries": [
     {
       "item": "minecraft:wheat",
-      "price_amount": 100
+      "price_amount": 8
     },
     {
       "item": "minecraft:carrot",
-      "price_amount": 75
+      "price_amount": 10
     },
     {
       "tag": "minecraft:crops",
-      "price_amount": 50
+      "price_amount": 8
     }
   ],
   "quality_food": {
     "enabled": true,
-    "iron_quality": 1.1,
-    "gold_quality": 1.25,
-    "diamond_quality": 1.5
+    "iron_quality": 1.25,
+    "gold_quality": 1.6,
+    "diamond_quality": 2.25
   }
 }

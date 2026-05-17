@@ -77,16 +77,16 @@ Default shape:
 payout_hour = 5
 payout_minute = 0
 entries = [
-  { item = "minecraft:wheat", price_amount = 100 },
-  { item = "minecraft:carrot", price_amount = 75 },
-  { tag = "minecraft:crops", price_amount = 50 },
+  { item = "minecraft:wheat", price_amount = 8 },
+  { item = "minecraft:carrot", price_amount = 10 },
+  { tag = "minecraft:crops", price_amount = 8 },
 ]
 
 [quality_food]
 enabled = true
-iron_quality = 1.1
-gold_quality = 1.25
-diamond_quality = 1.5
+iron_quality = 1.25
+gold_quality = 1.6
+diamond_quality = 2.25
 ```
 
 ## Price Resolution
@@ -141,7 +141,7 @@ Use these commands with Quality Food installed to get wheat with each tier:
 /give @s minecraft:wheat[quality_food:quality={level:3,type:"quality_food:diamond"}] 64
 ```
 
-With the default shipping config, one wheat sells for `100`, iron wheat sells for `110`, gold wheat sells for `125`, and diamond wheat sells for `150`.
+With the default shipping config, one wheat sells for `8`, iron wheat sells for `10`, gold wheat sells for `13`, and diamond wheat sells for `18`.
 
 ## Storage
 

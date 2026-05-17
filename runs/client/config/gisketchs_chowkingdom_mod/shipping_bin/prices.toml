@@ -114,33 +114,33 @@ entries = [
   { item = "cobblemon:wiki_berry", price_amount = 22 }, # Wiki Berry
   { item = "cobblemon:yache_berry", price_amount = 22 }, # Yache Berry
   # T4
-  { item = "cobblemon:apicot_berry", price_amount = 420 }, # Apicot Berry — rare stat berry
-  { item = "cobblemon:custap_berry", price_amount = 700 }, # Custap Berry — very rare berry
-  { item = "cobblemon:enigma_berry", price_amount = 700 }, # Enigma Berry — legendary-tier berry
-  { item = "cobblemon:ganlon_berry", price_amount = 420 }, # Ganlon Berry — rare stat berry
-  { item = "cobblemon:jaboca_berry", price_amount = 700 }, # Jaboca Berry — very rare berry
-  { item = "cobblemon:kee_berry", price_amount = 420 }, # Kee Berry — rare berry
-  { item = "cobblemon:lansat_berry", price_amount = 700 }, # Lansat Berry — very rare battle reward berry
-  { item = "cobblemon:liechi_berry", price_amount = 420 }, # Liechi Berry — rare stat berry
-  { item = "cobblemon:maranga_berry", price_amount = 420 }, # Maranga Berry — rare berry
-  { item = "cobblemon:micle_berry", price_amount = 700 }, # Micle Berry — very rare battle reward
-  { item = "cobblemon:petaya_berry", price_amount = 420 }, # Petaya Berry — rare stat berry
-  { item = "cobblemon:rowap_berry", price_amount = 700 }, # Rowap Berry — very rare berry
-  { item = "cobblemon:salac_berry", price_amount = 420 }, # Salac Berry — rare stat berry
-  { item = "cobblemon:starf_berry", price_amount = 700 }, # Starf Berry — ultra-rare battle reward berry
+  { item = "cobblemon:apicot_berry", price_amount = 10 }, # Apicot Berry — rare stat berry
+  { item = "cobblemon:custap_berry", price_amount = 120 }, # Custap Berry — very rare berry
+  { item = "cobblemon:enigma_berry", price_amount = 120 }, # Enigma Berry — legendary-tier berry
+  { item = "cobblemon:ganlon_berry", price_amount = 10 }, # Ganlon Berry — rare stat berry
+  { item = "cobblemon:jaboca_berry", price_amount = 120 }, # Jaboca Berry — very rare berry
+  { item = "cobblemon:kee_berry", price_amount = 10 }, # Kee Berry — rare berry
+  { item = "cobblemon:lansat_berry", price_amount = 120 }, # Lansat Berry — very rare battle reward berry
+  { item = "cobblemon:liechi_berry", price_amount = 10 }, # Liechi Berry — rare stat berry
+  { item = "cobblemon:maranga_berry", price_amount = 10 }, # Maranga Berry — rare berry
+  { item = "cobblemon:micle_berry", price_amount = 120 }, # Micle Berry — very rare battle reward
+  { item = "cobblemon:petaya_berry", price_amount = 10 }, # Petaya Berry — rare stat berry
+  { item = "cobblemon:rowap_berry", price_amount = 120 }, # Rowap Berry — very rare berry
+  { item = "cobblemon:salac_berry", price_amount = 10 }, # Salac Berry — rare stat berry
+  { item = "cobblemon:starf_berry", price_amount = 120 }, # Starf Berry — ultra-rare battle reward berry
   #
   # Create (create)
   # T1
   { item = "create:bar_of_chocolate", price_amount = 10 }, # Bar of Chocolate
-  { item = "create:dough", price_amount = 10 }, # Dough
-  { item = "create:wheat_flour", price_amount = 8 }, # Wheat Flour
+  { item = "create:dough", price_amount = 5 }, # Dough
+  { item = "create:wheat_flour", price_amount = 4 }, # Wheat Flour
   # T3
-  { item = "create:chocolate_glazed_berries", price_amount = 95 }, # Chocolate Glazed Berries
-  { item = "create:honeyed_apple", price_amount = 95 }, # Honeyed Apple
-  { item = "create:sweet_roll", price_amount = 95 }, # Sweet Roll
+  { item = "create:chocolate_glazed_berries", price_amount = 10 }, # Chocolate Glazed Berries
+  { item = "create:honeyed_apple", price_amount = 24 }, # Honeyed Apple
+  { item = "create:sweet_roll", price_amount = 35 }, # Sweet Roll
   # T4
-  { item = "create:blaze_cake", price_amount = 650 }, # Blaze Cake
-  { item = "create:blaze_cake_base", price_amount = 650 }, # Blaze Cake Base
+  { item = "create:blaze_cake", price_amount = 120 }, # Blaze Cake
+  { item = "create:blaze_cake_base", price_amount = 120 }, # Blaze Cake Base
   #
   # Expanded Delight (expandeddelight)
   # T0
@@ -170,11 +170,11 @@ entries = [
   { item = "expandeddelight:berry_sweet_roll", price_amount = 24 }, # Berry Sweet Roll — 5 ings but simple pattern
   { item = "expandeddelight:cheese_sandwich", price_amount = 34 }, # Cheese Sandwich — 2 ings: bread + cheese
   { item = "expandeddelight:cheese_slice", price_amount = 34 }, # Slice of Cheese
-  { item = "expandeddelight:chocolate_cookie", price_amount = 24 }, # Chocolate Cookie — 2 ings: cocoa + wheat
+  { item = "expandeddelight:chocolate_cookie", price_amount = 3 }, # Chocolate Cookie — 2 ings: cocoa + wheat
   { item = "expandeddelight:glow_berry_jelly_sandwich", price_amount = 24 }, # PB and Glow Berry Jelly Sandwich — 3 ings: bread+pb+jelly
   { item = "expandeddelight:glow_berry_sweet_roll", price_amount = 24 }, # Glow Berry Sweet Roll — 5 ings but simple pattern
   { item = "expandeddelight:goat_cheese_slice", price_amount = 34 }, # Slice of Goat Cheese
-  { item = "expandeddelight:goat_milk_bottle", price_amount = 34 }, # Goat Milk Bottle
+  { item = "expandeddelight:goat_milk_bottle", price_amount = 13 }, # Goat Milk Bottle
   { item = "expandeddelight:goat_milk_bucket", price_amount = 34 }, # Goat Milk Bucket
   { item = "expandeddelight:peanut_butter_honey_sandwich", price_amount = 34 }, # PB and Honey Sandwich — 3 ings: bread+pb+honey
   { item = "expandeddelight:peanut_butter_sandwich", price_amount = 24 }, # Peanut Butter Sandwich — 2 ings: bread + pb
@@ -187,21 +187,21 @@ entries = [
   { item = "expandeddelight:asparagus_mushroom_pasta", price_amount = 120 }, # Asparagus Mushroom Pasta
   { item = "expandeddelight:asparagus_soup", price_amount = 120 }, # Asparagus Soup
   { item = "expandeddelight:asparagus_soup_creamy", price_amount = 120 }, # Creamy Asparagus Soup
-  { item = "expandeddelight:chili_pepper_salmon", price_amount = 135 }, # Chili Pepper Salmon
-  { item = "expandeddelight:cinnamon_apples", price_amount = 95 }, # Cinnamon Apples
-  { item = "expandeddelight:cinnamon_rice", price_amount = 95 }, # Cinnamon Rice
-  { item = "expandeddelight:cranberry_chicken", price_amount = 135 }, # Cranberry Chicken
-  { item = "expandeddelight:cranberry_cobbler_slice", price_amount = 60 }, # Slice of Cranberry Cobbler
-  { item = "expandeddelight:cranberry_goat_cheese_toast", price_amount = 80 }, # Cranberry Goat Cheese Toast
+  { item = "expandeddelight:chili_pepper_salmon", price_amount = 38 }, # Chili Pepper Salmon
+  { item = "expandeddelight:cinnamon_apples", price_amount = 10 }, # Cinnamon Apples
+  { item = "expandeddelight:cinnamon_rice", price_amount = 17 }, # Cinnamon Rice
+  { item = "expandeddelight:cranberry_chicken", price_amount = 37 }, # Cranberry Chicken
+  { item = "expandeddelight:cranberry_cobbler_slice", price_amount = 10 }, # Slice of Cranberry Cobbler
+  { item = "expandeddelight:cranberry_goat_cheese_toast", price_amount = 30 }, # Cranberry Goat Cheese Toast
   { item = "expandeddelight:goat_cheese_beetroot_salad", price_amount = 80 }, # Goat Cheese Beetroot Salad
-  { item = "expandeddelight:grilled_cheese", price_amount = 80 }, # Grilled Cheese
+  { item = "expandeddelight:grilled_cheese", price_amount = 55 }, # Grilled Cheese
   { item = "expandeddelight:honeyed_goat_cheese_tart_slice", price_amount = 60 }, # Slice of Honeyed Goat Cheese Tart
   { item = "expandeddelight:mac_and_cheese", price_amount = 120 }, # Mac and Cheese
-  { item = "expandeddelight:peanut_honey_soup", price_amount = 120 }, # Honey Peanut Soup
+  { item = "expandeddelight:peanut_honey_soup", price_amount = 45 }, # Honey Peanut Soup
   { item = "expandeddelight:peanut_salad", price_amount = 80 }, # Peanut Salad
   { item = "expandeddelight:peperonata", price_amount = 95 }, # Peperonata
   { item = "expandeddelight:snickerdoodle", price_amount = 95 }, # Snickerdoodle
-  { item = "expandeddelight:sweet_potato_casserole", price_amount = 120 }, # Sweet Potato Casserole
+  { item = "expandeddelight:sweet_potato_casserole", price_amount = 55 }, # Sweet Potato Casserole
   { item = "expandeddelight:sweet_potato_salad", price_amount = 80 }, # Sweet Potato Salad
   #
   # Farmer's Delight (farmersdelight)
@@ -209,23 +209,23 @@ entries = [
   { item = "farmersdelight:cabbage_seeds", price_amount = 1 }, # Cabbage Seeds
   { item = "farmersdelight:earthworm", price_amount = 2 }, # Earthworm
   { item = "farmersdelight:rotten_tomato", price_amount = 1 }, # Rotten Tomato
-  { item = "farmersdelight:straw", price_amount = 4 }, # Straw
+  { item = "farmersdelight:straw", price_amount = 2 }, # Straw
   { item = "farmersdelight:tomato_seeds", price_amount = 1 }, # Tomato Seeds
   { item = "farmersdelight:tree_bark", price_amount = 1 }, # Tree Bark
   # T1
   { item = "farmersdelight:bone_broth", price_amount = 14 }, # Bone Broth — 1 ing: bone + water
-  { item = "farmersdelight:cabbage", price_amount = 10 }, # Cabbage
-  { item = "farmersdelight:cabbage_leaf", price_amount = 10 }, # Cabbage Leaf
-  { item = "farmersdelight:onion", price_amount = 10 }, # Onion
-  { item = "farmersdelight:pumpkin_slice", price_amount = 12 }, # Pumpkin Slice
-  { item = "farmersdelight:rice", price_amount = 8 }, # Rice
-  { item = "farmersdelight:rice_panicle", price_amount = 8 }, # Rice Panicle
-  { item = "farmersdelight:tomato", price_amount = 10 }, # Tomato
-  { item = "farmersdelight:tomato_sauce", price_amount = 14 }, # Tomato Sauce
+  { item = "farmersdelight:cabbage", price_amount = 1 }, # Cabbage
+  { item = "farmersdelight:cabbage_leaf", price_amount = 1 }, # Cabbage Leaf
+  { item = "farmersdelight:onion", price_amount = 1 }, # Onion
+  { item = "farmersdelight:pumpkin_slice", price_amount = 3 }, # Pumpkin Slice
+  { item = "farmersdelight:rice", price_amount = 2 }, # Rice
+  { item = "farmersdelight:rice_panicle", price_amount = 2 }, # Rice Panicle
+  { item = "farmersdelight:tomato", price_amount = 1 }, # Tomato
+  { item = "farmersdelight:tomato_sauce", price_amount = 2 }, # Tomato Sauce
   # T2
   { item = "farmersdelight:apple_cider", price_amount = 28 }, # Apple Cider — simple: apple + sugar
   { item = "farmersdelight:bacon", price_amount = 26 }, # Raw Bacon
-  { item = "farmersdelight:beef_patty", price_amount = 34 }, # Beef Patty
+  { item = "farmersdelight:beef_patty", price_amount = 26 }, # Beef Patty
   { item = "farmersdelight:chicken_cuts", price_amount = 26 }, # Raw Chicken Cuts
   { item = "farmersdelight:cod_roll", price_amount = 26 }, # Cod Roll — 2 ings: cod_slice + rice
   { item = "farmersdelight:cod_slice", price_amount = 26 }, # Raw Cod Slice
@@ -235,16 +235,16 @@ entries = [
   { item = "farmersdelight:cooked_mutton_chops", price_amount = 34 }, # Cooked Mutton Chops
   { item = "farmersdelight:cooked_salmon_slice", price_amount = 34 }, # Cooked Salmon Slice
   { item = "farmersdelight:egg_sandwich", price_amount = 24 }, # Egg Sandwich — 2 ings: bread + egg
-  { item = "farmersdelight:fried_egg", price_amount = 34 }, # Fried Egg
+  { item = "farmersdelight:fried_egg", price_amount = 15 }, # Fried Egg
   { item = "farmersdelight:glow_berry_custard", price_amount = 34 }, # Glow Berry Custard — 2 ings: berries + milk
   { item = "farmersdelight:ham", price_amount = 34 }, # Ham
   { item = "farmersdelight:honey_cookie", price_amount = 34 }, # Honey Cookie — 2 ings: honey + wheat
-  { item = "farmersdelight:hot_cocoa", price_amount = 34 }, # Hot Cocoa — simple: cocoa + milk
+  { item = "farmersdelight:hot_cocoa", price_amount = 24 }, # Hot Cocoa — simple: cocoa + milk
   { item = "farmersdelight:kelp_roll", price_amount = 24 }, # Kelp Roll — 2 ings: kelp + rice
   { item = "farmersdelight:kelp_roll_slice", price_amount = 26 }, # Kelp Roll Slice — from kelp_roll
-  { item = "farmersdelight:melon_juice", price_amount = 24 }, # Melon Juice — simple: melon + sugar
+  { item = "farmersdelight:melon_juice", price_amount = 19 }, # Melon Juice — simple: melon + sugar
   { item = "farmersdelight:melon_popsicle", price_amount = 28 }, # Melon Popsicle — 2 ings: melon + ice
-  { item = "farmersdelight:milk_bottle", price_amount = 34 }, # Milk Bottle
+  { item = "farmersdelight:milk_bottle", price_amount = 9 }, # Milk Bottle
   { item = "farmersdelight:minced_beef", price_amount = 26 }, # Minced Beef
   { item = "farmersdelight:mutton_chops", price_amount = 26 }, # Raw Mutton Chops
   { item = "farmersdelight:pie_crust", price_amount = 24 }, # Pie Crust
@@ -256,21 +256,21 @@ entries = [
   { item = "farmersdelight:wheat_dough", price_amount = 24 }, # Wheat Dough
   # T3
   { item = "farmersdelight:apple_pie_slice", price_amount = 85 }, # Slice of Apple Pie
-  { item = "farmersdelight:bacon_and_eggs", price_amount = 135 }, # Bacon and Eggs
+  { item = "farmersdelight:bacon_and_eggs", price_amount = 110 }, # Bacon and Eggs
   { item = "farmersdelight:bacon_sandwich", price_amount = 95 }, # Bacon Sandwich
   { item = "farmersdelight:baked_cod_stew", price_amount = 120 }, # Baked Cod Stew
   { item = "farmersdelight:barbecue_stick", price_amount = 95 }, # Barbecue on a Stick
   { item = "farmersdelight:beef_stew", price_amount = 120 }, # Beef Stew
-  { item = "farmersdelight:cabbage_rolls", price_amount = 80 }, # Cabbage Rolls
+  { item = "farmersdelight:cabbage_rolls", price_amount = 2 }, # Cabbage Rolls
   { item = "farmersdelight:cake_slice", price_amount = 85 }, # Slice of Cake
   { item = "farmersdelight:chicken_sandwich", price_amount = 95 }, # Chicken Sandwich
   { item = "farmersdelight:chicken_soup", price_amount = 120 }, # Chicken Soup
   { item = "farmersdelight:chocolate_pie_slice", price_amount = 85 }, # Slice of Chocolate Pie
-  { item = "farmersdelight:cooked_rice", price_amount = 60 }, # Cooked Rice
-  { item = "farmersdelight:dumplings", price_amount = 80 }, # Dumplings
+  { item = "farmersdelight:cooked_rice", price_amount = 2 }, # Cooked Rice
+  { item = "farmersdelight:dumplings", price_amount = 4 }, # Dumplings
   { item = "farmersdelight:fish_stew", price_amount = 120 }, # Fish Stew
   { item = "farmersdelight:fried_rice", price_amount = 80 }, # Fried Rice
-  { item = "farmersdelight:fruit_salad", price_amount = 80 }, # Fruit Salad
+  { item = "farmersdelight:fruit_salad", price_amount = 60 }, # Fruit Salad
   { item = "farmersdelight:mixed_salad", price_amount = 80 }, # Mixed Salad
   { item = "farmersdelight:mushroom_rice", price_amount = 95 }, # Mushroom Rice
   { item = "farmersdelight:mutton_wrap", price_amount = 95 }, # Mutton Wrap
@@ -286,24 +286,24 @@ entries = [
   { item = "farmersdelight:vegetable_noodles", price_amount = 120 }, # Vegetable Noodles
   { item = "farmersdelight:vegetable_soup", price_amount = 120 }, # Vegetable Soup
   # T4
-  { item = "farmersdelight:grilled_salmon", price_amount = 360 }, # Grilled Salmon — 5 ings: salmon+berries+cabbage+onion+bowl
-  { item = "farmersdelight:hamburger", price_amount = 360 }, # Hamburger — 5 ings: bread+patty+lettuce+tomato+onion
-  { item = "farmersdelight:ratatouille", price_amount = 360 }, # Ratatouille — complex pot meal, multi-veg
-  { item = "farmersdelight:roasted_mutton_chops", price_amount = 360 }, # Roasted Mutton Chops — 5 ings: mutton+beetroot+tomato+rice+bowl
-  { item = "farmersdelight:squid_ink_pasta", price_amount = 360 }, # Squid Ink Pasta — requires squid ink sac + pasta
-  { item = "farmersdelight:steak_and_potatoes", price_amount = 360 }, # Steak and Potatoes — 5 ings: steak+potato+onion+rice+bowl
+  { item = "farmersdelight:grilled_salmon", price_amount = 45 }, # Grilled Salmon — 5 ings: salmon+berries+cabbage+onion+bowl
+  { item = "farmersdelight:hamburger", price_amount = 120 }, # Hamburger — 5 ings: bread+patty+lettuce+tomato+onion
+  { item = "farmersdelight:ratatouille", price_amount = 120 }, # Ratatouille — complex pot meal, multi-veg
+  { item = "farmersdelight:roasted_mutton_chops", price_amount = 120 }, # Roasted Mutton Chops — 5 ings: mutton+beetroot+tomato+rice+bowl
+  { item = "farmersdelight:squid_ink_pasta", price_amount = 120 }, # Squid Ink Pasta — requires squid ink sac + pasta
+  { item = "farmersdelight:steak_and_potatoes", price_amount = 110 }, # Steak and Potatoes — 5 ings: steak+potato+onion+rice+bowl
   # T5
-  { item = "farmersdelight:gleaming_salad", price_amount = 1200 }, # Bowl of Gleaming Salad — plate of gleaming salad feast
-  { item = "farmersdelight:gleaming_salad_block", price_amount = 1800 }, # Gleaming Salad (Feast Block)
-  { item = "farmersdelight:honey_glazed_ham", price_amount = 1200 }, # Plate of Honey Glazed Ham — plate of honey glazed ham feast
-  { item = "farmersdelight:honey_glazed_ham_block", price_amount = 1800 }, # Honey Glazed Ham (Feast Block)
-  { item = "farmersdelight:rice_roll_medley_block", price_amount = 1800 }, # Rice Roll Medley (Feast Block)
-  { item = "farmersdelight:roast_chicken", price_amount = 1200 }, # Plate of Roast Chicken — plate of roast chicken feast
-  { item = "farmersdelight:roast_chicken_block", price_amount = 1800 }, # Roast Chicken (Feast Block)
-  { item = "farmersdelight:shepherds_pie", price_amount = 1200 }, # Plate of Shepherd's Pie — plate of shepherd pie feast
-  { item = "farmersdelight:shepherds_pie_block", price_amount = 1800 }, # Shepherd's Pie (Feast Block)
-  { item = "farmersdelight:stuffed_pumpkin", price_amount = 1200 }, # Bowl of Stuffed Pumpkin — plate of stuffed pumpkin feast
-  { item = "farmersdelight:stuffed_pumpkin_block", price_amount = 1800 }, # Stuffed Pumpkin (Feast Block)
+  { item = "farmersdelight:gleaming_salad", price_amount = 120 }, # Bowl of Gleaming Salad — plate of gleaming salad feast
+  { item = "farmersdelight:gleaming_salad_block", price_amount = 440 }, # Gleaming Salad (Feast Block)
+  { item = "farmersdelight:honey_glazed_ham", price_amount = 120 }, # Plate of Honey Glazed Ham — plate of honey glazed ham feast
+  { item = "farmersdelight:honey_glazed_ham_block", price_amount = 190 }, # Honey Glazed Ham (Feast Block)
+  { item = "farmersdelight:rice_roll_medley_block", price_amount = 600 }, # Rice Roll Medley (Feast Block)
+  { item = "farmersdelight:roast_chicken", price_amount = 120 }, # Plate of Roast Chicken — plate of roast chicken feast
+  { item = "farmersdelight:roast_chicken_block", price_amount = 440 }, # Roast Chicken (Feast Block)
+  { item = "farmersdelight:shepherds_pie", price_amount = 120 }, # Plate of Shepherd's Pie — plate of shepherd pie feast
+  { item = "farmersdelight:shepherds_pie_block", price_amount = 270 }, # Shepherd's Pie (Feast Block)
+  { item = "farmersdelight:stuffed_pumpkin", price_amount = 120 }, # Bowl of Stuffed Pumpkin — plate of stuffed pumpkin feast
+  { item = "farmersdelight:stuffed_pumpkin_block", price_amount = 440 }, # Stuffed Pumpkin (Feast Block)
   #
   # Let's Do HerbalBrews (herbalbrews)
   # T1
@@ -343,7 +343,7 @@ entries = [
   { item = "minecraft:chorus_fruit", price_amount = 12 }, # Chorus Fruit
   { item = "minecraft:dried_kelp", price_amount = 7 }, # Dried Kelp
   { item = "minecraft:egg", price_amount = 12 }, # Egg
-  { item = "minecraft:glow_berries", price_amount = 10 }, # Glow Berries
+  { item = "minecraft:glow_berries", price_amount = 7 }, # Glow Berries
   { item = "minecraft:honey_bottle", price_amount = 12 }, # Honey Bottle
   { item = "minecraft:melon_slice", price_amount = 7 }, # Melon Slice
   { item = "minecraft:milk_bucket", price_amount = 14 }, # Milk Bucket
@@ -363,23 +363,23 @@ entries = [
   { item = "minecraft:rabbit", price_amount = 26 }, # Raw Rabbit
   { item = "minecraft:rabbit_foot", price_amount = 38 }, # Rabbit Foot
   { item = "minecraft:salmon", price_amount = 26 }, # Raw Salmon
-  { item = "minecraft:slime_ball", price_amount = 38 }, # Slime Ball
+  { item = "minecraft:slime_ball", price_amount = 17 }, # Slime Ball
   { item = "minecraft:tropical_fish", price_amount = 26 }, # Tropical Fish
   # T3
-  { item = "minecraft:baked_potato", price_amount = 60 }, # Baked Potato
-  { item = "minecraft:beetroot_soup", price_amount = 120 }, # Beetroot Soup
-  { item = "minecraft:bread", price_amount = 60 }, # Bread
-  { item = "minecraft:cake", price_amount = 85 }, # Cake
-  { item = "minecraft:cooked_beef", price_amount = 135 }, # Steak
-  { item = "minecraft:cooked_chicken", price_amount = 54 }, # Cooked Chicken
-  { item = "minecraft:cooked_cod", price_amount = 54 }, # Cooked Cod
-  { item = "minecraft:cooked_mutton", price_amount = 54 }, # Cooked Mutton
-  { item = "minecraft:cooked_porkchop", price_amount = 54 }, # Cooked Porkchop
-  { item = "minecraft:cooked_rabbit", price_amount = 54 }, # Cooked Rabbit
-  { item = "minecraft:cooked_salmon", price_amount = 135 }, # Cooked Salmon
+  { item = "minecraft:baked_potato", price_amount = 45 }, # Baked Potato
+  { item = "minecraft:beetroot_soup", price_amount = 65 }, # Beetroot Soup
+  { item = "minecraft:bread", price_amount = 5 }, # Bread
+  { item = "minecraft:cake", price_amount = 45 }, # Cake
+  { item = "minecraft:cooked_beef", price_amount = 45 }, # Steak
+  { item = "minecraft:cooked_chicken", price_amount = 45 }, # Cooked Chicken
+  { item = "minecraft:cooked_cod", price_amount = 45 }, # Cooked Cod
+  { item = "minecraft:cooked_mutton", price_amount = 45 }, # Cooked Mutton
+  { item = "minecraft:cooked_porkchop", price_amount = 45 }, # Cooked Porkchop
+  { item = "minecraft:cooked_rabbit", price_amount = 45 }, # Cooked Rabbit
+  { item = "minecraft:cooked_salmon", price_amount = 45 }, # Cooked Salmon
   { item = "minecraft:cookie", price_amount = 60 }, # Cookie
   { item = "minecraft:mushroom_stew", price_amount = 120 }, # Mushroom Stew
-  { item = "minecraft:pumpkin_pie", price_amount = 85 }, # Pumpkin Pie
+  { item = "minecraft:pumpkin_pie", price_amount = 45 }, # Pumpkin Pie
   { item = "minecraft:rabbit_stew", price_amount = 120 }, # Rabbit Stew
   #
   # Ocean's Delight (oceansdelight)
@@ -399,19 +399,19 @@ entries = [
   { item = "oceansdelight:squid_rings", price_amount = 28 }, # Squid Rings
   { item = "oceansdelight:tentacle_on_a_stick", price_amount = 26 }, # Tentacle on a Stick — 2 ings: tentacles + stick
   # T3
-  { item = "oceansdelight:baked_tentacle_on_a_stick", price_amount = 95 }, # Baked Tentacle on a Stick
+  { item = "oceansdelight:baked_tentacle_on_a_stick", price_amount = 45 }, # Baked Tentacle on a Stick
   { item = "oceansdelight:braised_sea_pickle", price_amount = 95 }, # Braised Sea Pickle
   { item = "oceansdelight:cooked_stuffed_cod", price_amount = 95 }, # Cooked Stuffed Cod
   { item = "oceansdelight:cooked_stuffed_squid", price_amount = 95 }, # Cooked Stuffed Squid
-  { item = "oceansdelight:kelp_encrusted_cod", price_amount = 95 }, # Kelp Encrusted Cod
+  { item = "oceansdelight:kelp_encrusted_cod", price_amount = 24 }, # Kelp Encrusted Cod
   { item = "oceansdelight:stuffed_cod", price_amount = 95 }, # Stuffed Cod
   { item = "oceansdelight:stuffed_squid", price_amount = 95 }, # Stuffed Squid
   # T4
-  { item = "oceansdelight:elder_guardian_roll", price_amount = 700 }, # Roll of Elder Guardian — requires elder guardian parts
-  { item = "oceansdelight:fugu_roll", price_amount = 700 }, # Fugu Roll — requires pufferfish + prep
+  { item = "oceansdelight:elder_guardian_roll", price_amount = 110 }, # Roll of Elder Guardian — requires elder guardian parts
+  { item = "oceansdelight:fugu_roll", price_amount = 120 }, # Fugu Roll — requires pufferfish + prep
   # T5
-  { item = "oceansdelight:bowl_of_guardian_soup", price_amount = 2200 }, # Bowl of Guardian Soup — requires guardian kill + soup
-  { item = "oceansdelight:cabbage_wrapped_elder_guardian", price_amount = 2200 }, # Cabbage Wrapped Elder Guardian — requires elder guardian kill
+  { item = "oceansdelight:bowl_of_guardian_soup", price_amount = 120 }, # Bowl of Guardian Soup — requires guardian kill + soup
+  { item = "oceansdelight:cabbage_wrapped_elder_guardian", price_amount = 60 }, # Cabbage Wrapped Elder Guardian — requires elder guardian kill
   #
   # Ube's Delight (ubesdelight)
   # T0
@@ -428,7 +428,7 @@ entries = [
   { item = "ubesdelight:raw_polvorone_pinipig", price_amount = 4 }, # Raw Pinipig Polvorone
   { item = "ubesdelight:raw_polvorone_ube", price_amount = 4 }, # Raw Ube Polvorone
   # T1
-  { item = "ubesdelight:condensed_milk_bottle", price_amount = 14 }, # Condensed Milk Bottle
+  { item = "ubesdelight:condensed_milk_bottle", price_amount = 12 }, # Condensed Milk Bottle
   { item = "ubesdelight:fish_sauce_bottle", price_amount = 14 }, # Fish Sauce Bottle
   { item = "ubesdelight:garlic", price_amount = 10 }, # Garlic
   { item = "ubesdelight:garlic_chop", price_amount = 10 }, # Chopped Garlic
@@ -436,15 +436,15 @@ entries = [
   { item = "ubesdelight:ginger_chop", price_amount = 10 }, # Chopped Ginger
   { item = "ubesdelight:lemongrass", price_amount = 12 }, # Lemongrass
   { item = "ubesdelight:lumpia_wrapper", price_amount = 10 }, # Lumpia Wrapper
-  { item = "ubesdelight:milk_powder", price_amount = 10 }, # Milk Powder
-  { item = "ubesdelight:sugar_brown", price_amount = 10 }, # Brown Sugar
+  { item = "ubesdelight:milk_powder", price_amount = 9 }, # Milk Powder
+  { item = "ubesdelight:sugar_brown", price_amount = 9 }, # Brown Sugar
   { item = "ubesdelight:ube", price_amount = 10 }, # Ube
   # T3
   { item = "ubesdelight:arroz_caldo", price_amount = 95 }, # Arroz Caldo
   { item = "ubesdelight:bangsilog", price_amount = 135 }, # Bangsilog
   { item = "ubesdelight:bulalo", price_amount = 135 }, # Bulalo
-  { item = "ubesdelight:chicken_inasal", price_amount = 135 }, # Chicken Inasal
-  { item = "ubesdelight:chicken_inasal_rice", price_amount = 135 }, # Chicken Inasal Plate
+  { item = "ubesdelight:chicken_inasal", price_amount = 24 }, # Chicken Inasal
+  { item = "ubesdelight:chicken_inasal_rice", price_amount = 120 }, # Chicken Inasal Plate
   { item = "ubesdelight:cookie_ginger", price_amount = 60 }, # Ginger Cookie
   { item = "ubesdelight:cookie_ube", price_amount = 60 }, # Ube Cookie
   { item = "ubesdelight:ensaymada", price_amount = 85 }, # Ensaymada
@@ -452,7 +452,7 @@ entries = [
   { item = "ubesdelight:hopia_munggo", price_amount = 85 }, # Hopia Munggo
   { item = "ubesdelight:hopia_ube", price_amount = 85 }, # Hopia Ube
   { item = "ubesdelight:kinilaw", price_amount = 95 }, # Kinilaw
-  { item = "ubesdelight:leche_flan", price_amount = 85 }, # Leche Flan Slice
+  { item = "ubesdelight:leche_flan", price_amount = 13 }, # Leche Flan Slice
   { item = "ubesdelight:lumpia", price_amount = 95 }, # Lumpia
   { item = "ubesdelight:mechado", price_amount = 135 }, # Mechado
   { item = "ubesdelight:pandesal", price_amount = 85 }, # Pandesal
@@ -467,20 +467,20 @@ entries = [
   { item = "ubesdelight:tosilog", price_amount = 135 }, # Tosilog
   { item = "ubesdelight:ube_cake_slice", price_amount = 85 }, # Ube Cake Slice
   # T4
-  { item = "ubesdelight:halo_halo_feast", price_amount = 650 }, # Bowl of Halo Halo
-  { item = "ubesdelight:leaf_feast_cooked_rice", price_amount = 650 }, # Cooked Rice Leaf Feast
-  { item = "ubesdelight:leaf_feast_ensaymada", price_amount = 650 }, # Ensaymada Leaf Feast
-  { item = "ubesdelight:leaf_feast_ensaymada_ube", price_amount = 650 }, # Ube Ensaymada Leaf Feast
+  { item = "ubesdelight:halo_halo_feast", price_amount = 440 }, # Bowl of Halo Halo
+  { item = "ubesdelight:leaf_feast_cooked_rice", price_amount = 460 }, # Cooked Rice Leaf Feast
+  { item = "ubesdelight:leaf_feast_ensaymada", price_amount = 440 }, # Ensaymada Leaf Feast
+  { item = "ubesdelight:leaf_feast_ensaymada_ube", price_amount = 440 }, # Ube Ensaymada Leaf Feast
   { item = "ubesdelight:leaf_feast_fried_rice", price_amount = 650 }, # Fried Rice Leaf Feast
-  { item = "ubesdelight:leaf_feast_hopia_munggo", price_amount = 650 }, # Hopia Munggo Leaf Feast
-  { item = "ubesdelight:leaf_feast_hopia_ube", price_amount = 650 }, # Hopia Ube Leaf Feast
-  { item = "ubesdelight:leaf_feast_pandesal", price_amount = 650 }, # Pandesal Leaf Feast
-  { item = "ubesdelight:leaf_feast_pandesal_ube", price_amount = 650 }, # Ube Pandesal Leaf Feast
-  { item = "ubesdelight:leaf_feast_sinangag", price_amount = 650 }, # Sinangag Leaf Feast
-  { item = "ubesdelight:leche_flan_feast", price_amount = 650 }, # Leche Flan (Feast)
-  { item = "ubesdelight:lumpia_feast", price_amount = 650 }, # Lumpia Leaf Feast
-  { item = "ubesdelight:milk_tea_ube_feast", price_amount = 650 }, # Bowl of Ube Milk Tea
-  { item = "ubesdelight:ube_cake", price_amount = 650 }, # Ube Cake (Block)
+  { item = "ubesdelight:leaf_feast_hopia_munggo", price_amount = 440 }, # Hopia Munggo Leaf Feast
+  { item = "ubesdelight:leaf_feast_hopia_ube", price_amount = 440 }, # Hopia Ube Leaf Feast
+  { item = "ubesdelight:leaf_feast_pandesal", price_amount = 440 }, # Pandesal Leaf Feast
+  { item = "ubesdelight:leaf_feast_pandesal_ube", price_amount = 440 }, # Ube Pandesal Leaf Feast
+  { item = "ubesdelight:leaf_feast_sinangag", price_amount = 440 }, # Sinangag Leaf Feast
+  { item = "ubesdelight:leche_flan_feast", price_amount = 80 }, # Leche Flan (Feast)
+  { item = "ubesdelight:lumpia_feast", price_amount = 440 }, # Lumpia Leaf Feast
+  { item = "ubesdelight:milk_tea_ube_feast", price_amount = 180 }, # Bowl of Ube Milk Tea
+  { item = "ubesdelight:ube_cake", price_amount = 250 }, # Ube Cake (Block)
   #
   # Let's Do Vinery (vinery)
   # T0
@@ -505,7 +505,7 @@ entries = [
   { item = "vinery:taiga_grapes_white", price_amount = 7 }, # White Taiga Grapes
   { item = "vinery:white_grape", price_amount = 7 }, # White Grape
   # T2
-  { item = "vinery:apple_juice", price_amount = 24 }, # Apple Juice
+  { item = "vinery:apple_juice", price_amount = 20 }, # Apple Juice
   { item = "vinery:red_grapejuice", price_amount = 24 }, # Red Grapejuice
   { item = "vinery:red_jungle_grapejuice", price_amount = 24 }, # Red Jungle Grapejuice
   { item = "vinery:red_savanna_grapejuice", price_amount = 24 }, # Red Savanna Grapejuice
@@ -515,32 +515,32 @@ entries = [
   { item = "vinery:white_savanna_grapejuice", price_amount = 24 }, # White Savanna Grapejuice
   { item = "vinery:white_taiga_grapejuice", price_amount = 24 }, # White Taiga Grapejuice
   # T4
-  { item = "vinery:aegis_wine", price_amount = 520 }, # Aegis Wine
-  { item = "vinery:apple_cider", price_amount = 520 }, # Cider — fermentation barrel + aging
-  { item = "vinery:apple_wine", price_amount = 520 }, # Apple Wine
-  { item = "vinery:bolvar_wine", price_amount = 520 }, # Bolvar Wine
-  { item = "vinery:bottle_mojang_noir", price_amount = 420 }, # Bottle of 'Mojang Noir'
-  { item = "vinery:chenet_wine", price_amount = 520 }, # Chenet Wine
-  { item = "vinery:cherry_wine", price_amount = 520 }, # Cherry Wine
-  { item = "vinery:chorus_wine", price_amount = 520 }, # Chorus Wine
-  { item = "vinery:clark_wine", price_amount = 520 }, # Clark Wine
-  { item = "vinery:creepers_crush", price_amount = 420 }, # Bottle of 'Creepers Crush'
-  { item = "vinery:cristel_wine", price_amount = 520 }, # Cristel Wine
-  { item = "vinery:eiswein", price_amount = 420 }, # Eiswein
-  { item = "vinery:glowing_wine", price_amount = 520 }, # Sun-kissed Wine
-  { item = "vinery:jellie_wine", price_amount = 520 }, # Jellie Wine
-  { item = "vinery:jo_special_mixture", price_amount = 420 }, # Jo's Special Mixture
-  { item = "vinery:kelp_cider", price_amount = 520 }, # Kelp Cider — fermentation barrel + aging
-  { item = "vinery:lilitu_wine", price_amount = 520 }, # Miss Lilitus Wine
-  { item = "vinery:magnetic_wine", price_amount = 520 }, # Magnetic Wine
-  { item = "vinery:mead", price_amount = 520 }, # Mead — fermentation barrel + aging
-  { item = "vinery:mellohi_wine", price_amount = 520 }, # Mellohi Wine
-  { item = "vinery:noir_wine", price_amount = 520 }, # Noir Wine
-  { item = "vinery:red_wine", price_amount = 520 }, # Red Wine
-  { item = "vinery:solaris_wine", price_amount = 520 }, # Solaris Wine
-  { item = "vinery:stal_wine", price_amount = 520 }, # Stal Wine
-  { item = "vinery:strad_wine", price_amount = 520 }, # Strad Wine
-  { item = "vinery:villagers_fright", price_amount = 420 }, # Bottle of 'Villagers Fright'
+  { item = "vinery:aegis_wine", price_amount = 140 }, # Aegis Wine
+  { item = "vinery:apple_cider", price_amount = 140 }, # Cider — fermentation barrel + aging
+  { item = "vinery:apple_wine", price_amount = 150 }, # Apple Wine
+  { item = "vinery:bolvar_wine", price_amount = 190 }, # Bolvar Wine
+  { item = "vinery:bottle_mojang_noir", price_amount = 120 }, # Bottle of 'Mojang Noir'
+  { item = "vinery:chenet_wine", price_amount = 140 }, # Chenet Wine
+  { item = "vinery:cherry_wine", price_amount = 250 }, # Cherry Wine
+  { item = "vinery:chorus_wine", price_amount = 210 }, # Chorus Wine
+  { item = "vinery:clark_wine", price_amount = 140 }, # Clark Wine
+  { item = "vinery:creepers_crush", price_amount = 120 }, # Bottle of 'Creepers Crush'
+  { item = "vinery:cristel_wine", price_amount = 140 }, # Cristel Wine
+  { item = "vinery:eiswein", price_amount = 120 }, # Eiswein
+  { item = "vinery:glowing_wine", price_amount = 160 }, # Sun-kissed Wine
+  { item = "vinery:jellie_wine", price_amount = 450 }, # Jellie Wine
+  { item = "vinery:jo_special_mixture", price_amount = 120 }, # Jo's Special Mixture
+  { item = "vinery:kelp_cider", price_amount = 140 }, # Kelp Cider — fermentation barrel + aging
+  { item = "vinery:lilitu_wine", price_amount = 270 }, # Miss Lilitus Wine
+  { item = "vinery:magnetic_wine", price_amount = 160 }, # Magnetic Wine
+  { item = "vinery:mead", price_amount = 130 }, # Mead — fermentation barrel + aging
+  { item = "vinery:mellohi_wine", price_amount = 140 }, # Mellohi Wine
+  { item = "vinery:noir_wine", price_amount = 240 }, # Noir Wine
+  { item = "vinery:red_wine", price_amount = 140 }, # Red Wine
+  { item = "vinery:solaris_wine", price_amount = 260 }, # Solaris Wine
+  { item = "vinery:stal_wine", price_amount = 140 }, # Stal Wine
+  { item = "vinery:strad_wine", price_amount = 140 }, # Strad Wine
+  { item = "vinery:villagers_fright", price_amount = 120 }, # Bottle of 'Villagers Fright'
 ]
 
 [quality_food]

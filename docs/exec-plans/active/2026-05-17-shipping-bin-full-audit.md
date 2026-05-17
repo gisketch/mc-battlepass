@@ -25,6 +25,7 @@ Build a server-free audit for CKDM shipping prices using mod jar item, tag, and 
 - Add process-aware cost handling for shaped/shapeless/cooking/cutting/Vinery.
 - Add conservative sellability categories and block rules.
 - Generate report data.
+- Apply conservative nerfs to currently priced entries from report.
 - Validate script and docs.
 
 ## Validation
@@ -43,3 +44,5 @@ Build a server-free audit for CKDM shipping prices using mod jar item, tag, and 
 - 2026-05-17: Plan created.
 - 2026-05-17: Upgraded offline audit to parse jar item names, tags, normal recipes, broad process recipes, and Vinery fermentation.
 - 2026-05-17: Generated Markdown, CSV, and review-only TOML suggestion outputs.
+- 2026-05-17: Applied current-entry-only nerfs where suggested price was lower than configured price.
+- 2026-05-17: Validation passed: `.\scripts\audit-shipping-bin.ps1`, `bash ./scripts/check-sonata.sh`, `.\gradlew.bat build`.
