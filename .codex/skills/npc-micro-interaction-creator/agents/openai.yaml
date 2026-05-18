@@ -1,0 +1,4 @@
+interface:
+  display_name: "NPC Micro Interaction Creator"
+  short_description: "Create micro interaction content for new CKDM NPCs"
+  default_prompt: "Create micro interactions for a new CKDM NPC using pi and validate coverage."

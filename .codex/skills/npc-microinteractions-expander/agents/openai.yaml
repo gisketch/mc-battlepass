@@ -1,0 +1,4 @@
+interface:
+  display_name: "NPC Microinteractions Expander"
+  short_description: "Expand CKDM NPC micro interaction packs with pi"
+  default_prompt: "Expand the existing CKDM micro interaction packs using pi and validate the generated TOML."

@@ -144,7 +144,7 @@ object NpcConfig {
         Files.list(dir).use { stream ->
             stream.forEach { path ->
                 val fileName = path.fileName.toString()
-                if (path.extension.equals("toml", ignoreCase = true) && fileName.startsWith(MICRO_INTERACTIONS_PREFIX)) files += path
+                if (path.extension.equals("toml", ignoreCase = true) && fileName.startsWith(MICRO_INTERACTIONS_PREFIX)) files.add(path)
             }
         }
         files.sortedBy { path -> path.fileName.toString() }.forEach { file ->
