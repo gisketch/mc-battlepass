@@ -13,6 +13,7 @@
 - World travel and respawn use the nearest safe spawn surface around the dimension shared spawn instead of blindly placing the player at the raw spawn coordinate.
 - Natural mob spawns are blocked in Sky Lands for cozy hub use.
 - Sky Lands has no ocean layer.
+- Dry island surfaces in ocean-tagged biomes are reported as `ckdm:sky_plains` at biome lookup time so existing pregenerated islands keep working with biome-driven systems such as Cobblemon spawns and map/HUD biome labels.
 - Sky Lands uses the survival preset as a base, tuned for flatter visible floating settlement islands: small radius `52-67`, medium `71-101`, large `116-175`, with dynamic `190-320` cluster spacing and island centers from Y `96-230`.
 - Sky Lands is the cozy home layer. Villages can remain rare peaceful discoveries, but hostile, boss, dungeon, underground-only, ocean-only, and oversized adventure structures are denied by the Sky Archipelago structure policy. The denylist includes vanilla danger structures plus scraped modpack structures from Cataclysm, MineCells, YUNG's structure mods, Block Factory's Bosses, FDBosses, Witcher RPG hideouts/graves, Better Archeology catacombs/underwater ruins, Supplementaries galleons, and the largest/underground Structory entries.
 - Sky island centers are generated from Y `96` to Y `230`; the fall-through trigger stays down at Y `48` so normal mining below an island has a clear air gap before transfer.
@@ -47,6 +48,8 @@ The base terrain values were copied from Sky Archipelago's built-in preset at `d
 For normal deployment, the mod-bundled `data/ckdm/dimension/sky_lands.json` defines `ckdm:sky_lands`; do not copy the standalone world datapack unless server testing proves a world-level override is needed. With Sky Archipelago `1.3.0`, prefer server-side tuning in `config/sky_archipelago-common.toml`, then restart and generate fresh chunks. Existing chunks will not reshape.
 
 CKDM adds optional Sky Lands seed compatibility in `config/gisketchs_chowkingdom_mod/compat/ckdm_sky_seed.toml`. The default blank `seed` keeps Sky Lands on the normal world seed. A numeric seed is parsed as a signed long; non-numeric text uses Java/Minecraft-style `String.hashCode()`. A nonblank seed replaces the `ckdm:sky_lands` Sky Archipelago generator `RandomState` for biome creation, terrain noise, surface, carvers, and height/column lookups, so tools like Chunky use the same Sky Lands-only seed during pregeneration. Existing generated chunks stay unchanged unless regenerated.
+
+CKDM adds optional Sky Lands biome alias compatibility in `config/gisketchs_chowkingdom_mod/compat/skylands_biomes.toml`. When enabled, `ckdm:sky_lands` dry island surfaces whose stored biome is ocean-tagged return `ckdm:sky_plains` from runtime biome lookups. This does not rewrite chunk biome storage and does not affect real ocean biomes outside Sky Lands.
 
 ## Biome Mods
 

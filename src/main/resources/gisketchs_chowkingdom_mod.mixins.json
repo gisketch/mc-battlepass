@@ -9,6 +9,7 @@
     "GameProfileMixin",
     "NoiseBasedChunkGeneratorSeedMixin",
     "RandomStateAccessor",
+    "SkylandsBiomeAliasMixin",
     "SkyArchipelagoSeedMixin",
     "SpellBindingScreenHandlerClassLockMixin"
   ],

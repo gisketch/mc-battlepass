@@ -97,6 +97,21 @@ Behavior:
 - Other Yuushya chat, player chat, server messages, and CKDM snackbar messages are unchanged.
 - The hook is client-only. CKDM still loads without Yuushya.
 
+## Sky Lands Biome Alias
+
+Chow Kingdom aliases dry island surfaces in `ckdm:sky_lands` from ocean-tagged biomes to `ckdm:sky_plains` at biome lookup time.
+
+Config:
+
+- `config/gisketchs_chowkingdom_mod/compat/skylands_biomes.toml`
+
+Behavior:
+
+- Existing pregenerated chunks are not rewritten.
+- The alias applies only in `ckdm:sky_lands`, only for ocean-like biomes, and only at dry island surface positions.
+- `ckdm:sky_plains` is tagged as plains/grassland/overworld/sky for Cobblemon biome matching.
+- Real overworld oceans and wet positions stay ocean.
+
 ## Xaero + Cobblemon Radar
 
 Chow Kingdom hides unknown Pokemon identity on Xaero radar.

@@ -8,6 +8,7 @@ import com.mojang.brigadier.arguments.StringArgumentType
 import com.mojang.brigadier.context.CommandContext
 import com.mojang.brigadier.suggestion.SuggestionProvider
 import dev.gisketch.chowkingdom.ChowKingdomMod
+import dev.gisketch.chowkingdom.compat.CobblemonStarterBridge
 import dev.gisketch.chowkingdom.compat.PehkuiScaleBridge
 import dev.gisketch.chowkingdom.discord.DiscordWebhookClient
 import net.minecraft.commands.CommandSourceStack
@@ -163,6 +164,7 @@ object RolesFeature {
         RoleClassEquipmentRules.grantStartingItems(player, roleClass.id)
         applyJobRankEffect(player)
         RolesNetwork.syncAllPlayers()
+        CobblemonStarterBridge.requestStarterAfterOnboarding(player)
         return true
     }
 
