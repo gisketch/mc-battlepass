@@ -420,6 +420,8 @@ TODO (Mod):
 - [x] Add client black fade before gym battle teleport and fade-in after arena placement.
 - [x] Reuse existing `prof_chowfan` as Professor Chowfan's league record entrypoint instead of adding a separate clerk NPC.
 - [x] Hide trainer NPC main Pokemon companions during RCT battles and restore them after battle end.
+- [x] Add strict story-delay trainer UI: official `CHALLENGE` stays disabled until unlock day, while `FRIENDLY BATTLE` remains separate practice.
+- [x] Add pinned Pokemon league mission rows and one-time snackbar when a delayed next challenge becomes available.
 - [ ] Add relic-fragment rewards if gym badge rewards need relic economy hooks.
 - [ ] In-game smoke test RCT battle start/end in the Prism instance.
 

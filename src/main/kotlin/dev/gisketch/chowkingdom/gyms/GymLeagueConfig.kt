@@ -145,13 +145,20 @@ object GymLeagueConfig {
                 id = trainer.npcId,
                 name = trainer.name,
                 title = trainer.role.replace('_', ' ').replaceFirstChar { it.titlecase() },
+                skin = if (trainer.npcId == "trainer_blue") "gisketchs_chowkingdom_mod:npc/trainer_blue" else "",
                 mainPokemon = trainer.mainPokemon,
                 housing = NpcHousingDefinition(canMoveIn = false, requiresBed = false),
                 missions = NpcMissionsDefinition(enabled = false),
                 personality = NpcPersonalityDefinition(
-                    llmPrompt = "${trainer.name} is a ${trainer.role.replace('_', ' ')} in the Kanto League. Their main interest is Pokemon battles at the CKDM stadium.",
+                    llmPrompt = "${trainer.name} is a ${trainer.role.replace('_', ' ')} in the Kanto League. Their main interest is Pokemon battles at the CKDM stadium. They do not live in town houses; they roam the stadium route, study nearby Pokemon, and talk shop with other trainers.",
                     traits = mutableListOf("pokemon trainer", trainer.role),
                     speechStyle = "confident battle NPC",
+                ),
+                npcInteractionMessages = mutableListOf(
+                    "Comparing battle notes with {other}.",
+                    "Talking through matchup reads with {other}.",
+                    "Checking tournament records with {other}.",
+                    "Debating clean switches with {other}.",
                 ),
                 schedule = stadiumSchedule(),
             )
@@ -161,8 +168,7 @@ object GymLeagueConfig {
 
     private fun stadiumSchedule(): NpcScheduleDefinition = NpcScheduleDefinition(
         activities = mutableListOf(
-            NpcScheduleEntryDefinition(fromHour = 6, toHour = 22, activity = "meetup"),
-            NpcScheduleEntryDefinition(fromHour = 22, toHour = 6, activity = "sleep"),
+            NpcScheduleEntryDefinition(fromHour = 0, toHour = 24, activity = "pokemon_roam"),
         ),
     )
 

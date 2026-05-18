@@ -22,6 +22,7 @@ import dev.gisketch.chowkingdom.client.ParagliderAttackInputClient
 import dev.gisketch.chowkingdom.client.PlayerListHudClient
 import dev.gisketch.chowkingdom.compat.SpellEngineClassLockBridge
 import dev.gisketch.chowkingdom.compat.SkillTreePackFeature
+import dev.gisketch.chowkingdom.compat.SkylandsSeedCompat
 import dev.gisketch.chowkingdom.compat.PunchyFirstPersonSuppressionBridge
 import dev.gisketch.chowkingdom.compat.UnifiedStaminaFeature
 import dev.gisketch.chowkingdom.compat.XaeroNpcMapCompat
@@ -69,6 +70,8 @@ class ChowKingdomMod(modBus: IEventBus, container: ModContainer) {
         TomlConfigIO.migrateModConfigTree()
         ChowSounds.register(modBus)
         ChowClockConfig.load()
+        SkylandsSeedCompat.load()
+        SkylandsSeedCompat.register()
         BattlepassPassRegistry.reload()
         BattlepassXpStore.load()
         BattlepassMissionProgressStore.load()

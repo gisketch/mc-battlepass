@@ -27,6 +27,7 @@ private const val MAX_NPC_TALK_MESSAGE_LENGTH = 2000
 private const val MAX_NPC_CLOSE_LABEL_LENGTH = 24
 private const val MAX_NPC_VOICE_PITCH_LENGTH = 16
 private const val MAX_NPC_DIALOG_MODE_LENGTH = 16
+private const val MAX_NPC_CHALLENGE_REASON_LENGTH = 160
 private const val MAX_NPC_WORLD_CHAT_TARGET_KIND_LENGTH = 16
 private const val MAX_NPC_WORLD_CHAT_MESSAGE_LENGTH = 512
 private const val MAX_NPC_CLASS_CHANGE_WARNING_LENGTH = 160
@@ -248,6 +249,9 @@ data class NpcDialogPayload(
     val bossContractsAvailable: Boolean = false,
     val bossClaimAvailable: Boolean = false,
     val leagueAvailable: Boolean = false,
+    val challengeAvailable: Boolean = false,
+    val challengeDisabledReason: String = "",
+    val friendlyBattleAvailable: Boolean = false,
 ) : CustomPacketPayload {
     override fun type(): CustomPacketPayload.Type<NpcDialogPayload> = TYPE
 
@@ -284,6 +288,9 @@ data class NpcDialogPayload(
                 },
                 buffer.readBoolean(),
                 buffer.readBoolean(),
+                buffer.readBoolean(),
+                buffer.readBoolean(),
+                buffer.readUtf(MAX_NPC_CHALLENGE_REASON_LENGTH),
                 buffer.readBoolean(),
             )
 
@@ -325,6 +332,9 @@ data class NpcDialogPayload(
                 buffer.writeBoolean(value.bossContractsAvailable)
                 buffer.writeBoolean(value.bossClaimAvailable)
                 buffer.writeBoolean(value.leagueAvailable)
+                buffer.writeBoolean(value.challengeAvailable)
+                buffer.writeBoundedUtf(value.challengeDisabledReason, MAX_NPC_CHALLENGE_REASON_LENGTH)
+                buffer.writeBoolean(value.friendlyBattleAvailable)
             }
         }
     }

@@ -11,6 +11,7 @@ import dev.gisketch.chowkingdom.ChatGlyphs
 import dev.gisketch.chowkingdom.ChowKingdomMod
 import dev.gisketch.chowkingdom.bosses.BossEventsFeature
 import dev.gisketch.chowkingdom.discord.DiscordRelay
+import dev.gisketch.chowkingdom.gyms.GymBattleService
 import dev.gisketch.chowkingdom.gyms.GymLeagueFeature
 import dev.gisketch.chowkingdom.relicroulette.RelicRouletteFeature
 import dev.gisketch.chowkingdom.roles.ClassLicenses
@@ -974,7 +975,7 @@ object NpcFeature {
         SnackbarNetwork.send(player, SnackbarNotification.item(SnackbarIcons.ERROR, title, content, type, SnackbarSounds.forType(type)))
     }
 
-    fun dialogPayload(definition: NpcDefinition, npc: ChowNpcEntity, message: String, contractGranted: Boolean, friendshipLevel: Int, closeOnly: Boolean = false, closeLabel: String = "BYE", responseToken: Long = 0L, dialogMode: String = "normal", startTalkMode: Boolean = false, friendshipDelta: Int = 0, classChangeAvailable: Boolean = false, classChangeCost: Long = 0L, classChangeOptions: List<NpcClassChangeOption> = emptyList(), quizChoices: List<NpcQuizChoice> = emptyList(), bossContractsAvailable: Boolean = BossEventsFeature.contractsAvailable(definition), bossClaimAvailable: Boolean = false, leagueAvailable: Boolean = GymLeagueFeature.leagueAvailable(definition)): NpcDialogPayload = NpcDialogPayload(
+    fun dialogPayload(definition: NpcDefinition, npc: ChowNpcEntity, message: String, contractGranted: Boolean, friendshipLevel: Int, closeOnly: Boolean = false, closeLabel: String = "BYE", responseToken: Long = 0L, dialogMode: String = "normal", startTalkMode: Boolean = false, friendshipDelta: Int = 0, classChangeAvailable: Boolean = false, classChangeCost: Long = 0L, classChangeOptions: List<NpcClassChangeOption> = emptyList(), quizChoices: List<NpcQuizChoice> = emptyList(), bossContractsAvailable: Boolean = BossEventsFeature.contractsAvailable(definition), bossClaimAvailable: Boolean = false, leagueAvailable: Boolean = GymLeagueFeature.leagueAvailable(definition), challengeAvailable: Boolean = false, challengeDisabledReason: String = "", friendlyBattleAvailable: Boolean = false): NpcDialogPayload = NpcDialogPayload(
         definition.id,
         if (workBypassEnabled) "${definition.name} WORK OFF NPC" else definition.name,
         definition.title,
@@ -1001,6 +1002,9 @@ object NpcFeature {
         bossContractsAvailable = bossContractsAvailable,
         bossClaimAvailable = bossClaimAvailable,
         leagueAvailable = leagueAvailable,
+        challengeAvailable = challengeAvailable,
+        challengeDisabledReason = challengeDisabledReason,
+        friendlyBattleAvailable = friendlyBattleAvailable,
     )
 
     private fun friendshipMessage(set: NpcFriendshipMessageSet, friendship: NpcFriendshipSnapshot, player: ServerPlayer, definition: NpcDefinition, itemName: String = "", mood: String = "", quantity: Int = 0, totalCost: Long = 0L): String {
@@ -1058,6 +1062,7 @@ object NpcFeature {
     fun showBalloonToNearby(level: ServerLevel, npc: ChowNpcEntity, message: String, durationTicks: Int = 90, excludePlayer: UUID? = null): Int = sendNpcBalloon(level, npc, message, durationTicks, excludePlayer)
 
     fun showBalloonToNearbyExcept(level: ServerLevel, npc: ChowNpcEntity, message: String, durationTicks: Int = 90, excludePlayers: Set<UUID>): Int {
+        if (GymBattleService.isBattleLocked(npc)) return 0
         var recipients = 0
         level.players().forEach { listener ->
             if (listener.uuid !in excludePlayers && listener.distanceToSqr(npc.x, npc.y, npc.z) <= NPC_DIALOG_HEAR_RADIUS * NPC_DIALOG_HEAR_RADIUS) {
@@ -1069,6 +1074,7 @@ object NpcFeature {
     }
 
     private fun sendNpcBalloon(level: ServerLevel, npc: ChowNpcEntity, message: String, durationTicks: Int = 90, excludePlayer: UUID? = null): Int {
+        if (GymBattleService.isBattleLocked(npc)) return 0
         var recipients = 0
         level.players().forEach { listener ->
             if (listener.uuid != excludePlayer && listener.distanceToSqr(npc.x, npc.y, npc.z) <= NPC_DIALOG_HEAR_RADIUS * NPC_DIALOG_HEAR_RADIUS) {
@@ -1507,19 +1513,35 @@ object NpcFeature {
         }
 
         val settings = NpcConfig.settings().npcInteractions
-        val plazaMeetup = activityFor(npc, definition) == "meetup"
-        if (!settings.enabled || npc.isSleeping || npc.isTalking() || NpcTime.activityAt(definition.schedule, level) == "sleep") return false
+        val npcActivity = activityFor(npc, definition)
+        val plazaMeetup = npcActivity == "meetup"
+        val trainerMeetup = npcActivity == "pokemon_roam"
+        if (!settings.enabled || npc.isSleeping || npc.isTalking() || (!trainerMeetup && NpcTime.activityAt(definition.schedule, level) == "sleep")) return false
         if (isAutoTaskCoolingDown(npc)) return false
-        if (!plazaMeetup && (npcMicroInteractionCooldownUntil[definition.id] ?: 0L) > level.dayTime) return false
-        val radius = if (plazaMeetup) plazaMeetupRadius().toDouble() else settings.radius
+        if (!plazaMeetup && !trainerMeetup && (npcMicroInteractionCooldownUntil[definition.id] ?: 0L) > level.dayTime) return false
+        val radius = when {
+            plazaMeetup -> plazaMeetupRadius().toDouble()
+            trainerMeetup -> TRAINER_MEETUP_SCAN_RADIUS
+            else -> settings.radius
+        }
         val radiusSqr = radius * radius
         val other = level.getEntities(NPC_ENTITY.get()) { other ->
-            other.uuid != npc.uuid && other.isAlive && !other.isSleeping && !other.isTalking() && other.distanceToSqr(npc) <= radiusSqr && other.uuid !in npcMicroInteractions && other.uuid !in outgoingGiftApproaches
+            other.uuid != npc.uuid &&
+                other.isAlive &&
+                !other.isSleeping &&
+                !other.isTalking() &&
+                other.distanceToSqr(npc) <= radiusSqr &&
+                other.uuid !in npcMicroInteractions &&
+                other.uuid !in outgoingGiftApproaches &&
+                (!trainerMeetup || GymLeagueFeature.isTrainerNpc(other.npcId))
         }.asSequence()
-            .mapNotNull { other -> NpcConfig.get(other.npcId)?.takeIf { otherDefinition -> NpcTime.activityAt(otherDefinition.schedule, level) != "sleep" && (plazaMeetup || (npcMicroInteractionCooldownUntil[otherDefinition.id] ?: 0L) <= level.dayTime) }?.let { other to it } }
+            .mapNotNull { other -> NpcConfig.get(other.npcId)?.takeIf { otherDefinition ->
+                val otherActivity = activityFor(other, otherDefinition)
+                otherActivity != "sleep" && (plazaMeetup || trainerMeetup || (npcMicroInteractionCooldownUntil[otherDefinition.id] ?: 0L) <= level.dayTime)
+            }?.let { other to it } }
             .minByOrNull { (other, _) -> other.distanceToSqr(npc) }
             ?: return false
-        startNpcMicroInteraction(level, npc, definition, other.first, other.second, settings, plazaMeetup)
+        startNpcMicroInteraction(level, npc, definition, other.first, other.second, settings, plazaMeetup || trainerMeetup)
         return true
     }
 
@@ -1587,6 +1609,17 @@ object NpcFeature {
     }
 
     fun moveToActivityTarget(entity: ChowNpcEntity, definition: NpcDefinition, activity: String) {
+        if (activity == "pokemon_roam") {
+            val target = randomPokemonRoamTarget(entity, definition)
+                ?: randomRoamTarget(entity, definition)?.let { pos -> PokemonRoamTarget(pos, PokemonRoamTargetKind.ROAM) }
+                ?: return
+            if (entity.isSleeping) entity.stopSleeping()
+            entity.debugActivity = activity
+            entity.debugGoal = if (target.kind == PokemonRoamTargetKind.POKEMON) "pokemon_watch" else target.kind.id
+            entity.debugTargetPos = target.pos.immutable()
+            entity.navigation.moveTo(target.pos.x + 0.5, target.pos.y.toDouble(), target.pos.z + 0.5, 0.75)
+            return
+        }
         if (activity == NpcScheduleDefinition.MEETUP_ACTIVITY) {
             val target = randomPlazaTarget(entity) ?: return
             if (entity.isSleeping) entity.stopSleeping()
@@ -1650,7 +1683,50 @@ object NpcFeature {
     }
 
     fun activityFor(entity: ChowNpcEntity, definition: NpcDefinition): String {
+        if (definition.isTrainerNpc()) return "pokemon_roam"
         return NpcTime.activityAt(definition.schedule, entity.level())
+    }
+
+    private fun NpcDefinition.isTrainerNpc(): Boolean = GymLeagueFeature.isTrainerNpc(id)
+
+    private fun randomPokemonRoamTarget(entity: ChowNpcEntity, definition: NpcDefinition): PokemonRoamTarget? {
+        val level = entity.level() as? ServerLevel ?: return null
+        val pokemon = nearestWildPokemon(level, entity)
+        if (pokemon != null && level.random.nextInt(100) < 65) {
+            if (level.random.nextInt(100) < 40) showTrainerPokemonBalloon(level, entity, definition, pokemon)
+            return PokemonRoamTarget(BlockPos.containing(pokemon.x, pokemon.y, pokemon.z), PokemonRoamTargetKind.POKEMON)
+        }
+        if (level.random.nextInt(100) < 35) {
+            val trainer = nearestTrainerNpc(level, entity)
+            if (trainer != null) return PokemonRoamTarget(trainer.blockPosition(), PokemonRoamTargetKind.TRAINER)
+        }
+        return randomRoamTarget(entity, definition)?.let { PokemonRoamTarget(it, PokemonRoamTargetKind.ROAM) }
+    }
+
+    private fun nearestWildPokemon(level: ServerLevel, entity: ChowNpcEntity): Entity? {
+        val box = entity.boundingBox.inflate(TRAINER_POKEMON_SCAN_RADIUS)
+        return level.getEntities(entity, box) { candidate ->
+            candidate.isAlive && candidate.uuid != entity.uuid && isPokemonEntity(candidate)
+        }.minByOrNull { candidate -> candidate.distanceToSqr(entity) }
+    }
+
+    private fun nearestTrainerNpc(level: ServerLevel, entity: ChowNpcEntity): ChowNpcEntity? {
+        val box = entity.boundingBox.inflate(TRAINER_MEETUP_SCAN_RADIUS)
+        return level.getEntities(NPC_ENTITY.get(), box) { other ->
+            other.uuid != entity.uuid && other.isAlive && !other.isSleeping && !other.isTalking() && GymLeagueFeature.isTrainerNpc(other.npcId)
+        }.minByOrNull { other -> other.distanceToSqr(entity) }
+    }
+
+    private fun isPokemonEntity(entity: Entity): Boolean =
+        entity.javaClass.name == "com.cobblemon.mod.common.entity.pokemon.PokemonEntity"
+
+    private fun showTrainerPokemonBalloon(level: ServerLevel, npc: ChowNpcEntity, definition: NpcDefinition, pokemon: Entity) {
+        if (npc.tickCount % 80 != 0) return
+        val species = pokemon.displayName?.string?.takeIf(String::isNotBlank) ?: "that Pokemon"
+        val message = TRAINER_POKEMON_BALLOONS.random()
+            .replace("{pokemon}", species)
+            .replace("{npc}", definition.name)
+        showBalloonToNearby(level, npc, NpcNetwork.goldBalloon("@poke_ball.png $message"), 80)
     }
 
     private fun randomPlazaTarget(entity: ChowNpcEntity): BlockPos? {
@@ -3201,6 +3277,10 @@ object NpcFeature {
             .firstOrNull()
     }
 
+    fun existingNpcs(server: MinecraftServer, npcId: String): List<ChowNpcEntity> = server.allLevels.asSequence()
+        .flatMap { level -> level.getEntities(NPC_ENTITY.get()) { npc -> npc.npcId == npcId && npc.isAlive }.asSequence() }
+        .toList()
+
     private fun findNpc(server: MinecraftServer, entityId: UUID): ChowNpcEntity? = server.allLevels.asSequence()
         .mapNotNull { level -> level.getEntity(entityId) as? ChowNpcEntity }
         .firstOrNull()
@@ -3265,6 +3345,14 @@ object NpcFeature {
 
     private data class NpcOutgoingGiftApproach(val playerId: UUID, val startedAtTick: Long)
 
+    private data class PokemonRoamTarget(val pos: BlockPos, val kind: PokemonRoamTargetKind)
+
+    private enum class PokemonRoamTargetKind(val id: String) {
+        POKEMON("pokemon_watch"),
+        TRAINER("trainer_meetup"),
+        ROAM("roam"),
+    }
+
     private data class NpcWorkBlockStatus(val counts: List<NpcWorkBlockCount>) {
         val ready: Boolean = counts.all { count -> count.present >= count.requirement.count }
     }
@@ -3302,6 +3390,18 @@ object NpcFeature {
     private const val NPC_DEFAULT_MEETUP_END_HOUR = 20
     private const val NPC_PLAZA_CAMP_FALLBACK_RADIUS = 10
     private const val NPC_PLAZA_MICRO_COOLDOWN_TICKS = 120L
+    private const val TRAINER_POKEMON_SCAN_RADIUS = 10.0
+    private const val TRAINER_MEETUP_SCAN_RADIUS = 12.0
+    private val TRAINER_POKEMON_BALLOONS = listOf(
+        "Hold still, {pokemon}. I am checking your stance.",
+        "{pokemon}, good footwork.",
+        "Easy now. I am just studying your form.",
+        "That is a clean battle posture.",
+        "Strong eyes. You have trained before.",
+        "Interesting movement. I should remember that.",
+        "No rush, little battler. Show me how you move.",
+        "That one has tournament nerves.",
+    )
     private const val CONTRACT_BED_ASSIGN_RADIUS_SQR = 7.0 * 7.0
     private const val WORKPLACE_ASSIGN_RADIUS_SQR = 8.0 * 8.0
     private const val WORKPLACE_ROAM_RADIUS = 8

@@ -1,6 +1,7 @@
 package dev.gisketch.chowkingdom.npc
 
 import com.mojang.datafixers.util.Pair
+import dev.gisketch.chowkingdom.gyms.GymBattleService
 import net.minecraft.commands.arguments.EntityAnchorArgument
 import net.minecraft.core.BlockPos
 import net.minecraft.core.registries.BuiltInRegistries
@@ -44,6 +45,7 @@ object NpcSmartBrain {
 
 private class NpcTownBrainBehaviour : ExtendedBehaviour<ChowNpcEntity>() {
     private val tasks: List<NpcSmartBrainTask> = listOf(
+        NpcGymBattleLockTask,
         NpcCriticalOverrideTask,
         NpcFeatureTask("quest_claim", NpcFeature::tickSmartBrainQuestClaim),
         NpcFeatureTask("rent_contract_follow", NpcFeature::tickSmartBrainRentContractFollow),
@@ -101,6 +103,12 @@ private object NpcCriticalOverrideTask : NpcSmartBrainTask {
     override val id: String = "critical_override"
 
     override fun run(entity: ChowNpcEntity): Boolean = NpcBossFights.tick(entity) || NpcSmartBrainOverrides.tick(entity)
+}
+
+private object NpcGymBattleLockTask : NpcSmartBrainTask {
+    override val id: String = "gym_battle_lock"
+
+    override fun run(entity: ChowNpcEntity): Boolean = GymBattleService.tickBattleLock(entity)
 }
 
 object NpcSmartBrainOverrides {

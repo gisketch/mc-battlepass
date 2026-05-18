@@ -15,8 +15,13 @@ import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import dev.gisketch.chowkingdom.ChowKingdomMod
 import dev.gisketch.chowkingdom.npc.ChowNpcEntity
+import dev.gisketch.chowkingdom.npc.NpcConfig
+import dev.gisketch.chowkingdom.npc.NpcDialogTokens
 import dev.gisketch.chowkingdom.npc.NpcFeature
+import dev.gisketch.chowkingdom.npc.NpcLlmService
+import dev.gisketch.chowkingdom.npc.NpcNetwork
 import dev.gisketch.chowkingdom.npc.NpcPokemonCompanions
+import dev.gisketch.chowkingdom.npc.NpcStore
 import dev.gisketch.chowkingdom.snackbar.SnackbarIcons
 import dev.gisketch.chowkingdom.snackbar.SnackbarNetwork
 import dev.gisketch.chowkingdom.snackbar.SnackbarNotification
@@ -44,6 +49,9 @@ object GymBattleService {
     private var gson: Gson = GsonBuilder().setPrettyPrinting().create()
     private val activeStates: MutableMap<UUID, BattleState> = linkedMapOf()
     private val pendingStarts: MutableList<PendingGymBattleStart> = mutableListOf()
+    private val battleLocksByNpcId: MutableMap<String, ActiveGymBattleLock> = linkedMapOf()
+    private val battleLocksByNpcUuid: MutableMap<UUID, ActiveGymBattleLock> = linkedMapOf()
+    private val pendingFacing: MutableList<PendingFacingSync> = mutableListOf()
     private var listenerRegistered = false
     private var tickRegistered = false
     private val battleEndedListener = EventListener<BattleState> { event: Event<BattleState> -> handleBattleEnded(event.value) }
@@ -104,6 +112,7 @@ object GymBattleService {
     private fun onServerTick(event: ServerTickEvent.Post) {
         val server = event.server
         val now = server.overworld().gameTime
+        tickPendingFacing(server, now)
         val ready = pendingStarts.filter { pending -> now >= pending.executeAtTick }
         if (ready.isEmpty()) return
         pendingStarts.removeAll(ready.toSet())
@@ -119,12 +128,17 @@ object GymBattleService {
         val npc = NpcFeature.existingNpc(server, pending.npcId) ?: return failPending(player, "${trainer.name} is not loaded.")
         runCatching {
             prepareBattlePositions(player, npc, league)?.let { message -> return failPending(player, message) }
+            lockNpcForBattle(npc, player, pending.official)
             NpcPokemonCompanions.suspendForBattle(trainer.npcId, server)
             registerPlayer(player)
             val playerTrainer = instance.trainerRegistry.getById(playerTrainerId(player), TrainerPlayer::class.java)
                 ?: TrainerPlayer(player).also { instance.trainerRegistry.registerPlayer(playerTrainerId(player), it) }
             val npcTrainer = registerEncounterTrainer(instance, server, npc, league, encounter)
-                ?: return failPending(player, "Could not prepare ${trainer.name}'s battle team.")
+                ?: run {
+                    NpcPokemonCompanions.resumeAfterBattle(trainer.npcId)
+                    unlockNpcForBattle(trainer.npcId, npc.uuid)
+                    return failPending(player, "Could not prepare ${trainer.name}'s battle team.")
+                }
             npcTrainer.setEntity(npc)
             val rules = BattleRules.Builder()
                 .withMaxItemUses(league.defaults.maxItemUses)
@@ -136,6 +150,7 @@ object GymBattleService {
             val uuid = instance.battleManager.startBattle(listOf(playerTrainer), listOf(npcTrainer), format, rules)
                 ?: run {
                     NpcPokemonCompanions.resumeAfterBattle(trainer.npcId)
+                    unlockNpcForBattle(trainer.npcId, npc.uuid)
                     return failPending(player, "RCT refused to start the battle.")
                 }
             val state = instance.battleManager.getState(uuid)
@@ -154,6 +169,7 @@ object GymBattleService {
             )
         }.getOrElse { exception ->
             NpcPokemonCompanions.resumeAfterBattle(trainer.npcId)
+            unlockNpcForBattle(trainer.npcId, npc.uuid)
             ChowKingdomMod.LOGGER.warn("Failed to start gym battle", exception)
             failPending(player, "The battle failed to start. Check the trainer JSON and RCT logs.")
         }
@@ -169,6 +185,13 @@ object GymBattleService {
     }.getOrElse { exception ->
         ChowKingdomMod.LOGGER.debug("Could not inspect Cobblemon party levels for {}", player.gameProfile.name, exception)
         null
+    }
+
+    fun partyBattleReady(player: ServerPlayer): Boolean = runCatching {
+        TrainerPlayer(player).team.any(::pokemonCanBattle)
+    }.getOrElse { exception ->
+        ChowKingdomMod.LOGGER.debug("Could not inspect Cobblemon party health for {}", player.gameProfile.name, exception)
+        true
     }
 
     private fun registerEncounterTrainer(instance: RCTApi, server: MinecraftServer, npc: ChowNpcEntity, league: GymLeagueDefinition, encounter: GymEncounterDefinition): TrainerNPC? {
@@ -195,15 +218,53 @@ object GymBattleService {
         val playerYaw = yawToward(playerPos, trainerPos)
         val trainerYaw = yawToward(trainerPos, playerPos)
         player.teleportTo(level, playerPos.x, playerPos.y, playerPos.z, playerYaw, 0.0f)
+        player.setYRot(playerYaw)
+        player.setXRot(0.0f)
+        player.yHeadRot = playerYaw
+        player.yBodyRot = playerYaw
         npc.navigation.stop()
         if (npc.level() != level) {
             npc.teleportTo(level, trainerPos.x, trainerPos.y, trainerPos.z, EnumSet.noneOf(RelativeMovement::class.java), trainerYaw, 0.0f)
         } else {
             npc.moveTo(trainerPos.x, trainerPos.y, trainerPos.z, trainerYaw, 0.0f)
         }
+        forceFaceEachOther(player, npc)
+        pendingFacing += PendingFacingSync(
+            untilTick = player.server.overworld().gameTime + 20L,
+            playerUuid = player.uuid,
+            npcUuid = npc.uuid,
+        )
+        return null
+    }
+
+    private fun forceFaceEachOther(player: ServerPlayer, npc: ChowNpcEntity) {
+        val playerYaw = yawToward(player.position(), npc.position())
+        val trainerYaw = yawToward(npc.position(), player.position())
+        player.setYRot(playerYaw)
+        player.setXRot(0.0f)
+        player.yHeadRot = playerYaw
+        player.yBodyRot = playerYaw
+        npc.setYRot(trainerYaw)
+        npc.setXRot(0.0f)
+        npc.yHeadRot = trainerYaw
+        npc.yBodyRot = trainerYaw
+        npc.lookControl.setLookAt(player, 30.0f, 30.0f)
         npc.lookAt(EntityAnchorArgument.Anchor.EYES, player.getEyePosition())
         player.lookAt(EntityAnchorArgument.Anchor.EYES, npc.getEyePosition())
-        return null
+    }
+
+    private fun tickPendingFacing(server: MinecraftServer, now: Long) {
+        val iterator = pendingFacing.iterator()
+        while (iterator.hasNext()) {
+            val sync = iterator.next()
+            if (now > sync.untilTick) {
+                iterator.remove()
+                continue
+            }
+            val player = server.playerList.getPlayer(sync.playerUuid) ?: continue
+            val npc = server.allLevels.asSequence().mapNotNull { level -> level.getEntity(sync.npcUuid) as? ChowNpcEntity }.firstOrNull() ?: continue
+            if (player.level() == npc.level()) forceFaceEachOther(player, npc)
+        }
     }
 
     private fun yawToward(from: Vec3, to: Vec3): Float {
@@ -221,13 +282,103 @@ object GymBattleService {
     }
 
     private fun handleBattleEndedByContext(state: BattleState, context: GymBattleContextState) {
-        if (state.isEndForced) return
-        val player = state.winners.asSequence()
+        if (state.isEndForced) {
+            val server = net.neoforged.neoforge.server.ServerLifecycleHooks.getCurrentServer()
+            unlockNpcForBattle(context.npcId, server?.let { NpcFeature.existingNpc(it, context.npcId) }?.uuid)
+            return
+        }
+        val winner = state.winners.asSequence()
             .filterIsInstance<TrainerPlayer>()
             .map { it.player }
             .firstOrNull { it.stringUUID == context.playerUuid }
-            ?: return
-        GymLeagueFeature.completeEncounterWin(player, context)
+        val loser = state.losers.asSequence()
+            .filterIsInstance<TrainerPlayer>()
+            .map { it.player }
+            .firstOrNull { it.stringUUID == context.playerUuid }
+        val player = winner ?: loser ?: return unlockNpcForBattle(context.npcId, null)
+        val npc = NpcFeature.existingNpc(player.server, context.npcId)
+        val won = winner != null
+        if (won) GymLeagueFeature.completeEncounterWin(player, context) else GymLeagueFeature.completeEncounterLoss(player, context)
+        openResultDialogue(player, context, won)
+        unlockNpcForBattle(context.npcId, npc?.uuid)
+    }
+
+    fun isBattleLocked(npc: ChowNpcEntity): Boolean = battleLocksByNpcUuid.containsKey(npc.uuid) || battleLocksByNpcId.containsKey(npc.npcId)
+
+    fun tickBattleLock(npc: ChowNpcEntity): Boolean {
+        val lock = battleLocksByNpcUuid[npc.uuid] ?: battleLocksByNpcId[npc.npcId] ?: return false
+        npc.navigation.stop()
+        npc.target = null
+        npc.debugActivity = "gym_battle"
+        npc.debugGoal = if (lock.official) "league_battle" else "friendly_battle"
+        val level = npc.level() as? net.minecraft.server.level.ServerLevel
+        val player = lock.playerUuid?.let { level?.getPlayerByUUID(it) }
+        if (player != null && player.isAlive && player.level() == npc.level()) {
+            npc.lookControl.setLookAt(player, 30.0f, 30.0f)
+            npc.lookAt(EntityAnchorArgument.Anchor.EYES, player.getEyePosition())
+        }
+        return true
+    }
+
+    private fun lockNpcForBattle(npc: ChowNpcEntity, player: ServerPlayer, official: Boolean) {
+        val lock = ActiveGymBattleLock(npc.npcId, npc.uuid, player.uuid, official)
+        battleLocksByNpcId[npc.npcId] = lock
+        battleLocksByNpcUuid[npc.uuid] = lock
+        npc.navigation.stop()
+    }
+
+    private fun unlockNpcForBattle(npcId: String, npcUuid: UUID?) {
+        battleLocksByNpcId.remove(npcId)
+        if (npcUuid != null) battleLocksByNpcUuid.remove(npcUuid)
+    }
+
+    private fun openResultDialogue(player: ServerPlayer, context: GymBattleContextState, won: Boolean) {
+        val definition = NpcConfig.get(context.npcId) ?: return
+        val npc = NpcFeature.existingNpc(player.server, context.npcId) ?: return
+        if (npc.level() != player.level()) return
+        val league = GymLeagueConfig.league(context.leagueId)
+        val encounter = league?.encounter(context.encounterId)
+        val trainer = league?.trainer(context.trainerId)
+        val friendship = NpcStore.friendshipSnapshot(definition.id, player)
+        val fallback = resultFallback(won, context.official, trainer?.name ?: definition.name, encounter?.displayName.orEmpty())
+        val prompt = buildString {
+            append("${player.gameProfile.name} just ")
+            append(if (won) "won" else "lost")
+            append(" a ")
+            append(if (context.official) "league record battle" else "friendly battle")
+            append(" against you")
+            if (encounter != null) append(" for ${encounter.displayName}")
+            append(". Reply as ${definition.name} in 1-2 short in-character sentences. ")
+            if (won && context.official) append("Acknowledge the record update without sounding like a UI. ")
+            if (!won) append("Do not insult them hard; invite a rematch after they recover. ")
+        }
+        npc.startTalkingTo(player, 100)
+        val token = NpcDialogTokens.next()
+        NpcNetwork.openDialog(player, NpcFeature.dialogPayload(definition, npc, if (NpcConfig.settings().llm.enabled) "..." else fallback, false, friendship.level, closeOnly = true, closeLabel = "OKAY", responseToken = if (NpcConfig.settings().llm.enabled) token else 0L, dialogMode = "gym_result"))
+        if (NpcConfig.settings().llm.enabled) {
+            NpcLlmService.event(
+                player,
+                npc,
+                definition,
+                fallback,
+                prompt,
+                inputLabel = "Gym battle result",
+                excludePlayerFromBalloon = true,
+                showBalloon = false,
+                relayToNearby = false,
+                npcRecordType = if (won) "gym_battle_win_dialogue" else "gym_battle_loss_dialogue",
+                responseToken = token,
+            )
+        } else {
+            NpcStore.recordConversation(definition.id, player, definition.name, fallback, if (won) "gym_battle_win_dialogue" else "gym_battle_loss_dialogue")
+        }
+    }
+
+    private fun resultFallback(won: Boolean, official: Boolean, trainerName: String, encounterName: String): String = when {
+        won && official -> "Good battle. Your record moves forward${if (encounterName.isNotBlank()) " after $encounterName" else ""}, but do not get comfortable."
+        won -> "Not bad. Friendly battle or not, you made me work for that one."
+        official -> "You are not through me yet. Fix your team, breathe, and challenge me again when you are ready."
+        else -> "Good warm-up. Come back after your team catches its breath."
     }
 
     private fun pokemonLevel(pokemon: Any): Int? {
@@ -236,6 +387,29 @@ object GymBattleService {
         }
         return runCatching { pokemon.javaClass.getField("level").get(pokemon) as? Number }.getOrNull()?.toInt()
     }
+
+    private fun pokemonCanBattle(pokemon: Any): Boolean {
+        val fainted = listOf("isFainted", "getFainted")
+            .firstNotNullOfOrNull { name -> pokemon.booleanMethod(name) }
+        if (fainted == true) return false
+        val currentHealth = pokemon.numberMethod("getCurrentHealth")
+            ?: pokemon.numberMethod("getHealth")
+            ?: pokemon.numberField("currentHealth")
+            ?: pokemon.numberField("health")
+        return currentHealth == null || currentHealth > 0.0
+    }
+
+    private fun Any.booleanMethod(name: String): Boolean? = runCatching {
+        javaClass.methods.firstOrNull { method -> method.name == name && method.parameterCount == 0 }?.invoke(this) as? Boolean
+    }.getOrNull()
+
+    private fun Any.numberMethod(name: String): Double? = runCatching {
+        (javaClass.methods.firstOrNull { method -> method.name == name && method.parameterCount == 0 }?.invoke(this) as? Number)?.toDouble()
+    }.getOrNull()
+
+    private fun Any.numberField(name: String): Double? = runCatching {
+        (javaClass.getField(name).get(this) as? Number)?.toDouble()
+    }.getOrNull()
 
     private fun playerTrainerId(player: ServerPlayer): String = "player_${player.stringUUID}"
 
@@ -252,6 +426,19 @@ private data class PendingGymBattleStart(
     val trainerId: String,
     val npcId: String,
     val official: Boolean,
+)
+
+private data class ActiveGymBattleLock(
+    val npcId: String,
+    val npcUuid: UUID,
+    val playerUuid: UUID?,
+    val official: Boolean,
+)
+
+private data class PendingFacingSync(
+    val untilTick: Long,
+    val playerUuid: UUID,
+    val npcUuid: UUID,
 )
 
 private const val BATTLE_FADE_TELEPORT_DELAY_TICKS = 8L

@@ -7,6 +7,8 @@
     "BlockFactoryDodgeRollMessageMixin",
     "BlockFactoryRollAttachmentMixin",
     "GameProfileMixin",
+    "RandomStateAccessor",
+    "SkyArchipelagoSeedMixin",
     "SpellBindingScreenHandlerClassLockMixin"
   ],
   "client": [

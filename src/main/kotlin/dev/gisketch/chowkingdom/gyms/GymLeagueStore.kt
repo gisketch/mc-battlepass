@@ -88,6 +88,7 @@ object GymLeagueStore {
         val state = playerState(player)
         state.activeLeague = ""
         state.leagues.remove(cleanId(leagueId))
+        state.lastAnnouncedAvailableEncounter = ""
         data.attempts.keys.removeIf { key -> key.startsWith("${player.stringUUID}|") }
         data.attemptRecords.keys.removeIf { key -> key.startsWith("${player.stringUUID}|") }
         save()
@@ -111,6 +112,11 @@ object GymLeagueStore {
         return day >= available
     }
 
+    fun availableDay(leagueId: String, encounterId: String): Long? {
+        ensureLoaded()
+        return data.leagues[cleanId(leagueId)]?.unlockedEncounters?.get(cleanId(encounterId))
+    }
+
     fun grantClear(player: ServerPlayer, league: GymLeagueDefinition, encounter: GymEncounterDefinition): Boolean {
         ensureLoaded()
         val state = playerLeagueState(player, league.id)
@@ -127,6 +133,22 @@ object GymLeagueStore {
     fun hasCleared(player: ServerPlayer, leagueId: String, encounterId: String): Boolean {
         ensureLoaded()
         return cleanId(encounterId) in playerLeagueState(player, leagueId).clearedEncounters
+    }
+
+    fun clearedCount(player: ServerPlayer, leagueId: String): Int {
+        ensureLoaded()
+        return playerLeagueState(player, leagueId).clearedEncounters.size
+    }
+
+    fun hasAnnouncedAvailableEncounter(player: ServerPlayer, leagueId: String, encounterId: String): Boolean {
+        ensureLoaded()
+        return playerState(player).lastAnnouncedAvailableEncounter == announceKey(leagueId, encounterId)
+    }
+
+    fun markAvailableEncounterAnnounced(player: ServerPlayer, leagueId: String, encounterId: String) {
+        ensureLoaded()
+        playerState(player).lastAnnouncedAvailableEncounter = announceKey(leagueId, encounterId)
+        save()
     }
 
     fun badges(player: ServerPlayer, leagueId: String): Set<String> {
@@ -214,6 +236,8 @@ object GymLeagueStore {
 
     private fun attemptRecordKey(player: ServerPlayer, trainerId: String): String = "${player.stringUUID}|${cleanId(trainerId)}"
 
+    private fun announceKey(leagueId: String, encounterId: String): String = "${cleanId(leagueId)}:${cleanId(encounterId)}"
+
     private fun normalizedAttemptRecord(player: ServerPlayer, trainerId: String, maxAttempts: Int): GymAttemptRecordState {
         val key = attemptRecordKey(player, trainerId)
         val record = data.attemptRecords.getOrPut(key) { GymAttemptRecordState() }
@@ -277,6 +301,7 @@ class GymGlobalLeagueState(
 class GymPlayerState(
     var activeLeague: String = "",
     var leagues: MutableMap<String, GymPlayerLeagueState> = linkedMapOf(),
+    var lastAnnouncedAvailableEncounter: String = "",
 )
 
 class GymPlayerLeagueState(

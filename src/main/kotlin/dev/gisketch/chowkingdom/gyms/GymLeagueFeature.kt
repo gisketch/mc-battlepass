@@ -14,6 +14,8 @@ import dev.gisketch.chowkingdom.npc.NpcDefinition
 import dev.gisketch.chowkingdom.npc.NpcFeature
 import dev.gisketch.chowkingdom.npc.NpcLlmService
 import dev.gisketch.chowkingdom.npc.NpcNetwork
+import dev.gisketch.chowkingdom.npc.NpcQuestHudEntryPayload
+import dev.gisketch.chowkingdom.npc.NpcQuestService
 import dev.gisketch.chowkingdom.npc.NpcStore
 import dev.gisketch.chowkingdom.npc.NpcTime
 import dev.gisketch.chowkingdom.snackbar.SnackbarIcons
@@ -44,6 +46,7 @@ import net.neoforged.neoforge.event.tick.ServerTickEvent
 object GymLeagueFeature {
     private const val DEFAULT_STADIUM_AREA = "main_stadium"
     private var nextSpawnTick = 0L
+    private var nextAvailabilityTick = 0L
 
     fun register() {
         GymLeagueConfig.load()
@@ -56,6 +59,8 @@ object GymLeagueFeature {
     }
 
     fun leagueAvailable(definition: NpcDefinition): Boolean = GymLeagueConfig.isChowfan(definition.id)
+
+    fun isTrainerNpc(npcId: String): Boolean = GymLeagueConfig.isTrainerNpc(npcId)
 
     fun tryOpenNpcDialog(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition): Boolean {
         val trainerBinding = GymLeagueConfig.trainerNpc(definition.id)
@@ -94,7 +99,12 @@ object GymLeagueFeature {
         when (action) {
             "gym_challenge" -> {
                 NpcLlmService.leaveDialog(player, definition.id)
-                challengeTrainer(player, npc, definition, league, trainer)
+                challengeTrainer(player, npc, definition, league, trainer, forceFriendly = false)
+                return true
+            }
+            "gym_friendly_battle" -> {
+                NpcLlmService.leaveDialog(player, definition.id)
+                challengeTrainer(player, npc, definition, league, trainer, forceFriendly = true)
                 return true
             }
             "gym_badge" -> {
@@ -116,11 +126,15 @@ object GymLeagueFeature {
         if (!context.official) {
             SnackbarNetwork.send(player, SnackbarNotification.item("cobblemon:poke_ball", "FRIENDLY BATTLE WON", trainer.name, SnackbarType.SUCCESS, SnackbarSounds.REWARD))
             BattlepassNetwork.syncAllPlayers()
+            NpcQuestService.syncTo(player)
             return
         }
         recordMission(player, "gisketchs_chowkingdom_mod:gym_battle_won", league, encounter, trainer)
         val firstClear = GymLeagueStore.grantClear(player, league, encounter)
-        if (!firstClear) return
+        if (!firstClear) {
+            NpcQuestService.syncTo(player)
+            return
+        }
         if (encounter.rewardXp > 0) BattlepassXpStore.addXp(player, league.defaults.passId, encounter.rewardXp)
         if (encounter.rewardChowcoins > 0) ChowcoinStore.add(player, encounter.rewardChowcoins)
         if (encounter.badgeId.isNotBlank()) {
@@ -134,17 +148,30 @@ object GymLeagueFeature {
             SnackbarNetwork.send(player, SnackbarNotification.item("cobblemon:poke_ball", "LEAGUE BATTLE WON", encounter.displayName, SnackbarType.SUCCESS, SnackbarSounds.REWARD))
         }
         BattlepassNetwork.syncAllPlayers()
+        NpcQuestService.syncTo(player)
+    }
+
+    fun completeEncounterLoss(player: ServerPlayer, context: GymBattleContextState) {
+        val league = GymLeagueConfig.league(context.leagueId) ?: return
+        val trainer = league.trainer(context.trainerId) ?: return
+        val title = if (context.official) "LEAGUE BATTLE LOST" else "FRIENDLY BATTLE LOST"
+        SnackbarNetwork.send(player, SnackbarNotification.item("cobblemon:poke_ball", title, trainer.name, SnackbarType.GENERIC, SnackbarSounds.GENERIC))
+        BattlepassNetwork.syncAllPlayers()
+        NpcQuestService.syncTo(player)
     }
 
     private fun onServerStarted(event: ServerStartedEvent) {
         GymLeagueConfig.load()
         GymLeagueStore.load()
         GymBattleService.init(event.server)
+        dedupeGymTrainers(event.server)
     }
 
     private fun onPlayerLoggedIn(event: PlayerEvent.PlayerLoggedInEvent) {
         val player = event.entity as? ServerPlayer ?: return
         GymBattleService.registerPlayer(player)
+        checkChallengeAvailability(player)
+        NpcQuestService.syncTo(player)
     }
 
     private fun onPlayerLoggedOut(event: PlayerEvent.PlayerLoggedOutEvent) {
@@ -155,9 +182,38 @@ object GymLeagueFeature {
     private fun onServerTick(event: ServerTickEvent.Post) {
         val server = event.server
         val now = server.overworld().gameTime
+        if (now >= nextAvailabilityTick) {
+            nextAvailabilityTick = now + 20L * 30L
+            server.playerList.players.forEach { player -> checkChallengeAvailability(player) }
+        }
         if (now < nextSpawnTick) return
         nextSpawnTick = now + 20L * 30L
         spawnUnlockedTrainers(server.overworld())
+    }
+
+    fun hudEntriesFor(player: ServerPlayer): List<NpcQuestHudEntryPayload> {
+        val activeLeague = GymLeagueStore.activeLeague(player)
+        if (activeLeague.isBlank()) return emptyList()
+        val league = GymLeagueConfig.league(activeLeague) ?: return emptyList()
+        val encounter = GymLeagueStore.nextPlayerEncounter(player, league) ?: return emptyList()
+        val day = NpcTime.day(player.level())
+        if (!GymLeagueStore.isUnlocked(league.id, encounter.id, day)) return emptyList()
+        val trainer = league.trainer(encounter.trainer) ?: return emptyList()
+        val maxAttempts = league.defaults.dailyAttemptsPerNpc
+        if (GymLeagueStore.attempts(player, trainer.id, maxAttempts) >= maxAttempts) return emptyList()
+        return listOf(
+            NpcQuestHudEntryPayload(
+                npcId = trainer.npcId,
+                npcName = trainer.name,
+                description = "Challenge ${trainer.name} in a Pokemon Battle",
+                passId = league.defaults.passId,
+                xp = encounter.rewardXp,
+                chowcoins = encounter.rewardChowcoins,
+                progress = 0,
+                goal = 1,
+                acceptedAtTick = 0L,
+            ),
+        )
     }
 
     private fun spawnUnlockedTrainers(fallbackLevel: ServerLevel) {
@@ -169,11 +225,35 @@ object GymLeagueFeature {
             league.sequence.forEach { encounter ->
                 if (!GymLeagueStore.isUnlocked(league.id, encounter.id, currentDay)) return@forEach
                 val trainer = league.trainer(encounter.trainer) ?: return@forEach
+                dedupeTrainer(level.server, trainer.npcId, BlockPos(area.x, area.y, area.z))
                 if (NpcFeature.existingNpc(level.server, trainer.npcId) != null) return@forEach
                 val definition = NpcConfig.get(trainer.npcId) ?: return@forEach
                 NpcFeature.spawnConfiguredNpcAt(level, definition, BlockPos(area.x, area.y, area.z))
             }
         }
+    }
+
+    fun dedupeGymTrainers(server: net.minecraft.server.MinecraftServer) {
+        GymLeagueConfig.all().forEach { league ->
+            val area = GymLeagueStore.area(league.stadiumArea)
+            val anchor = if (area != null) BlockPos(area.x, area.y, area.z) else server.overworld().sharedSpawnPos
+            league.trainers.forEach { trainer -> dedupeTrainer(server, trainer.npcId, anchor) }
+        }
+    }
+
+    private fun dedupeTrainer(server: net.minecraft.server.MinecraftServer, npcId: String, anchor: BlockPos) {
+        val live = NpcFeature.existingNpcs(server, npcId)
+        if (live.size <= 1) return
+        val stored = NpcStore.entityUuid(npcId)
+        val kept = live.firstOrNull { npc -> npc.uuid == stored }
+            ?: live.minByOrNull { npc -> npc.blockPosition().distSqr(anchor) }
+            ?: return
+        live.filterNot { npc -> npc.uuid == kept.uuid }.forEach { duplicate ->
+            duplicate.navigation.stop()
+            duplicate.discard()
+        }
+        NpcStore.setEntity(npcId, kept.uuid, kept.campPos ?: anchor)
+        ChowKingdomMod.LOGGER.info("Deduped gym trainer {}: kept {}, removed {}", npcId, kept.uuid, live.size - 1)
     }
 
     private fun openChowfanDialog(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition) {
@@ -206,6 +286,7 @@ object GymLeagueFeature {
         val first = league.firstEncounter()
         val message = "Record opened. Your ${league.displayName} badge run starts with ${first?.displayName ?: "the first posted match"}. Keep your party under level ${first?.levelCap ?: "the posted cap"}."
         SnackbarNetwork.send(player, SnackbarNotification.item("cobblemon:poke_ball", "LEAGUE RECORD OPEN", league.displayName, SnackbarType.SUCCESS, SnackbarSounds.REWARD))
+        NpcQuestService.syncTo(player)
         NpcNetwork.openDialog(player, NpcFeature.dialogPayload(definition, npc, message, false, friendship.level, dialogMode = "league_chowfan", leagueAvailable = true))
     }
 
@@ -214,21 +295,44 @@ object GymLeagueFeature {
         val activeLeague = GymLeagueStore.activeLeague(player)
         val current = if (activeLeague == league.id) GymLeagueStore.nextPlayerEncounter(player, league) else null
         val day = NpcTime.day(player.level())
-        val currentForTrainer = current?.trainer == trainer.id && GymLeagueStore.isUnlocked(league.id, current.id, day)
+        val officialEncounter = current?.takeIf { it.trainer == trainer.id }
+        val officialForTrainer = officialEncounter != null
+        val currentUnlocked = current?.let { GymLeagueStore.isUnlocked(league.id, it.id, day) } == true
         val maxAttempts = league.defaults.dailyAttemptsPerNpc
         val attemptsLeft = (maxAttempts - GymLeagueStore.attempts(player, trainer.id, maxAttempts)).coerceAtLeast(0)
         val cooldownMs = GymLeagueStore.attemptCooldownRemainingMs(player, trainer.id, maxAttempts)
+        val challengeAvailable = officialForTrainer && currentUnlocked && attemptsLeft > 0
+        val challengeDisabledReason = when {
+            officialEncounter != null && !currentUnlocked -> availabilityReason(league.id, officialEncounter.id, day)
+            officialForTrainer && attemptsLeft <= 0 -> "Cooldown: ${formatCooldown(cooldownMs)}"
+            else -> ""
+        }
+        val friendlyAvailable = attemptsLeft > 0
         val message = when {
             activeLeague != league.id && attemptsLeft > 0 -> "FRIENDLY BATTLE is open. It will not touch your badge record. Attempts left before cooldown: $attemptsLeft."
             activeLeague != league.id -> "Friendly battle cooldown is active. Come back in ${formatCooldown(cooldownMs)}."
-            currentForTrainer && attemptsLeft > 0 -> "You're up for ${current.displayName}. Level cap ${current.levelCap}. Attempts left before cooldown: $attemptsLeft."
-            currentForTrainer -> "Battle cooldown is active. Come back in ${formatCooldown(cooldownMs)}."
+            officialEncounter != null && !currentUnlocked -> "${officialEncounter.displayName} is next, but not yet. Meet me when the route opens. FRIENDLY BATTLE is open if you want practice."
+            officialEncounter != null && attemptsLeft > 0 -> "You're up for ${officialEncounter.displayName}. Level cap ${officialEncounter.levelCap}. Attempts left before cooldown: $attemptsLeft."
+            officialForTrainer -> "Battle cooldown is active. Come back in ${formatCooldown(cooldownMs)}."
             current != null -> "Your next ${league.displayName} record match is ${current.displayName}. I can still do a friendly battle."
             else -> "Your ${league.displayName} record looks complete from here."
         }
         npc.startTalkingTo(player, 100)
-        val mode = if (activeLeague == league.id && currentForTrainer) "gym_trainer" else "gym_friendly"
-        NpcNetwork.openDialog(player, NpcFeature.dialogPayload(definition, npc, message, false, friendship.level, dialogMode = mode, leagueAvailable = false))
+        NpcNetwork.openDialog(
+            player,
+            NpcFeature.dialogPayload(
+                definition,
+                npc,
+                message,
+                false,
+                friendship.level,
+                dialogMode = "gym_trainer",
+                leagueAvailable = false,
+                challengeAvailable = challengeAvailable,
+                challengeDisabledReason = challengeDisabledReason,
+                friendlyBattleAvailable = friendlyAvailable,
+            ),
+        )
     }
 
     private fun openBadgeDialog(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, league: GymLeagueDefinition, trainer: GymTrainerDefinition) {
@@ -243,11 +347,11 @@ object GymLeagueFeature {
         NpcNetwork.openDialog(player, NpcFeature.dialogPayload(definition, npc, message, false, friendship.level, dialogMode = "gym_trainer"))
     }
 
-    private fun challengeTrainer(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, league: GymLeagueDefinition, trainer: GymTrainerDefinition) {
+    private fun challengeTrainer(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, league: GymLeagueDefinition, trainer: GymTrainerDefinition, forceFriendly: Boolean) {
         val friendship = NpcStore.friendshipSnapshot(definition.id, player)
         val day = NpcTime.day(player.level())
         val active = GymLeagueStore.activeLeague(player)
-        val official = active == league.id
+        val official = !forceFriendly && active == league.id
         val encounter = if (official) GymLeagueStore.nextPlayerEncounter(player, league) else league.sequence.firstOrNull { it.trainer == trainer.id }
         fun fail(message: String) = NpcNetwork.openDialog(player, NpcFeature.dialogPayload(definition, npc, message, false, friendship.level, closeOnly = true, closeLabel = "OKAY"))
         if (encounter == null) return fail(if (official) "Your ${league.displayName} record is already complete." else "${trainer.name} has no friendly team on file.")
@@ -256,6 +360,7 @@ object GymLeagueFeature {
         val maxAttempts = league.defaults.dailyAttemptsPerNpc
         val attempts = GymLeagueStore.attempts(player, trainer.id, maxAttempts)
         if (attempts >= maxAttempts) return fail("${trainer.name} is on cooldown. Come back in ${formatCooldown(GymLeagueStore.attemptCooldownRemainingMs(player, trainer.id, maxAttempts))}.")
+        if (!GymBattleService.partyBattleReady(player)) return fail("Your party cannot battle right now. Heal at least one Pokemon first.")
         if (official) GymBattleService.partyLevelViolation(player, encounter.levelCap)?.let { level ->
             return fail("Level cap is ${encounter.levelCap}. One of your active party Pokemon is level $level.")
         }
@@ -264,6 +369,7 @@ object GymLeagueFeature {
         val started = GymBattleService.startBattle(player, npc, league, encounter, trainer, official = official)
         if (!started.started) return fail(started.message)
         BattlepassNetwork.syncAllPlayers()
+        NpcQuestService.syncTo(player)
         val message = if (official) "Record battle started. Show me your badge run is real." else "Friendly battle started. No badge record pressure."
         NpcNetwork.openDialog(player, NpcFeature.dialogPayload(definition, npc, message, false, friendship.level, closeOnly = true, closeLabel = "OKAY"))
     }
@@ -338,6 +444,7 @@ object GymLeagueFeature {
     private fun reload(context: CommandContext<CommandSourceStack>): Int {
         GymLeagueConfig.load()
         GymLeagueStore.load()
+        dedupeGymTrainers(context.source.server)
         context.source.sendSuccess({ Component.literal("Reloaded ${GymLeagueConfig.all().size} gym league(s).") }, true)
         return GymLeagueConfig.all().size
     }
@@ -419,6 +526,7 @@ object GymLeagueFeature {
         val leagueId = StringArgumentType.getString(context, "league_id")
         val league = GymLeagueConfig.league(leagueId) ?: return fail(context, "Unknown league '$leagueId'.")
         if (!GymLeagueStore.startLeague(player, league)) return fail(context, "${player.gameProfile.name} already has active league ${GymLeagueStore.activeLeague(player)}.")
+        NpcQuestService.syncTo(player)
         context.source.sendSuccess({ Component.literal("Started ${league.displayName} for ${player.gameProfile.name}.") }, true)
         return 1
     }
@@ -427,6 +535,7 @@ object GymLeagueFeature {
         val player = EntityArgument.getPlayer(context, "player")
         val leagueId = StringArgumentType.getString(context, "league_id")
         GymLeagueStore.resetLeague(player, leagueId)
+        NpcQuestService.syncTo(player)
         context.source.sendSuccess({ Component.literal("Reset ${cleanId(leagueId)} for ${player.gameProfile.name}.") }, true)
         return 1
     }
@@ -436,6 +545,7 @@ object GymLeagueFeature {
         val encounterId = StringArgumentType.getString(context, "encounter_id")
         if (GymLeagueConfig.league(leagueId)?.encounter(encounterId) == null) return fail(context, "Unknown encounter '$encounterId'.")
         GymLeagueStore.unlock(leagueId, encounterId, NpcTime.day(context.source.server.overworld()))
+        context.source.server.playerList.players.forEach { player -> checkChallengeAvailability(player) }
         context.source.sendSuccess({ Component.literal("Unlocked ${cleanId(encounterId)} in ${cleanId(leagueId)}.") }, true)
         return 1
     }
@@ -445,6 +555,7 @@ object GymLeagueFeature {
         val league = GymLeagueConfig.league(StringArgumentType.getString(context, "league_id")) ?: return fail(context, "Unknown league.")
         val encounter = league.encounter(StringArgumentType.getString(context, "encounter_id")) ?: return fail(context, "Unknown encounter.")
         GymLeagueStore.grantClear(player, league, encounter)
+        NpcQuestService.syncTo(player)
         context.source.sendSuccess({ Component.literal("Granted ${encounter.id} to ${player.gameProfile.name}.") }, true)
         return 1
     }
@@ -462,8 +573,35 @@ object GymLeagueFeature {
         val player = EntityArgument.getPlayer(context, "player")
         val trainerId = StringArgumentType.getString(context, "trainer_id")
         GymLeagueStore.resetAttempts(player, trainerId)
+        NpcQuestService.syncTo(player)
         context.source.sendSuccess({ Component.literal("Reset ${cleanId(trainerId)} attempts for ${player.gameProfile.name}.") }, true)
         return 1
+    }
+
+    private fun checkChallengeAvailability(player: ServerPlayer) {
+        val activeLeague = GymLeagueStore.activeLeague(player)
+        if (activeLeague.isBlank()) return
+        val league = GymLeagueConfig.league(activeLeague) ?: return
+        if (GymLeagueStore.clearedCount(player, league.id) <= 0) return
+        val encounter = GymLeagueStore.nextPlayerEncounter(player, league) ?: return
+        val day = NpcTime.day(player.level())
+        if (!GymLeagueStore.isUnlocked(league.id, encounter.id, day)) return
+        if (GymLeagueStore.hasAnnouncedAvailableEncounter(player, league.id, encounter.id)) return
+        val trainer = league.trainer(encounter.trainer) ?: return
+        val maxAttempts = league.defaults.dailyAttemptsPerNpc
+        if (GymLeagueStore.attempts(player, trainer.id, maxAttempts) >= maxAttempts) return
+        GymLeagueStore.markAvailableEncounterAnnounced(player, league.id, encounter.id)
+        SnackbarNetwork.send(
+            player,
+            SnackbarNotification.item("cobblemon:poke_ball", "POKEMON CHALLENGE READY", "${trainer.name} is ready for your ${encounter.displayName} match.", SnackbarType.SUCCESS, SnackbarSounds.SUCCESS),
+        )
+        NpcQuestService.syncTo(player)
+    }
+
+    private fun availabilityReason(leagueId: String, encounterId: String, day: Long): String {
+        val available = GymLeagueStore.availableDay(leagueId, encounterId) ?: return "Not on today's bracket yet"
+        val days = (available - day).coerceAtLeast(1L)
+        return "Available in $days in-game day${if (days == 1L) "" else "s"}"
     }
 
     private fun suggestEncounters(context: CommandContext<CommandSourceStack>, builder: com.mojang.brigadier.suggestion.SuggestionsBuilder): java.util.concurrent.CompletableFuture<com.mojang.brigadier.suggestion.Suggestions> {
