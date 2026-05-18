@@ -50,7 +50,7 @@ In multiplayer, the interacting player sees the dialog screen only. Other player
 
 While talking, the NPC briefly stops navigating and looks at the interacting player. During the local dialog typewriter reveal, NPCs play proximity-faded animalese sounds using the configured voice pitch. Nearby NPC balloons and hurt balloons do not play animalese.
 
-When a player comes within the global NPC greeting radius and has not spoken to that NPC yet that in-game day, the NPC pauses briefly, looks at the player, and shows a world-space greeting balloon for the configured duration. If the player does not interact, the same NPC/player pair can greet again after the configured cooldown. If the player leaves the radius, that cooldown resets. Right-clicking the NPC for the first chat of the in-game day grants +25 friendship, stops greeting balloons for that day, and uses the configured first-chat message pool when the NPC already has a home and is awake.
+NPCs no longer auto-greet players for first daily contact. Entering the global NPC greeting radius stays silent: no greeting balloon, no pause, and no forced attention. Right-clicking the NPC for the first chat of the in-game day still grants +25 friendship and uses the configured first-chat message pool when the NPC already has a home and is awake.
 
 Unhoused move-in NPCs use camper housing balloons instead of daily greeting balloons until they have a home or a rent contract has been issued. While a player is in greeting radius, the needs-house or lost-house balloon refreshes in world-space so it remains visible and is not replaced by normal daily greetings.
 
@@ -349,7 +349,7 @@ Runtime state is stored in world data:
 
 Resident state tracks each NPC's entity UUID, camp position, assigned home bed, assigned workplace block, whether the NPC was fired from work, whether a contract has been given, per-player recognition flags, recent hurt records, per-player conversation history, per-player gift counters, last hurt player/streak, death state, scheduled respawn day, and camper return reason. World state also tracks the latest camping block position, the active unhoused camper id, and the next camper cooldown tick. Hurt history stores only every third same-player hit event and keeps the latest 10 records. This is world data, separate from static JSON definitions and runtime brain state.
 
-Greeting state is tracked per NPC/player. It stores the last greeting day, the real-time greeting cooldown expiry, and the first-chat day used to stop repeat greetings and prevent duplicate daily friendship rewards.
+Greeting state is tracked per NPC/player. It stores legacy auto-greeting fields plus the first-chat day used to prevent duplicate daily friendship rewards.
 
 NPC quest state is tracked per player. It stores the active meetup reset period, accepted NPC quests with their next meetup expiry tick, completed NPC ids for that period, and per-NPC decline cooldown ticks. When the period changes, active unclaimed NPC quests expire only after their stored expiry tick.
 

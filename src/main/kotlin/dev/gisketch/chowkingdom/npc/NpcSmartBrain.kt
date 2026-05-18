@@ -53,7 +53,6 @@ private class NpcTownBrainBehaviour : ExtendedBehaviour<ChowNpcEntity>() {
         NpcFeatureTask("npc_micro_interaction", NpcFeature::tickSmartBrainNpcMicroInteraction),
         NpcFeatureTask("outgoing_gift", NpcFeature::tickSmartBrainOutgoingGift),
         NpcFeatureTask("quest_offer", NpcFeature::tickSmartBrainQuestOffer),
-        NpcFeatureTask("greeting", NpcFeature::tickSmartBrainGreeting),
         NpcFeatureTask("talking_pause", NpcFeature::tickSmartBrainTalkingPause),
         NpcRoutineTask,
     )
