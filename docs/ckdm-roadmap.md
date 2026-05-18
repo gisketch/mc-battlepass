@@ -264,21 +264,21 @@ Boss scaling rule: bosses should scale mostly by participating players, not tota
 
 TODO (Mod):
 
-- [ ] Create `bosses/` module.
-- [ ] Add boss event definitions under `config/gisketchs_chowkingdom_mod/bosses/events/*.toml`.
-- [ ] Add world data under `<world>/data/gisketchs_chowkingdom_mod/bosses/state.json`.
-- [ ] Track server-wide lifetime Chowcoin value sold by all players through the shipping bin.
-- [ ] Count Chowcoin payout value, not shipped item quantity, for server boss gates.
-- [ ] Persist boss gate progress in world data so restarts do not reset community shipping progress.
+- [x] Create `bosses/` module.
+- [x] Add boss event definitions under `config/gisketchs_chowkingdom_mod/bosses/events/server_bosses.toml`.
+- [x] Add world data under `<world>/data/gisketchs_chowkingdom_mod/bosses/state.json`.
+- [x] Track server-wide lifetime Chowcoin value sold by all players through the shipping bin.
+- [x] Count Chowcoin payout value, not shipped item quantity, for server boss gates.
+- [x] Persist boss gate progress in world data so restarts do not reset community shipping progress.
 - [ ] Track registered/eligible players.
-- [ ] Track per-boss per-player first-clear credit.
-- [ ] Track boss gate state: locked, available, active, defeated enough, fully cleared.
-- [ ] Add boss gate requirement type: total server shipped Chowcoin value.
-- [ ] Unlock first boss when total server shipped Chowcoin value reaches the configured threshold.
-- [ ] Keep later bosses locked until their own higher total server shipped Chowcoin thresholds are reached.
-- [ ] Add command/status output that shows current total server shipped Chowcoin value and next boss threshold.
+- [x] Track per-boss per-player first-clear credit.
+- [x] Track boss gate state: locked, available, defeated enough.
+- [x] Add boss gate requirement type: total server shipped Chowcoin value.
+- [x] Unlock first boss when total server shipped Chowcoin value reaches the configured threshold.
+- [x] Keep later bosses locked until their own higher total server shipped Chowcoin thresholds are reached.
+- [x] Add command/status output that shows current total server shipped Chowcoin value and next boss threshold.
 - [ ] Track helper participation separately from first-clear credit.
-- [ ] Track participating players at fight start and optionally during fight.
+- [x] Track participating players during fight.
 - [ ] Add per-player boss HP scaling.
 - [ ] Add per-player boss add/spawn scaling only for specific bosses.
 - [ ] Add max participant scaling cap so 10 players does not create an impossible sponge.
@@ -289,26 +289,26 @@ TODO (Mod):
 - [ ] Add relic-token / relic-fragment reward support.
 - [ ] Add title/badge/trophy reward support.
 - [ ] Add configurable repeat cooldowns.
-- [ ] Add configurable minimum participants for a fight to count.
+- [x] Add configurable minimum participants for a fight to count.
 - [ ] Add configurable gate open policy: all active players, percent of active players, minimum clears, or admin unlock.
-- [ ] Add command `/ck bosses status`.
-- [ ] Add command `/ck bosses credit get <boss> <player>`.
-- [ ] Add command `/ck bosses credit set <boss> <player> <true|false>`.
-- [ ] Add command `/ck bosses unlock <gate>`.
-- [ ] Add command `/ck bosses reset <boss> confirm`.
-- [ ] Add snackbar broadcast when a boss event opens.
-- [ ] Add snackbar broadcast when a group clears a boss.
-- [ ] Add Discord relay for boss open/clear milestones.
+- [x] Add command `/ck bosses status`.
+- [x] Add command `/ck bosses credit get <boss> <player>`.
+- [x] Add command `/ck bosses credit set <boss> <player> <true|false>`.
+- [x] Add command `/ck bosses unlock <gate>`.
+- [x] Add command `/ck bosses reset <boss> confirm`.
+- [x] Add snackbar broadcast when a boss event opens.
+- [x] Add snackbar broadcast when a group clears a boss.
+- [x] Add Discord relay for boss open/clear milestones through `events_webhook_url`.
 - [ ] Add mission signal `gisketchs_chowkingdom_mod:boss_first_clear`.
 - [ ] Add mission signal `gisketchs_chowkingdom_mod:boss_participated`.
 
 TODO (Configuration):
 
-- [ ] Do not hard-code Wither -> Ender Dragon yet. Build generic gates first.
-- [ ] Configure boss gates with cumulative server shipping Chowcoin thresholds. Example: first boss opens at 50,000 total shipped Chowcoin value, second boss opens at 100,000 total shipped Chowcoin value, later bosses keep increasing.
+- [x] Do not hard-code Wither -> Ender Dragon yet. Build generic gates first.
+- [x] Configure boss gates with cumulative server shipping Chowcoin thresholds. Example: first boss opens at 50,000 total shipped Chowcoin value, second boss opens at 100,000 total shipped Chowcoin value, later bosses keep increasing.
 - [ ] Create sample `wither.toml` only as a test fixture.
-- [ ] Define default first-clear rewards as modest Chowcoins, BP XP, title/trophy, and controlled tokens.
-- [ ] Keep raw boss loot controlled. Avoid repeatable Nether Star/Dragon Egg inflation.
+- [x] Define default first-clear rewards as modest Chowcoins and BP XP.
+- [x] Keep raw boss loot controlled before unlock by suppressing locked boss item drops.
 - [ ] Start boss HP scaling around `base * (1.0 + 0.65 * extra_players)` with a cap.
 - [ ] Avoid scaling boss damage strongly with player count. More players already create chaos and revive load.
 - [ ] Prefer extra mechanics/adds/phases over pure HP for major event bosses.

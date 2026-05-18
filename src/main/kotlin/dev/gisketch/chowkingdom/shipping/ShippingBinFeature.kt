@@ -10,6 +10,7 @@ import dev.gisketch.chowkingdom.battlepass.BattlepassNetwork
 import dev.gisketch.chowkingdom.ChowClock
 import dev.gisketch.chowkingdom.ChowClockConfig
 import dev.gisketch.chowkingdom.ChowKingdomMod
+import dev.gisketch.chowkingdom.bosses.BossEventsFeature
 import dev.gisketch.chowkingdom.discord.DiscordRelay
 import dev.gisketch.chowkingdom.profiles.NicknameStore
 import dev.gisketch.chowkingdom.snackbar.SnackbarIcons
@@ -108,6 +109,7 @@ object ShippingBinFeature {
             }
         }
         announceTopSeller(event.server, sales)
+        BossEventsFeature.checkShippingUnlocks(event.server)
     }
 
     private fun onPlayerLoggedIn(event: PlayerEvent.PlayerLoggedInEvent) {
@@ -140,6 +142,7 @@ object ShippingBinFeature {
             notifyReward(player, payout)
             recordShippingMissions(player, payout)
             announceTopSeller(player.server, listOf(ShippingBinSaleResult(NicknameStore.displayName(player), payout)))
+            BossEventsFeature.checkShippingUnlocks(player.server)
         }
         return payout.amount.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
     }

@@ -20,6 +20,7 @@
 - [Detailed Architecture](ARCHITECTURE.md)
 - [Module Guide](MODULE_GUIDE.md)
 - [Battlepass Events](PASS_EVENTS.md)
+- [Boss Events](BOSS_EVENTS.md)
 - [CKDM Balance](CKDM_BALANCE.md)
 - [CKDM Pending In-Game Tests](CKDM_PENDING_INGAME_TESTS.md)
 - [Discord Integration](DISCORD.md)

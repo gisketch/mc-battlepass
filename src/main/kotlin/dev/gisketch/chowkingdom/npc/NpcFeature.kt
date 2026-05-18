@@ -9,6 +9,7 @@ import com.mojang.brigadier.context.CommandContext
 import dev.gisketch.chowkingdom.ChowClockConfig
 import dev.gisketch.chowkingdom.ChatGlyphs
 import dev.gisketch.chowkingdom.ChowKingdomMod
+import dev.gisketch.chowkingdom.bosses.BossEventsFeature
 import dev.gisketch.chowkingdom.discord.DiscordRelay
 import dev.gisketch.chowkingdom.relicroulette.RelicRouletteFeature
 import dev.gisketch.chowkingdom.roles.ClassLicenses
@@ -220,6 +221,7 @@ object NpcFeature {
                 claimOutgoingGift(player, npc, definition, pendingGift)
                 return
             }
+            if (BossEventsFeature.tryOpenFinnDialog(player, npc, definition)) return
             if (NpcQuestService.tryOpenQuest(player, npc, definition)) return
         }
         val wasSleeping = npc.isSleeping
@@ -290,6 +292,7 @@ object NpcFeature {
         }
         val normalizedAction = action.lowercase()
         if (normalizedAction in setOf("quest_accept", "quest_decline") && !hasValidHomeForActions(player, definition)) return
+        if (BossEventsFeature.handleFinnAction(player, npc, definition, action)) return
         if (NpcQuestService.handleAction(player, npc, definition, action)) return
         if (normalizedAction.startsWith("class_change:")) {
             if (!hasValidHomeForActions(player, definition)) return

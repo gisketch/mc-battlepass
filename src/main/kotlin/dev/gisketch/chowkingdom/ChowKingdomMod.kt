@@ -11,6 +11,7 @@ import dev.gisketch.chowkingdom.battlepass.BattlepassPassRegistry
 import dev.gisketch.chowkingdom.battlepass.BattlepassQualityFoodEventIntegration
 import dev.gisketch.chowkingdom.battlepass.BattlepassVanillaEventIntegration
 import dev.gisketch.chowkingdom.battlepass.BattlepassWorldData
+import dev.gisketch.chowkingdom.bosses.BossEventsFeature
 import dev.gisketch.chowkingdom.battlepass.BattlepassXpStore
 import dev.gisketch.chowkingdom.battlepass.CobblemonBattlepassIntegration
 import dev.gisketch.chowkingdom.client.ChowKingdomConfigScreen
@@ -75,6 +76,7 @@ class ChowKingdomMod(modBus: IEventBus, container: ModContainer) {
         CobblemonBattlepassIntegration.register()
         BattlepassElytraGate.register()
         BattlepassCommands.register()
+        BossEventsFeature.register()
         ExtractCommands.register()
         WalletsFeature.register(modBus)
         ShippingBinFeature.register(modBus)

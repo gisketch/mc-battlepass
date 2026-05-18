@@ -21,6 +21,10 @@ object DiscordWebhookClient {
         send(DiscordWebhookMessage(content = content, username = username, avatarUrl = avatarUrl))
     }
 
+    fun sendTo(webhookUrl: String, content: String, username: String? = null, avatarUrl: String? = null) {
+        sendInternal(DiscordWebhookMessage(content = content, username = username, avatarUrl = avatarUrl), waitForMessage = false, onMessageId = null, webhookUrlOverride = webhookUrl)
+    }
+
     fun send(message: DiscordWebhookMessage) {
         sendInternal(message, waitForMessage = false, onMessageId = null)
     }
@@ -49,9 +53,10 @@ object DiscordWebhookClient {
             }
     }
 
-    private fun sendInternal(message: DiscordWebhookMessage, waitForMessage: Boolean, onMessageId: ((String) -> Unit)?) {
+    private fun sendInternal(message: DiscordWebhookMessage, waitForMessage: Boolean, onMessageId: ((String) -> Unit)?, webhookUrlOverride: String? = null) {
         val config = DiscordConfig.current()
-        if (!config.enabled || config.webhookUrl.isBlank()) return
+        val webhookUrl = webhookUrlOverride?.trim()?.takeIf(String::isNotBlank) ?: config.webhookUrl
+        if (!config.enabled || webhookUrl.isBlank()) return
         val effectiveUsername = message.username?.trim()?.takeIf(String::isNotBlank) ?: config.webhookUsername
         val effectiveAvatarUrl = message.avatarUrl?.trim()?.takeIf(String::isNotBlank) ?: config.avatarUrl
 
@@ -67,7 +72,7 @@ object DiscordWebhookClient {
         }
 
         val request = runCatching {
-            HttpRequest.newBuilder(URI.create(if (waitForMessage) waitUrl(config.webhookUrl) else config.webhookUrl))
+            HttpRequest.newBuilder(URI.create(if (waitForMessage) waitUrl(webhookUrl) else webhookUrl))
                 .timeout(Duration.ofSeconds(10))
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(payload)))

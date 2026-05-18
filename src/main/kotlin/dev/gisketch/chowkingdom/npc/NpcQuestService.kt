@@ -6,6 +6,7 @@ import dev.gisketch.chowkingdom.battlepass.BattlepassNetwork
 import dev.gisketch.chowkingdom.battlepass.BattlepassPassRegistry
 import dev.gisketch.chowkingdom.battlepass.BattlepassXpEventDefinition
 import dev.gisketch.chowkingdom.battlepass.BattlepassXpStore
+import dev.gisketch.chowkingdom.bosses.BossEventsFeature
 import dev.gisketch.chowkingdom.integrations.QualityFoodSupport
 import dev.gisketch.chowkingdom.roles.PerformerPerks
 import dev.gisketch.chowkingdom.snackbar.SnackbarNetwork
@@ -190,7 +191,7 @@ object NpcQuestService {
                 acceptedAtTick = quest.acceptedAtTick,
             )
         }
-        NpcNetwork.syncQuests(player, NpcQuestSyncPayload(quests))
+        NpcNetwork.syncQuests(player, NpcQuestSyncPayload((BossEventsFeature.hudEntriesFor(player) + quests).take(8)))
     }
 
     fun friendSummary(player: ServerPlayer, definition: NpcDefinition): NpcQuestFriendSummary {

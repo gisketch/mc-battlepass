@@ -1279,6 +1279,9 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
             DialogAction.Talk -> if (questMode()) {
                 skipPendingTalkResponse()
                 NpcNetwork.sendAction(payload.npcId, "quest_accept")
+            } else if (bossClaimMode()) {
+                skipPendingTalkResponse()
+                NpcNetwork.sendAction(payload.npcId, "boss_claim")
             } else if (!waitingForTalk && payload.talkEnabled) {
                 if (talkMode) sendTalkMessage() else {
                     NpcNetwork.sendAction(payload.npcId, "join_talk")
@@ -1462,6 +1465,8 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         talkMode && action == DialogAction.Talk -> "SEND"
         questMode() && action == DialogAction.Talk -> "ACCEPT"
         questMode() && action == DialogAction.Bye -> "DECLINE"
+        bossClaimMode() && action == DialogAction.Talk -> "CLAIM"
+        bossClaimMode() && action == DialogAction.Bye -> payload.closeLabel
         joinMode() && action == DialogAction.Talk -> "JOIN CONVERSATION"
         action == DialogAction.Bye && payload.closeOnly -> payload.closeLabel
         action == DialogAction.Bye && (payload.classChangeAvailable || classChangeMode() || quizMode()) -> payload.closeLabel
@@ -1545,6 +1550,7 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
 
     private fun actions(): List<DialogAction> = when {
         questMode() -> listOf(DialogAction.Talk, DialogAction.Bye)
+        bossClaimMode() -> listOf(DialogAction.Talk, DialogAction.Bye)
         quizMode() -> listOf(DialogAction.Bye)
         joinMode() -> listOf(DialogAction.Talk, DialogAction.Bye)
         workMode() -> listOf(DialogAction.Move, DialogAction.Fire, DialogAction.Bye)
@@ -1555,6 +1561,8 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
     }
 
     private fun questMode(): Boolean = payload.dialogMode == "quest"
+
+    private fun bossClaimMode(): Boolean = payload.dialogMode == "boss_claim"
 
     private fun joinMode(): Boolean = payload.dialogMode == "join"
 
