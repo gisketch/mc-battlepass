@@ -1,6 +1,6 @@
 {
   "parent": "item/generated",
   "textures": {
-    "layer0": "/emerald_may_helmet"
+    "layer0": "gisketchs_chowkingdom_mod:item/emerald_may_helmet"
   }
 }
