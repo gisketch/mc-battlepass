@@ -14,6 +14,8 @@ Allow a class to have multiple eligible mentor NPCs while locking each active pl
 - Wizard lists Gandalf/Zelda; Warrior lists Finn/Link.
 - Witcher lists Geralt/Ciri; Berserker lists Zagreus/Marceline.
 - Bubblegum exists as a Pokemon shop/research NPC with no league role.
+- Bubblegum, Marceline, Ciri, Zelda, and Link have pair-specific micro interaction coverage.
+- Normal NPC micro interactions are expanded to 3x the previous normal exchange count using reusable tag packs.
 
 ## Context Links
 
@@ -42,6 +44,8 @@ Allow a class to have multiple eligible mentor NPCs while locking each active pl
 - Add `mentor_npc_ids` for equal eligibility.
 - The starting mentor owns the active questline until completion.
 - Use pi with `deepseek/deepseek-v4-flash` for NPC lore/dialogue drafting; Codex owns schema integration and validation.
+- Use pi with `deepseek/deepseek-v4-pro` for the new NPC micro interaction batch.
+- Use tag-pack expansion for high-volume ambient dialogue so future NPCs inherit content by class, store, and lore tags.
 
 ## Progress Log
 
@@ -49,3 +53,5 @@ Allow a class to have multiple eligible mentor NPCs while locking each active pl
 - 2026-05-19: Added Zelda and Link runtime NPC configs from pi-generated content.
 - 2026-05-19: Added Zelda and Link texture assets.
 - 2026-05-19: Added Ciri as Witcher alternate mentor, Marceline as nocturnal Berserker alternate mentor, and Bubblegum as Pokemon shop/research NPC.
+- 2026-05-19: Added `micro_interactions_new_npcs_01.toml` with 110 pair-specific exchanges generated through pi using `deepseek/deepseek-v4-pro`.
+- 2026-05-19: Added 41 runtime `micro_interactions_expansion_*.toml` chunks with 2,026 pi-generated tag-pack exchanges, raising normal exchanges from 1,013 to 3,039.
