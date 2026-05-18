@@ -12,6 +12,10 @@ Implement Finn-driven server boss contracts gated by total shipping-bin Chowcoin
 - Locked boss spawn/damage warnings and locked boss drop suppression.
 - Contributor tracking and Finn dialogue claim flow with optional LLM prompt context.
 - Mission HUD injection for active boss contracts and claim-ready contracts.
+- Finn `CONTRACTS` nested dialogue with locked, active, claimable, and complete contract states.
+- Boss-focused Finn TALK context from the nested contract screen.
+- Subtle `boss_cleared` global NPC memory for later LLM references.
+- Greedy boss command tails for colon-safe ids, plus `/ck bosses required <boss_id|all> <players>` to tune crew size in config.
 
 ## Validation
 

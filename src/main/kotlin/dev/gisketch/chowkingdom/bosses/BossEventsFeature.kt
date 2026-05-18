@@ -1,6 +1,5 @@
 package dev.gisketch.chowkingdom.bosses
 
-import com.mojang.brigadier.arguments.BoolArgumentType
 import com.mojang.brigadier.arguments.StringArgumentType
 import com.mojang.brigadier.context.CommandContext
 import dev.gisketch.chowkingdom.battlepass.BattlepassNetwork
@@ -28,7 +27,6 @@ import dev.gisketch.chowkingdom.wallets.ChowcoinStore
 import net.minecraft.commands.CommandSourceStack
 import net.minecraft.commands.Commands
 import net.minecraft.commands.SharedSuggestionProvider
-import net.minecraft.commands.arguments.EntityArgument
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.network.chat.Component
 import net.minecraft.server.MinecraftServer
@@ -47,11 +45,13 @@ import net.neoforged.neoforge.event.server.ServerStartedEvent
 import net.neoforged.neoforge.event.tick.ServerTickEvent
 import java.util.Locale
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 
 object BossEventsFeature {
     private val fights: MutableMap<UUID, BossFightRecord> = linkedMapOf()
     private val lockedDeathEntities: MutableSet<UUID> = linkedSetOf()
     private val nextLockedWarningAt: MutableMap<String, Long> = linkedMapOf()
+    private val bossTalkFocus = ConcurrentHashMap<String, BossTalkFocus>()
 
     fun register() {
         BossEventsConfig.load()
@@ -89,25 +89,180 @@ object BossEventsFeature {
         return listOf(hudEntry(entry, progress.coerceAtMost(entry.requiredPlayers), entry.requiredPlayers))
     }
 
+    fun contractsAvailable(definition: NpcDefinition): Boolean =
+        BossEventsConfig.settings().enabled && definition.id.lowercase(Locale.ROOT) == BossEventsConfig.settings().finnNpcId
+
     fun tryOpenFinnDialog(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition): Boolean {
-        if (definition.id.lowercase(Locale.ROOT) != BossEventsConfig.settings().finnNpcId) return false
-        val entry = BossEventsStore.claimableBosses(player).firstOrNull() ?: return false
-        openClaimDialog(player, npc, definition, entry)
-        return true
+        return false
     }
 
     fun handleFinnAction(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, action: String): Boolean {
         if (definition.id.lowercase(Locale.ROOT) != BossEventsConfig.settings().finnNpcId) return false
-        if (action.lowercase(Locale.ROOT) != "boss_claim") return false
-        val entry = BossEventsStore.claimableBosses(player).firstOrNull()
-        if (entry == null) {
-            val friendship = NpcStore.friendshipSnapshot(definition.id, player)
-            NpcNetwork.openDialog(player, NpcFeature.dialogPayload(definition, npc, "No boss contract reward is ready yet, ${player.gameProfile.name}.", false, friendship.level, closeOnly = true, closeLabel = "OKAY"))
-            return true
+        return when (action.lowercase(Locale.ROOT)) {
+            "boss_contracts" -> {
+                openContractDialog(player, npc, definition)
+                true
+            }
+            "boss_contract_talk" -> {
+                focusBossTalk(player, definition.id)
+                true
+            }
+            "boss_claim" -> {
+                val entry = BossEventsStore.claimableBosses(player).firstOrNull()
+                if (entry == null) {
+                    openClaimUnavailableDialog(player, npc, definition)
+                    true
+                } else {
+                    claim(player, npc, definition, entry)
+                    true
+                }
+            }
+            else -> false
         }
-        claim(player, npc, definition, entry)
-        return true
     }
+
+    fun bossTalkContextFor(player: ServerPlayer, npcId: String): String {
+        val focusKey = focusKey(player.uuid, npcId)
+        val focus = bossTalkFocus[focusKey] ?: return lightBossContext(player, npcId)
+        if (System.currentTimeMillis() > focus.expiresAtMs) {
+            bossTalkFocus.remove(focusKey)
+            return lightBossContext(player, npcId)
+        }
+        val entry = BossEventsConfig.entry(focus.bossId) ?: return lightBossContext(player, npcId)
+        return contractTalkContext(player, entry, primary = true)
+    }
+
+    private fun openContractDialog(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition) {
+        val view = contractView(player)
+        val friendship = NpcStore.friendshipSnapshot(definition.id, player)
+        val entry = view.entry
+        val fallback = contractDialogText(player, view)
+        if (entry != null) focusBossTalk(player, definition.id, entry)
+        val llmEnabled = NpcConfig.settings().llm.enabled && entry != null
+        val token = if (llmEnabled) NpcDialogTokens.next() else 0L
+        NpcNetwork.openDialog(
+            player,
+            NpcFeature.dialogPayload(
+                definition,
+                npc,
+                if (llmEnabled) "..." else fallback,
+                false,
+                friendship.level,
+                closeLabel = "BYE",
+                responseToken = token,
+                dialogMode = "boss_contract",
+                bossClaimAvailable = view.claimAvailable,
+            ),
+        )
+        if (llmEnabled) {
+            val focusedEntry = entry
+            NpcLlmService.event(
+                player,
+                npc,
+                definition,
+                fallback,
+                contractTalkContext(player, focusedEntry, primary = true) + "\n\nOpen the boss contract screen. Explain the contract in character and invite the player to ask questions or claim if they have credit.",
+                inputLabel = "Finn boss contract screen",
+                npcRecordType = "npc_boss_contract",
+                responseToken = token,
+            )
+        } else {
+            NpcStore.recordConversation(definition.id, player, definition.name, fallback, "npc_boss_contract")
+        }
+    }
+
+    private fun openClaimUnavailableDialog(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition) {
+        val view = contractView(player)
+        val entry = view.entry
+        val message = if (entry != null) {
+            render(entry.finnClaimUnavailableDialog, entry, player = player, total = ShippingBinStore.totalChowcoinsSold())
+        } else {
+            "No contract reward is ready yet, ${player.gameProfile.name}. I am still watching the horizon."
+        }
+        val friendship = NpcStore.friendshipSnapshot(definition.id, player)
+        NpcNetwork.openDialog(
+            player,
+            NpcFeature.dialogPayload(
+                definition,
+                npc,
+                message,
+                false,
+                friendship.level,
+                closeLabel = "BYE",
+                dialogMode = "boss_contract",
+                bossClaimAvailable = false,
+            ),
+        )
+    }
+
+    private fun contractView(player: ServerPlayer): BossContractView {
+        BossEventsStore.claimableBosses(player).firstOrNull()?.let { entry -> return BossContractView("claimable", entry, claimAvailable = true) }
+        BossEventsConfig.firstUnlockedUncleared(cleared = BossEventsStore::clearedByAny, unlocked = BossEventsStore::unlocked)?.let { entry -> return BossContractView("active", entry) }
+        BossEventsConfig.entries().firstOrNull { entry -> !BossEventsStore.unlocked(entry.id) }?.let { entry -> return BossContractView("locked", entry) }
+        BossEventsConfig.entries().lastOrNull { entry -> BossEventsStore.clearedByAny(entry.id) }?.let { entry -> return BossContractView("complete", entry) }
+        return BossContractView("empty", null)
+    }
+
+    private fun contractDialogText(player: ServerPlayer, view: BossContractView): String {
+        val entry = view.entry ?: return "No contracts on the board yet. I am watching the roads, the ruins, and the weird noises under the map."
+        return when (view.state) {
+            "claimable" -> render(entry.finnClaimDialog, entry, player = player, total = ShippingBinStore.totalChowcoinsSold())
+            "active" -> render(entry.finnContractDialog, entry, player = player, total = ShippingBinStore.totalChowcoinsSold())
+            "locked" -> render(entry.finnLockedContractDialog, entry, player = player, total = ShippingBinStore.totalChowcoinsSold())
+            "complete" -> "The ${entry.displayName} contract is closed. I logged the crew, checked the scratches, and started watching for the next shadow."
+            else -> entry.description.ifBlank { entry.displayName }
+        }
+    }
+
+    private fun focusBossTalk(player: ServerPlayer, npcId: String, entry: BossEventEntry? = null) {
+        if (npcId.lowercase(Locale.ROOT) != BossEventsConfig.settings().finnNpcId) return
+        val target = entry ?: contractView(player).entry ?: return
+        bossTalkFocus[focusKey(player.uuid, npcId)] = BossTalkFocus(target.id, System.currentTimeMillis() + BOSS_TALK_FOCUS_MS)
+    }
+
+    private fun lightBossContext(player: ServerPlayer, npcId: String): String {
+        if (npcId.lowercase(Locale.ROOT) != BossEventsConfig.settings().finnNpcId) return ""
+        val view = contractView(player)
+        val entry = view.entry ?: return ""
+        return """
+            Light Finn boss context:
+            - Current contract state: ${view.state}
+            - Boss: ${entry.displayName}
+            - Total shipped Chowcoins: ${ShippingBinStore.totalChowcoinsSold()}
+            Mention this only if it naturally fits. Do not force the whole conversation onto the boss contract unless the player asks.
+        """.trimIndent()
+    }
+
+    private fun contractTalkContext(player: ServerPlayer, entry: BossEventEntry, primary: Boolean): String {
+        val total = ShippingBinStore.totalChowcoinsSold()
+        val status = when {
+            BossEventsStore.hasCredit(player, entry.id) && !BossEventsStore.hasClaimed(player, entry.id) -> "claimable"
+            !BossEventsStore.unlocked(entry.id) -> "locked"
+            BossEventsStore.clearedByAny(entry.id) -> "cleared"
+            else -> "active"
+        }
+        val next = BossEventsConfig.nextAfter(entry)
+        return """
+            ${if (primary) "Primary" else "Light"} Finn boss contract context:
+            - Boss: ${entry.displayName}
+            - Boss id: ${entry.id}
+            - Boss order: ${entry.order}
+            - Status for ${player.gameProfile.name}: $status
+            - Threshold: ${entry.thresholdChowcoins}
+            - Total shipped Chowcoins: $total
+            - Required credited players: ${entry.requiredPlayers}
+            - Reward XP: ${entry.firstClearXp}
+            - Reward Chowcoins: ${entry.firstClearChowcoins}
+            - Lore: ${entry.lore}
+            - Location hint: ${entry.locationHint}
+            - Access hint: ${entry.accessHint}
+            - Fight tips: ${entry.fightTips}
+            - Next boss: ${next?.displayName ?: "none"}
+            If this is primary context, keep the conversation focused on the contract, scouting, how to find the boss, and how to prepare.
+        """.trimIndent()
+    }
+
+    private fun focusKey(playerId: UUID, npcId: String): String = "$playerId:${npcId.lowercase(Locale.ROOT)}"
 
     private fun onServerStarted(event: ServerStartedEvent) {
         BossEventsConfig.load()
@@ -163,6 +318,9 @@ object BossEventsFeature {
             return
         }
         BossEventsStore.recordClear(entry, contributors)
+        val crewNames = contributors.joinToString(", ") { it.gameProfile.name }
+        NpcStore.recordGlobalEvent("boss_cleared", "${entry.displayName} was cleared by $crewNames.")
+        NpcStore.recordGlobalMemory("boss_cleared", "Finn's ${entry.displayName} contract was cleared by $crewNames.")
         announceClear((entity.level() as? ServerLevel)?.server ?: return, entry, contributors)
         contributors.forEach { player ->
             SnackbarNetwork.send(player, SnackbarNotification.item(entry.iconItem, "BOSS CONTRACT READY", "Talk to Finn to claim ${entry.displayName}.", SnackbarType.SUCCESS, SnackbarSounds.REWARD))
@@ -357,6 +515,11 @@ object BossEventsFeature {
         .replace("{reward_xp}", entry.firstClearXp.toString())
         .replace("{reward_chowcoins}", entry.firstClearChowcoins.toString())
         .replace("{boss_order}", entry.order.toString())
+        .replace("{required_players}", entry.requiredPlayers.toString())
+        .replace("{lore}", entry.lore)
+        .replace("{location_hint}", entry.locationHint)
+        .replace("{access_hint}", entry.accessHint)
+        .replace("{fight_tips}", entry.fightTips)
         .replace("{next_boss}", BossEventsConfig.nextAfter(entry)?.displayName ?: "none")
 
     private fun onRegisterCommands(event: RegisterCommandsEvent) {
@@ -367,22 +530,77 @@ object BossEventsFeature {
     private fun root() = Commands.literal("bosses")
         .then(Commands.literal("status").requires { it.hasPermission(2) }.executes(::status))
         .then(Commands.literal("reload").requires { it.hasPermission(2) }.executes(::reload))
-        .then(Commands.literal("unlock").requires { it.hasPermission(2) }.then(bossArgument().executes(::unlock)))
-        .then(Commands.literal("reset").requires { it.hasPermission(2) }.then(bossArgument().then(Commands.literal("confirm").executes(::reset))))
+        .then(Commands.literal("unlock").requires { it.hasPermission(2) }.then(bossTailArgument().executes(::unlock)))
+        .then(Commands.literal("reset").requires { it.hasPermission(2) }.then(commandTailArgument().suggests { _, builder -> suggestBossesWithSuffix(builder, " confirm") }.executes(::reset)))
+        .then(Commands.literal("required").requires { it.hasPermission(2) }.then(commandTailArgument().suggests { _, builder -> suggestRequiredTail(builder) }.executes(::requiredPlayers)))
         .then(
             Commands.literal("credit").requires { it.hasPermission(2) }
-                .then(Commands.literal("get").then(bossArgument().then(Commands.argument("player", EntityArgument.player()).executes(::creditGet))))
-                .then(Commands.literal("set").then(bossArgument().then(Commands.argument("player", EntityArgument.player()).then(Commands.argument("value", BoolArgumentType.bool()).executes(::creditSet))))),
+                .then(Commands.literal("get").then(commandTailArgument().suggests { context, builder -> suggestCreditTail(context, builder, includeValue = false) }.executes(::creditGet)))
+                .then(Commands.literal("set").then(commandTailArgument().suggests { context, builder -> suggestCreditTail(context, builder, includeValue = true) }.executes(::creditSet))),
         )
 
-    private fun bossArgument() = Commands.argument("boss_id", StringArgumentType.string())
+    private fun bossTailArgument() = Commands.argument("boss_id", StringArgumentType.greedyString())
         .suggests { _, builder -> SharedSuggestionProvider.suggest(BossEventsConfig.entries().map { it.id }, builder) }
 
-    private fun bossFrom(context: CommandContext<CommandSourceStack>): BossEventEntry? {
-        val raw = StringArgumentType.getString(context, "boss_id")
+    private fun commandTailArgument() = Commands.argument("args", StringArgumentType.greedyString())
+
+    private fun bossFrom(context: CommandContext<CommandSourceStack>, raw: String = StringArgumentType.getString(context, "boss_id")): BossEventEntry? {
         return BossEventsConfig.entry(raw).also {
             if (it == null) context.source.sendFailure(Component.literal("Unknown boss: $raw"))
         }
+    }
+
+    private fun splitLast(context: CommandContext<CommandSourceStack>, raw: String, usage: String): Pair<String, String>? {
+        val parts = raw.trim().split(Regex("\\s+")).filter(String::isNotBlank)
+        if (parts.size < 2) {
+            context.source.sendFailure(Component.literal("Usage: $usage"))
+            return null
+        }
+        return parts.dropLast(1).joinToString(" ") to parts.last()
+    }
+
+    private fun splitLastTwo(context: CommandContext<CommandSourceStack>, raw: String, usage: String): Triple<String, String, String>? {
+        val parts = raw.trim().split(Regex("\\s+")).filter(String::isNotBlank)
+        if (parts.size < 3) {
+            context.source.sendFailure(Component.literal("Usage: $usage"))
+            return null
+        }
+        return Triple(parts.dropLast(2).joinToString(" "), parts[parts.lastIndex - 1], parts.last())
+    }
+
+    private fun playerFrom(context: CommandContext<CommandSourceStack>, raw: String): ServerPlayer? {
+        val value = raw.trim()
+        val player = when (value) {
+            "@s" -> runCatching { context.source.playerOrException }.getOrNull()
+            else -> context.source.server.playerList.getPlayerByName(value)
+                ?: runCatching { context.source.server.playerList.getPlayer(UUID.fromString(value)) }.getOrNull()
+        }
+        if (player == null) context.source.sendFailure(Component.literal("Unknown online player: $value"))
+        return player
+    }
+
+    private fun boolFrom(context: CommandContext<CommandSourceStack>, raw: String): Boolean? {
+        return when (raw.trim().lowercase(Locale.ROOT)) {
+            "true", "1", "yes", "on" -> true
+            "false", "0", "no", "off" -> false
+            else -> {
+                context.source.sendFailure(Component.literal("Expected true or false: $raw"))
+                null
+            }
+        }
+    }
+
+    private fun suggestBossesWithSuffix(builder: com.mojang.brigadier.suggestion.SuggestionsBuilder, suffix: String) =
+        SharedSuggestionProvider.suggest(BossEventsConfig.entries().map { "${it.id}$suffix" }, builder)
+
+    private fun suggestRequiredTail(builder: com.mojang.brigadier.suggestion.SuggestionsBuilder) =
+        SharedSuggestionProvider.suggest(listOf("all 1") + BossEventsConfig.entries().map { "${it.id} 1" }, builder)
+
+    private fun suggestCreditTail(context: CommandContext<CommandSourceStack>, builder: com.mojang.brigadier.suggestion.SuggestionsBuilder, includeValue: Boolean): java.util.concurrent.CompletableFuture<com.mojang.brigadier.suggestion.Suggestions> {
+        val players = context.source.server.playerList.players.map { it.gameProfile.name }
+        val values = if (includeValue) listOf(" true", " false") else listOf("")
+        val suggestions = BossEventsConfig.entries().flatMap { entry -> players.flatMap { player -> values.map { value -> "${entry.id} $player$value" } } }
+        return SharedSuggestionProvider.suggest(suggestions, builder)
     }
 
     private fun status(context: CommandContext<CommandSourceStack>): Int {
@@ -409,7 +627,13 @@ object BossEventsFeature {
     }
 
     private fun reset(context: CommandContext<CommandSourceStack>): Int {
-        val entry = bossFrom(context) ?: return 0
+        val raw = StringArgumentType.getString(context, "args")
+        val (bossId, confirm) = splitLast(context, raw, "/ck bosses reset <boss_id> confirm") ?: return 0
+        if (!confirm.equals("confirm", ignoreCase = true)) {
+            context.source.sendFailure(Component.literal("Usage: /ck bosses reset <boss_id> confirm"))
+            return 0
+        }
+        val entry = bossFrom(context, bossId) ?: return 0
         BossEventsStore.resetBoss(entry.id)
         syncAll(context.source.server)
         context.source.sendSuccess({ Component.literal("Reset boss event ${entry.id}.") }, true)
@@ -417,19 +641,48 @@ object BossEventsFeature {
     }
 
     private fun creditGet(context: CommandContext<CommandSourceStack>): Int {
-        val entry = bossFrom(context) ?: return 0
-        val player = EntityArgument.getPlayer(context, "player")
+        val raw = StringArgumentType.getString(context, "args")
+        val (bossId, playerName) = splitLast(context, raw, "/ck bosses credit get <boss_id> <player>") ?: return 0
+        val entry = bossFrom(context, bossId) ?: return 0
+        val player = playerFrom(context, playerName) ?: return 0
         context.source.sendSuccess({ Component.literal("${player.gameProfile.name} ${entry.id}: credit=${BossEventsStore.hasCredit(player, entry.id)} claimed=${BossEventsStore.hasClaimed(player, entry.id)}") }, false)
         return 1
     }
 
     private fun creditSet(context: CommandContext<CommandSourceStack>): Int {
-        val entry = bossFrom(context) ?: return 0
-        val player = EntityArgument.getPlayer(context, "player")
-        val value = BoolArgumentType.getBool(context, "value")
+        val raw = StringArgumentType.getString(context, "args")
+        val (bossId, playerName, rawValue) = splitLastTwo(context, raw, "/ck bosses credit set <boss_id> <player> <true|false>") ?: return 0
+        val entry = bossFrom(context, bossId) ?: return 0
+        val player = playerFrom(context, playerName) ?: return 0
+        val value = boolFrom(context, rawValue) ?: return 0
         BossEventsStore.setCredit(player, entry.id, value)
         NpcQuestService.syncTo(player)
         context.source.sendSuccess({ Component.literal("Set ${player.gameProfile.name} ${entry.id} credit=$value.") }, true)
         return 1
     }
+
+    private fun requiredPlayers(context: CommandContext<CommandSourceStack>): Int {
+        val raw = StringArgumentType.getString(context, "args")
+        val (target, rawCount) = splitLast(context, raw, "/ck bosses required <boss_id|all> <players>") ?: return 0
+        val count = rawCount.toIntOrNull()
+        if (count == null) {
+            context.source.sendFailure(Component.literal("Expected player count 1-50: $rawCount"))
+            return 0
+        }
+        val updated = BossEventsConfig.setRequiredPlayers(target, count)
+        if (updated.isEmpty()) {
+            context.source.sendFailure(Component.literal("Unknown boss: $target"))
+            return 0
+        }
+        syncAll(context.source.server)
+        val label = if (target.equals("all", ignoreCase = true)) "all bosses" else updated.first().id
+        context.source.sendSuccess({ Component.literal("Set required players for $label to ${count.coerceIn(1, 50)}.") }, true)
+        return 1
+    }
+
+    private data class BossContractView(val state: String, val entry: BossEventEntry?, val claimAvailable: Boolean = false)
+
+    private data class BossTalkFocus(val bossId: String, val expiresAtMs: Long)
+
+    private const val BOSS_TALK_FOCUS_MS = 5L * 60L * 1000L
 }

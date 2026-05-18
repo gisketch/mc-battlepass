@@ -3,6 +3,7 @@ package dev.gisketch.chowkingdom.shipping
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
+import com.mojang.brigadier.arguments.LongArgumentType
 import com.mojang.brigadier.builder.LiteralArgumentBuilder
 import com.mojang.brigadier.context.CommandContext
 import dev.gisketch.chowkingdom.battlepass.BattlepassMissionEventBank
@@ -131,6 +132,7 @@ object ShippingBinFeature {
 
     private fun shippingBinRoot(name: String): LiteralArgumentBuilder<CommandSourceStack> = Commands.literal(name)
         .then(Commands.literal("sell").requires { source -> source.hasPermission(2) }.executes(::sellNow))
+        .then(Commands.literal("set").requires { source -> source.hasPermission(2) }.then(Commands.argument("amount", LongArgumentType.longArg(0L)).executes(::setSoldForTesting)))
         .then(Commands.literal("audit").requires { source -> source.hasPermission(2) }.executes(::audit))
         .then(Commands.literal("sellabletag").requires { source -> source.hasPermission(2) }.executes(::sellableTag))
 
@@ -145,6 +147,25 @@ object ShippingBinFeature {
             BossEventsFeature.checkShippingUnlocks(player.server)
         }
         return payout.amount.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+    }
+
+    private fun setSoldForTesting(context: CommandContext<CommandSourceStack>): Int {
+        val amount = LongArgumentType.getLong(context, "amount")
+        val total = ShippingBinStore.debugSetTotalChowcoinsSold(amount)
+        val player = context.source.player
+        if (player != null) {
+            BattlepassMissionEventBank.record(player, VALUE_SOLD_EVENT, amount.coerceAtMost(Int.MAX_VALUE.toLong()).toInt())
+        }
+        BattlepassNetwork.syncAllPlayers()
+        BossEventsFeature.checkShippingUnlocks(context.source.server)
+        context.source.sendSuccess(
+            {
+                val playerText = player?.gameProfile?.name?.let { " Recorded $amount shipping value for $it battlepass testing." }.orEmpty()
+                Component.literal("Set total shipped Chowcoins to $total.$playerText")
+            },
+            true,
+        )
+        return amount.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
     }
 
     private fun audit(context: CommandContext<CommandSourceStack>): Int {

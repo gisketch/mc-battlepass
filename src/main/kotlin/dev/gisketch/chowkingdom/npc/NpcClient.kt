@@ -1256,6 +1256,10 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
                 skipPendingTalkResponse()
                 NpcNetwork.sendAction(payload.npcId, "work")
             }
+            DialogAction.Contracts -> if (isActionEnabled(action)) {
+                skipPendingTalkResponse()
+                NpcNetwork.sendAction(payload.npcId, "boss_contracts")
+            }
             DialogAction.Training -> if (isActionEnabled(action)) {
                 skipPendingTalkResponse()
                 NpcNetwork.sendAction(payload.npcId, "training")
@@ -1276,12 +1280,21 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
                 skipPendingTalkResponse()
                 NpcNetwork.sendAction(payload.npcId, "quest_decline")
             } else onClose()
+            DialogAction.Claim -> if (isActionEnabled(action)) {
+                skipPendingTalkResponse()
+                NpcNetwork.sendAction(payload.npcId, "boss_claim")
+            }
             DialogAction.Talk -> if (questMode()) {
                 skipPendingTalkResponse()
                 NpcNetwork.sendAction(payload.npcId, "quest_accept")
             } else if (bossClaimMode()) {
                 skipPendingTalkResponse()
                 NpcNetwork.sendAction(payload.npcId, "boss_claim")
+            } else if (bossContractMode() && !waitingForTalk && payload.talkEnabled) {
+                if (talkMode) sendTalkMessage() else {
+                    NpcNetwork.sendAction(payload.npcId, "boss_contract_talk")
+                    enterTalkMode()
+                }
             } else if (!waitingForTalk && payload.talkEnabled) {
                 if (talkMode) sendTalkMessage() else {
                     NpcNetwork.sendAction(payload.npcId, "join_talk")
@@ -1467,6 +1480,8 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         questMode() && action == DialogAction.Bye -> "DECLINE"
         bossClaimMode() && action == DialogAction.Talk -> "CLAIM"
         bossClaimMode() && action == DialogAction.Bye -> payload.closeLabel
+        bossContractMode() && action == DialogAction.Talk -> if (talkMode) "SEND" else "TALK"
+        bossContractMode() && action == DialogAction.Claim -> "CLAIM"
         joinMode() && action == DialogAction.Talk -> "JOIN CONVERSATION"
         action == DialogAction.Bye && payload.closeOnly -> payload.closeLabel
         action == DialogAction.Bye && (payload.classChangeAvailable || classChangeMode() || quizMode()) -> payload.closeLabel
@@ -1551,18 +1566,21 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
     private fun actions(): List<DialogAction> = when {
         questMode() -> listOf(DialogAction.Talk, DialogAction.Bye)
         bossClaimMode() -> listOf(DialogAction.Talk, DialogAction.Bye)
+        bossContractMode() -> listOf(DialogAction.Talk, DialogAction.Claim, DialogAction.Bye)
         quizMode() -> listOf(DialogAction.Bye)
         joinMode() -> listOf(DialogAction.Talk, DialogAction.Bye)
         workMode() -> listOf(DialogAction.Move, DialogAction.Fire, DialogAction.Bye)
         classChangeMode() -> listOf(DialogAction.Bye)
         payload.classChangeAvailable -> listOf(DialogAction.Change, DialogAction.Bye)
         payload.closeOnly -> listOf(DialogAction.Bye)
-        else -> listOfNotNull(DialogAction.Talk, DialogAction.Buy, DialogAction.Gift, DialogAction.Work, DialogAction.Training.takeIf { payload.trainingAvailable }, DialogAction.Bye)
+        else -> listOfNotNull(DialogAction.Talk, DialogAction.Contracts.takeIf { payload.bossContractsAvailable }, DialogAction.Buy, DialogAction.Gift, DialogAction.Work, DialogAction.Training.takeIf { payload.trainingAvailable }, DialogAction.Bye)
     }
 
     private fun questMode(): Boolean = payload.dialogMode == "quest"
 
     private fun bossClaimMode(): Boolean = payload.dialogMode == "boss_claim"
+
+    private fun bossContractMode(): Boolean = payload.dialogMode == "boss_contract"
 
     private fun joinMode(): Boolean = payload.dialogMode == "join"
 
@@ -1632,8 +1650,10 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
     private fun classIconTexture(classId: String): ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/classes/${classId.lowercase(Locale.ROOT)}.png")
 
     private fun isActionEnabled(action: DialogAction, giftStack: ItemStack = giftStack()): Boolean = when {
-        waitingForTalk -> action != DialogAction.Talk
+        waitingForTalk -> action == DialogAction.Bye
         questMode() -> true
+        bossContractMode() && action == DialogAction.Claim -> payload.bossClaimAvailable
+        bossContractMode() && action == DialogAction.Talk -> payload.talkEnabled
         action == DialogAction.Gift -> payload.talkEnabled || !giftStack.isEmpty
         action == DialogAction.Talk -> payload.talkEnabled
         else -> true
@@ -2007,9 +2027,11 @@ private enum class DialogAction(val label: String, val icon: ResourceLocation) {
     Buy("BUY", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/shop.png")),
     Gift("GIFT", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/gift.png")),
     Work("WORK", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/shop.png")),
+    Contracts("CONTRACTS", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/quest_log.png")),
     Training("TRAINING", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/chat_bubble_white.png")),
     Change("CHANGE", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/coins.png")),
     Move("MOVE", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/chat_bubble_white.png")),
     Fire("FIRE", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/chat_bubble_orange.png")),
+    Claim("CLAIM", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/battlepass-claimable.png.png")),
     Bye("BYE", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/chat_bubble_orange.png")),
 }

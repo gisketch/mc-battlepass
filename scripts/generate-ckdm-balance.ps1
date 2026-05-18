@@ -36,18 +36,35 @@ function Reward-Entry([string]$Item, [int]$Quantity, [int]$Max, [int]$ScaleEvery
     @{ item = $Item; quantity = $Quantity; max = $Max; scale = $ScaleEvery }
 }
 
-function Mission-Entry([string]$Id, [string]$Event, [string]$Desc, [int[]]$Goals, [int[]]$Xp) {
+function Mission-Entry([string]$Id, [string]$Event, [string]$Desc, [int[]]$Goals, [int[]]$Xp, [hashtable]$Filters = @{}, [string]$RotationGroup = "") {
     @{
         id = $Id
         event = $Event
         desc = $Desc
         goals = $Goals
         xp = $Xp
+        filters = $Filters
+        rotation_group = $RotationGroup
     }
 }
 
 function Mission-Toml($Mission) {
-    "{ id = $(Q $Mission.id), event = $(Q $Mission.event), type = `"progressive`", event_desc = $(Q $Mission.desc), progress = 0, progress_goals = $(Number-Array $Mission.goals), progress_xp = $(Number-Array $Mission.xp) }"
+    $parts = [System.Collections.Generic.List[string]]::new()
+    $parts.Add("id = $(Q $Mission.id)")
+    $parts.Add("event = $(Q $Mission.event)")
+    $parts.Add("type = `"progressive`"")
+    $parts.Add("event_desc = $(Q $Mission.desc)")
+    $parts.Add("progress = 0")
+    $parts.Add("progress_goals = $(Number-Array $Mission.goals)")
+    $parts.Add("progress_xp = $(Number-Array $Mission.xp)")
+    if ($Mission.filters -and $Mission.filters.Count -gt 0) {
+        $filterPairs = $Mission.filters.GetEnumerator() | Sort-Object Name | ForEach-Object { "$($_.Name) = $(Q $_.Value)" }
+        $parts.Add("filters = { $($filterPairs -join ', ') }")
+    }
+    if ($Mission.rotation_group) {
+        $parts.Add("rotation_group = $(Q $Mission.rotation_group)")
+    }
+    "{ $($parts -join ', ') }"
 }
 
 function Token-For-Pool([string]$Pool) {
@@ -364,35 +381,83 @@ $combatExtraRewards = @{
 }
 $combatExtraRewards = Add-Chowcoin-Rewards $combatExtraRewards
 
+$pokemonTypes = @("normal", "fire", "water", "grass", "electric", "ice", "fighting", "poison", "ground", "flying", "psychic", "bug", "rock", "ghost", "dragon", "dark", "steel", "fairy")
+$generationMissions = @(
+    @{ id = "kanto"; name = "Kanto"; scan_goals = @(25, 75, 151); scan_xp = @(100, 250, 400); catch_goals = @(10, 50, 100, 151); catch_xp = @(50, 100, 200, 400) }
+    @{ id = "johto"; name = "Johto"; scan_goals = @(25, 75, 100); scan_xp = @(100, 225, 300); catch_goals = @(10, 40, 75, 100); catch_xp = @(50, 100, 175, 300) }
+    @{ id = "hoenn"; name = "Hoenn"; scan_goals = @(30, 90, 135); scan_xp = @(100, 250, 400); catch_goals = @(10, 50, 100, 135); catch_xp = @(50, 100, 200, 400) }
+    @{ id = "sinnoh"; name = "Sinnoh"; scan_goals = @(25, 75, 107); scan_xp = @(100, 225, 350); catch_goals = @(10, 40, 75, 107); catch_xp = @(50, 100, 175, 350) }
+    @{ id = "unova"; name = "Unova"; scan_goals = @(30, 100, 156); scan_xp = @(100, 300, 500); catch_goals = @(10, 50, 100, 156); catch_xp = @(50, 125, 250, 500) }
+    @{ id = "kalos"; name = "Kalos"; scan_goals = @(20, 50, 72); scan_xp = @(100, 200, 300); catch_goals = @(10, 30, 50, 72); catch_xp = @(50, 100, 150, 250) }
+    @{ id = "alola"; name = "Alola"; scan_goals = @(25, 60, 88); scan_xp = @(100, 225, 350); catch_goals = @(10, 35, 60, 88); catch_xp = @(50, 100, 175, 300) }
+    @{ id = "galar"; name = "Galar"; scan_goals = @(25, 70, 96); scan_xp = @(100, 250, 400); catch_goals = @(10, 40, 70, 96); catch_xp = @(50, 100, 175, 350) }
+    @{ id = "paldea"; name = "Paldea"; scan_goals = @(30, 80, 120); scan_xp = @(100, 250, 450); catch_goals = @(10, 50, 90, 120); catch_xp = @(50, 100, 200, 400) }
+)
+
 $cozyPermanent = @(
-    Mission-Entry "permanent_scan_pokedex" "cobblemon:pokedex_scanned" "Scan {goal} Pokedex Entries" @(25, 100, 250, 500) @(200, 500, 1000, 2000)
-    Mission-Entry "permanent_crop_keeper" "minecraft:crop_harvested" "Harvest {goal} Crops" @(256, 1024, 4096) @(250, 700, 1500)
-    Mission-Entry "permanent_quality_crop_keeper" "quality_food:gold_quality_crop_harvested" "Harvest {goal} Gold Quality Crops" @(64, 256, 1024) @(300, 800, 1800)
-    Mission-Entry "permanent_fisher" "minecraft:fish_caught" "Catch {goal} Fish" @(50, 250, 1000) @(250, 700, 1500)
-    Mission-Entry "permanent_shipping_value" "gisketchs_chowkingdom_mod:shipping_bin_value_sold" "Ship {goal} Chowcoins Worth" @(10000, 50000, 200000) @(300, 800, 1800)
-    Mission-Entry "permanent_animal_keeper" "minecraft:animal_bred" "Breed {goal} Animals" @(25, 100, 300) @(200, 600, 1200)
-    Mission-Entry "permanent_traveler" "minecraft:blocks_traveled" "Travel {goal} Blocks" @(5000, 25000, 100000) @(200, 600, 1500)
+    Mission-Entry "permanent_scan_pokedex" "cobblemon:pokedex_scanned" "Scan {goal} Pokedex Entries" @(25, 100, 250, 500, 750, 1000) @(75, 150, 300, 500, 750, 1200)
+)
+foreach ($generation in $generationMissions) {
+    $cozyPermanent += Mission-Entry "permanent_scan_$($generation.id)_pokemon" "cobblemon:scan_$($generation.id)_pokemon" "Scan {goal} $($generation.name) Pokemon" $generation.scan_goals $generation.scan_xp
+}
+$cozyPermanent += @(
+    Mission-Entry "permanent_pokemon_friendship" "cobblemon:pokemon_friendship_maxed" "Max Friendship with {goal} Pokemon" @(1, 3, 6, 10, 20) @(100, 200, 350, 500, 850)
+    Mission-Entry "permanent_pokemon_rider" "cobblemon:pokemon_mount_traveled" "Travel {goal} Blocks on Pokemon" @(10000, 50000, 150000, 500000, 1000000) @(150, 400, 900, 1600, 2500)
+    Mission-Entry "permanent_pokemon_flight" "cobblemon:pokemon_mount_flying_traveled" "Travel {goal} Blocks on Flying Pokemon" @(10000, 50000, 150000, 400000) @(150, 400, 900, 1600)
+    Mission-Entry "permanent_pokemon_land_rider" "cobblemon:pokemon_mount_land_traveled" "Travel {goal} Blocks on Land Pokemon" @(10000, 50000, 150000, 400000) @(150, 400, 900, 1600)
+    Mission-Entry "permanent_crop_keeper" "minecraft:crop_harvested" "Harvest {goal} Crops" @(256, 1024, 4096, 16000) @(150, 400, 900, 1800)
+    Mission-Entry "permanent_quality_crop_keeper" "quality_food:gold_quality_crop_harvested" "Harvest {goal} Gold Quality Crops" @(64, 256, 1024, 4096) @(150, 400, 900, 1800)
+    Mission-Entry "permanent_fisher" "minecraft:fish_caught" "Catch {goal} Fish" @(50, 250, 1000, 3000) @(150, 400, 900, 1800)
+    Mission-Entry "permanent_animal_keeper" "minecraft:animal_bred" "Breed {goal} Animals" @(25, 100, 300, 1000) @(150, 400, 900, 1600)
+    Mission-Entry "permanent_villager_trader" "minecraft:villager_traded" "Trade with Villagers {goal} Times" @(25, 100, 300, 1000) @(150, 400, 900, 1600)
+    Mission-Entry "permanent_cooking_pot_meals" "farmersdelight:cooking_pot_meal_cooked" "Cook {goal} Cooking Pot Meals" @(25, 100, 300, 1000) @(200, 500, 1000, 2000)
+    Mission-Entry "permanent_feast_servings" "farmersdelight:feast_served" "Serve {goal} Feast Portions" @(10, 50, 150, 500) @(200, 600, 1200, 2200)
+    Mission-Entry "permanent_shipping_value" "gisketchs_chowkingdom_mod:shipping_bin_value_sold" "Ship {goal} Chowcoins Worth" @(10000, 50000, 200000, 750000) @(150, 500, 1200, 2500)
 )
 $cozyWeekly = @(
-    Mission-Entry "weekly_harvest_crops" "minecraft:crop_harvested" "Harvest {goal} Crops" @(512) @(220)
-    Mission-Entry "weekly_go_fishing" "minecraft:fish_caught" "Catch {goal} Fish" @(35) @(220)
-    Mission-Entry "weekly_cooking_pot_meals" "farmersdelight:cooking_pot_meal_cooked" "Cook {goal} Cooking Pot Meals" @(25) @(260)
-    Mission-Entry "weekly_ship_value" "gisketchs_chowkingdom_mod:shipping_bin_value_sold" "Ship {goal} Chowcoins Worth" @(50000) @(400)
-    Mission-Entry "weekly_friendship_starter" "cobblemon:max_friendship_starter_pokemon" "Max Friendship with {goal} Starter Pokemon" @(1) @(600)
+    Mission-Entry "weekly_harvest_crops" "minecraft:crop_harvested" "Harvest {goal} Crops" @(384) @(220)
+    Mission-Entry "weekly_gold_quality_crops" "quality_food:gold_quality_crop_harvested" "Harvest {goal} Gold Quality Crops" @(64) @(260)
+    Mission-Entry "weekly_go_fishing" "minecraft:fish_caught" "Catch {goal} Fish" @(30) @(220)
+    Mission-Entry "weekly_cooking_pot_meals" "farmersdelight:cooking_pot_meal_cooked" "Cook {goal} Cooking Pot Meals" @(16) @(240)
+    Mission-Entry "weekly_cutting_board_outputs" "farmersdelight:cutting_board_outputs" "Make {goal} Cutting Board Outputs" @(48) @(220)
+    Mission-Entry "weekly_feast_servings" "farmersdelight:feast_served" "Serve {goal} Feast Portions" @(8) @(300)
+    Mission-Entry "weekly_breed_animals" "minecraft:animal_bred" "Breed {goal} Animals" @(20) @(220)
+    Mission-Entry "weekly_ship_value" "gisketchs_chowkingdom_mod:shipping_bin_value_sold" "Ship {goal} Chowcoins Worth" @(25000) @(300)
+    Mission-Entry "weekly_ship_quality_value" "gisketchs_chowkingdom_mod:shipping_bin_quality_food_value_sold" "Ship {goal} Quality Chowcoins Worth" @(10000) @(320)
+    Mission-Entry "weekly_pokemon_mount_travel" "cobblemon:pokemon_mount_traveled" "Travel {goal} Blocks on Pokemon" @(10000) @(220)
+    Mission-Entry "weekly_farmer_meals_eaten" "farmersdelight:meal_eaten" "Eat {goal} Farmer's Delight Meals" @(12) @(200)
 )
 $combatPermanent = @(
-    Mission-Entry "permanent_monster_slayer" "minecraft:monster_killed" "Defeat {goal} Monsters" @(100, 500, 2000) @(250, 800, 2000)
-    Mission-Entry "permanent_skeleton_slayer" "minecraft:skeleton_killed" "Defeat {goal} Skeletons" @(50, 250, 1000) @(200, 700, 1800)
-    Mission-Entry "permanent_zombie_slayer" "minecraft:zombie_killed" "Defeat {goal} Zombies" @(50, 250, 1000) @(200, 700, 1800)
-    Mission-Entry "permanent_combat_traveler" "minecraft:blocks_traveled" "Travel {goal} Blocks" @(5000, 25000, 100000) @(200, 600, 1500)
-    Mission-Entry "permanent_starter_training" "cobblemon:max_friendship_starter_pokemon" "Train {goal} Starter Pokemon to Max Friendship" @(1, 3) @(500, 1200)
+    Mission-Entry "permanent_pokemon_caught" "cobblemon:pokemon_caught" "Catch {goal} Pokemon" @(10, 50, 150, 400, 800) @(50, 100, 200, 400, 750)
+)
+foreach ($generation in $generationMissions) {
+    $combatPermanent += Mission-Entry "permanent_catch_$($generation.id)_pokemon" "cobblemon:catch_$($generation.id)_pokemon" "Catch {goal} $($generation.name) Pokemon" $generation.catch_goals $generation.catch_xp
+}
+foreach ($type in $pokemonTypes) {
+    $displayType = (Get-Culture).TextInfo.ToTitleCase($type)
+    $combatPermanent += Mission-Entry "permanent_catch_$($type)_type" "cobblemon:catch_$($type)_type" "Catch {goal} $displayType-type Pokemon" @(5, 25, 75, 150) @(25, 75, 150, 250)
+}
+$combatPermanent += @(
+    Mission-Entry "permanent_monster_slayer" "minecraft:monster_killed" "Defeat {goal} Monsters" @(100, 500, 2000, 8000) @(200, 600, 1400, 3000)
+    Mission-Entry "permanent_zombie_slayer" "minecraft:entity_killed" "Defeat {goal} Zombies" @(50, 250, 750, 2500) @(150, 500, 1000, 2000) @{ entity = "minecraft:zombie" }
+    Mission-Entry "permanent_skeleton_slayer" "minecraft:entity_killed" "Defeat {goal} Skeletons" @(50, 250, 750, 2500) @(150, 500, 1000, 2000) @{ entity = "minecraft:skeleton" }
+    Mission-Entry "permanent_creeper_slayer" "minecraft:entity_killed" "Defeat {goal} Creepers" @(25, 100, 300, 1000) @(150, 500, 1000, 2200) @{ entity = "minecraft:creeper" }
+    Mission-Entry "permanent_enderman_slayer" "minecraft:entity_killed" "Defeat {goal} Endermen" @(10, 50, 150, 500) @(150, 500, 1100, 2400) @{ entity = "minecraft:enderman" }
+    Mission-Entry "permanent_nether_hunter" "minecraft:monster_killed" "Defeat {goal} Nether Monsters" @(50, 200, 750, 2500) @(200, 600, 1400, 3000) @{ dimension = "minecraft:the_nether" }
+    Mission-Entry "permanent_combat_traveler" "minecraft:travel_on_foot" "Travel {goal} Blocks on Foot" @(25000, 100000, 500000, 1500000) @(150, 500, 1200, 2500)
 )
 $combatWeekly = @(
-    Mission-Entry "weekly_hunt_mobs" "minecraft:monster_killed" "Defeat {goal} Monsters" @(150) @(260)
-    Mission-Entry "weekly_hunt_skeletons" "minecraft:skeleton_killed" "Defeat {goal} Skeletons" @(40) @(220)
-    Mission-Entry "weekly_hunt_zombies" "minecraft:zombie_killed" "Defeat {goal} Zombies" @(40) @(220)
-    Mission-Entry "weekly_combat_travel" "minecraft:blocks_traveled" "Travel {goal} Blocks" @(15000) @(260)
-    Mission-Entry "weekly_catch_starter" "cobblemon:catch_starter_pokemon" "Catch {goal} Starter Pokemon" @(1) @(600)
+    Mission-Entry "weekly_hunt_mobs" "minecraft:monster_killed" "Defeat {goal} Monsters" @(100) @(240) @{} "combat:monster_general"
+    Mission-Entry "weekly_hunt_zombies" "minecraft:entity_killed" "Defeat {goal} Zombies" @(30) @(220) @{ entity = "minecraft:zombie" } "combat:monster_specific"
+    Mission-Entry "weekly_hunt_skeletons" "minecraft:entity_killed" "Defeat {goal} Skeletons" @(30) @(220) @{ entity = "minecraft:skeleton" } "combat:monster_specific"
+    Mission-Entry "weekly_hunt_spiders" "minecraft:entity_killed" "Defeat {goal} Spiders" @(20) @(220) @{ entity = "minecraft:spider" } "combat:monster_specific"
+    Mission-Entry "weekly_hunt_creepers" "minecraft:entity_killed" "Defeat {goal} Creepers" @(12) @(260) @{ entity = "minecraft:creeper" } "combat:monster_specific"
+    Mission-Entry "weekly_hunt_endermen" "minecraft:entity_killed" "Defeat {goal} Endermen" @(8) @(300) @{ entity = "minecraft:enderman" } "combat:monster_specific"
+    Mission-Entry "weekly_combat_travel" "minecraft:travel_on_foot" "Travel {goal} Blocks on Foot" @(10000) @(220)
+    Mission-Entry "weekly_catch_pokemon" "cobblemon:pokemon_caught" "Catch {goal} Pokemon" @(8) @(260) @{} "combat:pokemon_catch"
+    Mission-Entry "weekly_catch_fire_type" "cobblemon:catch_fire_type" "Catch {goal} Fire-type Pokemon" @(4) @(260) @{} "combat:pokemon_catch"
+    Mission-Entry "weekly_catch_water_type" "cobblemon:catch_water_type" "Catch {goal} Water-type Pokemon" @(4) @(260) @{} "combat:pokemon_catch"
+    Mission-Entry "weekly_catch_electric_type" "cobblemon:catch_electric_type" "Catch {goal} Electric-type Pokemon" @(4) @(260) @{} "combat:pokemon_catch"
 )
 
 Write-Text (Join-Path $PassDir "cozy.toml") (Pass-Toml "cozy" "Cozy Pass" "Long-season cozy progression from farming, cooking, fishing, shipping, and Cobblemon care." "${ModId}:textures/gui/cozy_pass.png" 230 $cozyPermanent $cozyWeekly $cozyTables $cozyRelics $cozyExtraRewards)
@@ -460,11 +525,15 @@ Generated by `scripts/generate-ckdm-balance.ps1`.
 
 ## XP Mission Bands
 
-- Weekly normal missions: 220-400 XP
-- Weekly rare/special missions: 600 XP
-- Permanent early milestones: 200-500 XP
-- Permanent mid milestones: 600-1000 XP
-- Permanent late milestones: 1200-2000 XP
+- Weekly missions rotate 5 active one-time missions per pass from curated pools.
+- Weekly Cozy missions: 200-320 XP.
+- Weekly Combat missions: 220-300 XP.
+- Generic Pokemon caught permanent chain totals 1500 XP across 800 catches.
+- Generation catch chains total roughly 550-925 XP each.
+- Type catch chains total 500 XP each.
+- Pokedex scanned totals 2975 XP through 1000 scanned Pokemon.
+- Friendship maxed totals 2000 XP through 20 max-friendship Pokemon.
+- Large travel chains are intentionally long and capped as long-term bonuses.
 
 ## Store Configs
 

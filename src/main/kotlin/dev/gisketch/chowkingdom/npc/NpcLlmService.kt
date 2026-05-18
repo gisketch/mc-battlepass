@@ -5,6 +5,7 @@ import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import dev.gisketch.chowkingdom.ChowKingdomMod
+import dev.gisketch.chowkingdom.bosses.BossEventsFeature
 import dev.gisketch.chowkingdom.discord.DiscordRelay
 import dev.gisketch.chowkingdom.roles.RoleStore
 import dev.gisketch.chowkingdom.roles.RolesConfig
@@ -177,7 +178,9 @@ object NpcLlmService {
             return sendFinal(player, npc, definition, settings.rateLimitedMessage, responseToken = responseToken)
         }
         val session = joinConversationSession(player, definition.id)
-        val promptInput = addTalkTurn(session, player, message, responseToken)
+        val rawPromptInput = addTalkTurn(session, player, message, responseToken)
+        val bossContext = BossEventsFeature.bossTalkContextFor(player, definition.id)
+        val promptInput = if (bossContext.isBlank()) rawPromptInput else "$bossContext\n\n$rawPromptInput"
         activeNpcRequests.remove(definition.id)?.let { request -> cancelledResponseTokens += request.responseToken }
         startTalkRequest(session, responseToken)
         nextAllowedAtMs[player.uuid] = now + settings.cooldownSeconds * 1000L

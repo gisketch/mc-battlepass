@@ -89,21 +89,38 @@ object BattlepassPassRegistry {
         titleTextureWidth = 1024
         titleTextureHeight = 230
         categories = mutableListOf("cozy", "season_1")
-        permanentEvents = mutableListOf(
-            mission("permanent_scan_pokedex", "cobblemon:pokedex_scanned", "Scan {goal} Pokedex Entries", listOf(25, 100, 250, 500), listOf(200, 500, 1000, 2000)),
-            mission("permanent_crop_keeper", "minecraft:crop_harvested", "Harvest {goal} Crops", listOf(256, 1024, 4096), listOf(250, 700, 1500)),
-            mission("permanent_quality_crop_keeper", "quality_food:gold_quality_crop_harvested", "Harvest {goal} Gold Quality Crops", listOf(64, 256, 1024), listOf(300, 800, 1800)),
-            mission("permanent_fisher", "minecraft:fish_caught", "Catch {goal} Fish", listOf(50, 250, 1000), listOf(250, 700, 1500)),
-            mission("permanent_shipping_value", "gisketchs_chowkingdom_mod:shipping_bin_value_sold", "Ship {goal} Chowcoins Worth", listOf(10000, 50000, 200000), listOf(300, 800, 1800)),
-            mission("permanent_animal_keeper", "minecraft:animal_bred", "Breed {goal} Animals", listOf(25, 100, 300), listOf(200, 600, 1200)),
-            mission("permanent_traveler", "minecraft:blocks_traveled", "Travel {goal} Blocks", listOf(5000, 25000, 100000), listOf(200, 600, 1500)),
-        )
+        permanentEvents = (
+            listOf(
+                mission("permanent_scan_pokedex", "cobblemon:pokedex_scanned", "Scan {goal} Pokedex Entries", listOf(25, 100, 250, 500, 750, 1000), listOf(75, 150, 300, 500, 750, 1200)),
+            ) +
+                generationScanMissions() +
+                listOf(
+                    mission("permanent_pokemon_friendship", "cobblemon:pokemon_friendship_maxed", "Max Friendship with {goal} Pokemon", listOf(1, 3, 6, 10, 20), listOf(100, 200, 350, 500, 850)),
+                    mission("permanent_pokemon_rider", "cobblemon:pokemon_mount_traveled", "Travel {goal} Blocks on Pokemon", listOf(10000, 50000, 150000, 500000, 1000000), listOf(150, 400, 900, 1600, 2500)),
+                    mission("permanent_pokemon_flight", "cobblemon:pokemon_mount_flying_traveled", "Travel {goal} Blocks on Flying Pokemon", listOf(10000, 50000, 150000, 400000), listOf(150, 400, 900, 1600)),
+                    mission("permanent_pokemon_land_rider", "cobblemon:pokemon_mount_land_traveled", "Travel {goal} Blocks on Land Pokemon", listOf(10000, 50000, 150000, 400000), listOf(150, 400, 900, 1600)),
+                    mission("permanent_crop_keeper", "minecraft:crop_harvested", "Harvest {goal} Crops", listOf(256, 1024, 4096, 16000), listOf(150, 400, 900, 1800)),
+                    mission("permanent_quality_crop_keeper", "quality_food:gold_quality_crop_harvested", "Harvest {goal} Gold Quality Crops", listOf(64, 256, 1024, 4096), listOf(150, 400, 900, 1800)),
+                    mission("permanent_fisher", "minecraft:fish_caught", "Catch {goal} Fish", listOf(50, 250, 1000, 3000), listOf(150, 400, 900, 1800)),
+                    mission("permanent_animal_keeper", "minecraft:animal_bred", "Breed {goal} Animals", listOf(25, 100, 300, 1000), listOf(150, 400, 900, 1600)),
+                    mission("permanent_villager_trader", "minecraft:villager_traded", "Trade with Villagers {goal} Times", listOf(25, 100, 300, 1000), listOf(150, 400, 900, 1600)),
+                    mission("permanent_cooking_pot_meals", "farmersdelight:cooking_pot_meal_cooked", "Cook {goal} Cooking Pot Meals", listOf(25, 100, 300, 1000), listOf(200, 500, 1000, 2000)),
+                    mission("permanent_feast_servings", "farmersdelight:feast_served", "Serve {goal} Feast Portions", listOf(10, 50, 150, 500), listOf(200, 600, 1200, 2200)),
+                    mission("permanent_shipping_value", "gisketchs_chowkingdom_mod:shipping_bin_value_sold", "Ship {goal} Chowcoins Worth", listOf(10000, 50000, 200000, 750000), listOf(150, 500, 1200, 2500)),
+                )
+            ).toMutableList()
         weeklyEvents = weekly(
-            mission("weekly_harvest_crops", "minecraft:crop_harvested", "Harvest {goal} Crops", listOf(512), listOf(220)),
-            mission("weekly_go_fishing", "minecraft:fish_caught", "Catch {goal} Fish", listOf(35), listOf(220)),
-            mission("weekly_cooking_pot_meals", "farmersdelight:cooking_pot_meal_cooked", "Cook {goal} Cooking Pot Meals", listOf(25), listOf(260)),
-            mission("weekly_ship_value", "gisketchs_chowkingdom_mod:shipping_bin_value_sold", "Ship {goal} Chowcoins Worth", listOf(50000), listOf(400)),
-            mission("weekly_friendship_starter", "cobblemon:max_friendship_starter_pokemon", "Max Friendship with {goal} Starter Pokemon", listOf(1), listOf(600)),
+            mission("weekly_harvest_crops", "minecraft:crop_harvested", "Harvest {goal} Crops", listOf(384), listOf(220)),
+            mission("weekly_gold_quality_crops", "quality_food:gold_quality_crop_harvested", "Harvest {goal} Gold Quality Crops", listOf(64), listOf(260)),
+            mission("weekly_go_fishing", "minecraft:fish_caught", "Catch {goal} Fish", listOf(30), listOf(220)),
+            mission("weekly_cooking_pot_meals", "farmersdelight:cooking_pot_meal_cooked", "Cook {goal} Cooking Pot Meals", listOf(16), listOf(240)),
+            mission("weekly_cutting_board_outputs", "farmersdelight:cutting_board_outputs", "Make {goal} Cutting Board Outputs", listOf(48), listOf(220)),
+            mission("weekly_feast_servings", "farmersdelight:feast_served", "Serve {goal} Feast Portions", listOf(8), listOf(300)),
+            mission("weekly_breed_animals", "minecraft:animal_bred", "Breed {goal} Animals", listOf(20), listOf(220)),
+            mission("weekly_ship_value", "gisketchs_chowkingdom_mod:shipping_bin_value_sold", "Ship {goal} Chowcoins Worth", listOf(25000), listOf(300)),
+            mission("weekly_ship_quality_value", "gisketchs_chowkingdom_mod:shipping_bin_quality_food_value_sold", "Ship {goal} Quality Chowcoins Worth", listOf(10000), listOf(320)),
+            mission("weekly_pokemon_mount_travel", "cobblemon:pokemon_mount_traveled", "Travel {goal} Blocks on Pokemon", listOf(10000), listOf(220)),
+            mission("weekly_farmer_meals_eaten", "farmersdelight:meal_eaten", "Eat {goal} Farmer's Delight Meals", listOf(12), listOf(200)),
         )
         progression = buildProgression(COZY_REWARDS, COZY_RELIC_LEVELS, COZY_EXTRA_REWARDS)
     }
@@ -116,19 +133,34 @@ object BattlepassPassRegistry {
         titleTextureWidth = 1024
         titleTextureHeight = 215
         categories = mutableListOf("combat", "season_1")
-        permanentEvents = mutableListOf(
-            mission("permanent_monster_slayer", "minecraft:monster_killed", "Defeat {goal} Monsters", listOf(100, 500, 2000), listOf(250, 800, 2000)),
-            mission("permanent_skeleton_slayer", "minecraft:skeleton_killed", "Defeat {goal} Skeletons", listOf(50, 250, 1000), listOf(200, 700, 1800)),
-            mission("permanent_zombie_slayer", "minecraft:zombie_killed", "Defeat {goal} Zombies", listOf(50, 250, 1000), listOf(200, 700, 1800)),
-            mission("permanent_combat_traveler", "minecraft:blocks_traveled", "Travel {goal} Blocks", listOf(5000, 25000, 100000), listOf(200, 600, 1500)),
-            mission("permanent_starter_training", "cobblemon:max_friendship_starter_pokemon", "Train {goal} Starter Pokemon to Max Friendship", listOf(1, 3), listOf(500, 1200)),
-        )
+        permanentEvents = (
+            listOf(
+                mission("permanent_pokemon_caught", "cobblemon:pokemon_caught", "Catch {goal} Pokemon", listOf(10, 50, 150, 400, 800), listOf(50, 100, 200, 400, 750)),
+            ) +
+                generationCatchMissions() +
+                pokemonTypeCatchMissions() +
+                listOf(
+                    mission("permanent_monster_slayer", "minecraft:monster_killed", "Defeat {goal} Monsters", listOf(100, 500, 2000, 8000), listOf(200, 600, 1400, 3000)),
+                    mission("permanent_zombie_slayer", "minecraft:entity_killed", "Defeat {goal} Zombies", listOf(50, 250, 750, 2500), listOf(150, 500, 1000, 2000), filters = mapOf("entity" to "minecraft:zombie")),
+                    mission("permanent_skeleton_slayer", "minecraft:entity_killed", "Defeat {goal} Skeletons", listOf(50, 250, 750, 2500), listOf(150, 500, 1000, 2000), filters = mapOf("entity" to "minecraft:skeleton")),
+                    mission("permanent_creeper_slayer", "minecraft:entity_killed", "Defeat {goal} Creepers", listOf(25, 100, 300, 1000), listOf(150, 500, 1000, 2200), filters = mapOf("entity" to "minecraft:creeper")),
+                    mission("permanent_enderman_slayer", "minecraft:entity_killed", "Defeat {goal} Endermen", listOf(10, 50, 150, 500), listOf(150, 500, 1100, 2400), filters = mapOf("entity" to "minecraft:enderman")),
+                    mission("permanent_nether_hunter", "minecraft:monster_killed", "Defeat {goal} Nether Monsters", listOf(50, 200, 750, 2500), listOf(200, 600, 1400, 3000), filters = mapOf("dimension" to "minecraft:the_nether")),
+                    mission("permanent_combat_traveler", "minecraft:travel_on_foot", "Travel {goal} Blocks on Foot", listOf(25000, 100000, 500000, 1500000), listOf(150, 500, 1200, 2500)),
+                )
+            ).toMutableList()
         weeklyEvents = weekly(
-            mission("weekly_hunt_mobs", "minecraft:monster_killed", "Defeat {goal} Monsters", listOf(150), listOf(260)),
-            mission("weekly_hunt_skeletons", "minecraft:skeleton_killed", "Defeat {goal} Skeletons", listOf(40), listOf(220)),
-            mission("weekly_hunt_zombies", "minecraft:zombie_killed", "Defeat {goal} Zombies", listOf(40), listOf(220)),
-            mission("weekly_combat_travel", "minecraft:blocks_traveled", "Travel {goal} Blocks", listOf(15000), listOf(260)),
-            mission("weekly_catch_starter", "cobblemon:catch_starter_pokemon", "Catch {goal} Starter Pokemon", listOf(1), listOf(600)),
+            mission("weekly_hunt_mobs", "minecraft:monster_killed", "Defeat {goal} Monsters", listOf(100), listOf(240), rotationGroup = "combat:monster_general"),
+            mission("weekly_hunt_zombies", "minecraft:entity_killed", "Defeat {goal} Zombies", listOf(30), listOf(220), filters = mapOf("entity" to "minecraft:zombie"), rotationGroup = "combat:monster_specific"),
+            mission("weekly_hunt_skeletons", "minecraft:entity_killed", "Defeat {goal} Skeletons", listOf(30), listOf(220), filters = mapOf("entity" to "minecraft:skeleton"), rotationGroup = "combat:monster_specific"),
+            mission("weekly_hunt_spiders", "minecraft:entity_killed", "Defeat {goal} Spiders", listOf(20), listOf(220), filters = mapOf("entity" to "minecraft:spider"), rotationGroup = "combat:monster_specific"),
+            mission("weekly_hunt_creepers", "minecraft:entity_killed", "Defeat {goal} Creepers", listOf(12), listOf(260), filters = mapOf("entity" to "minecraft:creeper"), rotationGroup = "combat:monster_specific"),
+            mission("weekly_hunt_endermen", "minecraft:entity_killed", "Defeat {goal} Endermen", listOf(8), listOf(300), filters = mapOf("entity" to "minecraft:enderman"), rotationGroup = "combat:monster_specific"),
+            mission("weekly_combat_travel", "minecraft:travel_on_foot", "Travel {goal} Blocks on Foot", listOf(10000), listOf(220)),
+            mission("weekly_catch_pokemon", "cobblemon:pokemon_caught", "Catch {goal} Pokemon", listOf(8), listOf(260), rotationGroup = "combat:pokemon_catch"),
+            mission("weekly_catch_fire_type", "cobblemon:catch_fire_type", "Catch {goal} Fire-type Pokemon", listOf(4), listOf(260), rotationGroup = "combat:pokemon_catch"),
+            mission("weekly_catch_water_type", "cobblemon:catch_water_type", "Catch {goal} Water-type Pokemon", listOf(4), listOf(260), rotationGroup = "combat:pokemon_catch"),
+            mission("weekly_catch_electric_type", "cobblemon:catch_electric_type", "Catch {goal} Electric-type Pokemon", listOf(4), listOf(260), rotationGroup = "combat:pokemon_catch"),
         )
         progression = buildProgression(COMBAT_REWARDS, COMBAT_RELIC_LEVELS, COMBAT_EXTRA_REWARDS)
     }
@@ -210,7 +242,49 @@ object BattlepassPassRegistry {
         else -> 2000
     }
 
-    private fun mission(id: String, event: String, description: String, goals: List<Int>, xp: List<Int>): BattlepassXpEventDefinition =
+    private fun generationScanMissions(): List<BattlepassXpEventDefinition> =
+        GENERATION_MISSIONS.map { generation ->
+            mission(
+                "permanent_scan_${generation.id}_pokemon",
+                "cobblemon:scan_${generation.id}_pokemon",
+                "Scan {goal} ${generation.displayName} Pokemon",
+                generation.scanGoals,
+                generation.scanXp,
+            )
+        }
+
+    private fun generationCatchMissions(): List<BattlepassXpEventDefinition> =
+        GENERATION_MISSIONS.map { generation ->
+            mission(
+                "permanent_catch_${generation.id}_pokemon",
+                "cobblemon:catch_${generation.id}_pokemon",
+                "Catch {goal} ${generation.displayName} Pokemon",
+                generation.catchGoals,
+                generation.catchXp,
+            )
+        }
+
+    private fun pokemonTypeCatchMissions(): List<BattlepassXpEventDefinition> =
+        POKEMON_TYPES.map { type ->
+            val displayName = type.replaceFirstChar { character -> character.uppercase(Locale.ROOT) }
+            mission(
+                "permanent_catch_${type}_type",
+                "cobblemon:catch_${type}_type",
+                "Catch {goal} $displayName-type Pokemon",
+                listOf(5, 25, 75, 150),
+                listOf(25, 75, 150, 250),
+            )
+        }
+
+    private fun mission(
+        id: String,
+        event: String,
+        description: String,
+        goals: List<Int>,
+        xp: List<Int>,
+        filters: Map<String, String> = emptyMap(),
+        rotationGroup: String = "",
+    ): BattlepassXpEventDefinition =
         BattlepassXpEventDefinition().apply {
             this.id = id
             this.event = event
@@ -219,6 +293,8 @@ object BattlepassPassRegistry {
             progress = 0
             progressGoals = goals.toMutableList()
             progressXp = xp.toMutableList()
+            this.filters = filters.toMutableMap()
+            this.rotationGroup = rotationGroup
         }
 
     private fun weekly(vararg events: BattlepassXpEventDefinition): BattlepassRotatingMissionDefinition =
@@ -233,10 +309,36 @@ object BattlepassPassRegistry {
 
     private fun normalizeId(id: String): String = id.trim().lowercase(Locale.ROOT)
 
+    private data class GenerationMission(
+        val id: String,
+        val displayName: String,
+        val scanGoals: List<Int>,
+        val scanXp: List<Int>,
+        val catchGoals: List<Int>,
+        val catchXp: List<Int>,
+    )
+
     private data class RewardEntry(val item: String, val quantity: Int, val maxQuantity: Int, val scaleEvery: Int = 200)
     private data class RewardTables(val normal: List<RewardEntry>, val utility: List<RewardEntry>, val prominent: List<RewardEntry>)
 
     private val SPECIAL_LEVELS = setOf(25, 50, 75, 100, 150, 200, 250, 300, 350, 400, 500)
+
+    private val POKEMON_TYPES = listOf(
+        "normal", "fire", "water", "grass", "electric", "ice", "fighting", "poison", "ground",
+        "flying", "psychic", "bug", "rock", "ghost", "dragon", "dark", "steel", "fairy",
+    )
+
+    private val GENERATION_MISSIONS = listOf(
+        GenerationMission("kanto", "Kanto", listOf(25, 75, 151), listOf(100, 250, 400), listOf(10, 50, 100, 151), listOf(50, 100, 200, 400)),
+        GenerationMission("johto", "Johto", listOf(25, 75, 100), listOf(100, 225, 300), listOf(10, 40, 75, 100), listOf(50, 100, 175, 300)),
+        GenerationMission("hoenn", "Hoenn", listOf(30, 90, 135), listOf(100, 250, 400), listOf(10, 50, 100, 135), listOf(50, 100, 200, 400)),
+        GenerationMission("sinnoh", "Sinnoh", listOf(25, 75, 107), listOf(100, 225, 350), listOf(10, 40, 75, 107), listOf(50, 100, 175, 350)),
+        GenerationMission("unova", "Unova", listOf(30, 100, 156), listOf(100, 300, 500), listOf(10, 50, 100, 156), listOf(50, 125, 250, 500)),
+        GenerationMission("kalos", "Kalos", listOf(20, 50, 72), listOf(100, 200, 300), listOf(10, 30, 50, 72), listOf(50, 100, 150, 250)),
+        GenerationMission("alola", "Alola", listOf(25, 60, 88), listOf(100, 225, 350), listOf(10, 35, 60, 88), listOf(50, 100, 175, 300)),
+        GenerationMission("galar", "Galar", listOf(25, 70, 96), listOf(100, 250, 400), listOf(10, 40, 70, 96), listOf(50, 100, 175, 350)),
+        GenerationMission("paldea", "Paldea", listOf(30, 80, 120), listOf(100, 250, 450), listOf(10, 50, 90, 120), listOf(50, 100, 200, 400)),
+    )
 
     private val COZY_RELIC_LEVELS = mapOf(
         50 to "common_cozy_relics",

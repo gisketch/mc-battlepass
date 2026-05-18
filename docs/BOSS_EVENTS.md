@@ -22,9 +22,18 @@ Boss Events V1 makes Finn the server-wide boss contract NPC.
 
 - Contributor credit uses the killer, recent damaging players, and nearby players in the same dimension.
 - Defaults: 96 block radius, 10 minute participation window, 8 required credited players.
-- After a valid clear, players with credit see `Talk to Finn to claim <Boss>` in the mission HUD.
-- Claiming happens through Finn dialogue using `boss_claim` mode.
-- LLM is optional. When enabled, Finn receives boss context variables and the authored line is the fallback.
+- Finn always shows a `CONTRACTS` button in normal dialogue.
+- `CONTRACTS` opens a nested boss contract dialogue for locked, active, claimable, or completed states.
+- After a valid clear, players with credit see `Talk to Finn to claim <Boss>` in the mission HUD and can claim through the contract dialogue.
+- Claiming happens through Finn dialogue using `boss_contract` / `boss_claim` actions.
+- LLM is optional. When enabled, Finn receives boss context variables and authored config lines are the fallback.
+- TALK from inside `CONTRACTS` receives boss-focused context with lore, location hints, access hints, fight tips, reward, threshold, and next-boss data.
+
+## NPC Memory
+
+- Valid boss clears record `boss_cleared` global event and memory entries.
+- Other NPCs may naturally reference clears through the existing LLM memory system.
+- V1 does not force non-Finn NPC world-chat announcements.
 
 ## Commands
 
@@ -33,7 +42,10 @@ Boss Events V1 makes Finn the server-wide boss contract NPC.
 - `/ck bosses unlock <boss_id>`
 - `/ck bosses credit get <boss_id> <player>`
 - `/ck bosses credit set <boss_id> <player> <true|false>`
+- `/ck bosses required <boss_id|all> <players>`
 - `/ck bosses reset <boss_id> confirm`
+
+Boss command tails are greedy strings so namespaced ids like `cataclysm:ignis` and `fdbosses:chesed` work cleanly. `required` updates `required_players` in `server_bosses.toml`; use `/ck bosses required all 1` for solo testing.
 
 ## Default Boss Order
 

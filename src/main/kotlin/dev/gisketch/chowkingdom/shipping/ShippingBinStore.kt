@@ -149,6 +149,13 @@ object ShippingBinStore {
         return totalChowcoinsSold
     }
 
+    fun debugSetTotalChowcoinsSold(amount: Long): Long {
+        if (!loaded) load()
+        totalChowcoinsSold = amount.coerceAtLeast(0L)
+        save()
+        return totalChowcoinsSold
+    }
+
     fun hasDueSellableItems(day: Long): Boolean {
         if (!loaded) load()
         refreshQuotaPeriod()
