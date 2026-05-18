@@ -39,6 +39,7 @@ object ChowKingdomHud {
     private val LAYER_ID: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "player_hud")
     private val CHOWCOIN_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/chowcoin.png")
     private val HOSTILE_KILLS_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/kilic.png")
+    private val SKILL_POINTS_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/game_survival_games.png")
     private val POKE_BALL_ITEM_ID: ResourceLocation = ResourceLocation.fromNamespaceAndPath("cobblemon", "poke_ball")
     private val TOAST_BUTTON_SPRITE: ResourceLocation = ResourceLocation.withDefaultNamespace("widget/button")
     private val CKDM_BOLD_FONT: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "ckdm_bold")
@@ -158,13 +159,17 @@ object ChowKingdomHud {
         val levelText = overallBattlepassLevel(playerId).toString()
         val pokemonText = formatCompactNumber(BattlepassClientState.uniquePokemonCaught(playerId))
         val hostileText = formatCompactNumber(BattlepassClientState.hostileMonstersKilled(playerId))
+        val skillPoints = BattlepassClientState.skillPointsAvailable(playerId)
+        val skillPointText = formatCompactNumber(skillPoints)
         val playerWidth = COMPACT_PLAYER_HEAD_SIZE + COMPACT_STAT_TEXT_GAP + levelTextWidth(font, levelText)
         val coinWidth = COMPACT_COIN_SIZE + COMPACT_COIN_TEXT_GAP + ckdmWidth(font, coinText, CKDM_BOLD_FONT) + chowcoinDeltaPush(font, now)
         val pokemonWidth = COMPACT_STAT_ICON_SIZE + COMPACT_STAT_TEXT_GAP + ckdmWidth(font, pokemonText, CKDM_BOLD_FONT)
+        val killsWidth = COMPACT_STAT_ICON_SIZE + COMPACT_STAT_TEXT_GAP + ckdmWidth(font, hostileText, CKDM_BOLD_FONT)
         val playerX = x
         val coinX = playerX + playerWidth + COMPACT_TOP_STAT_GROUP_GAP
         val pokemonX = coinX + coinWidth + COMPACT_TOP_STAT_GROUP_GAP
         val killsX = pokemonX + pokemonWidth + COMPACT_TOP_STAT_GROUP_GAP
+        val skillPointsX = killsX + killsWidth + COMPACT_TOP_STAT_GROUP_GAP
         val valueY = y + COMPACT_STAT_TEXT_Y
         val iconY = y
 
@@ -182,6 +187,11 @@ object ChowKingdomHud {
 
         renderIcon(guiGraphics, HOSTILE_KILLS_TEXTURE, killsX, iconY, COMPACT_STAT_ICON_SIZE, COMPACT_STAT_ICON_TEXTURE_SIZE)
         drawCkdmShadowed(guiGraphics, font, hostileText, killsX + COMPACT_STAT_ICON_SIZE + COMPACT_STAT_TEXT_GAP, valueY, COMPACT_WHITE, COMPACT_BLACK_SHADOW, COMPACT_SHADOW_OFFSET, CKDM_BOLD_FONT)
+
+        if (skillPoints > 0) {
+            renderIcon(guiGraphics, SKILL_POINTS_TEXTURE, skillPointsX, iconY, COMPACT_STAT_ICON_SIZE, COMPACT_STAT_ICON_TEXTURE_SIZE)
+            drawCkdmShadowed(guiGraphics, font, skillPointText, skillPointsX + COMPACT_STAT_ICON_SIZE + COMPACT_STAT_TEXT_GAP, valueY, COMPACT_WHITE, COMPACT_BLACK_SHADOW, COMPACT_SHADOW_OFFSET, CKDM_BOLD_FONT)
+        }
     }
 
     private fun drawLevelText(guiGraphics: GuiGraphics, font: Font, levelText: String, x: Int, y: Int) {
@@ -400,7 +410,7 @@ object ChowKingdomHud {
     private const val MISSIONS_HEADER = "Missions"
     private const val LEVEL_PREFIX = "Lv."
     private const val HUD_PADDING = 8
-    private const val COMPACT_HUD_MAX_WIDTH = 360
+    private const val COMPACT_HUD_MAX_WIDTH = 420
     private const val COMPACT_MIN_TEXT_WIDTH = 72
     private const val COMPACT_STATS_ROW_HEIGHT = 12
     private const val COMPACT_COIN_SIZE = 11

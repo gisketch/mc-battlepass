@@ -24,6 +24,7 @@ object BattlepassClientState {
         val revivedCount: Int,
         val revivedOthersCount: Int,
         val chowcoins: Long,
+        val skillPointsAvailable: Int,
         val playtimeTicks: Long,
     )
 
@@ -71,6 +72,7 @@ object BattlepassClientState {
                     player.revivedCount,
                     player.revivedOthersCount,
                     player.chowcoins,
+                    player.skillPointsAvailable,
                     player.playtimeTicks,
                 )
             },
@@ -110,6 +112,8 @@ object BattlepassClientState {
     fun uniquePokemonCaught(playerId: UUID): Int = snapshot?.players?.firstOrNull { player -> player.uuid == playerId }?.uniquePokemonCaught ?: 0
 
     fun hostileMonstersKilled(playerId: UUID): Int = snapshot?.players?.firstOrNull { player -> player.uuid == playerId }?.hostileMonstersKilled ?: 0
+
+    fun skillPointsAvailable(playerId: UUID): Int = snapshot?.players?.firstOrNull { player -> player.uuid == playerId }?.skillPointsAvailable ?: 0
 
     fun playerProgress(playerId: UUID): PlayerProgress? = snapshot?.players?.firstOrNull { player -> player.uuid == playerId }
 

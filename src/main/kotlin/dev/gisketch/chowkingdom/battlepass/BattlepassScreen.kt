@@ -1169,7 +1169,7 @@ class BattlepassScreen(initialPassId: String? = null) : Screen(Component.transla
 
     private fun selfPlayerProgress(): BattlepassClientState.PlayerProgress? {
         val player = Minecraft.getInstance().player ?: return null
-        return BattlepassClientState.PlayerProgress(player.uuid, player.gameProfile.name, emptyMap(), emptyMap(), emptyMap(), emptyMap(), 0, 0, 0, 0, 0, 0, 0L, 0L)
+        return BattlepassClientState.PlayerProgress(player.uuid, player.gameProfile.name, emptyMap(), emptyMap(), emptyMap(), emptyMap(), 0, 0, 0, 0, 0, 0, 0L, 0, 0L)
     }
 
     private fun drawTooltipPanel(guiGraphics: GuiGraphics, origin: Rect, width: Int, height: Int) {

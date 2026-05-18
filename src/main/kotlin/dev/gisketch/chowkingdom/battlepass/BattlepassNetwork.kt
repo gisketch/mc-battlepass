@@ -5,6 +5,7 @@ import dev.gisketch.chowkingdom.ChowKingdomMod
 import dev.gisketch.chowkingdom.npc.NpcQuestService
 import dev.gisketch.chowkingdom.revive.ReviveStore
 import dev.gisketch.chowkingdom.shipping.ShippingBinStore
+import dev.gisketch.chowkingdom.skilltree.ClassSkillTrees
 import dev.gisketch.chowkingdom.wallets.ChowcoinStore
 import net.minecraft.network.RegistryFriendlyByteBuf
 import net.minecraft.network.codec.StreamCodec
@@ -54,7 +55,7 @@ object BattlepassNetwork {
     }
 
     private fun registerPayloads(event: RegisterPayloadHandlersEvent) {
-        val registrar = event.registrar("1")
+        val registrar = event.registrar("2")
         registrar.playToServer(BattlepassSyncRequestPayload.TYPE, BattlepassSyncRequestPayload.STREAM_CODEC, ::handleSyncRequest)
         registrar.playToServer(BattlepassClaimRequestPayload.TYPE, BattlepassClaimRequestPayload.STREAM_CODEC, ::handleClaimRequest)
         registrar.playToServer(BattlepassClaimAllRequestPayload.TYPE, BattlepassClaimAllRequestPayload.STREAM_CODEC, ::handleClaimAllRequest)
@@ -96,7 +97,7 @@ object BattlepassNetwork {
         BattlepassClientState.enqueueMissionCompletionNotification(payload.passId, payload.missionKey, payload.title, scope, payload.kind)
     }
 
-    private fun syncTo(player: ServerPlayer) {
+    fun syncTo(player: ServerPlayer) {
         PacketDistributor.sendToPlayer(player, createSyncPayload(player))
         NpcQuestService.syncTo(player)
     }
@@ -121,6 +122,7 @@ object BattlepassNetwork {
                 ReviveStore.revivedCount(player.uuid),
                 ReviveStore.revivedOthersCount(player.uuid),
                 ChowcoinStore.get(player.uuid),
+                ClassSkillTrees.pointSummary(player).available,
                 player.stats.getValue(Stats.CUSTOM.get(Stats.PLAY_TIME)).toLong(),
             )
         }
@@ -266,6 +268,7 @@ data class BattlepassPlayerProgressPayload(
     val revivedCount: Int,
     val revivedOthersCount: Int,
     val chowcoins: Long,
+    val skillPointsAvailable: Int,
     val playtimeTicks: Long,
 ) {
     fun encode(buffer: RegistryFriendlyByteBuf) {
@@ -304,6 +307,7 @@ data class BattlepassPlayerProgressPayload(
         buffer.writeVarInt(revivedCount)
         buffer.writeVarInt(revivedOthersCount)
         buffer.writeVarLong(chowcoins)
+        buffer.writeVarInt(skillPointsAvailable)
         buffer.writeVarLong(playtimeTicks)
     }
 
@@ -341,8 +345,9 @@ data class BattlepassPlayerProgressPayload(
             val revivedCount = buffer.readVarInt()
             val revivedOthersCount = buffer.readVarInt()
             val chowcoins = buffer.readVarLong()
+            val skillPointsAvailable = buffer.readVarInt()
             val playtimeTicks = buffer.readVarLong()
-            return BattlepassPlayerProgressPayload(uuid, name, xpByPass, claimedByPass, missionProgressByPass, completedMissionKeysByPass, uniquePokemonCaught, hostileMonstersKilled, koCount, deaths, revivedCount, revivedOthersCount, chowcoins, playtimeTicks)
+            return BattlepassPlayerProgressPayload(uuid, name, xpByPass, claimedByPass, missionProgressByPass, completedMissionKeysByPass, uniquePokemonCaught, hostileMonstersKilled, koCount, deaths, revivedCount, revivedOthersCount, chowcoins, skillPointsAvailable, playtimeTicks)
         }
     }
 }

@@ -4,6 +4,7 @@ import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import dev.gisketch.chowkingdom.ChowKingdomMod
+import dev.gisketch.chowkingdom.battlepass.BattlepassNetwork
 import dev.gisketch.chowkingdom.battlepass.BattlepassXpStore
 import dev.gisketch.chowkingdom.roles.RoleStore
 import dev.gisketch.chowkingdom.roles.RolesConfig
@@ -24,6 +25,13 @@ object ClassSkillTrees {
 
     fun budget(player: ServerPlayer): Int =
         (BattlepassXpStore.overallLevel(player) / POINT_EVERY_OVERALL_LEVELS).coerceIn(0, MAX_POINTS)
+
+    fun pointSummary(player: ServerPlayer): ClassSkillPointSummary {
+        val allowed = ownedRootIds(player)
+        val budget = budget(player)
+        val spent = totalSpent(player, allowed)
+        return ClassSkillPointSummary(budget, spent, (budget - spent).coerceAtLeast(0))
+    }
 
     fun syncPayload(player: ServerPlayer, openScreen: Boolean): ClassSkillTreeSyncPayload {
         val ownedClasses = RoleStore.activeClassIds(player).sorted()
@@ -61,6 +69,7 @@ object ClassSkillTrees {
         RoleStore.setSelectedClassSkillRoot(player, root)
         reconcile(player)
         ClassSkillTreeNetwork.syncTo(player, openScreen = true)
+        BattlepassNetwork.syncTo(player)
     }
 
     fun unlock(player: ServerPlayer, rootSkillId: String, skillId: String): ClassSkillTreeUnlockResult {
@@ -77,6 +86,7 @@ object ClassSkillTrees {
         RoleStore.setSelectedClassSkillRoot(player, root)
         reconcile(player)
         ClassSkillTreeNetwork.syncTo(player, openScreen = true)
+        BattlepassNetwork.syncTo(player)
         return ClassSkillTreeUnlockResult(true, "")
     }
 
@@ -84,6 +94,7 @@ object ClassSkillTrees {
         RoleStore.resetClassSkills(player, rootSkillId)
         reconcile(player)
         ClassSkillTreeNetwork.syncTo(player, openScreen = true)
+        BattlepassNetwork.syncTo(player)
     }
 
     fun reconcile(player: ServerPlayer) {
@@ -354,6 +365,12 @@ data class ClassSkillTreeUnlockState(
     val available: Boolean,
     val blocked: Boolean,
     val reason: String,
+)
+
+data class ClassSkillPointSummary(
+    val budget: Int,
+    val spent: Int,
+    val available: Int,
 )
 
 private data class SkillTreeData(

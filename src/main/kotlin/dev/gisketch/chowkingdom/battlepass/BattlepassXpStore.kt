@@ -6,6 +6,8 @@ import dev.gisketch.chowkingdom.config.TomlConfigIO
 import dev.gisketch.chowkingdom.skilltree.ClassSkillTrees
 import dev.gisketch.chowkingdom.snackbar.SnackbarNetwork
 import dev.gisketch.chowkingdom.snackbar.SnackbarNotification
+import dev.gisketch.chowkingdom.snackbar.SnackbarSounds
+import dev.gisketch.chowkingdom.snackbar.SnackbarType
 import net.minecraft.server.level.ServerPlayer
 import java.nio.file.Files
 import java.nio.file.Path
@@ -47,6 +49,7 @@ object BattlepassXpStore {
     fun addXp(player: ServerPlayer, passId: String, amount: Int): Int {
         if (!loaded) load()
 
+        val previousSkillPoints = ClassSkillTrees.pointSummary(player).available
         val playerPasses = playerXp.getOrPut(player.stringUUID) { linkedMapOf() }
         val previous = playerPasses.getOrDefault(passId, 0)
         val total = (previous + amount).coerceAtLeast(0)
@@ -54,6 +57,8 @@ object BattlepassXpStore {
         save()
         if (amount > 0 && total > previous) sendXpSnackbar(player, passId, amount, previous, total)
         ClassSkillTrees.reconcile(player)
+        val currentSkillPoints = ClassSkillTrees.pointSummary(player).available
+        if (currentSkillPoints > previousSkillPoints) sendSkillPointSnackbar(player, currentSkillPoints)
         return total
     }
 
@@ -110,6 +115,20 @@ object BattlepassXpStore {
         SnackbarNetwork.send(player, SnackbarNotification.battlepassXp("+${amount} ${passName.uppercase()} BP XP", previousXp, currentXp, tierSize))
     }
 
+    private fun sendSkillPointSnackbar(player: ServerPlayer, available: Int) {
+        val suffix = if (available == 1) "" else "s"
+        SnackbarNetwork.send(
+            player,
+            SnackbarNotification.texture(
+                SKILL_POINT_TEXTURE,
+                "NEW SKILL POINT",
+                "You have $available skill point$suffix available",
+                SnackbarType.SUCCESS,
+                SnackbarSounds.REWARD,
+            ),
+        )
+    }
+
     private class StoredXpData(
         var players: MutableMap<String, MutableMap<String, Int>> = linkedMapOf(),
         var claimed: MutableMap<String, MutableMap<String, MutableSet<Int>>> = linkedMapOf(),
@@ -117,4 +136,5 @@ object BattlepassXpStore {
 
     private const val DEFAULT_BATTLEPASS_TIER_SIZE = 100
     private const val BATTLEPASS_XP_PER_LEVEL = 100
+    private const val SKILL_POINT_TEXTURE = "gisketchs_chowkingdom_mod:textures/gui/icons/game_survival_games.png"
 }
