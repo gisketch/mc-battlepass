@@ -30,6 +30,8 @@ import dev.gisketch.chowkingdom.debug.ExtractCommands
 import dev.gisketch.chowkingdom.discord.DiscordFeature
 import dev.gisketch.chowkingdom.discord.DiscordScreenshotClient
 import dev.gisketch.chowkingdom.gyms.GymLeagueFeature
+import dev.gisketch.chowkingdom.gyms.GymTransitionClient
+import dev.gisketch.chowkingdom.gyms.GymTransitionNetwork
 import dev.gisketch.chowkingdom.mobility.MobilityLicenseFeature
 import dev.gisketch.chowkingdom.npc.NpcBossBarClient
 import dev.gisketch.chowkingdom.npc.NpcClient
@@ -80,6 +82,7 @@ class ChowKingdomMod(modBus: IEventBus, container: ModContainer) {
         MobilityLicenseFeature.register()
         BattlepassCommands.register()
         BossEventsFeature.register()
+        GymTransitionNetwork.register(modBus)
         GymLeagueFeature.register()
         ExtractCommands.register()
         WalletsFeature.register(modBus)
@@ -117,6 +120,7 @@ class ChowKingdomMod(modBus: IEventBus, container: ModContainer) {
             ReviveClient.register(modBus)
             TradingClient.register(modBus)
             SnackbarClient.register(modBus)
+            GymTransitionClient.register(modBus)
             NpcBossBarClient.register(modBus)
             NpcClient.register(modBus)
             PunchyFirstPersonSuppressionBridge.register()

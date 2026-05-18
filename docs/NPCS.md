@@ -72,6 +72,7 @@ Each NPC is one TOML file:
 - `custom_animation`: Uses the GeckoLib playerlike NPC renderer instead of the EMF-compatible renderer path. Default `false`.
 - `playerlike_animation`: Uses the Better Combat/Mob Player Animator-compatible playerlike renderer instead of Gecko custom animation. Default `false`.
 - `main_pokemon`: Optional Cobblemon species id, for example `main_pokemon = "cobblemon:growlithe"`. When Cobblemon is installed, CKDM keeps one tagged NPC-owned companion near the NPC. The companion follows the NPC, is not catchable, is not battleable, and is included in LLM prompt context so the NPC can sometimes talk about it.
+  NPC-owned Pokemon mirror their owning NPC's sleep state; they do not use their own species/world sleep schedule while assigned as a companion.
 - `class`: Optional class id for Training dialog classification, for example `class = "rogue"`. Training starts the matching class mentor questline from that class TOML and unlocks the class only after payment and mentor duel victory.
 - `store`: Store template id, for example `store = "cosmetics"`. This selects the store TOML/pool only; runtime stock remains per NPC through `npc_<id>`.
 - `job_definition`: Static work behavior knobs loaded from TOML: `scan_interval_ticks`, `roam_radius`, and `work_scan_radius`. Legacy `job_definition.store` is still accepted as a fallback for older configs, but new configs should use top-level `store`.

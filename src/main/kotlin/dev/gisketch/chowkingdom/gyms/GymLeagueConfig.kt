@@ -80,7 +80,7 @@ object GymLeagueConfig {
         stadiumArea = "main_stadium",
         activeOnly = true,
         starterMode = "story_only",
-        chowfanNpcId = "chowfan",
+        chowfanNpcId = "prof_chowfan",
         defaults = GymLeagueDefaults(),
         trainers = mutableListOf(
             GymTrainerDefinition("blue", "Blue", "rival", "trainer_blue", "", "kanto_rivals", "cobblemon:blastoise"),
@@ -140,21 +140,6 @@ object GymLeagueConfig {
 
     private fun defaultNpcDefinitions(): List<NpcDefinition> {
         val league = defaultKantoLeague()
-        val chowfan = NpcDefinition(
-            id = "chowfan",
-            name = "Chowfan",
-            title = "League Clerk",
-            mainPokemon = "cobblemon:pikachu",
-            housing = NpcHousingDefinition(canMoveIn = false, requiresBed = false),
-            missions = NpcMissionsDefinition(enabled = false),
-            personality = NpcPersonalityDefinition(
-                llmPrompt = "Chowfan runs CKDM Pokemon league tickets at the stadium. They are practical, upbeat, and obsessed with clean badge records.",
-                traits = mutableListOf("league clerk", "organized", "battle fan"),
-                speechStyle = "clear stadium staff",
-                catchphrases = mutableListOf("Ticket checked.", "Badge record clean."),
-            ),
-            schedule = stadiumSchedule(),
-        )
         val trainers = league.trainers.map { trainer ->
             NpcDefinition(
                 id = trainer.npcId,
@@ -171,7 +156,7 @@ object GymLeagueConfig {
                 schedule = stadiumSchedule(),
             )
         }
-        return listOf(chowfan) + trainers
+        return trainers
     }
 
     private fun stadiumSchedule(): NpcScheduleDefinition = NpcScheduleDefinition(

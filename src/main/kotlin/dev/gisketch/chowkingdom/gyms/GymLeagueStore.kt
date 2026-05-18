@@ -33,7 +33,28 @@ object GymLeagueStore {
 
     fun setArea(id: String, dimension: String, pos: BlockPos, radius: Int) {
         ensureLoaded()
-        data.areas[cleanId(id)] = GymStadiumAreaState(dimension, pos.x, pos.y, pos.z, radius.coerceIn(4, 256))
+        val clean = cleanId(id)
+        val existing = data.areas[clean]
+        data.areas[clean] = GymStadiumAreaState(
+            dimension = dimension,
+            x = pos.x,
+            y = pos.y,
+            z = pos.z,
+            radius = radius.coerceIn(4, 256),
+            playerSpot = existing?.playerSpot ?: GymBattleSpotState(),
+            trainerSpot = existing?.trainerSpot ?: GymBattleSpotState(),
+        )
+        save()
+    }
+
+    fun setBattleSpot(id: String, spot: String, dimension: String, pos: BlockPos, yaw: Float, pitch: Float) {
+        ensureLoaded()
+        val area = data.areas.getOrPut(cleanId(id)) { GymStadiumAreaState() }
+        val state = GymBattleSpotState(dimension, pos.x, pos.y, pos.z, yaw, pitch, true)
+        when (cleanId(spot)) {
+            "player" -> area.playerSpot = state
+            "trainer", "npc" -> area.trainerSpot = state
+        }
         save()
     }
 
@@ -68,6 +89,7 @@ object GymLeagueStore {
         state.activeLeague = ""
         state.leagues.remove(cleanId(leagueId))
         data.attempts.keys.removeIf { key -> key.startsWith("${player.stringUUID}|") }
+        data.attemptRecords.keys.removeIf { key -> key.startsWith("${player.stringUUID}|") }
         save()
     }
 
@@ -123,6 +145,26 @@ object GymLeagueStore {
         return data.attempts[attemptKey(player, trainerId, day)] ?: 0
     }
 
+    fun attempts(player: ServerPlayer, trainerId: String, maxAttempts: Int): Int {
+        ensureLoaded()
+        return normalizedAttemptRecord(player, trainerId, maxAttempts).count
+    }
+
+    fun attemptCooldownRemainingMs(player: ServerPlayer, trainerId: String, maxAttempts: Int): Long {
+        ensureLoaded()
+        val record = normalizedAttemptRecord(player, trainerId, maxAttempts)
+        return (record.cooldownUntilMs - System.currentTimeMillis()).coerceAtLeast(0L)
+    }
+
+    fun incrementAttempts(player: ServerPlayer, trainerId: String, maxAttempts: Int, cooldownMs: Long): Int {
+        ensureLoaded()
+        val record = normalizedAttemptRecord(player, trainerId, maxAttempts)
+        record.count = (record.count + 1).coerceAtMost(maxAttempts.coerceAtLeast(1))
+        if (record.count >= maxAttempts.coerceAtLeast(1)) record.cooldownUntilMs = System.currentTimeMillis() + cooldownMs.coerceAtLeast(1_000L)
+        save()
+        return record.count
+    }
+
     fun incrementAttempts(player: ServerPlayer, trainerId: String, day: Long): Int {
         ensureLoaded()
         val key = attemptKey(player, trainerId, day)
@@ -136,6 +178,7 @@ object GymLeagueStore {
         ensureLoaded()
         val prefix = "${player.stringUUID}|${cleanId(trainerId)}|"
         data.attempts.keys.removeIf { it.startsWith(prefix) }
+        data.attemptRecords.remove(attemptRecordKey(player, trainerId))
         save()
     }
 
@@ -169,6 +212,19 @@ object GymLeagueStore {
 
     private fun attemptKey(player: ServerPlayer, trainerId: String, day: Long): String = "${player.stringUUID}|${cleanId(trainerId)}|$day"
 
+    private fun attemptRecordKey(player: ServerPlayer, trainerId: String): String = "${player.stringUUID}|${cleanId(trainerId)}"
+
+    private fun normalizedAttemptRecord(player: ServerPlayer, trainerId: String, maxAttempts: Int): GymAttemptRecordState {
+        val key = attemptRecordKey(player, trainerId)
+        val record = data.attemptRecords.getOrPut(key) { GymAttemptRecordState() }
+        if (record.count >= maxAttempts.coerceAtLeast(1) && System.currentTimeMillis() >= record.cooldownUntilMs) {
+            record.count = 0
+            record.cooldownUntilMs = 0L
+            save()
+        }
+        return record
+    }
+
     private fun playerState(player: ServerPlayer): GymPlayerState = data.players.getOrPut(player.stringUUID) { GymPlayerState() }
 
     private fun leagueState(leagueId: String): GymGlobalLeagueState = data.leagues.getOrPut(cleanId(leagueId)) { GymGlobalLeagueState() }
@@ -190,6 +246,7 @@ class GymLeagueWorldState(
     var leagues: MutableMap<String, GymGlobalLeagueState> = linkedMapOf(),
     var players: MutableMap<String, GymPlayerState> = linkedMapOf(),
     var attempts: MutableMap<String, Int> = linkedMapOf(),
+    var attemptRecords: MutableMap<String, GymAttemptRecordState> = linkedMapOf(),
     var activeBattles: MutableMap<String, GymBattleContextState> = linkedMapOf(),
 )
 
@@ -199,6 +256,18 @@ class GymStadiumAreaState(
     var y: Int = 64,
     var z: Int = 0,
     var radius: Int = 32,
+    var playerSpot: GymBattleSpotState = GymBattleSpotState(),
+    var trainerSpot: GymBattleSpotState = GymBattleSpotState(),
+)
+
+class GymBattleSpotState(
+    var dimension: String = "",
+    var x: Int = 0,
+    var y: Int = 64,
+    var z: Int = 0,
+    var yaw: Float = 0.0f,
+    var pitch: Float = 0.0f,
+    var configured: Boolean = false,
 )
 
 class GymGlobalLeagueState(
@@ -222,4 +291,10 @@ class GymBattleContextState(
     var encounterId: String = "",
     var trainerId: String = "",
     var npcId: String = "",
+    var official: Boolean = true,
+)
+
+class GymAttemptRecordState(
+    var count: Int = 0,
+    var cooldownUntilMs: Long = 0L,
 )

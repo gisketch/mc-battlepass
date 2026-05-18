@@ -3,10 +3,14 @@ package dev.gisketch.chowkingdom.npc
 import dev.gisketch.chowkingdom.ChowKingdomMod
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.network.chat.Component
+import net.minecraft.core.particles.ParticleTypes
 import net.minecraft.server.MinecraftServer
 import net.minecraft.server.level.ServerLevel
+import net.minecraft.sounds.SoundEvents
+import net.minecraft.sounds.SoundSource
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.Entity.RemovalReason
+import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.Mob
 import java.util.function.Consumer
 
@@ -31,6 +35,12 @@ object NpcPokemonCompanions {
     private val shouldRenderNameAccessor: Any? by lazy { pokemonEntityClass?.staticAccessor("SHOULD_RENDER_NAME") }
     private val countsTowardsSpawnCapAccessor: Any? by lazy { pokemonEntityClass?.staticAccessor("COUNTS_TOWARDS_SPAWN_CAP") }
     private val labelLevelAccessor: Any? by lazy { pokemonEntityClass?.staticAccessor("LABEL_LEVEL") }
+    private val pokemonSleepingMemory: Any? by lazy { cobblemonStaticField("com.cobblemon.mod.common.CobblemonMemories", "POKEMON_SLEEPING") }
+    private val pokemonDrowsyMemory: Any? by lazy { cobblemonStaticField("com.cobblemon.mod.common.CobblemonMemories", "POKEMON_DROWSY") }
+    private val pokemonSleepingActivity: Any? by lazy { cobblemonStaticField("com.cobblemon.mod.common.CobblemonActivities", "POKEMON_SLEEPING_ACTIVITY") }
+    private val sleepStatus: Any? by lazy { cobblemonStaticField("com.cobblemon.mod.common.api.pokemon.status.Statuses", "SLEEP") }
+    private val persistentStatusContainerClass: Class<*>? by lazy { runCatching { Class.forName("com.cobblemon.mod.common.pokemon.status.PersistentStatusContainer") }.getOrNull() }
+    private val battleSuspendedNpcIds: MutableSet<String> = linkedSetOf()
 
     fun registerEvents() {
         if (eventsRegistered) return
@@ -57,6 +67,10 @@ object NpcPokemonCompanions {
                 removeForNpc(server, definition.id)
                 return@forEach
             }
+            if (cleanNpcId(definition.id) in battleSuspendedNpcIds) {
+                removeForNpc(server, definition.id)
+                return@forEach
+            }
             tickNpcCompanion(npc, definition)
         }
     }
@@ -69,6 +83,15 @@ object NpcPokemonCompanions {
 
     fun removeForNpc(server: MinecraftServer, npcId: String) {
         companions(server, npcId).forEach { companion -> companion.discard() }
+    }
+
+    fun suspendForBattle(npcId: String, server: MinecraftServer) {
+        battleSuspendedNpcIds.add(cleanNpcId(npcId))
+        companions(server, npcId).forEach { companion -> recallForBattle(companion) }
+    }
+
+    fun resumeAfterBattle(npcId: String) {
+        battleSuspendedNpcIds.remove(cleanNpcId(npcId))
     }
 
     fun isCompanion(entity: Entity?): Boolean = entity?.persistentData?.getCompound(COMPANION_TAG)?.getBoolean(COMPANION_TAG) == true
@@ -97,7 +120,8 @@ object NpcPokemonCompanions {
         companions.filter { companion -> companion != active }.forEach { companion -> companion.discard() }
         if (active != null) {
             applyCompanionState(active, definition)
-            follow(active, npc)
+            syncSleeping(active, npc)
+            if (npc.isSleeping) (active as? Mob)?.navigation?.stop() else follow(active, npc)
         }
     }
 
@@ -159,6 +183,99 @@ object NpcPokemonCompanions {
         }
     }
 
+    private fun syncSleeping(companion: Entity, npc: ChowNpcEntity) {
+        if (npc.isSleeping) {
+            forceCompanionSleeping(companion)
+        } else {
+            forceCompanionAwake(companion)
+        }
+    }
+
+    private fun forceCompanionAwake(entity: Entity) {
+        clearPokemonStatusIfSleep(entity)
+        pokemonSleepingMemory?.let { memory -> eraseBrainMemory(entity, memory) }
+        pokemonDrowsyMemory?.let { memory -> eraseBrainMemory(entity, memory) }
+        brain(entity)?.let { brain -> runCatching { brain.javaClass.getMethod("useDefaultActivity").invoke(brain) } }
+        runCatching { (entity as? LivingEntity)?.stopSleeping() }
+    }
+
+    private fun forceCompanionSleeping(entity: Entity) {
+        setPokemonSleepStatus(entity)
+        pokemonDrowsyMemory?.let { memory -> eraseBrainMemory(entity, memory) }
+        pokemonSleepingMemory?.let { memory -> setBrainMemory(entity, memory, true) }
+        pokemonSleepingActivity?.let { activity -> setBrainActivity(entity, activity) }
+        (entity as? Mob)?.navigation?.stop()
+    }
+
+    private fun clearPokemonStatusIfSleep(entity: Entity) {
+        val pokemon = pokemon(entity) ?: return
+        val statusContainer = runCatching { pokemon.javaClass.getMethod("getStatus").invoke(pokemon) }.getOrNull() ?: return
+        val currentStatus = runCatching { statusContainer.javaClass.getMethod("getStatus").invoke(statusContainer) }.getOrNull()
+        if (currentStatus == sleepStatus) {
+            runCatching { pokemon.javaClass.getMethod("setStatus", statusContainer.javaClass).invoke(pokemon, null) }
+                .recoverCatching { pokemon.javaClass.methods.firstOrNull { method -> method.name == "setStatus" && method.parameterCount == 1 }?.invoke(pokemon, null) }
+        }
+    }
+
+    private fun setPokemonSleepStatus(entity: Entity) {
+        val pokemon = pokemon(entity) ?: return
+        val status = sleepStatus ?: return
+        val containerClass = persistentStatusContainerClass ?: return
+        val currentContainer = runCatching { pokemon.javaClass.getMethod("getStatus").invoke(pokemon) }.getOrNull()
+        val currentStatus = runCatching { currentContainer?.javaClass?.getMethod("getStatus")?.invoke(currentContainer) }.getOrNull()
+        if (currentStatus == status) return
+        val container = runCatching {
+            containerClass.constructors.firstOrNull { constructor -> constructor.parameterCount == 2 }
+                ?.newInstance(status, 0)
+        }.getOrNull() ?: return
+        runCatching { pokemon.javaClass.getMethod("setStatus", containerClass).invoke(pokemon, container) }
+            .recoverCatching { pokemon.javaClass.methods.firstOrNull { method -> method.name == "setStatus" && method.parameterCount == 1 }?.invoke(pokemon, container) }
+    }
+
+    private fun pokemon(entity: Entity): Any? =
+        runCatching { entity.javaClass.getMethod("getPokemon").invoke(entity) }.getOrNull()
+
+    private fun brain(entity: Entity): Any? =
+        runCatching { entity.javaClass.getMethod("getBrain").invoke(entity) }.getOrNull()
+
+    private fun eraseBrainMemory(entity: Entity, memory: Any) {
+        brain(entity)?.let { brain ->
+            runCatching {
+                brain.javaClass.methods.firstOrNull { method -> method.name == "eraseMemory" && method.parameterCount == 1 }
+                    ?.invoke(brain, memory)
+            }
+        }
+    }
+
+    private fun setBrainMemory(entity: Entity, memory: Any, value: Any) {
+        brain(entity)?.let { brain ->
+            runCatching {
+                brain.javaClass.methods.firstOrNull { method -> method.name == "setMemory" && method.parameterCount == 2 }
+                    ?.invoke(brain, memory, value)
+            }
+        }
+    }
+
+    private fun setBrainActivity(entity: Entity, activity: Any) {
+        brain(entity)?.let { brain ->
+            runCatching {
+                brain.javaClass.methods.firstOrNull { method -> method.name == "setActiveActivityToFirstValid" && method.parameterCount == 1 }
+                    ?.invoke(brain, listOf(activity))
+            }
+        }
+    }
+
+    private fun recallForBattle(entity: Entity) {
+        val level = entity.level() as? ServerLevel
+        if (level != null) {
+            val y = entity.y + entity.bbHeight * 0.55
+            level.sendParticles(ParticleTypes.POOF, entity.x, y, entity.z, 18, 0.35, 0.35, 0.35, 0.02)
+            level.sendParticles(ParticleTypes.PORTAL, entity.x, y, entity.z, 12, 0.22, 0.22, 0.22, 0.05)
+            level.playSound(null, entity.x, entity.y, entity.z, SoundEvents.ITEM_PICKUP, SoundSource.NEUTRAL, 0.55f, 1.65f)
+        }
+        entity.discard()
+    }
+
     private fun companions(server: MinecraftServer, npcId: String): List<Entity> =
         server.allLevels.flatMap { level ->
             level.allEntities.filter { entity ->
@@ -214,10 +331,15 @@ object NpcPokemonCompanions {
 
     private fun isPokemonEntity(entity: Entity): Boolean = pokemonEntityClass?.isInstance(entity) == true
 
+    private fun cleanNpcId(value: String): String = value.trim().lowercase().replace(' ', '_')
+
     private fun Class<*>.staticAccessor(name: String): Any? =
         runCatching { getMethod("get$name").invoke(null) }.getOrNull()
             ?: runCatching { getMethod("access\$get${name}\$cp").invoke(null) }.getOrNull()
             ?: runCatching { getDeclaredField(name).also { it.isAccessible = true }.get(null) }.getOrNull()
+
+    private fun cobblemonStaticField(className: String, fieldName: String): Any? =
+        runCatching { Class.forName(className).staticAccessor(fieldName) }.getOrNull()
 
     private fun writeEntityDataBoolean(entity: Entity, accessor: Any?, value: Boolean) {
         writeEntityDataValue(entity, accessor, value)

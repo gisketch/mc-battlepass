@@ -6,7 +6,7 @@ Trainer NPCs are different from town-life NPCs. They live around a Pokemon stadi
 
 ## V1 Rules
 
-- Chowfan starts league tickets.
+- Professor Chowfan (`prof_chowfan`) starts league records.
 - A player can have one active generation league at a time.
 - League progress is driven by an ordered `sequence`.
 - Gyms, rivals, Elite Four, and Champion are all encounters.
@@ -14,7 +14,8 @@ Trainer NPCs are different from town-life NPCs. They live around a Pokemon stadi
 - Trainer teams live in external RCT JSON files.
 - Encounter unlocks are global, but badges and clears are per-player.
 - Level caps are exact per battle. If the cap is 8, every Pokemon in the active party must be level 8 or lower.
-- Each trainer NPC can be challenged 3 times per player per in-game day.
+- Each trainer NPC can be challenged 3 times per player, then that trainer enters a configurable real-time cooldown. Default cooldown is 15 minutes.
+- If the player is not on that league record, trainer NPCs offer `FRIENDLY BATTLE`; friendly wins do not grant badges, league clears, BP XP, or Chowcoins.
 - Kanto is the first league.
 - Blue uses one default branch in V1.
 
@@ -42,10 +43,11 @@ display_name = "Kanto League"
 stadium_area = "main_stadium"
 active_only = true
 starter_mode = "story_only"
-chowfan_npc_id = "chowfan"
+chowfan_npc_id = "prof_chowfan"
 
 [defaults]
 daily_attempts_per_npc = 3
+attempt_cooldown_minutes = 15
 battle_format = "GEN_9_SINGLES"
 hard_level_cap = true
 level_cap_scope = "whole_party"
@@ -127,11 +129,12 @@ Player state:
 - active league id
 - cleared encounter ids per league
 - badge ids per league
-- daily attempt counters keyed by trainer id and in-game day
+- trainer attempt records keyed by trainer id with real-time cooldown expiry
 
 Global state:
 
 - stadium areas
+- optional stadium battle spots: `playerSpot` and `trainerSpot`
 - globally unlocked encounter ids per league
 - next-day availability for newly unlocked encounters
 - active RCT battle context while battle is running
@@ -139,7 +142,12 @@ Global state:
 ## Commands
 
 - `/ck gyms reload`
-- `/ck gyms area set <area_id> <radius>`
+- `/ck gyms area set <radius>`
+- `/ck gyms area set_named <area_id> <radius>`
+- `/ck gyms area set_player`
+- `/ck gyms area set_trainer`
+- `/ck gyms area tp [player]`
+- `/ck gyms area teleport [player]`
 - `/ck gyms area status`
 - `/ck gyms status [player]`
 - `/ck gyms league start <league_id> [player]`
@@ -161,11 +169,14 @@ Attributes should include `league`, `encounter`, `trainer`, `kind`, and `badge` 
 
 Implemented in code:
 
-- `gyms/` module with league config, world/player state, commands, trainer dialogue, Chowfan ticket flow, stadium area storage, next-day global unlocks, and RCT battle start/end wiring.
+- `gyms/` module with league config, world/player state, commands, trainer dialogue, Professor Chowfan record flow, stadium area storage, next-day global unlocks, and RCT battle start/end wiring.
 - Default Kanto league TOML and external RCT JSON stubs are written when missing.
-- Default Chowfan and Kanto trainer NPC TOML files are written when missing.
+- Default Kanto trainer NPC TOML files are written when missing. League start reuses the existing Prism `prof_chowfan` NPC instead of writing a separate clerk NPC.
 - First-clear rewards grant combat BP XP and Chowcoins.
 - First badge clear sends snackbar and Discord webhook relay.
+- Friendly battles are available from trainer NPCs when the player is not on that trainer's active league record.
+- NPC main Pokemon companions are recalled with a short particle/sound cue before RCT battles, hidden during the battle, then restored after the battle ends.
+- Battle start sends a black client fade, waits briefly, teleports the player and trainer NPC to the configured stadium battle spots, faces them toward each other, then starts the RCT battle while the screen fades back in.
 
 Still needs in-game smoke testing:
 

@@ -411,11 +411,15 @@ TODO (Mod):
 - [x] Start RCT battle through API from NPC interaction.
 - [x] Receive win/loss callback from RCT.
 - [x] Award badge/state on first win.
-- [ ] Award modest repeat rewards or no repeat rewards.
-- [x] Add first-pass gym gate requirements: active league, encounter order, global unlock day, daily attempts, and hard party level cap.
+- [x] Award no repeat rewards for official clears in V1; friendly battles do not pay or progress records.
+- [x] Add first-pass gym gate requirements: active league, encounter order, global unlock day, real-time trainer attempt cooldowns, and hard party level cap.
 - [x] Add battlepass XP/chowcoin rewards.
 - [x] Add snackbar and Discord broadcast for first badge win.
-- [x] Add commands `/ck gyms status`, `/ck gyms league reset`, `/ck gyms grant`, area, unlock, reload, start, and attempts tools.
+- [x] Add commands `/ck gyms status`, `/ck gyms league reset`, `/ck gyms grant`, area set/teleport, unlock, reload, start, and attempts tools.
+- [x] Add stadium player/trainer battle spots and teleport both sides there before RCT battle start.
+- [x] Add client black fade before gym battle teleport and fade-in after arena placement.
+- [x] Reuse existing `prof_chowfan` as Professor Chowfan's league record entrypoint instead of adding a separate clerk NPC.
+- [x] Hide trainer NPC main Pokemon companions during RCT battles and restore them after battle end.
 - [ ] Add relic-fragment rewards if gym badge rewards need relic economy hooks.
 - [ ] In-game smoke test RCT battle start/end in the Prism instance.
 

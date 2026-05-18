@@ -42,6 +42,7 @@ import net.neoforged.neoforge.event.server.ServerStartedEvent
 import net.neoforged.neoforge.event.tick.ServerTickEvent
 
 object GymLeagueFeature {
+    private const val DEFAULT_STADIUM_AREA = "main_stadium"
     private var nextSpawnTick = 0L
 
     fun register() {
@@ -112,6 +113,11 @@ object GymLeagueFeature {
         val league = GymLeagueConfig.league(context.leagueId) ?: return
         val encounter = league.encounter(context.encounterId) ?: return
         val trainer = league.trainer(context.trainerId) ?: return
+        if (!context.official) {
+            SnackbarNetwork.send(player, SnackbarNotification.item("cobblemon:poke_ball", "FRIENDLY BATTLE WON", trainer.name, SnackbarType.SUCCESS, SnackbarSounds.REWARD))
+            BattlepassNetwork.syncAllPlayers()
+            return
+        }
         recordMission(player, "gisketchs_chowkingdom_mod:gym_battle_won", league, encounter, trainer)
         val firstClear = GymLeagueStore.grantClear(player, league, encounter)
         if (!firstClear) return
@@ -121,7 +127,7 @@ object GymLeagueFeature {
             recordMission(player, "gisketchs_chowkingdom_mod:gym_badge_earned", league, encounter, trainer)
             SnackbarNetwork.send(
                 player,
-                SnackbarNotification.item("cobblemon:poke_ball", "BADGE EARNED", "${encounter.displayName} cleared. ${encounter.badgeId.replace('_', ' ').uppercase()}", SnackbarType.SUCCESS, SnackbarSounds.REWARD),
+                SnackbarNotification.item("cobblemon:poke_ball", "RECORD UPDATED", "${encounter.displayName} cleared. ${encounter.badgeId.replace('_', ' ').uppercase()}", SnackbarType.SUCCESS, SnackbarSounds.REWARD),
             )
             DiscordRelay.gymBadgeEarned(player, league.displayName, encounter.displayName, encounter.badgeId)
         } else {
@@ -174,12 +180,12 @@ object GymLeagueFeature {
         val friendship = NpcStore.friendshipSnapshot(definition.id, player)
         val activeLeague = GymLeagueStore.activeLeague(player)
         val message = if (activeLeague.isBlank()) {
-            "League desk is open. I can issue your Kanto ticket and start your badge record whenever you're ready."
+            "Your league record is unopened. I can start your Kanto badge record whenever you're ready."
         } else {
             val league = GymLeagueConfig.league(activeLeague)
             val next = league?.let { GymLeagueStore.nextPlayerEncounter(player, it) }
-            if (league != null && next != null) "Your ${league.displayName} ticket is active. Next match: ${next.displayName}. Level cap ${next.levelCap}."
-            else "Your active league is complete or missing. Ask an admin if your ticket looks wrong."
+            if (league != null && next != null) "Your ${league.displayName} record is active. Next match: ${next.displayName}. Level cap ${next.levelCap}."
+            else "Your active league record is complete or missing. Ask an admin if the record looks wrong."
         }
         npc.startTalkingTo(player, 100)
         NpcNetwork.openDialog(player, NpcFeature.dialogPayload(definition, npc, message, false, friendship.level, dialogMode = "league_chowfan", leagueAvailable = true))
@@ -198,8 +204,8 @@ object GymLeagueFeature {
         }
         GymLeagueStore.startLeague(player, league)
         val first = league.firstEncounter()
-        val message = "Ticket checked. Your ${league.displayName} record is open. First match: ${first?.displayName ?: "waiting on the bracket"}. Keep your party under level ${first?.levelCap ?: "the posted cap"}."
-        SnackbarNetwork.send(player, SnackbarNotification.item("cobblemon:poke_ball", "LEAGUE TICKET ACTIVE", league.displayName, SnackbarType.SUCCESS, SnackbarSounds.REWARD))
+        val message = "Record opened. Your ${league.displayName} badge run starts with ${first?.displayName ?: "the first posted match"}. Keep your party under level ${first?.levelCap ?: "the posted cap"}."
+        SnackbarNetwork.send(player, SnackbarNotification.item("cobblemon:poke_ball", "LEAGUE RECORD OPEN", league.displayName, SnackbarType.SUCCESS, SnackbarSounds.REWARD))
         NpcNetwork.openDialog(player, NpcFeature.dialogPayload(definition, npc, message, false, friendship.level, dialogMode = "league_chowfan", leagueAvailable = true))
     }
 
@@ -209,17 +215,20 @@ object GymLeagueFeature {
         val current = if (activeLeague == league.id) GymLeagueStore.nextPlayerEncounter(player, league) else null
         val day = NpcTime.day(player.level())
         val currentForTrainer = current?.trainer == trainer.id && GymLeagueStore.isUnlocked(league.id, current.id, day)
-        val attemptsLeft = (league.defaults.dailyAttemptsPerNpc - GymLeagueStore.attempts(player, trainer.id, day)).coerceAtLeast(0)
+        val maxAttempts = league.defaults.dailyAttemptsPerNpc
+        val attemptsLeft = (maxAttempts - GymLeagueStore.attempts(player, trainer.id, maxAttempts)).coerceAtLeast(0)
+        val cooldownMs = GymLeagueStore.attemptCooldownRemainingMs(player, trainer.id, maxAttempts)
         val message = when {
-            activeLeague.isBlank() -> "I'm on the ${league.displayName} roster. Get a ticket from Chowfan before we make this official."
-            activeLeague != league.id -> "You're carrying another league ticket. Finish that record before challenging ${league.displayName}."
-            currentForTrainer && attemptsLeft > 0 -> "You're up for ${current?.displayName}. Level cap ${current?.levelCap}. Attempts left today: $attemptsLeft."
-            currentForTrainer -> "You've used today's attempts with me. Come back after the league desk resets."
-            current != null -> "Your next ${league.displayName} match is ${current.displayName}. I'm not your current bracket."
+            activeLeague != league.id && attemptsLeft > 0 -> "FRIENDLY BATTLE is open. It will not touch your badge record. Attempts left before cooldown: $attemptsLeft."
+            activeLeague != league.id -> "Friendly battle cooldown is active. Come back in ${formatCooldown(cooldownMs)}."
+            currentForTrainer && attemptsLeft > 0 -> "You're up for ${current.displayName}. Level cap ${current.levelCap}. Attempts left before cooldown: $attemptsLeft."
+            currentForTrainer -> "Battle cooldown is active. Come back in ${formatCooldown(cooldownMs)}."
+            current != null -> "Your next ${league.displayName} record match is ${current.displayName}. I can still do a friendly battle."
             else -> "Your ${league.displayName} record looks complete from here."
         }
         npc.startTalkingTo(player, 100)
-        NpcNetwork.openDialog(player, NpcFeature.dialogPayload(definition, npc, message, false, friendship.level, dialogMode = "gym_trainer", leagueAvailable = false))
+        val mode = if (activeLeague == league.id && currentForTrainer) "gym_trainer" else "gym_friendly"
+        NpcNetwork.openDialog(player, NpcFeature.dialogPayload(definition, npc, message, false, friendship.level, dialogMode = mode, leagueAvailable = false))
     }
 
     private fun openBadgeDialog(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, league: GymLeagueDefinition, trainer: GymTrainerDefinition) {
@@ -227,9 +236,9 @@ object GymLeagueFeature {
         val badges = GymLeagueStore.badges(player, league.id)
         val trainerBadge = trainer.badgeId.takeIf(String::isNotBlank)
         val message = when {
-            trainerBadge == null -> "${trainer.name} has no badge on file. This is a league battle checkpoint."
-            trainerBadge in badges -> "Badge record confirmed: ${trainerBadge.replace('_', ' ').uppercase()} is yours."
-            else -> "Badge record missing: beat ${trainer.name} in your active ${league.displayName} sequence to earn ${trainerBadge.replace('_', ' ').uppercase()}."
+            trainerBadge == null -> "${trainer.name} has no badge entry on this record. This is a league battle checkpoint."
+            trainerBadge in badges -> "Record confirmed: ${trainerBadge.replace('_', ' ').uppercase()} is yours."
+            else -> "Record missing: beat ${trainer.name} in your active ${league.displayName} sequence to earn ${trainerBadge.replace('_', ' ').uppercase()}."
         }
         NpcNetwork.openDialog(player, NpcFeature.dialogPayload(definition, npc, message, false, friendship.level, dialogMode = "gym_trainer"))
     }
@@ -238,23 +247,25 @@ object GymLeagueFeature {
         val friendship = NpcStore.friendshipSnapshot(definition.id, player)
         val day = NpcTime.day(player.level())
         val active = GymLeagueStore.activeLeague(player)
-        val encounter = GymLeagueStore.nextPlayerEncounter(player, league)
+        val official = active == league.id
+        val encounter = if (official) GymLeagueStore.nextPlayerEncounter(player, league) else league.sequence.firstOrNull { it.trainer == trainer.id }
         fun fail(message: String) = NpcNetwork.openDialog(player, NpcFeature.dialogPayload(definition, npc, message, false, friendship.level, closeOnly = true, closeLabel = "OKAY"))
-        if (active != league.id) return fail("You need an active ${league.displayName} ticket from Chowfan first.")
-        if (encounter == null) return fail("Your ${league.displayName} record is already complete.")
-        if (encounter.trainer != trainer.id) return fail("Your next match is ${encounter.displayName}, not this one.")
-        if (!GymLeagueStore.isUnlocked(league.id, encounter.id, day)) return fail("${encounter.displayName} is not on today's bracket yet.")
-        val attempts = GymLeagueStore.attempts(player, trainer.id, day)
-        if (attempts >= league.defaults.dailyAttemptsPerNpc) return fail("You've used today's ${trainer.name} attempts. Come back after the league desk resets.")
-        GymBattleService.partyLevelViolation(player, encounter.levelCap)?.let { level ->
+        if (encounter == null) return fail(if (official) "Your ${league.displayName} record is already complete." else "${trainer.name} has no friendly team on file.")
+        if (official && encounter.trainer != trainer.id) return fail("Your next match is ${encounter.displayName}, not this one.")
+        if (official && !GymLeagueStore.isUnlocked(league.id, encounter.id, day)) return fail("${encounter.displayName} is not on today's bracket yet.")
+        val maxAttempts = league.defaults.dailyAttemptsPerNpc
+        val attempts = GymLeagueStore.attempts(player, trainer.id, maxAttempts)
+        if (attempts >= maxAttempts) return fail("${trainer.name} is on cooldown. Come back in ${formatCooldown(GymLeagueStore.attemptCooldownRemainingMs(player, trainer.id, maxAttempts))}.")
+        if (official) GymBattleService.partyLevelViolation(player, encounter.levelCap)?.let { level ->
             return fail("Level cap is ${encounter.levelCap}. One of your active party Pokemon is level $level.")
         }
-        GymLeagueStore.incrementAttempts(player, trainer.id, day)
-        recordMission(player, "gisketchs_chowkingdom_mod:gym_battle_attempted", league, encounter, trainer)
-        val started = GymBattleService.startBattle(player, npc, league, encounter, trainer)
+        GymLeagueStore.incrementAttempts(player, trainer.id, maxAttempts, league.defaults.attemptCooldownMinutes * 60_000L)
+        if (official) recordMission(player, "gisketchs_chowkingdom_mod:gym_battle_attempted", league, encounter, trainer)
+        val started = GymBattleService.startBattle(player, npc, league, encounter, trainer, official = official)
         if (!started.started) return fail(started.message)
         BattlepassNetwork.syncAllPlayers()
-        NpcNetwork.openDialog(player, NpcFeature.dialogPayload(definition, npc, "Battle started. Show me your badge run is real.", false, friendship.level, closeOnly = true, closeLabel = "OKAY"))
+        val message = if (official) "Record battle started. Show me your badge run is real." else "Friendly battle started. No badge record pressure."
+        NpcNetwork.openDialog(player, NpcFeature.dialogPayload(definition, npc, message, false, friendship.level, closeOnly = true, closeLabel = "OKAY"))
     }
 
     private fun recordMission(player: ServerPlayer, eventId: String, league: GymLeagueDefinition, encounter: GymEncounterDefinition, trainer: GymTrainerDefinition) {
@@ -280,8 +291,24 @@ object GymLeagueFeature {
                 .then(Commands.literal("status").executes(::areaStatus))
                 .then(
                     Commands.literal("set").requires { it.hasPermission(2) }
+                        .then(Commands.argument("radius", IntegerArgumentType.integer(4, 256)).executes(::areaSetDefault)),
+                )
+                .then(
+                    Commands.literal("set_named").requires { it.hasPermission(2) }
                         .then(Commands.argument("area_id", StringArgumentType.word())
                             .then(Commands.argument("radius", IntegerArgumentType.integer(4, 256)).executes(::areaSet))),
+                )
+                .then(Commands.literal("set_player").requires { it.hasPermission(2) }.executes(::areaSetPlayerSpot))
+                .then(Commands.literal("set_trainer").requires { it.hasPermission(2) }.executes(::areaSetTrainerSpot))
+                .then(
+                    Commands.literal("tp")
+                        .executes(::areaTeleportSelf)
+                        .then(Commands.argument("player", EntityArgument.player()).requires { it.hasPermission(2) }.executes(::areaTeleportPlayer)),
+                )
+                .then(
+                    Commands.literal("teleport")
+                        .executes(::areaTeleportSelf)
+                        .then(Commands.argument("player", EntityArgument.player()).requires { it.hasPermission(2) }.executes(::areaTeleportPlayer)),
                 ),
         )
         .then(Commands.literal("status").executes(::statusSelf).then(Commands.argument("player", EntityArgument.player()).executes(::statusPlayer)))
@@ -324,13 +351,54 @@ object GymLeagueFeature {
         return 1
     }
 
+    private fun areaSetDefault(context: CommandContext<CommandSourceStack>): Int {
+        val player = context.source.playerOrException
+        val radius = IntegerArgumentType.getInteger(context, "radius")
+        GymLeagueStore.setArea(DEFAULT_STADIUM_AREA, player.level().dimension().location().toString(), player.blockPosition(), radius)
+        context.source.sendSuccess({ Component.literal("Set main gym stadium at ${player.blockPosition().toShortString()} radius $radius.") }, true)
+        return 1
+    }
+
+    private fun areaSetPlayerSpot(context: CommandContext<CommandSourceStack>): Int {
+        val player = context.source.playerOrException
+        GymLeagueStore.setBattleSpot(DEFAULT_STADIUM_AREA, "player", player.level().dimension().location().toString(), player.blockPosition(), player.yRot, player.xRot)
+        context.source.sendSuccess({ Component.literal("Set gym player battle spot at ${player.blockPosition().toShortString()}.") }, true)
+        return 1
+    }
+
+    private fun areaSetTrainerSpot(context: CommandContext<CommandSourceStack>): Int {
+        val player = context.source.playerOrException
+        GymLeagueStore.setBattleSpot(DEFAULT_STADIUM_AREA, "trainer", player.level().dimension().location().toString(), player.blockPosition(), player.yRot, player.xRot)
+        context.source.sendSuccess({ Component.literal("Set gym trainer battle spot at ${player.blockPosition().toShortString()}.") }, true)
+        return 1
+    }
+
+    private fun areaTeleportSelf(context: CommandContext<CommandSourceStack>): Int = areaTeleport(context, context.source.playerOrException)
+
+    private fun areaTeleportPlayer(context: CommandContext<CommandSourceStack>): Int = areaTeleport(context, EntityArgument.getPlayer(context, "player"))
+
+    private fun areaTeleport(context: CommandContext<CommandSourceStack>, player: ServerPlayer): Int {
+        val area = GymLeagueStore.area(DEFAULT_STADIUM_AREA) ?: return fail(context, "Main gym stadium is not set. Use /ck gyms area set <radius> first.")
+        val dimension = runCatching { ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(area.dimension)) }.getOrNull()
+            ?: return fail(context, "Gym stadium dimension is invalid: ${area.dimension}")
+        val level = context.source.server.getLevel(dimension) ?: return fail(context, "Gym stadium dimension is not loaded: ${area.dimension}")
+        player.teleportTo(level, area.x + 0.5, area.y.toDouble(), area.z + 0.5, player.yRot, player.xRot)
+        SnackbarNetwork.send(player, SnackbarNotification.texture(SnackbarIcons.CHOWCOIN_TEXTURE, "GYM STADIUM", "Teleported to the league area.", SnackbarType.SUCCESS, SnackbarSounds.SUCCESS))
+        context.source.sendSuccess({ Component.literal("Teleported ${player.gameProfile.name} to the main gym stadium.") }, true)
+        return 1
+    }
+
     private fun areaStatus(context: CommandContext<CommandSourceStack>): Int {
         val areas = GymLeagueStore.areas()
         if (areas.isEmpty()) {
             context.source.sendSystemMessage(Component.literal("No gym stadium areas set."))
             return 0
         }
-        areas.forEach { (id, area) -> context.source.sendSystemMessage(Component.literal("$id ${area.dimension} ${area.x},${area.y},${area.z} r=${area.radius}")) }
+        areas.forEach { (id, area) ->
+            val playerSpot = if (area.playerSpot.configured) "${area.playerSpot.x},${area.playerSpot.y},${area.playerSpot.z}" else "unset"
+            val trainerSpot = if (area.trainerSpot.configured) "${area.trainerSpot.x},${area.trainerSpot.y},${area.trainerSpot.z}" else "unset"
+            context.source.sendSystemMessage(Component.literal("$id ${area.dimension} ${area.x},${area.y},${area.z} r=${area.radius} player=$playerSpot trainer=$trainerSpot"))
+        }
         return areas.size
     }
 
@@ -384,8 +452,9 @@ object GymLeagueFeature {
     private fun attemptsGet(context: CommandContext<CommandSourceStack>): Int {
         val player = EntityArgument.getPlayer(context, "player")
         val trainerId = StringArgumentType.getString(context, "trainer_id")
-        val day = NpcTime.day(player.level())
-        context.source.sendSystemMessage(Component.literal("${player.gameProfile.name} ${cleanId(trainerId)} attempts today: ${GymLeagueStore.attempts(player, trainerId, day)}"))
+        val maxAttempts = GymLeagueConfig.all().firstOrNull()?.defaults?.dailyAttemptsPerNpc ?: 3
+        val cooldown = GymLeagueStore.attemptCooldownRemainingMs(player, trainerId, maxAttempts)
+        context.source.sendSystemMessage(Component.literal("${player.gameProfile.name} ${cleanId(trainerId)} record: ${GymLeagueStore.attempts(player, trainerId, maxAttempts)}/$maxAttempts, cooldown=${formatCooldown(cooldown)}"))
         return 1
     }
 
@@ -405,5 +474,13 @@ object GymLeagueFeature {
     private fun fail(context: CommandContext<CommandSourceStack>, message: String): Int {
         context.source.sendFailure(Component.literal(message).withStyle(ChatFormatting.RED))
         return 0
+    }
+
+    private fun formatCooldown(ms: Long): String {
+        if (ms <= 0L) return "ready"
+        val totalSeconds = ((ms + 999L) / 1000L).coerceAtLeast(1L)
+        val minutes = totalSeconds / 60L
+        val seconds = totalSeconds % 60L
+        return if (minutes > 0L) "${minutes}m ${seconds.toString().padStart(2, '0')}s" else "${seconds}s"
     }
 }
