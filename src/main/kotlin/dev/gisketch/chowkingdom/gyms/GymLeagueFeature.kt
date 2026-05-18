@@ -14,6 +14,7 @@ import dev.gisketch.chowkingdom.npc.NpcDefinition
 import dev.gisketch.chowkingdom.npc.NpcFeature
 import dev.gisketch.chowkingdom.npc.NpcLlmService
 import dev.gisketch.chowkingdom.npc.NpcNetwork
+import dev.gisketch.chowkingdom.npc.NpcPokemonCompanions
 import dev.gisketch.chowkingdom.npc.NpcQuestHudEntryPayload
 import dev.gisketch.chowkingdom.npc.NpcQuestService
 import dev.gisketch.chowkingdom.npc.NpcStore
@@ -39,6 +40,7 @@ import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.level.Level
 import net.neoforged.neoforge.common.NeoForge
 import net.neoforged.neoforge.event.RegisterCommandsEvent
+import net.neoforged.neoforge.event.entity.EntityJoinLevelEvent
 import net.neoforged.neoforge.event.entity.player.PlayerEvent
 import net.neoforged.neoforge.event.server.ServerStartedEvent
 import net.neoforged.neoforge.event.tick.ServerTickEvent
@@ -55,12 +57,30 @@ object GymLeagueFeature {
         NeoForge.EVENT_BUS.addListener(::onRegisterCommands)
         NeoForge.EVENT_BUS.addListener(::onPlayerLoggedIn)
         NeoForge.EVENT_BUS.addListener(::onPlayerLoggedOut)
+        NeoForge.EVENT_BUS.addListener(::onEntityJoinLevel)
         NeoForge.EVENT_BUS.addListener(::onServerTick)
     }
 
     fun leagueAvailable(definition: NpcDefinition): Boolean = GymLeagueConfig.isChowfan(definition.id)
 
     fun isTrainerNpc(npcId: String): Boolean = GymLeagueConfig.isTrainerNpc(npcId)
+
+    fun handleTrainerDeath(npc: ChowNpcEntity, definition: NpcDefinition): Boolean {
+        val (league, trainer) = GymLeagueConfig.trainerNpc(definition.id) ?: return false
+        val server = npc.server ?: return true
+        val delayMs = league.defaults.trainerRespawnMinutes * 60_000L
+        NpcPokemonCompanions.removeForNpc(server, definition.id)
+        GymLeagueStore.markTrainerDefeated(definition.id, delayMs)
+        removeLoadedTrainer(server, definition.id)
+        NpcStore.clearDead(definition.id)
+        if (NpcStore.activeCamperId() == definition.id) NpcStore.clearActiveCamper(definition.id)
+        NpcStore.recordGlobalEvent("gym_trainer_recovery", "${definition.name} is recovering after a trainer encounter.")
+        SnackbarNetwork.sendToAllKnown(
+            server,
+            SnackbarNotification.npc(definition.id, "${trainer.name.uppercase()} RECOVERING", "${trainer.name} will return in ${league.defaults.trainerRespawnMinutes} minutes.", SnackbarType.GENERIC, SnackbarSounds.GENERIC),
+        )
+        return true
+    }
 
     fun tryOpenNpcDialog(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition): Boolean {
         val trainerBinding = GymLeagueConfig.trainerNpc(definition.id)
@@ -164,7 +184,7 @@ object GymLeagueFeature {
         GymLeagueConfig.load()
         GymLeagueStore.load()
         GymBattleService.init(event.server)
-        dedupeGymTrainers(event.server)
+        reconcileGymTrainers(event.server)
     }
 
     private fun onPlayerLoggedIn(event: PlayerEvent.PlayerLoggedInEvent) {
@@ -179,6 +199,13 @@ object GymLeagueFeature {
         GymBattleService.unregisterPlayer(player)
     }
 
+    private fun onEntityJoinLevel(event: EntityJoinLevelEvent) {
+        val npc = event.entity as? ChowNpcEntity ?: return
+        if (!isTrainerNpc(npc.npcId)) return
+        val level = event.level as? ServerLevel ?: return
+        reconcileTrainer(level.server, npc.npcId)
+    }
+
     private fun onServerTick(event: ServerTickEvent.Post) {
         val server = event.server
         val now = server.overworld().gameTime
@@ -188,6 +215,7 @@ object GymLeagueFeature {
         }
         if (now < nextSpawnTick) return
         nextSpawnTick = now + 20L * 30L
+        reconcileGymTrainers(server)
         spawnUnlockedTrainers(server.overworld())
     }
 
@@ -225,35 +253,80 @@ object GymLeagueFeature {
             league.sequence.forEach { encounter ->
                 if (!GymLeagueStore.isUnlocked(league.id, encounter.id, currentDay)) return@forEach
                 val trainer = league.trainer(encounter.trainer) ?: return@forEach
-                dedupeTrainer(level.server, trainer.npcId, BlockPos(area.x, area.y, area.z))
-                if (NpcFeature.existingNpc(level.server, trainer.npcId) != null) return@forEach
+                if (GymLeagueStore.trainerRespawnRemainingMs(trainer.npcId) > 0L) {
+                    removeLoadedTrainer(level.server, trainer.npcId)
+                    return@forEach
+                }
+                if (reconcileTrainer(level.server, trainer.npcId) != null) return@forEach
                 val definition = NpcConfig.get(trainer.npcId) ?: return@forEach
-                NpcFeature.spawnConfiguredNpcAt(level, definition, BlockPos(area.x, area.y, area.z))
+                if (NpcFeature.spawnConfiguredNpcAt(level, definition, BlockPos(area.x, area.y, area.z))) {
+                    reconcileTrainer(level.server, trainer.npcId)
+                }
             }
         }
     }
 
-    fun dedupeGymTrainers(server: net.minecraft.server.MinecraftServer) {
+    fun reconcileGymTrainers(server: net.minecraft.server.MinecraftServer) {
         GymLeagueConfig.all().forEach { league ->
-            val area = GymLeagueStore.area(league.stadiumArea)
-            val anchor = if (area != null) BlockPos(area.x, area.y, area.z) else server.overworld().sharedSpawnPos
-            league.trainers.forEach { trainer -> dedupeTrainer(server, trainer.npcId, anchor) }
+            league.trainers.forEach { trainer -> reconcileTrainer(server, trainer.npcId) }
         }
     }
 
-    private fun dedupeTrainer(server: net.minecraft.server.MinecraftServer, npcId: String, anchor: BlockPos) {
+    private fun reconcileTrainer(server: net.minecraft.server.MinecraftServer, npcId: String): ChowNpcEntity? {
+        val binding = GymLeagueConfig.trainerNpc(npcId)
+        val league = binding?.first
+        val area = league?.let { GymLeagueStore.area(it.stadiumArea) }
+        if (GymLeagueStore.trainerRespawnRemainingMs(npcId) > 0L) {
+            removeLoadedTrainer(server, npcId)
+            return null
+        }
         val live = NpcFeature.existingNpcs(server, npcId)
-        if (live.size <= 1) return
+        if (live.isEmpty()) {
+            NpcStore.clearDead(npcId)
+            if (NpcStore.activeCamperId() == npcId) NpcStore.clearActiveCamper(npcId)
+            return null
+        }
         val stored = NpcStore.entityUuid(npcId)
-        val kept = live.firstOrNull { npc -> npc.uuid == stored }
-            ?: live.minByOrNull { npc -> npc.blockPosition().distSqr(anchor) }
-            ?: return
+        val kept = live.sortedWith(
+            compareBy<ChowNpcEntity> { npc -> if (insideStadium(npc, area)) 0 else 1 }
+                .thenBy { npc -> stadiumDistanceSqr(npc, area) }
+                .thenBy { npc -> if (npc.uuid == stored) 0 else 1 },
+        ).first()
         live.filterNot { npc -> npc.uuid == kept.uuid }.forEach { duplicate ->
             duplicate.navigation.stop()
             duplicate.discard()
         }
-        NpcStore.setEntity(npcId, kept.uuid, kept.campPos ?: anchor)
-        ChowKingdomMod.LOGGER.info("Deduped gym trainer {}: kept {}, removed {}", npcId, kept.uuid, live.size - 1)
+        val camp = area?.let { BlockPos(it.x, it.y, it.z) } ?: kept.campPos ?: kept.blockPosition()
+        NpcStore.setEntity(npcId, kept.uuid, camp)
+        NpcStore.clearDead(npcId)
+        if (NpcStore.activeCamperId() == npcId) NpcStore.clearActiveCamper(npcId)
+        GymLeagueStore.clearTrainerRespawn(npcId)
+        NpcConfig.get(npcId)?.let { definition ->
+            NpcPokemonCompanions.removeForNpc(server, npcId)
+            NpcPokemonCompanions.ensureFor(kept, definition)
+        }
+        if (live.size > 1) ChowKingdomMod.LOGGER.info("Reconciled gym trainer {}: kept {}, removed {}", npcId, kept.uuid, live.size - 1)
+        return kept
+    }
+
+    private fun removeLoadedTrainer(server: net.minecraft.server.MinecraftServer, npcId: String) {
+        NpcFeature.existingNpcs(server, npcId).forEach { npc ->
+            npc.navigation.stop()
+            npc.discard()
+        }
+        NpcPokemonCompanions.removeForNpc(server, npcId)
+    }
+
+    private fun insideStadium(npc: ChowNpcEntity, area: GymStadiumAreaState?): Boolean {
+        val stadium = area ?: return false
+        if (npc.level().dimension().location().toString() != stadium.dimension) return false
+        return npc.blockPosition().distSqr(BlockPos(stadium.x, stadium.y, stadium.z)) <= stadium.radius.toDouble() * stadium.radius.toDouble()
+    }
+
+    private fun stadiumDistanceSqr(npc: ChowNpcEntity, area: GymStadiumAreaState?): Double {
+        val stadium = area ?: return Double.MAX_VALUE
+        if (npc.level().dimension().location().toString() != stadium.dimension) return Double.MAX_VALUE / 2.0
+        return npc.blockPosition().distSqr(BlockPos(stadium.x, stadium.y, stadium.z))
     }
 
     private fun openChowfanDialog(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition) {
@@ -444,7 +517,7 @@ object GymLeagueFeature {
     private fun reload(context: CommandContext<CommandSourceStack>): Int {
         GymLeagueConfig.load()
         GymLeagueStore.load()
-        dedupeGymTrainers(context.source.server)
+        reconcileGymTrainers(context.source.server)
         context.source.sendSuccess({ Component.literal("Reloaded ${GymLeagueConfig.all().size} gym league(s).") }, true)
         return GymLeagueConfig.all().size
     }

@@ -330,6 +330,21 @@ object NpcStore {
         return true
     }
 
+    fun recentInteractionTopics(npcId: String, player: ServerPlayer, limit: Int): List<NpcInteractionTopicRecord> {
+        if (limit <= 0) return emptyList()
+        return state(npcId).interactionTopics[player.stringUUID].orEmpty().takeLast(limit)
+    }
+
+    fun recordInteractionTopic(npcId: String, player: ServerPlayer, topicId: String) {
+        val clean = topicId.trim().lowercase()
+        if (clean.isBlank()) return
+        val state = state(npcId)
+        val history = state.interactionTopics.getOrPut(player.stringUUID) { mutableListOf() }
+        history += NpcInteractionTopicRecord(System.currentTimeMillis(), clean)
+        state.interactionTopics[player.stringUUID] = history.takeLast(MAX_INTERACTION_TOPIC_HISTORY).toMutableList()
+        save()
+    }
+
     fun friendshipSnapshot(npcId: String, player: ServerPlayer): NpcFriendshipSnapshot {
         return friendshipSnapshot(npcId, player.stringUUID)
     }
@@ -534,6 +549,7 @@ class NpcResidentState(
     var giftLimits: MutableMap<String, NpcGiftLimitState> = linkedMapOf(),
     var outgoingGifts: MutableMap<String, NpcOutgoingGiftState> = linkedMapOf(),
     var greetings: MutableMap<String, NpcGreetingState> = linkedMapOf(),
+    var interactionTopics: MutableMap<String, MutableList<NpcInteractionTopicRecord>> = linkedMapOf(),
     var friendships: MutableMap<String, NpcFriendshipState> = linkedMapOf(),
     var dead: Boolean = false,
     var respawnDay: Long = -1L,
@@ -615,6 +631,11 @@ class NpcGreetingState(
     var firstChatDay: Long = Long.MIN_VALUE,
 )
 
+class NpcInteractionTopicRecord(
+    var timestamp: Long = 0L,
+    var topicId: String = "",
+)
+
 class NpcHurtRecord(
     var timestamp: Long = 0L,
     var playerUuid: String = "",
@@ -675,5 +696,6 @@ private const val MAX_CONVERSATION_HISTORY = 30
 private const val MAX_GLOBAL_EVENTS = 30
 private const val MAX_GLOBAL_MEMORIES = 60
 private const val MAX_PLAYER_MEMORIES = 30
+private const val MAX_INTERACTION_TOPIC_HISTORY = 20
 private const val MAX_MEMORY_TEXT_LENGTH = 180
 private const val FRIENDSHIP_GAIN_DIVISOR = 2

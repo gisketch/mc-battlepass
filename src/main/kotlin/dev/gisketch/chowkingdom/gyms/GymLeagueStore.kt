@@ -204,6 +204,29 @@ object GymLeagueStore {
         save()
     }
 
+    fun markTrainerDefeated(npcId: String, respawnDelayMs: Long) {
+        ensureLoaded()
+        data.trainerRespawns[cleanId(npcId)] = System.currentTimeMillis() + respawnDelayMs.coerceAtLeast(1_000L)
+        save()
+    }
+
+    fun trainerRespawnRemainingMs(npcId: String): Long {
+        ensureLoaded()
+        val until = data.trainerRespawns[cleanId(npcId)] ?: return 0L
+        val remaining = until - System.currentTimeMillis()
+        if (remaining <= 0L) {
+            data.trainerRespawns.remove(cleanId(npcId))
+            save()
+            return 0L
+        }
+        return remaining
+    }
+
+    fun clearTrainerRespawn(npcId: String) {
+        ensureLoaded()
+        if (data.trainerRespawns.remove(cleanId(npcId)) != null) save()
+    }
+
     fun putBattle(uuid: UUID, context: GymBattleContextState) {
         ensureLoaded()
         data.activeBattles[uuid.toString()] = context
@@ -272,6 +295,7 @@ class GymLeagueWorldState(
     var attempts: MutableMap<String, Int> = linkedMapOf(),
     var attemptRecords: MutableMap<String, GymAttemptRecordState> = linkedMapOf(),
     var activeBattles: MutableMap<String, GymBattleContextState> = linkedMapOf(),
+    var trainerRespawns: MutableMap<String, Long> = linkedMapOf(),
 )
 
 class GymStadiumAreaState(

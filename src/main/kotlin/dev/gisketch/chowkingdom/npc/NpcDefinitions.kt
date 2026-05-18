@@ -44,6 +44,7 @@ class NpcDefinition(
     @SerializedName("shop_messages") var shopMessages: NpcShopMessagesDefinition = NpcShopMessagesDefinition(),
     @SerializedName("camper_messages") var camperMessages: NpcCamperMessagesDefinition = NpcCamperMessagesDefinition(),
     @SerializedName("npc_interaction_messages") var npcInteractionMessages: MutableList<String> = mutableListOf(),
+    @SerializedName("interaction_director") var interactionDirector: NpcInteractionDirectorOverridesDefinition = NpcInteractionDirectorOverridesDefinition(),
     @SerializedName("hurt_messages") var hurtMessages: MutableList<String> = mutableListOf(),
     @SerializedName("wake_messages") var wakeMessages: MutableList<String> = mutableListOf(),
     @SerializedName("work_blocks") var workBlocks: MutableList<NpcWorkBlockRequirementDefinition> = mutableListOf(),
@@ -77,6 +78,7 @@ class NpcDefinition(
         shopMessages = shopMessages.normalized()
         camperMessages = camperMessages.normalized()
         npcInteractionMessages = npcInteractionMessages.map(String::trim).filter(String::isNotBlank).distinct().toMutableList()
+        interactionDirector = interactionDirector.normalized()
         hurtMessages = hurtMessages.map(String::trim).filter(String::isNotBlank).ifEmpty { defaultHurtMessages() }.toMutableList()
         wakeMessages = wakeMessages.map(String::trim).filter(String::isNotBlank).ifEmpty { defaultWakeMessages() }.toMutableList()
         workBlocks = workBlocks.map { requirement -> requirement.normalized() }
@@ -205,6 +207,7 @@ class NpcSettingsDefinition(
     var work: NpcWorkSettingsDefinition = NpcWorkSettingsDefinition(),
     var training: NpcTrainingSettingsDefinition = NpcTrainingSettingsDefinition(),
     @SerializedName("npc_interactions") var npcInteractions: NpcInteractionSettingsDefinition = NpcInteractionSettingsDefinition(),
+    @SerializedName("interaction_director") var interactionDirector: NpcInteractionDirectorSettingsDefinition = NpcInteractionDirectorSettingsDefinition(),
 ) {
     fun normalized(): NpcSettingsDefinition = apply {
         greetings = greetings.normalized()
@@ -215,8 +218,66 @@ class NpcSettingsDefinition(
         work = work.normalized()
         training = training.normalized()
         npcInteractions = npcInteractions.normalized()
+        interactionDirector = interactionDirector.normalized()
     }
 }
+
+class NpcInteractionDirectorSettingsDefinition(
+    var enabled: Boolean = true,
+    @SerializedName("recent_history_size") var recentHistorySize: Int = 5,
+    @SerializedName("topic_cooldown_minutes") var topicCooldownMinutes: Int = 15,
+    var topics: MutableList<NpcInteractionTopicDefinition> = mutableListOf(),
+) {
+    fun normalized(): NpcInteractionDirectorSettingsDefinition = apply {
+        recentHistorySize = recentHistorySize.coerceIn(0, 20)
+        topicCooldownMinutes = topicCooldownMinutes.coerceIn(1, 240)
+        topics = topics.map { topic -> topic.normalized() }
+            .filter { topic -> topic.id.isNotBlank() && topic.prompt.isNotBlank() }
+            .distinctBy { topic -> topic.id }
+            .toMutableList()
+    }
+}
+
+class NpcInteractionDirectorOverridesDefinition(
+    @SerializedName("weight_overrides") var weightOverrides: MutableMap<String, Double> = mutableMapOf(),
+    var topics: MutableList<NpcInteractionTopicDefinition> = mutableListOf(),
+) {
+    fun normalized(): NpcInteractionDirectorOverridesDefinition = apply {
+        weightOverrides = weightOverrides.mapKeys { (key, _) -> cleanInteractionTopicId(key) }
+            .filter { (key, value) -> key.isNotBlank() && value >= 0.0 }
+            .toMutableMap()
+        topics = topics.map { topic -> topic.normalized() }
+            .filter { topic -> topic.id.isNotBlank() && topic.prompt.isNotBlank() }
+            .distinctBy { topic -> topic.id }
+            .toMutableList()
+    }
+}
+
+class NpcInteractionTopicDefinition(
+    var id: String = "",
+    @SerializedName("base_weight") var baseWeight: Double = 1.0,
+    var requires: MutableList<String> = mutableListOf(),
+    var prompt: String = "",
+    var fallback: String = "",
+    @SerializedName("max_age_minutes") var maxAgeMinutes: Int = 0,
+    @SerializedName("friendship_modifiers") var friendshipModifiers: MutableMap<String, Double> = mutableMapOf(),
+) {
+    fun normalized(): NpcInteractionTopicDefinition = apply {
+        id = cleanInteractionTopicId(id)
+        baseWeight = baseWeight.coerceIn(0.0, 1000.0)
+        requires = requires.map(::cleanInteractionTopicId).filter(String::isNotBlank).distinct().toMutableList()
+        prompt = prompt.trim()
+        fallback = fallback.trim()
+        maxAgeMinutes = maxAgeMinutes.coerceIn(0, 60 * 24 * 14)
+        friendshipModifiers = friendshipModifiers.mapKeys { (key, _) -> cleanInteractionTopicId(key) }
+            .filter { (key, value) -> key.isNotBlank() && value >= 0.0 }
+            .toMutableMap()
+    }
+}
+
+private fun cleanInteractionTopicId(value: String): String = value.trim().lowercase()
+    .replace(Regex("[^a-z0-9_.:-]+"), "_")
+    .trim('_')
 
 class NpcRenderingSettingsDefinition(
     @SerializedName("playerlike_renderer") var playerlikeRenderer: Boolean = false,

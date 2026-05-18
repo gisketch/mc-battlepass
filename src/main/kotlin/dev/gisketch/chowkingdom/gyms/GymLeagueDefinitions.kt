@@ -44,6 +44,7 @@ class GymLeagueDefinition(
 class GymLeagueDefaults(
     @SerializedName("daily_attempts_per_npc") var dailyAttemptsPerNpc: Int = 3,
     @SerializedName("attempt_cooldown_minutes") var attemptCooldownMinutes: Int = 15,
+    @SerializedName("trainer_respawn_minutes") var trainerRespawnMinutes: Int = 5,
     @SerializedName("battle_format") var battleFormat: String = "GEN_9_SINGLES",
     @SerializedName("hard_level_cap") var hardLevelCap: Boolean = true,
     @SerializedName("level_cap_scope") var levelCapScope: String = "whole_party",
@@ -57,6 +58,7 @@ class GymLeagueDefaults(
     fun normalized(): GymLeagueDefaults = apply {
         dailyAttemptsPerNpc = dailyAttemptsPerNpc.coerceIn(1, 12)
         attemptCooldownMinutes = attemptCooldownMinutes.coerceIn(1, 24 * 60)
+        trainerRespawnMinutes = trainerRespawnMinutes.coerceIn(1, 24 * 60)
         battleFormat = battleFormat.trim().ifBlank { "GEN_9_SINGLES" }
         levelCapScope = cleanId(levelCapScope.ifBlank { "whole_party" })
         maxItemUses = maxItemUses.coerceIn(0, 99)

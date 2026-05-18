@@ -15,6 +15,7 @@ Trainer NPCs are different from town-life NPCs. They live around a Pokemon stadi
 - Encounter unlocks are global, but badges and clears are per-player.
 - Level caps are exact per battle. If the cap is 8, every Pokemon in the active party must be level 8 or lower.
 - Each trainer NPC can be challenged 3 times per player, then that trainer enters a configurable real-time cooldown. Default cooldown is 15 minutes.
+- Gym trainer NPCs are killable, but use gym-owned recovery instead of town NPC death/camper logic. Default respawn is 5 real minutes.
 - `CHALLENGE` is always the official league-record encounter for that trainer. If the next story encounter is the same trainer but the unlock day has not arrived, `CHALLENGE` stays visible but disabled.
 - `FRIENDLY BATTLE` is separate practice. It can be offered while the official encounter is delayed or when that trainer is not the player's next record match. Friendly wins do not grant badges, league clears, BP XP, or Chowcoins.
 - Active league records add a pinned Pokemon mission only when the next official challenge is currently available. Delayed/cooldown encounters stay unpinned until ready.
@@ -50,6 +51,7 @@ chowfan_npc_id = "prof_chowfan"
 [defaults]
 daily_attempts_per_npc = 3
 attempt_cooldown_minutes = 15
+trainer_respawn_minutes = 5
 battle_format = "GEN_9_SINGLES"
 hard_level_cap = true
 level_cap_scope = "whole_party"
@@ -182,6 +184,7 @@ Implemented in code:
 - Battle start sends a black client fade, waits briefly, teleports the player and trainer NPC to the configured stadium battle spots, faces them toward each other, then starts the RCT battle while the screen fades back in.
 - Strict story delay keeps delayed official encounters visible as disabled `CHALLENGE`, with separate `FRIENDLY BATTLE`.
 - Active league records sync into the pinned NPC quest HUD when the next challenge is available, and delayed challenges send a one-time `POKEMON CHALLENGE READY` snackbar when their unlock day arrives.
+- Gym trainers reconcile to one loaded NPC per trainer id, remove stale duplicates, and respawn through the gym system after the configured real-time recovery.
 
 Still needs in-game smoke testing:
 

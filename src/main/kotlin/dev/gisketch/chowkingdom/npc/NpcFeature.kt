@@ -242,12 +242,17 @@ object NpcFeature {
             SnackbarNetwork.send(player, SnackbarNotification.npc(definition.id, "RENT CONTRACT RECEIVED", "Use it on a bed to give ${definition.name} a home.", SnackbarType.SUCCESS, SnackbarSounds.REWARD))
         }
         val camperReason = if (!hasHome) NpcStore.camperReturnReason(definition.id) else ""
+        val interactionFocus = if (hasHome && !wasSleeping && !firstChatToday && recognized && !contractGranted) {
+            NpcInteractionDirector.choose(player, npc, definition, friendship)
+        } else {
+            null
+        }
         val message = if (wasSleeping) {
             friendshipMessage(definition.friendshipMessages.wake, friendship, player, definition)
         } else if (hasHome && firstChatToday) {
             friendshipMessage(definition.friendshipMessages.firstDailyChat, friendship, player, definition)
         } else if (hasHome) {
-            friendshipMessage(definition.friendshipMessages.interact, friendship, player, definition)
+            interactionFocus?.fallback ?: friendshipMessage(definition.friendshipMessages.interact, friendship, player, definition)
         } else if (camperReason == "lost_house") {
             camperMessage(definition.camperMessages.lostHouseDialog, player, definition)
         } else {
@@ -261,7 +266,8 @@ object NpcFeature {
             !recognized -> firstMeetingPrompt(player, definition, hasHome, contractGranted)
             wasSleeping && settings.llmMessageUsage.wake -> "${player.gameProfile.name} woke you up. Reply naturally as ${definition.name}, with the context that you were just sleeping."
             hasHome && firstChatToday && settings.llmMessageUsage.firstDailyChat -> "${player.gameProfile.name} is talking to you for the first time today. Reply like a natural first daily greeting."
-            hasHome && settings.llmMessageUsage.interact && !contractGranted -> "${player.gameProfile.name} interacted with you. Reply like a natural short NPC greeting or acknowledgement for this moment."
+            hasHome && settings.llmMessageUsage.interact && !contractGranted -> interactionFocus?.prompt
+                ?: "${player.gameProfile.name} interacted with you. Reply like a natural short NPC greeting or acknowledgement for this moment."
             !hasHome && camperReason == "lost_house" && settings.llmMessageUsage.camperLostHouse -> settings.campers.lostHouseLlmPrompt
             !hasHome && settings.llmMessageUsage.camperNeedsHouse -> settings.campers.needsHouseLlmPrompt
             else -> null
@@ -1895,6 +1901,7 @@ object NpcFeature {
             NpcBossFights.clear(npc)
             NpcSmartBrainOverrides.clear(npc)
             val definition = NpcConfig.get(npc.npcId) ?: return
+            if (GymLeagueFeature.isTrainerNpc(definition.id) && GymLeagueFeature.handleTrainerDeath(npc, definition)) return
             npc.server?.let { server -> NpcPokemonCompanions.removeForNpc(server, definition.id) }
             val killer = event.source.entity as? ServerPlayer
             val deathText = killer?.let { "${definition.name} died, killed by ${it.gameProfile.name}" } ?: "${definition.name} died"
@@ -3054,6 +3061,10 @@ object NpcFeature {
 
     private fun activeUnhousedCamper(server: MinecraftServer): NpcDefinition? {
         val activeId = NpcStore.activeCamperId().ifBlank { return null }
+        if (GymLeagueFeature.isTrainerNpc(activeId)) {
+            NpcStore.clearActiveCamper(activeId)
+            return null
+        }
         val definition = NpcConfig.get(activeId) ?: return null
         if (validHomePos(server.overworld(), activeId) != null) {
             NpcStore.clearActiveCamper(activeId)
@@ -3064,6 +3075,7 @@ object NpcFeature {
 
     private fun migrateLiveUnhousedCamper(server: MinecraftServer): NpcDefinition? {
         NpcConfig.all().forEach { definition ->
+            if (GymLeagueFeature.isTrainerNpc(definition.id)) return@forEach
             val npc = existingNpc(server, definition.id) ?: return@forEach
             if (validHomePos(npc.level(), definition.id) != null) return@forEach
             val camp = npc.campPos ?: NpcStore.campBlockPos() ?: npc.blockPosition()
@@ -3076,6 +3088,7 @@ object NpcFeature {
 
     private fun randomEligibleCamper(level: ServerLevel): NpcDefinition? {
         val candidates = NpcConfig.all()
+            .filterNot { definition -> GymLeagueFeature.isTrainerNpc(definition.id) }
             .filter { definition -> definition.housing.canMoveIn }
             .filter { definition -> NpcStore.homePos(definition.id) == null }
             .filter { definition -> existingNpc(level.server, definition.id) == null || NpcStore.isDead(definition.id) }

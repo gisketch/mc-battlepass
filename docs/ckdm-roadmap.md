@@ -422,6 +422,7 @@ TODO (Mod):
 - [x] Hide trainer NPC main Pokemon companions during RCT battles and restore them after battle end.
 - [x] Add strict story-delay trainer UI: official `CHALLENGE` stays disabled until unlock day, while `FRIENDLY BATTLE` remains separate practice.
 - [x] Add pinned Pokemon league mission rows and one-time snackbar when a delayed next challenge becomes available.
+- [x] Give gym trainers a gym-owned lifecycle: duplicate reconciliation, no camper death flow, and configurable 5-minute real-time respawn.
 - [ ] Add relic-fragment rewards if gym badge rewards need relic economy hooks.
 - [ ] In-game smoke test RCT battle start/end in the Prism instance.
 
