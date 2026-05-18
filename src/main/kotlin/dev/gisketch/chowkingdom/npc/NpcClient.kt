@@ -1303,6 +1303,18 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
                 skipPendingTalkResponse()
                 NpcNetwork.sendAction(payload.npcId, "boss_contracts")
             }
+            DialogAction.League -> if (isActionEnabled(action)) {
+                skipPendingTalkResponse()
+                NpcNetwork.sendAction(payload.npcId, "league_ticket")
+            }
+            DialogAction.Challenge -> if (isActionEnabled(action)) {
+                skipPendingTalkResponse()
+                NpcNetwork.sendAction(payload.npcId, "gym_challenge")
+            }
+            DialogAction.Badge -> if (isActionEnabled(action)) {
+                skipPendingTalkResponse()
+                NpcNetwork.sendAction(payload.npcId, "gym_badge")
+            }
             DialogAction.Training -> if (isActionEnabled(action)) {
                 skipPendingTalkResponse()
                 NpcNetwork.sendAction(payload.npcId, "training")
@@ -1531,6 +1543,8 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         bossClaimMode() && action == DialogAction.Bye -> payload.closeLabel
         bossContractMode() && action == DialogAction.Talk -> if (talkMode) "SEND" else "TALK"
         bossContractMode() && action == DialogAction.Claim -> "CLAIM"
+        leagueChowfanMode() && action == DialogAction.Talk -> if (talkMode) "SEND" else "TALK"
+        gymTrainerMode() && action == DialogAction.Talk -> if (talkMode) "SEND" else "TALK"
         joinMode() && action == DialogAction.Talk -> "JOIN CONVERSATION"
         action == DialogAction.Bye && payload.closeOnly -> payload.closeLabel
         action == DialogAction.Bye && (payload.classChangeAvailable || classChangeMode() || quizMode()) -> payload.closeLabel
@@ -1616,13 +1630,15 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         questMode() -> listOf(DialogAction.Talk, DialogAction.Bye)
         bossClaimMode() -> listOf(DialogAction.Talk, DialogAction.Bye)
         bossContractMode() -> listOf(DialogAction.Talk, DialogAction.Claim, DialogAction.Bye)
+        leagueChowfanMode() -> listOf(DialogAction.Talk, DialogAction.League, DialogAction.Bye)
+        gymTrainerMode() -> listOf(DialogAction.Talk, DialogAction.Challenge, DialogAction.Badge, DialogAction.Bye)
         quizMode() -> listOf(DialogAction.Bye)
         joinMode() -> listOf(DialogAction.Talk, DialogAction.Bye)
         workMode() -> listOf(DialogAction.Move, DialogAction.Fire, DialogAction.Bye)
         classChangeMode() -> listOf(DialogAction.Bye)
         payload.classChangeAvailable -> listOf(DialogAction.Change, DialogAction.Bye)
         payload.closeOnly -> listOf(DialogAction.Bye)
-        else -> listOfNotNull(DialogAction.Talk, DialogAction.Contracts.takeIf { payload.bossContractsAvailable }, DialogAction.Buy, DialogAction.Gift, DialogAction.Work, DialogAction.Training.takeIf { payload.trainingAvailable }, DialogAction.Bye)
+        else -> listOfNotNull(DialogAction.Talk, DialogAction.League.takeIf { payload.leagueAvailable }, DialogAction.Contracts.takeIf { payload.bossContractsAvailable }, DialogAction.Buy, DialogAction.Gift, DialogAction.Work, DialogAction.Training.takeIf { payload.trainingAvailable }, DialogAction.Bye)
     }
 
     private fun questMode(): Boolean = payload.dialogMode == "quest"
@@ -1630,6 +1646,10 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
     private fun bossClaimMode(): Boolean = payload.dialogMode == "boss_claim"
 
     private fun bossContractMode(): Boolean = payload.dialogMode == "boss_contract"
+
+    private fun leagueChowfanMode(): Boolean = payload.dialogMode == "league_chowfan"
+
+    private fun gymTrainerMode(): Boolean = payload.dialogMode == "gym_trainer"
 
     private fun joinMode(): Boolean = payload.dialogMode == "join"
 
@@ -1703,6 +1723,8 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         questMode() -> true
         bossContractMode() && action == DialogAction.Claim -> payload.bossClaimAvailable
         bossContractMode() && action == DialogAction.Talk -> payload.talkEnabled
+        leagueChowfanMode() && action == DialogAction.Talk -> payload.talkEnabled
+        gymTrainerMode() && action == DialogAction.Talk -> payload.talkEnabled
         action == DialogAction.Gift -> payload.talkEnabled || !giftStack.isEmpty
         action == DialogAction.Talk -> payload.talkEnabled
         else -> true
@@ -1710,7 +1732,9 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
 
     private fun isActionHighlighted(action: DialogAction): Boolean = when {
         action == DialogAction.Contracts && payload.bossClaimAvailable -> true
+        action == DialogAction.League && payload.leagueAvailable -> true
         bossContractMode() && action == DialogAction.Claim && payload.bossClaimAvailable -> true
+        gymTrainerMode() && action == DialogAction.Challenge -> true
         bossClaimMode() && action == DialogAction.Talk -> true
         else -> false
     }
@@ -2095,7 +2119,10 @@ private enum class DialogAction(val label: String, val icon: ResourceLocation) {
     Buy("BUY", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/shop.png")),
     Gift("GIFT", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/gift.png")),
     Work("WORK", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/shop.png")),
+    League("LEAGUE", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/trophy.png")),
     Contracts("CONTRACTS", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/quest_log.png")),
+    Challenge("CHALLENGE", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/kilic.png")),
+    Badge("BADGE", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/trophy.png")),
     Training("TRAINING", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/chat_bubble_white.png")),
     Change("CHANGE", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/coins.png")),
     Move("MOVE", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/chat_bubble_white.png")),

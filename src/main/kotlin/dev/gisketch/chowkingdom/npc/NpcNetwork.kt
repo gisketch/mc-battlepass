@@ -247,6 +247,7 @@ data class NpcDialogPayload(
     val quizChoices: List<NpcQuizChoice> = emptyList(),
     val bossContractsAvailable: Boolean = false,
     val bossClaimAvailable: Boolean = false,
+    val leagueAvailable: Boolean = false,
 ) : CustomPacketPayload {
     override fun type(): CustomPacketPayload.Type<NpcDialogPayload> = TYPE
 
@@ -281,6 +282,7 @@ data class NpcDialogPayload(
                 List(buffer.readVarInt().coerceIn(0, MAX_NPC_QUIZ_CHOICES)) {
                     NpcQuizChoice(buffer.readVarInt(), buffer.readUtf(MAX_NPC_QUIZ_CHOICE_LENGTH))
                 },
+                buffer.readBoolean(),
                 buffer.readBoolean(),
                 buffer.readBoolean(),
             )
@@ -322,6 +324,7 @@ data class NpcDialogPayload(
                 }
                 buffer.writeBoolean(value.bossContractsAvailable)
                 buffer.writeBoolean(value.bossClaimAvailable)
+                buffer.writeBoolean(value.leagueAvailable)
             }
         }
     }

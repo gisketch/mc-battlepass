@@ -124,6 +124,29 @@ object DiscordRelay {
         )
     }
 
+    fun gymBadgeEarned(player: ServerPlayer, league: String, encounter: String, badge: String) {
+        val config = DiscordConfig.current()
+        if (!config.enabled) return
+        val values = playerValues(player) + mapOf(
+            "league" to DiscordText.cleanContent(league),
+            "encounter" to DiscordText.cleanContent(encounter),
+            "badge" to DiscordText.cleanContent(badge.replace('_', ' ')),
+        )
+        DiscordWebhookClient.send(
+            DiscordWebhookMessage(
+                embeds = listOf(
+                    DiscordEmbed(
+                        title = DiscordText.applyTemplate("Gym Badge Earned", values),
+                        description = DiscordText.applyTemplate("{player} cleared {encounter} and earned {badge} in {league}.", values),
+                        color = DiscordText.parseColor("#58C56F"),
+                        authorName = NicknameStore.displayName(player),
+                        authorIconUrl = DiscordQuickSkinSupport.avatarUrl(player, config),
+                    ),
+                ),
+            ),
+        )
+    }
+
     fun relicRolled(player: ServerPlayer, relic: String, itemName: String, itemId: String) {
         val config = DiscordConfig.current()
         if (!config.enabled || !config.relayRelicRolls) return

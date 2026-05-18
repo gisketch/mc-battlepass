@@ -37,6 +37,7 @@
 - [NPC Custom Animation AI](NPC_CUSTOM_ANIMATION_AI.md)
 - [NPC Conversations](NPC_CONVERSATIONS.md)
 - [Revive](REVIVE.md)
+- [Pokemon League Gyms](POKEMON_LEAGUES.md)
 - [Jobs And Classes](ROLES.md)
 - [NPC Class Quests](NPC_CLASS_QUESTS.md)
 - [Jobs And Classes Creation Guide](ROLE_CONFIGURATION_GUIDE.md)

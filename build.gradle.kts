@@ -58,6 +58,7 @@ repositories {
     maven("https://maven.neoforged.net/releases/")
     maven("https://thedarkcolour.github.io/KotlinForForge/")
     maven("https://api.modrinth.com/maven")
+    maven("https://cursemaven.com")
     maven("https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/")
     exclusiveContent {
         forRepository {
@@ -125,7 +126,9 @@ dependencies {
     implementation("maven.modrinth:playeranimator:$playerAnimatorVersion")
     compileOnly("maven.modrinth:mob-player-animator-neo:$mobPlayerAnimatorVersion")
     implementation("maven.modrinth:cloth-config:$clothConfigVersion")
+    implementation("curse.maven:cobblemon-687131:7553231")
     compileOnly("maven.modrinth:jade:15.9.3+neoforge")
+    implementation("curse.maven:radical-cobblemon-trainers-api-1152792:7952419")
 
     testImplementation(kotlin("test"))
     testImplementation("com.google.code.gson:gson:2.11.0")

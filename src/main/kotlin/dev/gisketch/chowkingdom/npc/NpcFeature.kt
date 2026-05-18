@@ -11,6 +11,7 @@ import dev.gisketch.chowkingdom.ChatGlyphs
 import dev.gisketch.chowkingdom.ChowKingdomMod
 import dev.gisketch.chowkingdom.bosses.BossEventsFeature
 import dev.gisketch.chowkingdom.discord.DiscordRelay
+import dev.gisketch.chowkingdom.gyms.GymLeagueFeature
 import dev.gisketch.chowkingdom.relicroulette.RelicRouletteFeature
 import dev.gisketch.chowkingdom.roles.ClassLicenses
 import dev.gisketch.chowkingdom.roles.ClassMentorQuestService
@@ -199,6 +200,7 @@ object NpcFeature {
             }
             return
         }
+        if (GymLeagueFeature.tryOpenNpcDialog(player, npc, definition)) return
         val validHome = validHomePos(npc.level(), definition.id)
         npc.homePos = validHome
         val hasHome = validHome != null
@@ -293,6 +295,7 @@ object NpcFeature {
         val normalizedAction = action.lowercase()
         if (normalizedAction in setOf("quest_accept", "quest_decline") && !hasValidHomeForActions(player, definition)) return
         if (BossEventsFeature.handleFinnAction(player, npc, definition, action)) return
+        if (GymLeagueFeature.handleAction(player, npc, definition, action)) return
         if (NpcQuestService.handleAction(player, npc, definition, action)) return
         if (normalizedAction.startsWith("class_change:")) {
             if (!hasValidHomeForActions(player, definition)) return
@@ -971,7 +974,7 @@ object NpcFeature {
         SnackbarNetwork.send(player, SnackbarNotification.item(SnackbarIcons.ERROR, title, content, type, SnackbarSounds.forType(type)))
     }
 
-    fun dialogPayload(definition: NpcDefinition, npc: ChowNpcEntity, message: String, contractGranted: Boolean, friendshipLevel: Int, closeOnly: Boolean = false, closeLabel: String = "BYE", responseToken: Long = 0L, dialogMode: String = "normal", startTalkMode: Boolean = false, friendshipDelta: Int = 0, classChangeAvailable: Boolean = false, classChangeCost: Long = 0L, classChangeOptions: List<NpcClassChangeOption> = emptyList(), quizChoices: List<NpcQuizChoice> = emptyList(), bossContractsAvailable: Boolean = BossEventsFeature.contractsAvailable(definition), bossClaimAvailable: Boolean = false): NpcDialogPayload = NpcDialogPayload(
+    fun dialogPayload(definition: NpcDefinition, npc: ChowNpcEntity, message: String, contractGranted: Boolean, friendshipLevel: Int, closeOnly: Boolean = false, closeLabel: String = "BYE", responseToken: Long = 0L, dialogMode: String = "normal", startTalkMode: Boolean = false, friendshipDelta: Int = 0, classChangeAvailable: Boolean = false, classChangeCost: Long = 0L, classChangeOptions: List<NpcClassChangeOption> = emptyList(), quizChoices: List<NpcQuizChoice> = emptyList(), bossContractsAvailable: Boolean = BossEventsFeature.contractsAvailable(definition), bossClaimAvailable: Boolean = false, leagueAvailable: Boolean = GymLeagueFeature.leagueAvailable(definition)): NpcDialogPayload = NpcDialogPayload(
         definition.id,
         if (workBypassEnabled) "${definition.name} WORK OFF NPC" else definition.name,
         definition.title,
@@ -997,6 +1000,7 @@ object NpcFeature {
         quizChoices = quizChoices,
         bossContractsAvailable = bossContractsAvailable,
         bossClaimAvailable = bossClaimAvailable,
+        leagueAvailable = leagueAvailable,
     )
 
     private fun friendshipMessage(set: NpcFriendshipMessageSet, friendship: NpcFriendshipSnapshot, player: ServerPlayer, definition: NpcDefinition, itemName: String = "", mood: String = "", quantity: Int = 0, totalCost: Long = 0L): String {
@@ -3122,6 +3126,9 @@ object NpcFeature {
         }
         return true
     }
+
+    fun spawnConfiguredNpcAt(level: ServerLevel, definition: NpcDefinition, anchor: BlockPos): Boolean =
+        spawnNpc(level, definition, anchor, markActiveCamper = false, announceCamperArrival = false)
 
     private fun announceCamperArrival(level: ServerLevel, definition: NpcDefinition) {
         val notification = SnackbarNotification.npc(

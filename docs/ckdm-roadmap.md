@@ -402,19 +402,22 @@ Goal: Gym leaders are NPCs, using RCT API for Pokemon battles while CKDM owns pr
 TODO (Mod):
 
 - [x] Research RCT API entry points in the current modpack and save repo reference at `docs/references/rct-api.md`.
-- [ ] Create `gyms/` module.
-- [ ] Add gym definitions under `config/gisketchs_chowkingdom_mod/gyms/*.toml`.
-- [ ] Add per-player gym state under world data.
-- [ ] Add NPC `gym_leader` fields or separate gym binding by NPC id.
-- [ ] Add gym challenge dialogue action.
-- [ ] Start RCT battle through API from NPC interaction.
-- [ ] Receive win/loss callback from RCT.
-- [ ] Award badge/state on first win.
+- [x] Save Pokemon league gyms V1 design at `docs/POKEMON_LEAGUES.md`.
+- [x] Create `gyms/` module.
+- [x] Add gym definitions under `config/gisketchs_chowkingdom_mod/gyms/leagues/*.toml`.
+- [x] Add per-player gym state under world data.
+- [x] Add separate gym trainer binding by NPC id.
+- [x] Add gym challenge dialogue action.
+- [x] Start RCT battle through API from NPC interaction.
+- [x] Receive win/loss callback from RCT.
+- [x] Award badge/state on first win.
 - [ ] Award modest repeat rewards or no repeat rewards.
-- [ ] Add gym gate requirements: badge count, class level, friendship, questline, item, or boss gate.
-- [ ] Add battlepass XP/chowcoin/relic-fragment rewards.
-- [ ] Add snackbar and Discord broadcast for first badge win.
-- [ ] Add commands `/ck gyms status`, `/ck gyms reset`, `/ck gyms grant`.
+- [x] Add first-pass gym gate requirements: active league, encounter order, global unlock day, daily attempts, and hard party level cap.
+- [x] Add battlepass XP/chowcoin rewards.
+- [x] Add snackbar and Discord broadcast for first badge win.
+- [x] Add commands `/ck gyms status`, `/ck gyms league reset`, `/ck gyms grant`, area, unlock, reload, start, and attempts tools.
+- [ ] Add relic-fragment rewards if gym badge rewards need relic economy hooks.
+- [ ] In-game smoke test RCT battle start/end in the Prism instance.
 
 TODO (Configuration):
 

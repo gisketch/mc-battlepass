@@ -246,15 +246,14 @@ Docs call the JSON field `statMoveBias`, but the installed jar exposes `statusMo
 
 ## Gradle Integration Note
 
-The jar is currently only installed in the Prism instance. To compile CKDM against RCT API, add a compile/runtime dependency or local flat-file dependency later.
+CKDM now compiles against RCT API and Cobblemon through CurseMaven.
 
 CurseForge file page for installed NeoForge jar:
 
 ```gradle
-modImplementation("curse.maven:radical-cobblemon-trainers-api-1152792:7952419")
+implementation("curse.maven:radical-cobblemon-trainers-api-1152792:7952419")
+implementation("curse.maven:cobblemon-687131:7553231")
 ```
-
-The repo currently does not declare CurseMaven. Add a repository/dependency only when implementation starts, not during planning.
 
 ## CKDM V1 Scope
 
