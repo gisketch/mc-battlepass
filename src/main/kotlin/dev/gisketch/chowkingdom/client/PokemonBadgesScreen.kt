@@ -149,13 +149,13 @@ private class PokemonBadgesScreen : Screen(Component.literal("Badges")) {
             if (earned) guiGraphics.fill(badgeX - 2, badgeY - 2, badgeX + badgeSize + 2, badgeY + badgeSize + 2, colorWithRenderAlpha(BADGE_GOLD_FILL))
             renderTextureAlpha(guiGraphics, badgeTexture(encounter.badgeId), badgeX, badgeY, badgeSize, BADGE_TEXTURE_SIZE, if (earned) 1.0f else 0.28f)
             val textX = cell.x + 43
-            val title = fitPlain(encounter.badgeId.replace('_', ' '), cell.width - 49)
+            val title = fitPlain(badgeLabel(encounter.badgeId), cell.width - 49)
             guiGraphics.drawString(font, title, textX, cell.y + 7, colorWithRenderAlpha(if (earned) GOLD else MUTED), false)
             guiGraphics.drawString(font, fitPlain(encounter.trainerName, cell.width - 49), textX, cell.y + 19, colorWithRenderAlpha(if (earned) WHITE else MUTED), false)
             zones += TooltipZone(
                 cell,
                 listOf(
-                    Component.literal(encounter.badgeId.replace('_', ' ').replaceFirstChar { it.titlecase(Locale.ROOT) }),
+                    Component.literal(badgeLabel(encounter.badgeId)),
                     Component.literal("${encounter.displayName} / cap ${encounter.levelCap}").withStyle(ChatFormatting.GRAY),
                     Component.literal(if (earned) "Earned" else "Locked").withStyle(if (earned) ChatFormatting.YELLOW else ChatFormatting.DARK_GRAY),
                 ),
@@ -213,6 +213,11 @@ private class PokemonBadgesScreen : Screen(Component.literal("Badges")) {
 
     private fun badgeTexture(badgeId: String): ResourceLocation =
         ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/badges/${badgeId.lowercase(Locale.ROOT)}.png")
+
+    private fun badgeLabel(badgeId: String): String {
+        val label = badgeId.replace('_', ' ').lowercase(Locale.ROOT).trim()
+        return label.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.ROOT) else it.toString() }
+    }
 
     private fun renderNineSlice(guiGraphics: GuiGraphics, texture: ResourceLocation, rect: Rect, textureWidth: Int, textureHeight: Int, sourceCorner: Int, destinationCorner: Int, alpha: Float) {
         RenderSystem.enableBlend()

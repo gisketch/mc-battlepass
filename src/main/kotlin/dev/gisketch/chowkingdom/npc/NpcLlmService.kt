@@ -742,7 +742,7 @@ object NpcLlmService {
             .replace('”', '"')
             .replace('‘', '\'')
             .replace('’', '\'')
-        val reply = normalized
+        val clean = normalized
             .replace(Regex("```.*?```", RegexOption.DOT_MATCHES_ALL), "")
             .replace(EMOJI_PATTERN, "")
             .replace(UNSUPPORTED_DIALOG_TAG_PATTERN, "")
@@ -750,11 +750,24 @@ object NpcLlmService {
             .replace('\n', ' ')
             .replace(WHITESPACE_PATTERN, " ")
             .trim()
-            .take(settings.maxReplyChars)
+        val reply = trimReplyToBoundary(clean, settings.maxReplyChars)
         if (reply.isBlank()) return fallbackMessage
         val lower = reply.lowercase()
         val blocked = listOf("as an ai", "system prompt", "hidden context", "i gave you", "i teleported", "i changed your friendship", "i completed your quest", "i changed the price")
         return if (blocked.any(lower::contains)) fallbackMessage else reply
+    }
+
+    private fun trimReplyToBoundary(value: String, maxChars: Int): String {
+        if (value.length <= maxChars) return value
+        val clipped = value.take(maxChars).trimEnd()
+        val boundary = clipped
+            .mapIndexedNotNull { index, char -> if (char == '.' || char == '!' || char == '?') index else null }
+            .lastOrNull { index -> index >= (maxChars * 0.45f).toInt() }
+        if (boundary != null) return clipped.take(boundary + 1).trim()
+        val comma = clipped.lastIndexOf(',').takeIf { it >= (maxChars * 0.6f).toInt() }
+        if (comma != null) return clipped.take(comma).trimEnd() + "."
+        val space = clipped.lastIndexOf(' ').takeIf { it >= (maxChars * 0.6f).toInt() }
+        return if (space != null) clipped.take(space).trimEnd() + "." else clipped
     }
 
     private fun stripReasoningBlocks(raw: String): String = raw

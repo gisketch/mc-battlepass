@@ -337,7 +337,7 @@ class NpcLlmSettingsDefinition(
     @SerializedName("api_key") var apiKey: String = "",
     var presets: MutableList<NpcLlmPresetDefinition> = mutableListOf(),
     @SerializedName("cooldown_seconds") var cooldownSeconds: Int = 4,
-    @SerializedName("max_reply_chars") var maxReplyChars: Int = 2000,
+    @SerializedName("max_reply_chars") var maxReplyChars: Int = 600,
     @SerializedName("max_recent_turns") var maxRecentTurns: Int = 8,
     @SerializedName("request_timeout_seconds") var requestTimeoutSeconds: Int = 20,
     @SerializedName("rate_limited_message") var rateLimitedMessage: String = "Give me a second to gather my thoughts.",
@@ -367,7 +367,7 @@ class NpcLlmSettingsDefinition(
             apiKey = selected.apiKey
         }
         cooldownSeconds = cooldownSeconds.coerceIn(1, 60)
-        maxReplyChars = maxReplyChars.coerceIn(40, 2000)
+        maxReplyChars = maxReplyChars.coerceIn(80, 1200)
         maxRecentTurns = maxRecentTurns.coerceIn(0, 30)
         requestTimeoutSeconds = requestTimeoutSeconds.coerceIn(3, 60)
         rateLimitedMessage = cleanMessage(rateLimitedMessage, "Give me a second to gather my thoughts.")

@@ -261,7 +261,7 @@ object GymLeagueConfig {
                     id = trainer.npcId,
                     name = trainer.name,
                     title = trainer.role.replace('_', ' ').replaceFirstChar { it.titlecase() },
-                    skin = if (trainer.npcId == "trainer_blue") "gisketchs_chowkingdom_mod:npc/trainer_blue" else "",
+                    skin = defaultTrainerSkin(trainer.npcId),
                     mainPokemon = trainer.mainPokemon,
                     housing = NpcHousingDefinition(canMoveIn = false, requiresBed = false),
                     missions = NpcMissionsDefinition(enabled = false),
@@ -285,6 +285,18 @@ object GymLeagueConfig {
     private fun stadiumSchedule(): NpcScheduleDefinition = NpcScheduleDefinition(
         activities = mutableListOf(NpcScheduleEntryDefinition(fromHour = 0, toHour = 24, activity = "pokemon_roam")),
     )
+
+    private fun defaultTrainerSkin(npcId: String): String = when (npcId) {
+        "trainer_blue",
+        "gym_brock",
+        "gym_misty",
+        "gym_erika",
+        "gym_koga",
+        "gym_sabrina",
+        "gym_blaine",
+        "gym_giovanni" -> "gisketchs_chowkingdom_mod:npc/$npcId"
+        else -> ""
+    }
 
     private fun trainerLore(league: GymLeagueDefinition, trainer: GymTrainerDefinition): TrainerLore {
         val partner = trainer.mainPokemon.substringAfter(':', trainer.mainPokemon).replace('_', ' ')
