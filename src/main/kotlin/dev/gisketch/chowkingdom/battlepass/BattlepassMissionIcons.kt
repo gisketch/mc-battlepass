@@ -31,6 +31,8 @@ object BattlepassMissionIcons {
             eventId.startsWith("farmersdelight:") && eventId.contains("food_created") -> "farmersdelight:cooking_pot"
             eventId.contains("shipping_bin") -> "gisketchs_chowkingdom_mod:shipping_bin"
             eventId.contains("npc_friendship") -> "minecraft:heart_of_the_sea"
+            eventId.contains("npc_pokemon_battle") -> "cobblemon:poke_ball"
+            eventId.contains("npc_sparring") -> "minecraft:iron_sword"
             eventId.contains("npc_quest") || eventId.contains("npc_quiz") -> "minecraft:paper"
             eventId.contains("boss_first_clear") -> "minecraft:wither_skeleton_skull"
             eventId.contains("biome_discovered") || eventId.contains("structure_discovered") -> "minecraft:filled_map"

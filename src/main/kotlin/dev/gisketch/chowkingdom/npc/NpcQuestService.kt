@@ -36,6 +36,8 @@ object NpcQuestService {
     private const val FOOD_CHAIN_TAG = "CkdmNpcFoodChain"
     private const val FOOD_CHAIN_KEYS_TAG = "Keys"
     private val nextOfferBalloonAt: MutableMap<String, Long> = linkedMapOf()
+    private val debugForcedOffers: MutableMap<String, String> = linkedMapOf()
+    private val lastDebugRolledOffer: MutableMap<String, String> = linkedMapOf()
     private var lastObservedPeriod = Long.MIN_VALUE
 
     fun tick(server: MinecraftServer) {
@@ -60,12 +62,16 @@ object NpcQuestService {
                 openQuiz(player, npc, definition, active, null)
                 return true
             }
+            if (active.category == "pokemon_battle" || active.category == "sparring") {
+                retryBattleQuest(player, npc, definition, active)
+                return true
+            }
             if (tryClaim(player, npc, definition, active, playerState)) return true
             return false
         }
         if (!isMeetup(npc, definition)) return false
         val offer = selectedOffer(player, definition, period) ?: return false
-        if (!canOffer(player, npc, definition, playerState)) return false
+        if (!canOffer(player, npc, definition, offer, playerState)) return false
         openOfferDialog(player, npc, definition, offer)
         return true
     }
@@ -80,7 +86,8 @@ object NpcQuestService {
             .filter { player ->
                 val period = currentPeriod(level)
                 val state = questState(player, period)
-                selectedOffer(player, definition, period) != null && canOffer(player, npc, definition, state)
+                val offer = selectedOffer(player, definition, period) ?: return@filter false
+                canOffer(player, npc, definition, offer, state)
             }
             .minByOrNull { player -> player.distanceToSqr(npc) }
             ?: return false
@@ -104,11 +111,12 @@ object NpcQuestService {
         }
         return when (normalizedAction) {
             "quest_accept" -> {
-                val offer = selectedOffer(player, definition, period) ?: return true
+                val offer = debugForcedOffer(player, definition) ?: selectedOffer(player, definition, period) ?: return true
                 accept(player, npc, definition, offer, state)
                 true
             }
             "quest_decline" -> {
+                debugForcedOffers.remove(debugOfferKey(player, definition))
                 state.declinedUntilTick[definition.id] = NpcTime.addHours(player.level().dayTime, 1)
                 NpcStore.saveQuestState()
                 openCloseDialog(player, npc, definition, "No pressure, {player}. Ask me later if you change your mind.".replace("{player}", player.gameProfile.name))
@@ -204,7 +212,8 @@ object NpcQuestService {
         val period = currentPeriod(player)
         val periodState = questState(player, period)
         val offer = selectedOffer(player, definition, period)
-        val canOffer = offer != null && NpcFeature.canOfferNpcQuests(player.level(), definition) && definition.id !in periodState.completedNpcIds && definition.id !in periodState.active && hasDailyQuestSlot(periodState) && (periodState.declinedUntilTick[definition.id] ?: Long.MIN_VALUE) <= player.level().dayTime
+        val readyWorkplace = offer?.let { !requiresBattleWorkplace(it) || NpcFeature.hasReadyWorkplace(player.level(), definition) } ?: false
+        val canOffer = offer != null && NpcFeature.canOfferNpcQuests(player.level(), definition) && readyWorkplace && definition.id !in periodState.completedNpcIds && definition.id !in periodState.active && hasDailyQuestSlot(periodState) && (periodState.declinedUntilTick[definition.id] ?: Long.MIN_VALUE) <= player.level().dayTime
         if (offer != null && canOffer) {
             val goal = if (offer.category == "fetch" || offer.category == "food_chain") offer.fetchCount else offer.goal
             return NpcQuestFriendSummary("Quest Available", 0, goal)
@@ -239,6 +248,31 @@ object NpcQuestService {
             syncTo(player)
         }
         return debugKeys.size
+    }
+
+    fun debugRollQuest(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition): Boolean {
+        val pool = definition.missions.pool.filter { mission -> mission.id.isNotBlank() }
+        if (!definition.missions.enabled || pool.isEmpty()) return false
+        val key = debugOfferKey(player, definition)
+        val last = lastDebugRolledOffer[key]
+        val candidates = pool.filter { mission -> mission.id != last }.ifEmpty { pool }
+        val offer = candidates.random()
+        lastDebugRolledOffer[key] = offer.id
+        debugForcedOffers[key] = offer.id
+        val state = questState(player)
+        state.active.remove(definition.id)
+        state.completedNpcIds.remove(definition.id)
+        state.declinedUntilTick.remove(definition.id)
+        NpcStore.saveQuestState()
+        syncTo(player)
+        val level = npc.level() as? ServerLevel
+        if (level != null) {
+            val balloon = definition.missions.offerBalloonMessages.randomOrNull() ?: "@quest_log.png {quest_text}"
+            val message = NpcNetwork.goldBalloon(template(balloon, player, definition, offer, offerGoal(offer)))
+            NpcFeature.showBalloonToNearby(level, npc, message, 120)
+        }
+        openOfferDialog(player, npc, definition, offer)
+        return true
     }
 
     fun debugQuest(
@@ -314,13 +348,18 @@ object NpcQuestService {
     }
 
     private fun accept(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, offer: NpcMissionDefinition, state: NpcPlayerQuestState) {
+        val debugForced = isDebugForcedOffer(player, definition, offer)
         if (definition.id in state.completedNpcIds || state.active.containsKey(definition.id)) return
-        if (!isDebugOffer(offer) && !hasDailyQuestSlot(state)) {
+        if (!debugForced && !isDebugOffer(offer) && !hasDailyQuestSlot(state)) {
             openCloseDialog(player, npc, definition, dailyCapMessage())
             return
         }
         if (offer.category == "quiz") {
             acceptQuiz(player, npc, definition, offer, state)
+            return
+        }
+        if (offer.category == "pokemon_battle" || offer.category == "sparring") {
+            acceptBattleQuest(player, npc, definition, offer, state)
             return
         }
         val goal = if (offer.category == "fetch" || offer.category == "food_chain") offer.fetchCount else offer.goal
@@ -344,14 +383,16 @@ object NpcQuestService {
             expiresAtTick = nextQuestResetTick(acceptedAtTick),
         )
         NpcStore.saveQuestState()
+        debugForcedOffers.remove(debugOfferKey(player, definition))
         syncTo(player)
         SnackbarNetwork.send(player, SnackbarNotification.npc(definition.id, "NPC QUEST ACCEPTED", missionText(offer, goal), SnackbarType.GENERIC, SnackbarSounds.GENERIC))
         openCloseDialog(player, npc, definition, template(offer.acceptedMessages.randomOrNull() ?: "Thanks, {player}.", player, definition, offer, 0))
     }
 
     private fun acceptQuiz(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, offer: NpcMissionDefinition, state: NpcPlayerQuestState) {
+        val debugForced = isDebugForcedOffer(player, definition, offer)
         if (definition.id in state.completedNpcIds && offer.id != "debug_quiz") return
-        if (!isDebugOffer(offer) && !state.active.containsKey(definition.id) && !hasDailyQuestSlot(state)) {
+        if (!debugForced && !isDebugOffer(offer) && !state.active.containsKey(definition.id) && !hasDailyQuestSlot(state)) {
             openCloseDialog(player, npc, definition, dailyCapMessage())
             return
         }
@@ -377,9 +418,67 @@ object NpcQuestService {
         state.active[definition.id] = active
         state.completedNpcIds.remove(definition.id)
         NpcStore.saveQuestState()
+        debugForcedOffers.remove(debugOfferKey(player, definition))
         syncTo(player)
         SnackbarNetwork.send(player, SnackbarNotification.npc(definition.id, "NPC QUIZ ACCEPTED", active.description, SnackbarType.GENERIC, SnackbarSounds.GENERIC))
         openQuiz(player, npc, definition, active, offer)
+    }
+
+    private fun acceptBattleQuest(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, offer: NpcMissionDefinition, state: NpcPlayerQuestState) {
+        val debugForced = isDebugForcedOffer(player, definition, offer)
+        if (!debugForced && !NpcFeature.requireReadyWorkplace(player, npc, definition, if (offer.category == "sparring") "spar" else "battle")) return
+        val acceptedAtTick = player.level().dayTime
+        val active = NpcAcceptedQuestState(
+            npcId = definition.id,
+            npcName = definition.name,
+            questId = offer.id,
+            category = offer.category,
+            event = "",
+            description = missionText(offer, 1),
+            passId = offer.passId,
+            xp = offer.xp,
+            chowcoins = offer.chowcoins,
+            goal = 1,
+            acceptedAtTick = acceptedAtTick,
+            expiresAtTick = nextQuestResetTick(acceptedAtTick),
+        )
+        state.active[definition.id] = active
+        state.completedNpcIds.remove(definition.id)
+        NpcStore.saveQuestState()
+        debugForcedOffers.remove(debugOfferKey(player, definition))
+        syncTo(player)
+        val (started, message) = if (offer.category == "sparring") {
+            val result = NpcBossFights.startSparring(player, npc, definition)
+            result.success to result.message
+        } else {
+            val result = NpcPokemonBattleService.startQuestBattle(player, npc, definition)
+            result.started to result.message
+        }
+        if (!started) {
+            state.active.remove(definition.id)
+            NpcStore.saveQuestState()
+            syncTo(player)
+            openCloseDialog(player, npc, definition, message)
+            return
+        }
+        SnackbarNetwork.send(player, SnackbarNotification.npc(definition.id, "NPC QUEST ACCEPTED", active.description, SnackbarType.GENERIC, SnackbarSounds.GENERIC))
+        openCloseDialog(player, npc, definition, template(offer.acceptedMessages.randomOrNull() ?: "Let's test this properly, {player}.", player, definition, offer, 0))
+    }
+
+    private fun retryBattleQuest(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, active: NpcAcceptedQuestState) {
+        if (!NpcFeature.requireReadyWorkplace(player, npc, definition, if (active.category == "sparring") "spar" else "battle")) return
+        val (started, message) = if (active.category == "sparring") {
+            val result = NpcBossFights.startSparring(player, npc, definition)
+            result.success to result.message
+        } else {
+            val result = NpcPokemonBattleService.startQuestBattle(player, npc, definition)
+            result.started to result.message
+        }
+        if (!started) {
+            openCloseDialog(player, npc, definition, message)
+            return
+        }
+        SnackbarNetwork.send(player, SnackbarNotification.npc(definition.id, "NPC QUEST RETRY", active.description, SnackbarType.GENERIC, SnackbarSounds.GENERIC))
     }
 
     private fun tryClaim(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, active: NpcAcceptedQuestState, state: NpcPlayerQuestState): Boolean {
@@ -418,6 +517,19 @@ object NpcQuestService {
             showCompletionBalloon(player, npc, definition, active)
             openCloseDialog(player, npc, definition, "You did it, {player}. That helps more than you know.".replace("{player}", player.gameProfile.name))
         }
+    }
+
+    fun completeBattleQuest(player: ServerPlayer, definition: NpcDefinition, category: String, npc: ChowNpcEntity? = null): Boolean {
+        val state = questState(player)
+        val active = state.active[definition.id] ?: return false
+        if (active.category != category) return false
+        active.progress = active.goal
+        when (category) {
+            "pokemon_battle" -> NpcMissionHooks.recordPokemonBattleWon(player, definition, active)
+            "sparring" -> NpcMissionHooks.recordSparringWon(player, definition, active)
+        }
+        finishQuest(player, definition, active, state, npc)
+        return true
     }
 
     private fun openQuiz(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, active: NpcAcceptedQuestState, offer: NpcMissionDefinition?, prefix: String = "") {
@@ -526,13 +638,18 @@ object NpcQuestService {
         NpcNetwork.openDialog(player, NpcFeature.dialogPayload(definition, npc, message, false, friendship.level, closeOnly = true, closeLabel = "OKAY"))
     }
 
-    private fun canOffer(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, state: NpcPlayerQuestState): Boolean {
+    private fun canOffer(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, offer: NpcMissionDefinition, state: NpcPlayerQuestState): Boolean {
         if (!NpcFeature.canOfferNpcQuests(npc, definition)) return false
+        if (requiresBattleWorkplace(offer) && !NpcFeature.hasReadyWorkplace(player.level(), definition)) return false
+        if (offer.category == "pokemon_battle" && !NpcPokemonBattleService.hasRoster(definition.id)) return false
+        if (offer.category == "sparring" && definition.classId.isBlank()) return false
         if (definition.id in state.completedNpcIds || definition.id in state.active) return false
         if (!hasDailyQuestSlot(state)) return false
         if ((state.declinedUntilTick[definition.id] ?: Long.MIN_VALUE) > player.level().dayTime) return false
         return player.distanceToSqr(npc) <= definition.missions.offerRadius * definition.missions.offerRadius
     }
+
+    private fun requiresBattleWorkplace(offer: NpcMissionDefinition): Boolean = offer.category == "pokemon_battle" || offer.category == "sparring"
 
     private fun maxDailyQuests(): Int = NpcConfig.settings().quests.maxDailyQuests
 
@@ -580,6 +697,16 @@ object NpcQuestService {
         }
         return pool.last()
     }
+
+    private fun debugForcedOffer(player: ServerPlayer, definition: NpcDefinition): NpcMissionDefinition? {
+        val id = debugForcedOffers[debugOfferKey(player, definition)] ?: return null
+        return definition.missions.pool.firstOrNull { mission -> mission.id == id }
+    }
+
+    private fun isDebugForcedOffer(player: ServerPlayer, definition: NpcDefinition, offer: NpcMissionDefinition): Boolean =
+        debugForcedOffers[debugOfferKey(player, definition)] == offer.id
+
+    private fun debugOfferKey(player: ServerPlayer, definition: NpcDefinition): String = "${player.stringUUID}:${definition.id}"
 
     private fun stableIndex(seed: String, size: Int): Int = Math.floorMod(seed.fold(1125899907) { acc, char -> acc * 31 + char.code }, size)
 

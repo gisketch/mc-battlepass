@@ -156,6 +156,7 @@ object NpcFeature {
         NpcBossMovesets.load()
         NpcCombatRollBridge.register()
         NpcPokemonCompanions.registerEvents()
+        NpcPokemonBattleService.register()
         modBus.addListener(::registerAttributes)
         NeoForge.EVENT_BUS.addListener(::onServerStarted)
         NeoForge.EVENT_BUS.addListener(::onServerTick)
@@ -198,6 +199,10 @@ object NpcFeature {
             if (!NpcBossFights.isDuelist(npc, player)) {
                 SnackbarNetwork.send(player, SnackbarNotification.npc(definition.id, "NPC IN BATTLE", "${definition.displayName()} is locked in battle.", SnackbarType.ERROR, SnackbarSounds.ERROR))
             }
+            return
+        }
+        if (NpcPokemonBattleService.isBattleLocked(npc)) {
+            SnackbarNetwork.send(player, SnackbarNotification.npc(definition.id, "NPC IN BATTLE", "${definition.displayName()} is locked in a Pokemon battle.", SnackbarType.ERROR, SnackbarSounds.ERROR))
             return
         }
         if (tryOpenMicroInteractionInterruptDialog(player, npc, definition)) return
@@ -272,15 +277,16 @@ object NpcFeature {
             !hasHome && settings.llmMessageUsage.camperNeedsHouse -> settings.campers.needsHouseLlmPrompt
             else -> null
         }
+        val friendlyBattleAvailable = hasHome && NpcPokemonBattleService.friendlyBattleAvailable(player, npc, definition)
         if (settings.llm.enabled && llmInput != null) {
             val responseToken = NpcDialogTokens.next()
-            NpcNetwork.openDialog(player, dialogPayload(definition, npc, "...", contractGranted, friendship.level, closeOnly = !hasHome || contractGranted, closeLabel = if (!hasHome || contractGranted) "OKAY" else "BYE", responseToken = responseToken, friendshipDelta = firstChatFriendshipDelta))
+            NpcNetwork.openDialog(player, dialogPayload(definition, npc, "...", contractGranted, friendship.level, closeOnly = !hasHome || contractGranted, closeLabel = if (!hasHome || contractGranted) "OKAY" else "BYE", responseToken = responseToken, friendshipDelta = firstChatFriendshipDelta, friendlyBattleAvailable = friendlyBattleAvailable))
             if (!recognized) NpcStore.markRecognized(definition.id, player)
             NpcLlmService.event(player, npc, definition, message, llmInput, npcRecordType = "npc_llm_interact", responseToken = responseToken)
             return
         }
         NpcStore.recordConversation(definition.id, player, definition.name, message, "npc_message")
-        NpcNetwork.openDialog(player, dialogPayload(definition, npc, message, contractGranted, friendship.level, closeOnly = !hasHome || contractGranted, closeLabel = if (!hasHome || contractGranted) "OKAY" else "BYE", friendshipDelta = firstChatFriendshipDelta))
+        NpcNetwork.openDialog(player, dialogPayload(definition, npc, message, contractGranted, friendship.level, closeOnly = !hasHome || contractGranted, closeLabel = if (!hasHome || contractGranted) "OKAY" else "BYE", friendshipDelta = firstChatFriendshipDelta, friendlyBattleAvailable = friendlyBattleAvailable))
         if (!recognized) NpcStore.markRecognized(definition.id, player)
         relayNpcDialog(player, npc, definition, message)
     }
@@ -333,6 +339,13 @@ object NpcFeature {
                 NpcLlmService.leaveDialog(player, definition.id)
                 trainClass(player, npc, definition)
             }
+            "npc_friendly_battle" -> {
+                if (!hasValidHomeForActions(player, definition)) return
+                if (!requireReadyWorkplace(player, npc, definition, "battle")) return
+                NpcLlmService.leaveDialog(player, definition.id)
+                val result = NpcPokemonBattleService.startFriendlyBattle(player, npc, definition)
+                if (!result.started) SnackbarNetwork.send(player, SnackbarNotification.npc(definition.id, "BATTLE FAILED", result.message, SnackbarType.ERROR, SnackbarSounds.ERROR))
+            }
             "class_change_offer" -> {
                 if (!hasValidHomeForActions(player, definition)) return
                 NpcLlmService.leaveDialog(player, definition.id)
@@ -353,6 +366,31 @@ object NpcFeature {
 
     private fun hasValidHomeForActions(player: ServerPlayer, definition: NpcDefinition): Boolean =
         validHomePos(player.level(), definition.id) != null
+
+    fun hasReadyWorkplace(level: Level, definition: NpcDefinition): Boolean {
+        if (workBypassEnabled) return true
+        val workplace = NpcStore.workplacePos(definition.id) ?: return false
+        return workBlockStatus(level, workplace, definition).ready
+    }
+
+    fun requireReadyWorkplace(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, actionName: String): Boolean {
+        if (workBypassEnabled) return true
+        val workplace = NpcStore.workplacePos(definition.id)
+        if (workplace == null) {
+            val friendship = NpcStore.friendshipSnapshot(definition.id, player)
+            val message = if (NpcStore.workFired(definition.id)) {
+                "I do not have a workplace right now."
+            } else {
+                "I need a workplace before I can $actionName."
+            }
+            NpcNetwork.openDialog(player, dialogPayload(definition, npc, message, false, friendship.level, closeOnly = true, closeLabel = "OKAY"))
+            return false
+        }
+        val workBlocks = workBlockStatus(player.level(), workplace, definition)
+        if (workBlocks.ready) return true
+        openMissingWorkBlocksDialog(player, npc, definition, workplace, workBlocks, assigning = false)
+        return false
+    }
 
     private fun firstMeetingPrompt(player: ServerPlayer, definition: NpcDefinition, hasHome: Boolean, contractGranted: Boolean): String {
         val lore = definition.personality.llmPrompt.ifBlank {
@@ -2313,7 +2351,8 @@ object NpcFeature {
                                 .suggests(::suggestNpcIds)
                                 .then(Commands.argument("message", StringArgumentType.greedyString()).executes(::debugBalloonCommand)),
                         ),
-                ),
+                )
+                .then(Commands.literal("quest_roll").executes(::debugQuestRollCommand)),
         )
         .then(
             Commands.literal("fight")
@@ -2761,6 +2800,29 @@ object NpcFeature {
         }
         context.source.sendSuccess({ Component.literal("Sent ${definition.displayName()} balloon to $recipients nearby player(s).") }, true)
         return recipients
+    }
+
+    private fun debugQuestRollCommand(context: CommandContext<CommandSourceStack>): Int {
+        NpcConfig.load()
+        val player = context.source.playerOrException
+        val npc = lookedAtNpc(player) ?: run {
+            context.source.sendFailure(Component.literal("No Chow Kingdom NPC under crosshair."))
+            return 0
+        }
+        val definition = NpcConfig.get(npc.npcId) ?: run {
+            context.source.sendFailure(Component.literal("Unknown NPC '${npc.npcId}'."))
+            return 0
+        }
+        if (definition.missions.pool.none { mission -> mission.id.isNotBlank() }) {
+            context.source.sendFailure(Component.literal("${definition.displayName()} has no NPC quest pool entries."))
+            return 0
+        }
+        if (!NpcQuestService.debugRollQuest(player, npc, definition)) {
+            context.source.sendFailure(Component.literal("Could not roll a quest for ${definition.displayName()}."))
+            return 0
+        }
+        context.source.sendSuccess({ Component.literal("Rolled a random quest offer for ${definition.displayName()}. Run again to reroll.").withStyle(ChatFormatting.GOLD) }, true)
+        return 1
     }
 
     private fun respawnStatusCommand(context: CommandContext<CommandSourceStack>): Int {

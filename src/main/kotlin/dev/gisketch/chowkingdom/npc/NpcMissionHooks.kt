@@ -8,6 +8,8 @@ object NpcMissionHooks {
     private const val NPC_QUEST_COMPLETED = "gisketchs_chowkingdom_mod:npc_quest_completed"
     private const val NPC_QUIZ_ANSWERED_CORRECTLY = "gisketchs_chowkingdom_mod:npc_quiz_answered_correctly"
     private const val NPC_FRIENDSHIP_LEVEL_REACHED = "gisketchs_chowkingdom_mod:npc_friendship_level_reached"
+    const val NPC_POKEMON_BATTLE_WON = "gisketchs_chowkingdom_mod:npc_pokemon_battle_won"
+    const val NPC_SPARRING_WON = "gisketchs_chowkingdom_mod:npc_sparring_won"
     private val baselineLevel = NpcFriendshipLevels.level(NpcFriendshipLevels.DEFAULT_POINTS)
 
     fun recordQuestCompleted(player: ServerPlayer, definition: NpcDefinition, quest: NpcAcceptedQuestState): Boolean =
@@ -15,6 +17,12 @@ object NpcMissionHooks {
 
     fun recordQuizAnsweredCorrectly(player: ServerPlayer, definition: NpcDefinition, quest: NpcAcceptedQuestState): Boolean =
         BattlepassMissionHooks.record(player, NPC_QUIZ_ANSWERED_CORRECTLY, attributes = questAttributes(definition, quest) + quizAttributes(quest))
+
+    fun recordPokemonBattleWon(player: ServerPlayer, definition: NpcDefinition, quest: NpcAcceptedQuestState): Boolean =
+        BattlepassMissionHooks.record(player, NPC_POKEMON_BATTLE_WON, attributes = questAttributes(definition, quest))
+
+    fun recordSparringWon(player: ServerPlayer, definition: NpcDefinition, quest: NpcAcceptedQuestState): Boolean =
+        BattlepassMissionHooks.record(player, NPC_SPARRING_WON, attributes = questAttributes(definition, quest) + sparringAttributes(definition))
 
     fun refreshFriendshipProgress(player: ServerPlayer): Boolean {
         val signals = NpcStore.friendshipSnapshotsFor(player).flatMap { (npcId, friendship) ->
@@ -45,5 +53,9 @@ object NpcMissionHooks {
     private fun quizAttributes(quest: NpcAcceptedQuestState): Map<String, String> = buildMap {
         quest.filters["quiz.topic"]?.takeIf(String::isNotBlank)?.let { put("quiz.topic", it) }
         quest.filters["quiz.prompt"]?.takeIf(String::isNotBlank)?.let { put("quiz.prompt", it) }
+    }
+
+    private fun sparringAttributes(definition: NpcDefinition): Map<String, String> = buildMap {
+        definition.classId.takeIf(String::isNotBlank)?.let { put("class", it) }
     }
 }

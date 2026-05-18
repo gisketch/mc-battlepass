@@ -46,6 +46,8 @@ object NpcBossFights {
     private val active: MutableMap<UUID, ActiveBossFight> = linkedMapOf()
     private val resultProtection: MutableMap<UUID, BossResultProtection> = linkedMapOf()
     private val duelistResultProtection: MutableMap<UUID, Int> = linkedMapOf()
+    private const val SPARRING_HEALTH_MULTIPLIER = 0.45f
+    private const val SPARRING_DAMAGE_MULTIPLIER = 0.35f
 
     fun start(player: ServerPlayer, entity: ChowNpcEntity, definition: NpcDefinition): NpcBossStartResult {
         NpcBossMovesets.load()
@@ -94,6 +96,57 @@ object NpcBossFights {
         updateBossBar(entity, player, fight, forceMusic = true)
         SnackbarNetwork.send(player, SnackbarNotification.npc(definition.id, "BOSS FIGHT STARTED", definition.displayName(), SnackbarType.GENERIC, SnackbarSounds.GENERIC))
         return NpcBossStartResult(true, "Started boss fight with ${definition.displayName()}.")
+    }
+
+    fun startSparring(player: ServerPlayer, entity: ChowNpcEntity, definition: NpcDefinition): NpcBossStartResult {
+        NpcBossMovesets.load()
+        if (definition.classId.isBlank()) return NpcBossStartResult(false, "${definition.displayName()} cannot offer class sparring.")
+        val boss = definition.boss.normalized()
+        if (!boss.enabled) return NpcBossStartResult(false, "${definition.displayName()} has sparring disabled.")
+        val moveset = NpcBossMovesets.forDefinition(definition)
+        if (boss.template != NpcBossDefinition.DEFAULT_BOSS_TEMPLATE && moveset.id != boss.template) return NpcBossStartResult(false, "Unknown NPC boss template '${boss.template}'.")
+        if (active.containsKey(entity.uuid)) return NpcBossStartResult(false, "${definition.displayName()} is already in a fight.")
+        if (active.values.any { fight -> fight.targetId == player.uuid }) return NpcBossStartResult(false, "You are already in an NPC fight.")
+        val armory = bossArmory(boss)
+        if (entity.isSleeping) entity.stopSleeping()
+        entity.navigation.stop()
+        val health = bossFightHealth(boss.health.toFloat() * SPARRING_HEALTH_MULTIPLIER)
+        val bossBar = ServerBossEvent(
+            Component.literal("${definition.displayName()} | sparring mode: offense"),
+            BossEvent.BossBarColor.YELLOW,
+            BossEvent.BossBarOverlay.PROGRESS,
+        )
+        bossBar.setProgress(1.0f)
+        val fight = ActiveBossFight(
+            npcId = definition.id,
+            displayName = definition.displayName(),
+            moveset = moveset,
+            targetId = player.uuid,
+            startPos = entity.position(),
+            maxHealth = health,
+            health = health,
+            damage = (boss.damage.toFloat() * SPARRING_DAMAGE_MULTIPLIER).coerceAtLeast(0.0f),
+            balloons = boss.balloons,
+            animationSnapshot = NpcCustomAnimationController.snapshot(entity),
+            armory = armory,
+            originalHealth = entity.health,
+            originalNoGravity = entity.isNoGravity,
+            bossBar = bossBar,
+            startedTick = entity.tickCount,
+            nextActionTick = 0,
+            phaseStartedTick = entity.tickCount,
+            strafeSide = if (entity.random.nextBoolean()) 1 else -1,
+            sparring = true,
+        )
+        fight.bossPhaseIndex = bossPhaseIndexForHealth(fight)
+        fight.offenseAttacksRemaining = offenseChainCount(entity, fight)
+        active[entity.uuid] = fight
+        resultProtection.remove(entity.uuid)
+        duelistResultProtection.remove(player.uuid)
+        entity.updatePassThroughInteractions(true)
+        updateBossBar(entity, player, fight, forceMusic = true)
+        SnackbarNetwork.send(player, SnackbarNotification.npc(definition.id, "SPARRING STARTED", definition.displayName(), SnackbarType.GENERIC, SnackbarSounds.GENERIC))
+        return NpcBossStartResult(true, "Started sparring with ${definition.displayName()}.")
     }
 
     fun startDebug(player: ServerPlayer, entity: ChowNpcEntity, moveset: NpcBossMovesetDefinition, definition: NpcDefinition? = null): NpcBossStartResult {
@@ -1940,6 +1993,12 @@ object NpcBossFights {
         finish(entity, fight, protectResultDialog = true)
         settleDuelistAfterResult(target, heal = false)
         val definition = NpcConfig.get(fight.npcId) ?: return
+        if (fight.sparring) {
+            NpcQuestService.completeBattleQuest(target, definition, "sparring", entity)
+            SnackbarNetwork.send(target, SnackbarNotification.npc(definition.id, "SPARRING WON", definition.displayName(), SnackbarType.SUCCESS, SnackbarSounds.REWARD))
+            openSparringResultDialog(target, entity, definition, won = true)
+            return
+        }
         if (ClassMentorQuestService.onMentorDuelWon(target, entity, definition)) return
         SnackbarNetwork.send(target, SnackbarNotification.npc(definition.id, "BOSS DEFEATED", definition.displayName(), SnackbarType.SUCCESS, SnackbarSounds.REWARD))
         openDefeatDialog(target, entity, definition)
@@ -1956,6 +2015,11 @@ object NpcBossFights {
         finish(entity, fight, protectResultDialog = true)
         settleDuelistAfterResult(target, heal = true)
         val definition = NpcConfig.get(fight.npcId) ?: return
+        if (fight.sparring) {
+            SnackbarNetwork.send(target, SnackbarNotification.npc(definition.id, "SPARRING LOST", "${definition.displayName()} healed you.", SnackbarType.GENERIC, SnackbarSounds.GENERIC))
+            openSparringResultDialog(target, entity, definition, won = false)
+            return
+        }
         SnackbarNetwork.send(target, SnackbarNotification.npc(definition.id, "BOSS WON", "${definition.displayName()} healed you.", SnackbarType.GENERIC, SnackbarSounds.GENERIC))
         openVictoryDialog(target, entity, definition)
     }
@@ -1991,6 +2055,48 @@ object NpcBossFights {
             resultProtection.remove(entity.uuid)
             entity.updatePassThroughInteractions(false)
         }
+    }
+
+    private fun openSparringResultDialog(player: ServerPlayer, entity: ChowNpcEntity, definition: NpcDefinition, won: Boolean) {
+        val friendship = NpcStore.friendshipSnapshot(definition.id, player)
+        val fallback = if (won) {
+            "${definition.name} lowers their guard. Clean sparring, ${player.gameProfile.name}. That was controlled and useful."
+        } else {
+            "${definition.name} eases off. Breathe, ${player.gameProfile.name}. This was practice, not the real class duel."
+        }
+        val llmEnabled = NpcConfig.settings().llm.enabled
+        val responseToken = if (llmEnabled) NpcDialogTokens.next() else 0L
+        NpcNetwork.openDialog(
+            player,
+            NpcFeature.dialogPayload(
+                definition,
+                entity,
+                if (llmEnabled) "..." else fallback,
+                false,
+                friendship.level,
+                closeOnly = true,
+                closeLabel = "OKAY",
+                responseToken = responseToken,
+                dialogMode = "sparring_result",
+            ),
+        )
+        if (!llmEnabled) {
+            NpcStore.recordConversation(definition.id, player, definition.name, fallback, if (won) "npc_sparring_win_dialogue" else "npc_sparring_loss_dialogue")
+            return
+        }
+        NpcLlmService.event(
+            player,
+            entity,
+            definition,
+            fallback,
+            "${player.gameProfile.name} just ${if (won) "won" else "lost"} a controlled class sparring match against you. Reply as ${definition.name} in 1-2 short in-character sentences. Frame it as practice, not a class unlock duel, and do not mention UI or rewards.",
+            inputLabel = "NPC sparring result",
+            excludePlayerFromBalloon = true,
+            showBalloon = false,
+            relayToNearby = false,
+            npcRecordType = if (won) "npc_sparring_win_dialogue" else "npc_sparring_loss_dialogue",
+            responseToken = responseToken,
+        )
     }
 
     private fun openDefeatDialog(player: ServerPlayer, entity: ChowNpcEntity, definition: NpcDefinition) {
@@ -2758,6 +2864,7 @@ object NpcBossFights {
         var reactiveGuardCooldownUntilTick: Int = 0,
         val lastBalloonByKey: MutableMap<String, String> = linkedMapOf(),
         val debug: Boolean = false,
+        val sparring: Boolean = false,
     )
 
     private data class BossResultProtection(val untilTick: Int, val healthFloor: Float)

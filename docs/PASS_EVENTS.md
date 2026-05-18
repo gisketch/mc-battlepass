@@ -268,6 +268,8 @@ Implemented now:
 - `gisketchs_chowkingdom_mod:npc_friendship_level_reached`: high-water NPC friendship threshold count. A friendship level 5 NPC emits threshold signals for levels 2, 3, 4, and 5, so `filters.level = "5"` counts NPCs that reached level 5 or higher. Filter with `npc`, `level`, `friendship.level`, or `friendship.category`.
 - `gisketchs_chowkingdom_mod:npc_quest_completed`: +1 when a player completes any NPC quest. Filter with `npc`, `quest_id`, `category`, or `pass_id`. Use for weekly/permanent social tracks, not daily repeatable battlepass missions.
 - `gisketchs_chowkingdom_mod:npc_quiz_answered_correctly`: +1 when a player answers an NPC quiz correctly. Filter with `npc`, `quest_id`, `quiz.topic`, or `pass_id`. Use for weekly/permanent quiz tracks.
+- `gisketchs_chowkingdom_mod:npc_pokemon_battle_won`: +1 when a player wins a reward-bearing resident NPC Pokemon battle quest. Filter with `npc`, `quest_id`, `category`, or `pass_id`.
+- `gisketchs_chowkingdom_mod:npc_sparring_won`: +1 when a player wins a reward-bearing class NPC sparring quest. Filter with `npc`, `quest_id`, `category`, `pass_id`, or `class`.
 - `gisketchs_chowkingdom_mod:boss_first_clear`: +1 for each credited contributor when a configured boss contract is accepted as cleared for the first time. Filter with `boss`, `entity`, `order`, or `dimension`.
 - `gisketchs_chowkingdom_mod:biome_discovered`: +1/current count for each biome first entered by a player per dimension. Filter with `biome`, `biome.namespace`, or `dimension`.
 - `gisketchs_chowkingdom_mod:structure_discovered`: +1/current count for each structure instance first entered by a player. Filter with `structure`, `structure.namespace`, `structure.x`, `structure.z`, or `dimension`.
@@ -282,6 +284,14 @@ Examples:
 
 ```json
 { "id": "weekly_npc_quests", "event": "gisketchs_chowkingdom_mod:npc_quest_completed", "type": "progressive", "event_desc": "Complete {goal} NPC Quests", "progress_goals": [10], "progress_xp": [350] }
+```
+
+```json
+{ "id": "weekly_npc_battle_wins", "event": "gisketchs_chowkingdom_mod:npc_pokemon_battle_won", "type": "progressive", "event_desc": "Win {goal} NPC Pokemon Battles", "progress_goals": [3], "progress_xp": [300], "icon": "cobblemon:poke_ball" }
+```
+
+```json
+{ "id": "weekly_class_sparring", "event": "gisketchs_chowkingdom_mod:npc_sparring_won", "type": "progressive", "event_desc": "Win {goal} Class Sparring Matches", "progress_goals": [3], "progress_xp": [275], "icon": "minecraft:iron_sword" }
 ```
 
 ```json

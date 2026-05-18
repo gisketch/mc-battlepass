@@ -1105,6 +1105,8 @@ class NpcMissionDefinition(
                 "quiz", "llm_quiz" -> "quiz"
                 "food_chain", "food_chain_quest", "farmers_delight_food_chain" -> "food_chain"
                 "timed", "timed_task", "timed_kill", "time_trial" -> "timed"
+                "pokemon_battle", "pokemon_battle_quest", "npc_pokemon_battle" -> "pokemon_battle"
+                "sparring", "sparring_quest", "npc_sparring" -> "sparring"
                 else -> "task"
             }
         }
@@ -1132,6 +1134,7 @@ class NpcMissionDefinition(
         if (category == "fetch" && fetchItem.isBlank() && filters.isEmpty()) id = ""
         if (category == "food_chain" && (fetchItem.isBlank() || event.isBlank())) id = ""
         if (category == "quiz") goal = 1
+        if (category == "pokemon_battle" || category == "sparring") goal = 1
         if ((category == "task" || category == "timed") && event.isBlank()) id = ""
     }
 

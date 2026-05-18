@@ -4,6 +4,8 @@ Pokemon league gyms are CKDM-owned story progression backed by Radical Cobblemon
 
 Trainer NPCs are different from town-life NPCs. They live around a Pokemon stadium area, do not need houses, do not use workplaces, and do not sell shops by default. They can still talk through the normal NPC dialogue/LLM path, but their main action is battle.
 
+Resident NPC Pokemon battles are separate from league trainer battles. Town NPCs use their normal housing/workplace model, require an assigned workplace plus configured `work_blocks`, and read 15-Pokemon rosters from `config/gisketchs_chowkingdom_mod/npc_battles/rosters/<npc_id>.json`. Friendly Battle is no-reward practice. `pokemon_battle` NPC quests consume one NPC quest slot and complete only on win. Both resident battle modes reuse `main_stadium` and the configured player/trainer battle spots.
+
 ## V1 Rules
 
 - Professor Chowfan (`prof_chowfan`) opens league records from the `LEAGUE` button.

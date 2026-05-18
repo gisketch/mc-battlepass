@@ -148,6 +148,8 @@ These hooks are code-backed before the next mission configuration pass.
 | `gisketchs_chowkingdom_mod:npc_friendship_level_reached` | high-water threshold count | `npc`, `level`, `friendship.level`, `friendship.category` | Social permanent missions and friendship ladders |
 | `gisketchs_chowkingdom_mod:npc_quest_completed` | +1 per NPC quest completion | `npc`, `quest_id`, `category`, `pass_id` | Weekly social goals and NPC loyalty tracks |
 | `gisketchs_chowkingdom_mod:npc_quiz_answered_correctly` | +1 per correct quiz | `npc`, `quest_id`, `quiz.topic`, `pass_id` | NPC quiz tracks |
+| `gisketchs_chowkingdom_mod:npc_pokemon_battle_won` | +1 per resident Pokemon battle quest win | `npc`, `quest_id`, `category`, `pass_id` | Weekly combat-social goals |
+| `gisketchs_chowkingdom_mod:npc_sparring_won` | +1 per class sparring quest win | `npc`, `quest_id`, `category`, `pass_id`, `class` | Weekly class practice goals |
 | `gisketchs_chowkingdom_mod:boss_first_clear` | +1 for first-clear contributors only | `boss`, `entity`, `order`, `dimension` | Permanent boss clear tracks |
 | `gisketchs_chowkingdom_mod:biome_discovered` | +1/current count per biome per dimension | `biome`, `biome.namespace`, `dimension` | Explorer weeklies and permanent exploration |
 | `gisketchs_chowkingdom_mod:structure_discovered` | +1/current count per structure instance | `structure`, `structure.namespace`, `structure.x`, `structure.z`, `dimension` | Explorer weeklies and structure milestones |
@@ -156,6 +158,8 @@ These hooks are code-backed before the next mission configuration pass.
 | `gisketchs_chowkingdom_mod:teammate_revived` | +1 per real reviver | `target`, `target.name`, `reviver_count`, `dimension` | Social helper missions |
 
 Boss participation is intentionally excluded for now. Twice in one boss should not count, and helper reward semantics need a separate conversation.
+
+Resident Pokemon battle and class sparring hooks should be used sparingly in weekly/permanent pools. The direct NPC quests already pay combat XP, so pass missions should reward broader practice patterns rather than become another daily loop.
 
 ## Needs More Consideration And Conversation
 

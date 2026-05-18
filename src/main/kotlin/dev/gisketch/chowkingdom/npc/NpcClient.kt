@@ -1342,7 +1342,7 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
             }
             DialogAction.FriendlyBattle -> if (isActionEnabled(action)) {
                 skipPendingTalkResponse()
-                NpcNetwork.sendAction(payload.npcId, "gym_friendly_battle")
+                NpcNetwork.sendAction(payload.npcId, if (gymTrainerMode() || gymFriendlyMode()) "gym_friendly_battle" else "npc_friendly_battle")
             }
             DialogAction.Badge -> if (isActionEnabled(action)) {
                 skipPendingTalkResponse()
@@ -1686,7 +1686,7 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         classChangeMode() -> listOf(DialogAction.Bye)
         payload.classChangeAvailable -> listOf(DialogAction.Change, DialogAction.Bye)
         payload.closeOnly -> listOf(DialogAction.Bye)
-        else -> listOfNotNull(DialogAction.Talk, DialogAction.League.takeIf { payload.leagueAvailable }, DialogAction.Contracts.takeIf { payload.bossContractsAvailable }, DialogAction.Buy, DialogAction.Gift, DialogAction.Work, DialogAction.Training.takeIf { payload.trainingAvailable }, DialogAction.Bye)
+        else -> listOfNotNull(DialogAction.Talk, DialogAction.League.takeIf { payload.leagueAvailable }, DialogAction.Contracts.takeIf { payload.bossContractsAvailable }, DialogAction.FriendlyBattle.takeIf { payload.friendlyBattleAvailable }, DialogAction.Buy, DialogAction.Gift, DialogAction.Work, DialogAction.Training.takeIf { payload.trainingAvailable }, DialogAction.Bye)
     }
 
     private fun trainerActions(): List<DialogAction> = listOfNotNull(
@@ -1799,7 +1799,7 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         gymTrainerMode() && action == DialogAction.Talk -> payload.talkEnabled
         gymFriendlyMode() && action == DialogAction.Talk -> payload.talkEnabled
         (gymTrainerMode() || gymFriendlyMode()) && action == DialogAction.Challenge -> payload.challengeAvailable
-        (gymTrainerMode() || gymFriendlyMode()) && action == DialogAction.FriendlyBattle -> payload.friendlyBattleAvailable
+        action == DialogAction.FriendlyBattle -> payload.friendlyBattleAvailable
         action == DialogAction.Gift -> payload.talkEnabled || !giftStack.isEmpty
         action == DialogAction.Talk -> payload.talkEnabled
         else -> true
@@ -1810,7 +1810,7 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         action == DialogAction.League && payload.leagueAvailable -> true
         bossContractMode() && action == DialogAction.Claim && payload.bossClaimAvailable -> true
         (gymTrainerMode() || gymFriendlyMode()) && action == DialogAction.Challenge && payload.challengeAvailable -> true
-        (gymTrainerMode() || gymFriendlyMode()) && action == DialogAction.FriendlyBattle && payload.friendlyBattleAvailable -> true
+        action == DialogAction.FriendlyBattle && payload.friendlyBattleAvailable -> true
         bossClaimMode() && action == DialogAction.Talk -> true
         else -> false
     }

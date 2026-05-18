@@ -70,6 +70,8 @@ object BattlepassAvailableMissionEvents {
         "gisketchs_chowkingdom_mod:npc_friendship_level_reached" to "Reach NPC Friendship Level {goal}",
         "gisketchs_chowkingdom_mod:npc_quest_completed" to "Complete {goal} NPC Quests",
         "gisketchs_chowkingdom_mod:npc_quiz_answered_correctly" to "Answer {goal} NPC Quizzes Correctly",
+        "gisketchs_chowkingdom_mod:npc_pokemon_battle_won" to "Win {goal} NPC Pokemon Battles",
+        "gisketchs_chowkingdom_mod:npc_sparring_won" to "Win {goal} NPC Sparring Matches",
         "gisketchs_chowkingdom_mod:boss_first_clear" to "First-Clear {goal} Bosses",
         "gisketchs_chowkingdom_mod:biome_discovered" to "Discover {goal} Biomes",
         "gisketchs_chowkingdom_mod:structure_discovered" to "Discover {goal} Structures",

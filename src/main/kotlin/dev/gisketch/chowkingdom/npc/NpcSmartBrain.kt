@@ -107,7 +107,7 @@ private object NpcCriticalOverrideTask : NpcSmartBrainTask {
 private object NpcGymBattleLockTask : NpcSmartBrainTask {
     override val id: String = "gym_battle_lock"
 
-    override fun run(entity: ChowNpcEntity): Boolean = GymBattleService.tickBattleLock(entity)
+    override fun run(entity: ChowNpcEntity): Boolean = GymBattleService.tickBattleLock(entity) || NpcPokemonBattleService.tickBattleLock(entity)
 }
 
 object NpcSmartBrainOverrides {
