@@ -52,6 +52,7 @@ object GymLeagueFeature {
     private var nextAvailabilityTick = 0L
     private var nextTrainerReconcileTick = 0L
     private val pendingTrainerReconcile: MutableSet<String> = linkedSetOf()
+    private data class TrainerSpawnTarget(val trainer: GymTrainerDefinition, val area: GymStadiumAreaState, val level: ServerLevel)
 
     fun register() {
         GymLeagueConfig.load()
@@ -67,6 +68,9 @@ object GymLeagueFeature {
     fun leagueAvailable(definition: NpcDefinition): Boolean = GymLeagueConfig.isChowfan(definition.id)
 
     fun isTrainerNpc(npcId: String): Boolean = GymLeagueConfig.isTrainerNpc(npcId)
+
+    fun shouldShowTrainerRoamBalloon(npcId: String, server: net.minecraft.server.MinecraftServer): Boolean =
+        cleanId(npcId) in activeTrainerSpawnTargets(server, server.overworld()).keys
 
     fun handleTrainerDeath(npc: ChowNpcEntity, definition: NpcDefinition): Boolean {
         val (league, trainer) = GymLeagueConfig.trainerNpc(definition.id) ?: return false
@@ -172,6 +176,17 @@ object GymLeagueFeature {
             LeagueCompassFeature.updateFor(player)
             return
         }
+        val activeLeague = GymLeagueStore.activeLeague(player)
+        val expected = if (activeLeague == league.id) GymLeagueStore.nextPlayerEncounter(player, league) else null
+        if (activeLeague != league.id || expected?.id != encounter.id) {
+            SnackbarNetwork.send(player, SnackbarNotification.item("cobblemon:poke_ball", "BATTLE RECORDED AS PRACTICE", "Your active league route changed, so the record was not advanced.", SnackbarType.GENERIC, SnackbarSounds.GENERIC))
+            BattlepassNetwork.syncAllPlayers()
+            GymLeagueNetwork.syncTo(player)
+            NpcQuestService.syncTo(player)
+            LeagueCompassFeature.updateFor(player)
+            spawnUnlockedTrainers(player.server.overworld())
+            return
+        }
         recordMission(player, "gisketchs_chowkingdom_mod:gym_battle_won", league, encounter, trainer)
         val firstClear = GymLeagueStore.grantClear(player, league, encounter)
         if (!firstClear) {
@@ -196,6 +211,7 @@ object GymLeagueFeature {
         GymLeagueNetwork.syncTo(player)
         NpcQuestService.syncTo(player)
         LeagueCompassFeature.updateFor(player)
+        spawnUnlockedTrainers(player.server.overworld())
     }
 
     fun completeEncounterLoss(player: ServerPlayer, context: GymBattleContextState) {
@@ -214,12 +230,13 @@ object GymLeagueFeature {
         GymLeagueStore.load()
         GymBattleService.init(event.server)
         reconcileGymTrainers(event.server)
+        spawnUnlockedTrainers(event.server.overworld())
     }
 
     private fun onPlayerLoggedIn(event: PlayerEvent.PlayerLoggedInEvent) {
         val player = event.entity as? ServerPlayer ?: return
         GymBattleService.registerPlayer(player)
-        reconcileGymTrainers(player.server)
+        spawnUnlockedTrainers(player.server.overworld())
         checkChallengeAvailability(player)
         GymLeagueNetwork.syncTo(player)
         NpcQuestService.syncTo(player)
@@ -295,23 +312,54 @@ object GymLeagueFeature {
     }
 
     private fun spawnUnlockedTrainers(fallbackLevel: ServerLevel) {
-        val currentDay = NpcTime.day(fallbackLevel)
-        GymLeagueConfig.all().forEach { league ->
+        val targets = activeTrainerSpawnTargets(fallbackLevel.server, fallbackLevel)
+        pruneInactiveLoadedTrainers(fallbackLevel.server, targets.keys)
+        targets.values.forEach { target ->
+            val trainer = target.trainer
+            if (GymLeagueStore.trainerRespawnRemainingMs(trainer.npcId) > 0L) {
+                removeLoadedTrainer(target.level.server, trainer.npcId)
+                return@forEach
+            }
+            if (reconcileTrainer(target.level.server, trainer.npcId) != null) return@forEach
+            val definition = NpcConfig.get(trainer.npcId) ?: return@forEach
+            if (NpcFeature.spawnConfiguredNpcAt(target.level, definition, BlockPos(target.area.x, target.area.y, target.area.z))) {
+                reconcileTrainer(target.level.server, trainer.npcId)
+            }
+        }
+    }
+
+    private fun activeTrainerSpawnTargets(server: net.minecraft.server.MinecraftServer, fallbackLevel: ServerLevel): Map<String, TrainerSpawnTarget> {
+        val targets = linkedMapOf<String, TrainerSpawnTarget>()
+        server.playerList.players.forEach { player ->
+            val activeLeagueId = GymLeagueStore.activeLeague(player)
+            if (activeLeagueId.isBlank()) return@forEach
+            val league = GymLeagueConfig.league(activeLeagueId) ?: return@forEach
+            val encounter = GymLeagueStore.nextPlayerEncounter(player, league) ?: return@forEach
+            val day = NpcTime.day(player.level())
+            if (!GymLeagueStore.isUnlocked(league.id, encounter.id, day)) return@forEach
+            val trainer = league.trainer(encounter.trainer) ?: return@forEach
             val area = GymLeagueStore.area(league.stadiumArea) ?: return@forEach
             val dimension = runCatching { ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(area.dimension)) }.getOrNull() ?: fallbackLevel.dimension()
-            val level = fallbackLevel.server.getLevel(dimension) ?: fallbackLevel
-            league.sequence.forEach { encounter ->
-                if (!GymLeagueStore.isUnlocked(league.id, encounter.id, currentDay)) return@forEach
-                val trainer = league.trainer(encounter.trainer) ?: return@forEach
-                if (GymLeagueStore.trainerRespawnRemainingMs(trainer.npcId) > 0L) {
-                    removeLoadedTrainer(level.server, trainer.npcId)
-                    return@forEach
-                }
-                if (reconcileTrainer(level.server, trainer.npcId) != null) return@forEach
-                val definition = NpcConfig.get(trainer.npcId) ?: return@forEach
-                if (NpcFeature.spawnConfiguredNpcAt(level, definition, BlockPos(area.x, area.y, area.z))) {
-                    reconcileTrainer(level.server, trainer.npcId)
-                }
+            val level = server.getLevel(dimension) ?: fallbackLevel
+            targets.putIfAbsent(trainer.npcId, TrainerSpawnTarget(trainer, area, level))
+        }
+        return targets
+    }
+
+    private fun pruneInactiveLoadedTrainers(server: net.minecraft.server.MinecraftServer, activeNpcIds: Set<String>) {
+        GymLeagueConfig.all().flatMap { league -> league.trainers }.map { trainer -> trainer.npcId }.distinct().forEach { npcId ->
+            if (npcId in activeNpcIds) return@forEach
+            val live = NpcFeature.existingNpcs(server, npcId)
+            if (live.isEmpty()) return@forEach
+            val locked = live.any { npc -> GymBattleService.isBattleLocked(npc) }
+            live.filterNot { npc -> GymBattleService.isBattleLocked(npc) }.forEach { npc ->
+                npc.navigation.stop()
+                npc.discard()
+            }
+            if (!locked) {
+                NpcPokemonCompanions.removeForNpc(server, npcId)
+                NpcStore.clearDead(npcId)
+                if (NpcStore.activeCamperId() == npcId) NpcStore.clearActiveCamper(npcId)
             }
         }
     }
@@ -450,6 +498,7 @@ object GymLeagueFeature {
         GymLeagueNetwork.syncTo(player)
         NpcQuestService.syncTo(player)
         LeagueCompassFeature.updateFor(player)
+        spawnUnlockedTrainers(player.server.overworld())
         openGymDialog(
             player,
             npc,
@@ -872,6 +921,7 @@ object GymLeagueFeature {
         val leagueId = StringArgumentType.getString(context, "league_id")
         val league = GymLeagueConfig.league(leagueId) ?: return fail(context, "Unknown league '$leagueId'.")
         if (!GymLeagueStore.startLeague(player, league)) return fail(context, "${player.gameProfile.name} already has active league ${GymLeagueStore.activeLeague(player)}.")
+        spawnUnlockedTrainers(player.server.overworld())
         GymLeagueNetwork.syncTo(player)
         NpcQuestService.syncTo(player)
         LeagueCompassFeature.updateFor(player)
@@ -883,6 +933,7 @@ object GymLeagueFeature {
         val player = EntityArgument.getPlayer(context, "player")
         val leagueId = StringArgumentType.getString(context, "league_id")
         GymLeagueStore.resetLeague(player, leagueId)
+        spawnUnlockedTrainers(player.server.overworld())
         GymLeagueNetwork.syncTo(player)
         NpcQuestService.syncTo(player)
         LeagueCompassFeature.updateFor(player)
@@ -895,6 +946,7 @@ object GymLeagueFeature {
         val encounterId = StringArgumentType.getString(context, "encounter_id")
         if (GymLeagueConfig.league(leagueId)?.encounter(encounterId) == null) return fail(context, "Unknown encounter '$encounterId'.")
         GymLeagueStore.unlock(leagueId, encounterId, NpcTime.day(context.source.server.overworld()))
+        spawnUnlockedTrainers(context.source.server.overworld())
         context.source.server.playerList.players.forEach { player -> checkChallengeAvailability(player) }
         GymLeagueNetwork.syncAllPlayers()
         context.source.server.playerList.players.forEach(LeagueCompassFeature::updateFor)
@@ -907,6 +959,7 @@ object GymLeagueFeature {
         val league = GymLeagueConfig.league(StringArgumentType.getString(context, "league_id")) ?: return fail(context, "Unknown league.")
         val encounter = league.encounter(StringArgumentType.getString(context, "encounter_id")) ?: return fail(context, "Unknown encounter.")
         GymLeagueStore.grantClear(player, league, encounter)
+        spawnUnlockedTrainers(player.server.overworld())
         GymLeagueNetwork.syncTo(player)
         NpcQuestService.syncTo(player)
         LeagueCompassFeature.updateFor(player)
@@ -927,6 +980,7 @@ object GymLeagueFeature {
         val player = EntityArgument.getPlayer(context, "player")
         val trainerId = StringArgumentType.getString(context, "trainer_id")
         GymLeagueStore.resetAttempts(player, trainerId)
+        spawnUnlockedTrainers(player.server.overworld())
         GymLeagueNetwork.syncTo(player)
         NpcQuestService.syncTo(player)
         LeagueCompassFeature.updateFor(player)

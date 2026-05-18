@@ -118,6 +118,7 @@ object NpcFeature {
     private val npcMicroInteractions: MutableMap<UUID, ActiveNpcMicroInteraction> = linkedMapOf()
     private val npcMicroInteractionCooldownUntil: MutableMap<String, Long> = linkedMapOf()
     private val npcMicroInteractionRecent: MutableMap<String, ArrayDeque<String>> = linkedMapOf()
+    private val npcMicroInteractionDialogContext: MutableMap<UUID, NpcMicroInteractionDialogContext> = linkedMapOf()
     private val npcAutoTaskCooldownUntil: MutableMap<UUID, Long> = linkedMapOf()
     private val pendingShopNpcs: MutableMap<UUID, String> = linkedMapOf()
     private val animationDebugTargets: MutableMap<UUID, UUID> = linkedMapOf()
@@ -199,6 +200,7 @@ object NpcFeature {
             }
             return
         }
+        if (tryOpenMicroInteractionInterruptDialog(player, npc, definition)) return
         if (GymLeagueFeature.tryOpenNpcDialog(player, npc, definition)) return
         val validHome = validHomePos(npc.level(), definition.id)
         npc.homePos = validHome
@@ -1565,8 +1567,12 @@ object NpcFeature {
         val secondMessage = exchange?.let { renderNpcMicroInteractionLine(it.response, secondDefinition, firstDefinition, it.topic) }
             ?: npcMicroInteractionMessage(secondDefinition, firstDefinition, settings)
         val now = level.gameTime
-        npcMicroInteractions[first.uuid] = ActiveNpcMicroInteraction(second.uuid, firstMessage, now + durationTicks)
-        npcMicroInteractions[second.uuid] = ActiveNpcMicroInteraction(first.uuid, secondMessage, now + durationTicks)
+        val untilTick = now + durationTicks
+        val topic = exchange?.topic.orEmpty()
+        npcMicroInteractions[first.uuid] = ActiveNpcMicroInteraction(second.uuid, secondDefinition.id, secondDefinition.name, firstMessage, secondMessage, topic, untilTick)
+        npcMicroInteractions[second.uuid] = ActiveNpcMicroInteraction(first.uuid, firstDefinition.id, firstDefinition.name, secondMessage, firstMessage, topic, untilTick)
+        rememberNpcMicroInteractionDialogContext(first.uuid, second.uuid, secondDefinition.id, secondDefinition.name, firstMessage, secondMessage, topic, untilTick)
+        rememberNpcMicroInteractionDialogContext(second.uuid, first.uuid, firstDefinition.id, firstDefinition.name, secondMessage, firstMessage, topic, untilTick)
         markAutoTaskCooldown(first, durationTicks)
         markAutoTaskCooldown(second, durationTicks)
         val cooldownUntil = if (plazaMeetup) level.dayTime + NPC_PLAZA_MICRO_COOLDOWN_TICKS else {
@@ -1576,8 +1582,8 @@ object NpcFeature {
         npcMicroInteractionCooldownUntil[firstDefinition.id] = cooldownUntil
         npcMicroInteractionCooldownUntil[secondDefinition.id] = cooldownUntil
         exchange?.let { rememberNpcMicroInteraction(firstDefinition.id, secondDefinition.id, it) }
-        val topic = exchange?.topic?.takeIf(String::isNotBlank)?.let { " about $it" }.orEmpty()
-        NpcStore.recordGlobalEvent("npc_micro_interaction", "${firstDefinition.name} chatted with ${secondDefinition.name}$topic near ${first.blockPosition().toShortString()}.")
+        val topicText = topic.takeIf(String::isNotBlank)?.let { " about $it" }.orEmpty()
+        NpcStore.recordGlobalEvent("npc_micro_interaction", "${firstDefinition.name} chatted with ${secondDefinition.name}$topicText near ${first.blockPosition().toShortString()}.")
     }
 
     private fun showMicroInteractionBalloonToClosePlayers(level: ServerLevel, npc: ChowNpcEntity, active: ActiveNpcMicroInteraction) {
@@ -1652,6 +1658,82 @@ object NpcFeature {
         .replace("{class}", speaker.classId.ifBlank { speaker.title })
         .replace("{store}", speaker.storeId())
         .replace("{topic}", topic)
+
+    private fun tryOpenMicroInteractionInterruptDialog(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition): Boolean {
+        val level = npc.level() as? ServerLevel ?: return false
+        val context = npcMicroInteractionDialogContext(npc, level) ?: return false
+        context.partnerEntityId?.let { partnerId -> finishNpcMicroInteraction(npc.uuid, partnerId) }
+        npc.navigation.stop()
+        npc.startTalkingTo(player, NPC_DIALOG_DURATION_TICKS)
+        val friendship = NpcStore.friendshipSnapshot(definition.id, player)
+        val fallback = microInteractionInterruptFallback(context)
+        val responseToken = if (NpcConfig.settings().llm.enabled) NpcDialogTokens.next() else 0L
+        NpcStore.recordConversation(definition.id, player, player.gameProfile.name, "interrupts ${definition.name}'s conversation with ${context.partnerName}", "player_interrupt_npc_micro_interaction")
+        if (responseToken != 0L) {
+            NpcNetwork.openDialog(player, dialogPayload(definition, npc, "...", false, friendship.level, closeOnly = true, closeLabel = "OKAY", responseToken = responseToken))
+            NpcLlmService.event(
+                player = player,
+                npc = npc,
+                definition = definition,
+                fallbackMessage = fallback,
+                input = microInteractionInterruptPrompt(player, definition, context),
+                npcRecordType = "npc_micro_interaction_interrupt",
+                responseToken = responseToken,
+            )
+            return true
+        }
+        NpcStore.recordConversation(definition.id, player, definition.name, fallback, "npc_micro_interaction_interrupt")
+        NpcNetwork.openDialog(player, dialogPayload(definition, npc, fallback, false, friendship.level, closeOnly = true, closeLabel = "OKAY"))
+        relayNpcDialog(player, npc, definition, fallback)
+        return true
+    }
+
+    private fun npcMicroInteractionDialogContext(npc: ChowNpcEntity, level: ServerLevel): NpcMicroInteractionDialogContext? {
+        npcMicroInteractions[npc.uuid]?.let { active ->
+            if (level.gameTime < active.untilTick) {
+                return NpcMicroInteractionDialogContext(active.partnerId, active.partnerNpcId, active.partnerName, active.topic, active.message, active.partnerMessage, active.untilTick + NPC_MICRO_INTERACTION_INTERRUPT_MEMORY_TICKS)
+            }
+        }
+        val recent = npcMicroInteractionDialogContext[npc.uuid] ?: return null
+        if (level.gameTime <= recent.expiresAtTick) return recent
+        npcMicroInteractionDialogContext.remove(npc.uuid)
+        return null
+    }
+
+    private fun rememberNpcMicroInteractionDialogContext(npcId: UUID, partnerEntityId: UUID, partnerNpcId: String, partnerName: String, message: String, partnerMessage: String, topic: String, untilTick: Long) {
+        npcMicroInteractionDialogContext[npcId] = NpcMicroInteractionDialogContext(
+            partnerEntityId = partnerEntityId,
+            partnerNpcId = partnerNpcId,
+            partnerName = partnerName,
+            topic = topic,
+            ownMessage = message,
+            partnerMessage = partnerMessage,
+            expiresAtTick = untilTick + NPC_MICRO_INTERACTION_INTERRUPT_MEMORY_TICKS,
+        )
+    }
+
+    private fun microInteractionInterruptFallback(context: NpcMicroInteractionDialogContext): String {
+        val partnerLine = context.partnerMessage.takeIf(String::isNotBlank)
+        val topic = context.topic.replace('_', ' ').ifBlank { "that" }
+        return if (partnerLine != null) {
+            "${context.partnerName} just said, \"$partnerLine\". I was thinking about $topic."
+        } else {
+            "I was just talking with ${context.partnerName} about $topic."
+        }
+    }
+
+    private fun microInteractionInterruptPrompt(player: ServerPlayer, definition: NpcDefinition, context: NpcMicroInteractionDialogContext): String {
+        val topic = context.topic.ifBlank { "their recent conversation" }
+        return """
+            ${player.gameProfile.name} interrupted you right after you were talking with ${context.partnerName}.
+            Topic id: $topic.
+            You said: "${context.ownMessage}"
+            ${context.partnerName} said: "${context.partnerMessage}"
+            Reply as ${definition.name} in 1-2 short in-character sentences.
+            Naturally reference what was just said and, if it fits, ask the player what they think.
+            Do not use a generic greeting and do not ignore the interrupted conversation.
+        """.trimIndent()
+    }
 
     private fun rememberNpcMicroInteraction(firstId: String, secondId: String, exchange: NpcMicroInteractionExchangeDefinition) {
         val recent = npcMicroInteractionRecent.getOrPut(npcMicroInteractionPairKey(firstId, secondId)) { ArrayDeque() }
@@ -1824,6 +1906,7 @@ object NpcFeature {
 
     private fun showTrainerPokemonBalloon(level: ServerLevel, npc: ChowNpcEntity, definition: NpcDefinition, pokemon: Entity) {
         if (npc.tickCount % 80 != 0) return
+        if (!GymLeagueFeature.shouldShowTrainerRoamBalloon(definition.id, level.server)) return
         val species = pokemon.displayName?.string?.takeIf(String::isNotBlank) ?: "that Pokemon"
         val message = TRAINER_POKEMON_BALLOONS.random()
             .replace("{pokemon}", species)
@@ -3508,7 +3591,26 @@ object NpcFeature {
         val missing: Int = (requirement.count - present).coerceAtLeast(0)
     }
 
-    private data class ActiveNpcMicroInteraction(val partnerId: UUID, val message: String, val untilTick: Long, val shownToPlayers: MutableSet<UUID> = linkedSetOf())
+    private data class ActiveNpcMicroInteraction(
+        val partnerId: UUID,
+        val partnerNpcId: String,
+        val partnerName: String,
+        val message: String,
+        val partnerMessage: String,
+        val topic: String,
+        val untilTick: Long,
+        val shownToPlayers: MutableSet<UUID> = linkedSetOf(),
+    )
+
+    private data class NpcMicroInteractionDialogContext(
+        val partnerEntityId: UUID?,
+        val partnerNpcId: String,
+        val partnerName: String,
+        val topic: String,
+        val ownMessage: String,
+        val partnerMessage: String,
+        val expiresAtTick: Long,
+    )
 
     private const val DEBUG_REACH = 12.0
     private const val DEBUG_AIM_RADIUS = 1.5
@@ -3532,6 +3634,7 @@ object NpcFeature {
     private const val NPC_MICRO_INTERACTION_SPEED = 0.75
     private const val NPC_MICRO_INTERACTION_BALLOON_TICKS = 100
     private const val NPC_MICRO_INTERACTION_RECENT_MEMORY = 48
+    private const val NPC_MICRO_INTERACTION_INTERRUPT_MEMORY_TICKS = 20L * 30L
     private const val NPC_AUTO_TASK_COOLDOWN_MIN_TICKS = 200L
     private const val NPC_AUTO_TASK_COOLDOWN_MAX_TICKS = 300L
     private const val NPC_DEFAULT_MEETUP_START_HOUR = 15

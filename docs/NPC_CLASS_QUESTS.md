@@ -6,6 +6,8 @@ Class mentor quests are separate from daily NPC quests. They are one-time, non-e
 
 - `Training` no longer grants an unknown class directly. It starts or advances the mentor questline for the NPC's configured `class`.
 - Each class TOML owns its mentor quest data under `[mentor_quest]`.
+- `mentor_npc_id` is the primary/backcompat mentor. `mentor_npc_ids` can list every NPC allowed to start the same class quest.
+- If a class quest is already active, the NPC who started it remains the player's locked mentor for that class until completion. Other eligible mentors redirect the player back to that mentor instead of taking over.
 - Quest state lives in `RoleStore` as per-player class mentor progress, not in daily NPC quest state.
 - Vow steps are dialogue gates and advance after the mentor introduces the oath.
 - Offering steps can be fetch, craft/task, or food-chain preparation.
@@ -21,17 +23,17 @@ Class mentor quests are separate from daily NPC quests. They are one-time, non-e
 
 | Class | Mentor | Offering | Discipline | Signature Trial | Unlock Title |
 |---|---|---|---|---|---|
-| Warrior | Finn | Bring 12 iron ingots for practice blade repairs. | Defeat 100 monsters on the roads. | Timed: defeat 4 Overworld skeletons in 35s. | Oathsworn Blade |
+| Warrior | Finn, Link | Bring 12 iron ingots for practice blade repairs. | Defeat 100 monsters on the roads. | Timed: defeat 4 Overworld skeletons in 35s. | Oathsworn Blade |
 | Rogue | Ezio | Bring 2 ender pearls for escape routes. | Travel 750 blocks on foot. | Timed: defeat 3 Overworld skeleton sentries in 20s. | Hidden Creedblade |
 | Archer | Huntress Wizard | Craft 32 arrows after the rite begins. | Travel 1000 blocks on foot to read terrain. | Timed: defeat 4 Overworld skeleton archers in 30s. | Greenwood Stringkeeper |
-| Wizard | Gandalf | Bring 6 amethyst shards for focus work. | Craft 3 fire charges. | Timed: defeat 3 Nether blazes in 45s. | Grey Sparkbearer |
+| Wizard | Gandalf, Zelda | Bring 6 amethyst shards for focus work. | Craft 3 fire charges. | Timed: defeat 3 Nether blazes in 45s. | Grey Sparkbearer |
 | Priest | Pope Leo XIV | Cook 1 fresh Farmer's Delight vegetable soup after the step begins. | Breed 3 animals. | Catch 8 fish. | Tidebound Carekeeper |
-| Berserker | Zagreus | Bring 6 blaze powder for the red line. | Timed: defeat 6 monsters in 20s while keeping count. | Timed: defeat 3 Nether blazes in 35s. | Red Oath Breaker |
+| Berserker | Zagreus, Marceline | Bring 6 blaze powder for the red line. | Timed: defeat 6 monsters in 20s while keeping count. | Timed: defeat 3 Nether blazes in 35s. | Red Oath Breaker |
 | Paladin | Tarnished | Bring 8 gold ingots for oath weight. | Defeat 100 monsters as oath service. | Timed: defeat 2 Nether wither skeletons in 90s. | Gracebound Sentinel |
 | Bounty Hunter | Aloy | Craft 32 arrows as contract stock. | Catch 3 Pokemon as living trail work. | Timed: defeat 5 spiders in 25s for a target contract. | Redgrass Seeker |
 | Forcemaster | Vi | Bring 16 redstone dust for gauntlet power. | Travel 1500 blocks for pressure footwork. | Timed: defeat 6 monsters in 20s with clean impact. | Pressureline Breaker |
 | Bard | Venti | Prepare 1 fresh Farmer's Delight mixed salad after the step begins. | Trade with villagers 4 times to read the room. | Travel 600 blocks on foot with the wind. | Stormsong Namebearer |
-| Witcher | Geralt | Cook 1 fresh Farmer's Delight beef stew after the step begins. | Defeat 100 monsters as bestiary work. | Defeat 4 endermen as a sparse contract, untimed. | Silver-Signed Hunter |
+| Witcher | Geralt, Ciri | Cook 1 fresh Farmer's Delight beef stew after the step begins. | Defeat 100 monsters as bestiary work. | Defeat 4 endermen as a sparse contract, untimed. | Silver-Signed Hunter |
 | War Archer | Legolas | Bring 48 arrows for the company. | March 1200 blocks on foot. | Timed: defeat 5 Overworld skeleton archers in 35s. | White-Fletched Captain |
 | Tundra Archer | Traxex | Bring 16 snowballs for breath control. | Travel 1200 blocks on foot in silence. | Timed: defeat 3 strays in 45s. | Frost-Quiet Arrow |
 | Arcane Wizard | Invoker | Bring 12 amethyst shards for resonance focus. | Travel 800 blocks on foot for vector work. | Timed: defeat 3 endermen in 60s. | Arcane Sequencer |
@@ -48,6 +50,7 @@ Each class file under `runs/client/config/gisketchs_chowkingdom_mod/roles/classe
 ```toml
 [mentor_quest]
 mentor_npc_id = "mentor_id"
+mentor_npc_ids = ["mentor_id", "alternate_mentor_id"]
 title = "Questline Title"
 intro_message = "Short class premise."
 unlock_title = "Earned Title"
@@ -61,6 +64,8 @@ steps = [
   { id = "class_duel", skeleton = "mentor_duel", kind = "duel" },
 ]
 ```
+
+When `mentor_npc_ids` is omitted, the class behaves as a single-mentor class using `mentor_npc_id`.
 
 Supported step kinds now used by configs:
 

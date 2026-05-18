@@ -23,6 +23,8 @@ data class RoleDefinition(
 data class ClassMentorQuestDefinition(
     @SerializedName(value = "mentor_npc_id", alternate = ["mentorNpcId"])
     var mentorNpcId: String = "",
+    @SerializedName(value = "mentor_npc_ids", alternate = ["mentorNpcIds"])
+    var mentorNpcIds: MutableList<String> = mutableListOf(),
     var title: String = "",
     @SerializedName(value = "intro_message", alternate = ["introMessage"])
     var introMessage: String = "",

@@ -13,6 +13,7 @@ import net.neoforged.neoforge.network.PacketDistributor
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent
 import net.neoforged.neoforge.network.handling.IPayloadContext
 import net.neoforged.neoforge.server.ServerLifecycleHooks
+import java.util.Locale
 import java.util.UUID
 
 object RolesNetwork {
@@ -112,8 +113,8 @@ object RolesNetwork {
         classification = RolesConfig.classClassification(role),
         starterClassIds = RolesConfig.starterClassIds(role),
         upgradeClassIds = RolesConfig.upgradeClassIds(role),
-        mentorNpcId = role.mentorQuest.mentorNpcId,
-        mentorName = role.mentorQuest.mentorNpcId.takeIf(String::isNotBlank)?.let { npcId -> NpcConfig.get(npcId)?.displayName() ?: npcId }.orEmpty(),
+        mentorNpcId = primaryMentorId(role.mentorQuest),
+        mentorName = mentorNames(role.mentorQuest),
         unlockCost = if (RolesConfig.isStarterClass(role.id)) ClassLicenses.STARTER_CLASS_UNLOCK_COST else ClassLicenses.UPGRADE_CLASS_UNLOCK_COST,
         perks = role.perks.map(::perkPayload),
     )
@@ -144,6 +145,20 @@ object RolesNetwork {
         wrongArmorDisablesSprint = perk.wrongArmorDisablesSprint,
         startingItems = perk.startingItems.toList(),
     )
+
+    private fun eligibleMentorIds(quest: ClassMentorQuestDefinition): List<String> =
+        (listOf(quest.mentorNpcId) + quest.mentorNpcIds)
+            .map(String::trim)
+            .filter(String::isNotBlank)
+            .distinctBy { it.lowercase(Locale.ROOT) }
+
+    private fun primaryMentorId(quest: ClassMentorQuestDefinition): String =
+        quest.mentorNpcId.trim().ifBlank { eligibleMentorIds(quest).firstOrNull().orEmpty() }
+
+    private fun mentorNames(quest: ClassMentorQuestDefinition): String =
+        eligibleMentorIds(quest)
+            .map { npcId -> NpcConfig.get(npcId)?.displayName() ?: npcId }
+            .joinToString(", ")
 }
 
 data class RolesSyncPayload(

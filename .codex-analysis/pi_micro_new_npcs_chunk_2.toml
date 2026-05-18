@@ -1,0 +1,197 @@
+[[exchanges]]
+id = "newnpc2_001"
+topic = "cobblemon biology"
+source_ids = ["bubblegum"]
+target_ids = ["pope_leo"]
+line = "The metabolic rate of Cobblemon is extraordinary. I've observed a symbiotic link to their trainers."
+response = "Creatures bound by trust are a testament to the harmony of creation."
+weight = 1
+
+[[exchanges]]
+id = "newnpc2_002"
+topic = "personal style"
+source_ids = ["bubblegum"]
+target_ids = ["shoumai"]
+line = "Your icy aesthetic reminds me of a crystalline Candy Kingdom experiment."
+response = "Experiment? Sweetie, I'm a style, not a lab project."
+weight = 1
+
+[[exchanges]]
+id = "newnpc2_003"
+topic = "resurrection cycles"
+source_ids = ["bubblegum"]
+target_ids = ["tarnished"]
+line = "I've analyzed your resurrection patterns. They resemble a repeating biological loop."
+response = "Grace restores the faithful. I do not question the Erdtree's design."
+weight = 1
+
+[[exchanges]]
+id = "newnpc2_004"
+topic = "sensory abilities"
+source_ids = ["bubblegum"]
+target_ids = ["toph"]
+line = "I could calibrate seismic sensors to map your earthbending resonance."
+response = "I feel every pebble already. Your sensors would just slow me down."
+weight = 1
+
+[[exchanges]]
+id = "newnpc2_005"
+topic = "frostcraft"
+source_ids = ["bubblegum"]
+target_ids = ["traxex"]
+line = "Your arrows maintain perfect temperature stability. A biological or magical cryo-trait?"
+response = "The tundra does not explain. It simply is."
+weight = 1
+
+[[exchanges]]
+id = "newnpc2_006"
+topic = "wind magic"
+source_ids = ["bubblegum"]
+target_ids = ["venti"]
+line = "Your wind melodies seem to influence ambient barometric pressure. Intentional?"
+response = "Ehe, the wind sings what it wants. I just borrow its notes."
+weight = 1
+
+[[exchanges]]
+id = "newnpc2_007"
+topic = "gauntlet technology"
+source_ids = ["bubblegum"]
+target_ids = ["vi"]
+line = "Your gauntlets' kinetic output suggests a hydraulic amplification system."
+response = "Yeah, they hit hard. You want a demonstration?"
+weight = 1
+
+[[exchanges]]
+id = "newnpc2_008"
+topic = "underworld revival"
+source_ids = ["bubblegum"]
+target_ids = ["zagreus"]
+line = "Your repeated escapes from the Underworld could inform my revival serum research."
+response = "Trust me, princess, dying repeatedly is not a recommended tonic."
+weight = 1
+
+[[exchanges]]
+id = "newnpc2_009"
+topic = "light essence"
+source_ids = ["bubblegum"]
+target_ids = ["zelda"]
+line = "The light that persists in you... Is it a physical energy or a spiritual essence?"
+response = "Perhaps it is both. Some mornings it feels like the sun remembering me."
+weight = 1
+
+[[exchanges]]
+id = "newnpc2_010"
+topic = "fire control"
+source_ids = ["bubblegum"]
+target_ids = ["zuko"]
+line = "I've studied flame-body temperature regulation. Your breath control seems key."
+response = "Fire without control is just destruction. I learned that the hard way."
+weight = 1
+
+[[exchanges]]
+id = "newnpc2_011"
+topic = "monster containment"
+source_ids = ["ciri"]
+target_ids = ["elsa"]
+line = "Frost can halt a monster's advance if you layer it under their feet."
+response = "I prefer not to harm. But if I must... I'll remember that."
+weight = 1
+
+[[exchanges]]
+id = "newnpc2_012"
+topic = "shadow techniques"
+source_ids = ["ciri"]
+target_ids = ["ezio"]
+line = "You glide through cities like I move between worlds. The shadows answer you."
+response = "The shadows listen, and I listen back. It serves the Brotherhood well."
+weight = 1
+
+[[exchanges]]
+id = "newnpc2_013"
+topic = "joyful combat"
+source_ids = ["ciri"]
+target_ids = ["finn"]
+line = "You swing that sword with joy instead of duty. It works surprisingly well."
+response = "My best friend taught me. I pack his lessons into every hit."
+weight = 1
+
+[[exchanges]]
+id = "newnpc2_014"
+topic = "wizardly weight"
+source_ids = ["ciri"]
+target_ids = ["gandalf"]
+line = "I've seen many wizards. You don't hide behind cantrips. You carry real weight."
+response = "I am a servant of fire and shadow. Weight follows purpose."
+weight = 1
+
+[[exchanges]]
+id = "newnpc2_015"
+topic = "friendly rivalry"
+source_ids = ["ciri"]
+target_ids = ["geralt"]
+line = "You're getting slower, Wolf. Tomorrow's hunt will prove it."
+response = "Hmm. I'll let you carry the griffin head then."
+weight = 1
+
+[[exchanges]]
+id = "newnpc2_016"
+topic = "forest perception"
+source_ids = ["ciri"]
+target_ids = ["huntress_wizard"]
+line = "You scent the wind like a witcher. The forest speaks through you."
+response = "The forest whispers. I just translate."
+weight = 1
+
+[[exchanges]]
+id = "newnpc2_017"
+topic = "arcane priorities"
+source_ids = ["ciri"]
+target_ids = ["invoker"]
+line = "All those incantations and you still need a witcher to find a ghoul."
+response = "My resonance vectors could unmake a continent. Tracking is... menial."
+weight = 1
+
+[[exchanges]]
+id = "newnpc2_018"
+topic = "healing vs combat"
+source_ids = ["ciri"]
+target_ids = ["katara"]
+line = "You heal wounds I'd cauterize. There's strength in that restraint."
+response = "Healing doesn't mean I can't fight. I just choose when the water rises."
+weight = 1
+
+[[exchanges]]
+id = "newnpc2_019"
+topic = "elven vision"
+source_ids = ["ciri"]
+target_ids = ["legolas"]
+line = "Your eyes see farther than any witcher's potions. Impressive for a mortal."
+response = "Mortal? I am elf-kind. My gaze is older than your kingdoms."
+weight = 1
+
+[[exchanges]]
+id = "newnpc2_020"
+topic = "silent survival"
+source_ids = ["ciri"]
+target_ids = ["link"]
+line = "You move through ruins like a wolf in its den. Silent, ready."
+response = "I learned from the wild. Noise gets you killed."
+weight = 1
+
+[[exchanges]]
+id = "newnpc2_021"
+topic = "berserker control"
+source_ids = ["ciri"]
+target_ids = ["marceline"]
+line = "I've seen vampiric berserkers before. You control the fury, not the other way."
+response = "Yeah, I've had a thousand years to practice. Still a good riff helps."
+weight = 1
+
+[[exchanges]]
+id = "newnpc2_022"
+topic = "faith and monsters"
+source_ids = ["ciri"]
+target_ids = ["pope_leo"]
+line = "Your faith seems... practical for a man of the cloth. You've seen monsters?"
+response = "I've seen the human heart. That is often the greater beast."
+weight = 1

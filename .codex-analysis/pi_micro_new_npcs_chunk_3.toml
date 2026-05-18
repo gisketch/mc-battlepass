@@ -1,0 +1,197 @@
+[[exchanges]]
+id = "newnpc3_001"
+topic = "Witcher signs vs cool sarcasm"
+source_ids = ["ciri"]
+target_ids = ["shoumai"]
+line = "You joke about frost, but a Witcher's sign can freeze a griffin midair."
+response = "Please, I'm the ice queen. Your little hand wave is cute."
+weight = 1
+
+[[exchanges]]
+id = "newnpc3_002"
+topic = "Duty and the path of the blade"
+source_ids = ["ciri"]
+target_ids = ["tarnished"]
+line = "You bear your oaths like armor. Does it ever grow heavy, paladin?"
+response = "The weight is my reminder. Grace enough to carry it."
+weight = 1
+
+[[exchanges]]
+id = "newnpc3_003"
+topic = "Sensing danger in silence"
+source_ids = ["ciri"]
+target_ids = ["toph"]
+line = "You feel the earth more keenly than any monster's heartbeat."
+response = "Yeah, and your sword hums louder than your mouth. Nice edge."
+weight = 1
+
+[[exchanges]]
+id = "newnpc3_004"
+topic = "Hunting under frost"
+source_ids = ["ciri"]
+target_ids = ["traxex"]
+line = "You track like a white wolf, silent and steady."
+response = "Cold preserves the trail. Words waste warmth."
+weight = 1
+
+[[exchanges]]
+id = "newnpc3_005"
+topic = "Wind songs and witcher signs"
+source_ids = ["ciri"]
+target_ids = ["venti"]
+line = "Your wind sings, but my signs shape it. Focus could sharpen your melody."
+response = "Ehe, the wind already dances for me! Your hand-waving is so serious."
+weight = 1
+
+[[exchanges]]
+id = "newnpc3_006"
+topic = "Witcher steel vs street fists"
+source_ids = ["ciri"]
+target_ids = ["vi"]
+line = "You fight like every brawl is personal. That fire serves you well."
+response = "Yeah? Tell me something I don't know, magic girl."
+weight = 1
+
+[[exchanges]]
+id = "newnpc3_007"
+topic = "Pushing through perils"
+source_ids = ["ciri"]
+target_ids = ["zagreus"]
+line = "You treat battle like a dance with death. I respect that."
+response = "Ha, careful, or I'll ask you to join the next number!"
+weight = 1
+
+[[exchanges]]
+id = "newnpc3_008"
+topic = "Ancient souls and light"
+source_ids = ["ciri"]
+target_ids = ["zelda"]
+line = "You carry a dragon's memory. My world knows such weight too."
+response = "Then you understand why the sky still feels less distant than loss."
+weight = 1
+
+[[exchanges]]
+id = "newnpc3_009"
+topic = "Breath control under the flame"
+source_ids = ["ciri"]
+target_ids = ["zuko"]
+line = "Your fire breathes with you. That discipline mirrors my signs."
+response = "Control is everything. A single wrong breath could burn a kingdom."
+weight = 1
+
+[[exchanges]]
+id = "newnpc3_010"
+topic = "Frost and courage"
+source_ids = ["elsa"]
+target_ids = ["link"]
+line = "You've faced storms without flinching. That is a rare warmth."
+response = "I just keep moving. The cold can follow if it wants."
+weight = 1
+
+[[exchanges]]
+id = "newnpc3_011"
+topic = "Ice queen meets vampire queen"
+source_ids = ["elsa"]
+target_ids = ["marceline"]
+line = "The night seems drawn to you, like frost to a windowpane."
+response = "Aw, that's sweet. I usually just say I'm killer company."
+weight = 1
+
+[[exchanges]]
+id = "newnpc3_012"
+topic = "Light and ice magic"
+source_ids = ["elsa"]
+target_ids = ["zelda"]
+line = "Your light is gentle, yet it holds back shadows as well as my frost."
+response = "Each of us carries a quiet shield. Shall we compare notes?"
+weight = 1
+
+[[exchanges]]
+id = "newnpc3_013"
+topic = "Stealth and steel"
+source_ids = ["ezio"]
+target_ids = ["link"]
+line = "You fight with the silence of an assassin. Impressive."
+response = "A quiet blade cuts deeper than any battle cry."
+weight = 1
+
+[[exchanges]]
+id = "newnpc3_014"
+topic = "Shadows and song"
+source_ids = ["ezio"]
+target_ids = ["marceline"]
+line = "You move through shadow like a melody, graceful and deadly."
+response = "Flattery gets you a song request. What's your jam, hood guy?"
+weight = 1
+
+[[exchanges]]
+id = "newnpc3_015"
+topic = "Wisdom beyond years"
+source_ids = ["ezio"]
+target_ids = ["zelda"]
+line = "You carry the light of ages. My order would call you a seer."
+response = "I am just a scholar who learned the hard way. What is your creed?"
+weight = 1
+
+[[exchanges]]
+id = "newnpc3_016"
+topic = "Warrior bonding"
+source_ids = ["finn"]
+target_ids = ["link"]
+line = "Dude, your sword technique is sick! Wanna trade flips later?"
+response = "If your flips are as sharp as your blade, I'm in."
+weight = 1
+
+[[exchanges]]
+id = "newnpc3_017"
+topic = "Old friends jamming"
+source_ids = ["finn"]
+target_ids = ["marceline"]
+line = "Hey Marcy! Still shredding that axe bass under moonlight?"
+response = "Always, Finn. You've got any new adventures to share?"
+weight = 1
+
+[[exchanges]]
+id = "newnpc3_018"
+topic = "Heroic quests"
+source_ids = ["finn"]
+target_ids = ["zelda"]
+line = "You've got that wise 'been there, won there' vibe. Mad respect, princess."
+response = "And you have the spirit of a hero who never gives up. Thank you."
+weight = 1
+
+[[exchanges]]
+id = "newnpc3_019"
+topic = "Courage of the silent"
+source_ids = ["gandalf"]
+target_ids = ["link"]
+line = "The courageous heart walks unseen. You remind me of a certain hobbit."
+response = "I'll take that as a compliment. Now where's the danger?"
+weight = 1
+
+[[exchanges]]
+id = "newnpc3_020"
+topic = "Darkness and song"
+source_ids = ["gandalf"]
+target_ids = ["marceline"]
+line = "Music in the night can drive away deeper shadows, young queen."
+response = "I've lived in the dark long enough. The bass keeps them back."
+weight = 1
+
+[[exchanges]]
+id = "newnpc3_021"
+topic = "Wisdom and time"
+source_ids = ["gandalf"]
+target_ids = ["zelda"]
+line = "Your soul has endured ages. Such wisdom is rare, even among wizards."
+response = "Time gave me patience. I suspect it gave you a sharp sense of humor."
+weight = 1
+
+[[exchanges]]
+id = "newnpc3_022"
+topic = "Witcher advice"
+source_ids = ["geralt"]
+target_ids = ["link"]
+line = "Steel for men, silver for monsters. You know which you're holding?"
+response = "I've killed enough of both to know the difference, witcher."
+weight = 1

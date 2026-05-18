@@ -1,0 +1,197 @@
+[[exchanges]]
+id = "newnpc1_001"
+topic = "breeze"
+source_ids = ["aang"]
+target_ids = ["bubblegum"]
+line = "Hey, Bubblegum! The wind says your pokemon research is going great. Need a breeze to cool the data?"
+response = "Oh, Aang, a constant air current might help my incubator's temperature stability. Could you demonstrate?"
+weight = 1
+
+[[exchanges]]
+id = "newnpc1_002"
+topic = "sky_fight"
+source_ids = ["aang"]
+target_ids = ["ciri"]
+line = "Ciri, when you fight sky monsters, do you ever use wind to throw them off balance?"
+response = "Wind is a tool, but not a crutch. Momentum and steel do the real work."
+weight = 1
+
+[[exchanges]]
+id = "newnpc1_003"
+topic = "skylands"
+source_ids = ["aang"]
+target_ids = ["link"]
+line = "Link, those skylands look like a fun gliding paradise. Any tips for a light-footed airbender?"
+response = "Watch for updrafts. Even a Zelda glider needs wind. Stay light."
+weight = 1
+
+[[exchanges]]
+id = "newnpc1_004"
+topic = "night_flying"
+source_ids = ["aang"]
+target_ids = ["marceline"]
+line = "Marceline! I bet even vampire bats can't float like me. Wanna race across the night sky?"
+response = "Nice try, airhead. I've been flying since before your great-grandparents were learning to walk."
+weight = 1
+
+[[exchanges]]
+id = "newnpc1_005"
+topic = "light_and_sky"
+source_ids = ["aang"]
+target_ids = ["zelda"]
+line = "Zelda, the light you carry reminds me of the spirit world. Any connection?"
+response = "Light and spirit are intertwined, Aang. After my dragon form, I feel the sky differently now."
+weight = 1
+
+[[exchanges]]
+id = "newnpc1_006"
+topic = "wild_survival"
+source_ids = ["aloy"]
+target_ids = ["bubblegum"]
+line = "Princess, your cobblemon are interesting, but do they actually survive in real wilds? I've not seen any."
+response = "They're adapted to specific biomes, Aloy. Like your machines, they need careful study to thrive."
+weight = 1
+
+[[exchanges]]
+id = "newnpc1_007"
+topic = "hunting_tools"
+source_ids = ["aloy"]
+target_ids = ["ciri"]
+line = "Ciri, your witcher signs remind me of Focus. Quick power. Do you ever run out?"
+response = "Signs pull from chaos. If I run out, I still have my blade. Never rely on one thing."
+weight = 1
+
+[[exchanges]]
+id = "newnpc1_008"
+topic = "beast_weakness"
+source_ids = ["aloy"]
+target_ids = ["link"]
+line = "Link, you've fought enough mechanical beasts to fill a cauldron. Any weakness I should know?"
+response = "Stop the eye. Always the eye. You know that already."
+weight = 1
+
+[[exchanges]]
+id = "newnpc1_009"
+topic = "nocturnal_hunt"
+source_ids = ["aloy"]
+target_ids = ["marceline"]
+line = "You're nocturnal? Good. Less competition for daytime hunting. What do you hunt at night?"
+response = "Mostly boredom, but sometimes ancient monsters hiding in caves. Wanna join?"
+weight = 1
+
+[[exchanges]]
+id = "newnpc1_010"
+topic = "tracking_light"
+source_ids = ["aloy"]
+target_ids = ["zelda"]
+line = "Zelda, light magic must be handy. Ever used it to track a creature like a Focus pulse?"
+response = "Not quite tracking, but I can illuminate hidden corruption. It helps in the Depths."
+weight = 1
+
+[[exchanges]]
+id = "newnpc1_011"
+topic = "monster_sample"
+source_ids = ["bubblegum"]
+target_ids = ["ciri"]
+line = "Ciri, I'd love a tissue sample from a noonwraith for my cobblemon cross-study. Could you collect one?"
+response = "I can try, but don't expect intact samples. My silver sword doesn't do biopsies."
+weight = 1
+
+[[exchanges]]
+id = "newnpc1_012"
+topic = "ice_lab"
+source_ids = ["bubblegum"]
+target_ids = ["elsa"]
+line = "Elsa, your ice magic could be invaluable for preserving sensitive reagents. Could you help cool my lab?"
+response = "Of course, Princess. Cold storage is one of my specialties. Just don't make me sing."
+weight = 1
+
+[[exchanges]]
+id = "newnpc1_013"
+topic = "artifacts"
+source_ids = ["bubblegum"]
+target_ids = ["ezio"]
+line = "Ezio, I've heard rumors of shadowy figures in Rome. Any connections to my kingdom's missing artifacts?"
+response = "Artifacts often tempt the Borgia. I'll keep an eye out, but be careful who you trust."
+weight = 1
+
+[[exchanges]]
+id = "newnpc1_014"
+topic = "training_break"
+source_ids = ["bubblegum"]
+target_ids = ["finn"]
+line = "Finn, you've been training non-stop. Even a hero needs a break. Want some rare candy for energy?"
+response = "Heh, thanks PB. Just... keeping busy. Lost too many friends. A sweet treat sounds nice."
+weight = 1
+
+[[exchanges]]
+id = "newnpc1_015"
+topic = "staff_mystery"
+source_ids = ["bubblegum"]
+target_ids = ["gandalf"]
+line = "Gandalf, your staff seems to hold more than just light. Is it a magical focus or a scientific instrument?"
+response = "It is both, dear princess, and neither. It is... a reminder that some mysteries are meant to be."
+weight = 1
+
+[[exchanges]]
+id = "newnpc1_016"
+topic = "mutations"
+source_ids = ["bubblegum"]
+target_ids = ["geralt"]
+line = "Geralt, your mutations are fascinating. Could I study your enhanced metabolism? It might help my potion research."
+response = "You'd better have a sturdy lab. Last time someone tried, I woke up with a silver allergy and a headache."
+weight = 1
+
+[[exchanges]]
+id = "newnpc1_017"
+topic = "seed_magic"
+source_ids = ["bubblegum"]
+target_ids = ["huntress_wizard"]
+line = "Huntress Wizard, your forest magic is unique. Could your seeds grow in a controlled lab environment?"
+response = "Seeds like wild roots. Confine them, they wither. Trust the forest."
+weight = 1
+
+[[exchanges]]
+id = "newnpc1_018"
+topic = "arcane_demo"
+source_ids = ["bubblegum"]
+target_ids = ["invoker"]
+line = "Invoker, your arcane prowess is legendary. Could you demonstrate a resonance vector for my energy absorption crystals?"
+response = "Child, do you even understand the basis of astral harmonics? I will not waste my talent on parlor tricks."
+weight = 1
+
+[[exchanges]]
+id = "newnpc1_019"
+topic = "water_healing"
+source_ids = ["bubblegum"]
+target_ids = ["katara"]
+line = "Katara, water healing could revolutionize my medical bay. Could you teach me basic aqua-infusion?"
+response = "Absolutely, Bubblegum! Waterbending is about feeling the flow and intent. Let's start with calm."
+weight = 1
+
+[[exchanges]]
+id = "newnpc1_020"
+topic = "elven_vision"
+source_ids = ["bubblegum"]
+target_ids = ["legolas"]
+line = "Legolas, your precision is remarkable. Do elves have enhanced visual acuity, or is it training?"
+response = "Both. Long eyes, long practice, and a bow that feels like a friend."
+weight = 1
+
+[[exchanges]]
+id = "newnpc1_021"
+topic = "sheikah_slate"
+source_ids = ["bubblegum"]
+target_ids = ["link"]
+line = "Link, the Sheikah slate technology is amazing. Ever consider using it to catalog cobblemon?"
+response = "I'll ask Purah. She'd love a new field guide. You might get a Slate if you visit."
+weight = 1
+
+[[exchanges]]
+id = "newnpc1_022"
+topic = "music_frequency"
+source_ids = ["bubblegum"]
+target_ids = ["marceline"]
+line = "Marceline, your music has a strange frequency that affects my equipment. Is it intentional?"
+response = "Nah, just the axe talking. But if it breaks something, I'll claim artistic expression."
+weight = 1

@@ -40,14 +40,21 @@ object ClassMentorQuestService {
             openMentorDialog(player, npc, definition, role, null, "I do not have a class questline configured for {class} yet.", "missing_config", null, "The class mentor quest config is missing. Tell the player this class cannot be trained yet.")
             return ClassMentorTrainingResult.Handled
         }
-        val requiredMentor = quest.mentorNpcId.trim()
-        if (requiredMentor.isNotBlank() && !requiredMentor.equals(definition.id, ignoreCase = true)) {
-            val mentorName = NpcConfig.get(requiredMentor)?.displayName() ?: requiredMentor
-            openMentorDialog(player, npc, definition, role, null, "$mentorName is the mentor for {class}. Find them for this questline.", "wrong_mentor", null, "The player asked the wrong NPC for {class}. Tell them to find $mentorName.")
+        val eligibleMentors = eligibleMentorIds(quest)
+        if (eligibleMentors.isNotEmpty() && eligibleMentors.none { it.equals(definition.id, ignoreCase = true) }) {
+            val mentorNames = mentorNames(eligibleMentors)
+            openMentorDialog(player, npc, definition, role, null, "$mentorNames can mentor {class}. Find one of them for this questline.", "wrong_mentor", null, "The player asked the wrong NPC for {class}. Tell them to find one of these mentors: $mentorNames.")
             return ClassMentorTrainingResult.Handled
         }
 
-        val state = RoleStore.classMentorQuest(player, role.id) ?: PlayerClassMentorQuestState(
+        val existingState = RoleStore.classMentorQuest(player, role.id)
+        if (existingState?.npcId?.isNotBlank() == true && !existingState.npcId.equals(definition.id, ignoreCase = true)) {
+            val mentorName = mentorName(existingState.npcId)
+            openMentorDialog(player, npc, definition, role, existingState, "$mentorName is already guiding your {class} questline. Finish this path with them first.", "locked_mentor", null, "The player has an active {class} questline with $mentorName. Tell them this mentor cannot take over until that questline is complete.")
+            return ClassMentorTrainingResult.Handled
+        }
+
+        val state = existingState ?: PlayerClassMentorQuestState(
             classId = role.id,
             npcId = definition.id,
             stepIndex = 0,
@@ -95,7 +102,7 @@ object ClassMentorQuestService {
                 val progress = recordTimedEvent(player, state, step, signal.amount)
                 changed = true
                 if (progress >= step.goalValue()) {
-                    val mentorNpc = role.mentorQuest.mentorNpcId.ifBlank { state.npcId }
+                    val mentorNpc = state.npcId.ifBlank { primaryMentorId(role.mentorQuest) }
                     SnackbarNetwork.send(player, SnackbarNotification.npc(mentorNpc, "CLASS QUEST READY", "${role.displayName.ifBlank { role.id }}: ${step.title.ifBlank { step.objective }}", SnackbarType.SUCCESS, SnackbarSounds.REWARD))
                 }
                 return@forEach
@@ -103,7 +110,7 @@ object ClassMentorQuestService {
             state.progress = (state.progress + signal.amount.coerceAtLeast(1)).coerceAtMost(step.goalValue())
             changed = true
             if (state.progress >= step.goalValue()) {
-                val mentorNpc = role.mentorQuest.mentorNpcId.ifBlank { state.npcId }
+                val mentorNpc = state.npcId.ifBlank { primaryMentorId(role.mentorQuest) }
                 SnackbarNetwork.send(player, SnackbarNotification.npc(mentorNpc, "CLASS QUEST READY", "${role.displayName.ifBlank { role.id }}: ${step.title.ifBlank { step.objective }}", SnackbarType.SUCCESS, SnackbarSounds.REWARD))
             }
         }
@@ -138,6 +145,7 @@ object ClassMentorQuestService {
     fun onMentorDuelWon(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition): Boolean {
         val role = definition.classId.trim().takeIf(String::isNotBlank)?.let(RolesConfig::roleClass) ?: return false
         val state = RoleStore.classMentorQuest(player, role.id) ?: return false
+        if (state.npcId.isNotBlank() && !state.npcId.equals(definition.id, ignoreCase = true)) return false
         val step = normalizedSteps(role).getOrNull(state.stepIndex) ?: return false
         if (step.kindKey() != "duel" || !state.paid) return false
         state.progress = 1
@@ -468,6 +476,21 @@ object ClassMentorQuestService {
 
     private fun foodChainKey(player: ServerPlayer, state: PlayerClassMentorQuestState): String =
         "${player.stringUUID}|${state.classId}|${state.npcId}|${state.stepIndex}|${state.stepStartedAtTick}"
+
+    private fun eligibleMentorIds(quest: ClassMentorQuestDefinition): List<String> =
+        (listOf(quest.mentorNpcId) + quest.mentorNpcIds)
+            .map(String::trim)
+            .filter(String::isNotBlank)
+            .distinctBy { it.lowercase(Locale.ROOT) }
+
+    private fun primaryMentorId(quest: ClassMentorQuestDefinition): String =
+        quest.mentorNpcId.trim().ifBlank { eligibleMentorIds(quest).firstOrNull().orEmpty() }
+
+    private fun mentorName(npcId: String): String =
+        NpcConfig.get(npcId)?.displayName() ?: npcId
+
+    private fun mentorNames(npcIds: List<String>): String =
+        npcIds.map(::mentorName).joinToString(", ")
 
     private fun displayName(id: String): String = id.substringAfter(':')
         .replace('_', ' ')
