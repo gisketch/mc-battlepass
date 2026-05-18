@@ -14,8 +14,11 @@ import kotlin.math.max
 
 object NpcFriendsClient {
     private var friends: List<NpcFriendEntryPayload> = emptyList()
+    private var loaded = false
 
     fun open() {
+        loaded = false
+        friends = emptyList()
         Minecraft.getInstance().setScreen(NpcFriendsScreen())
         NpcNetwork.requestFriends()
     }
@@ -23,9 +26,12 @@ object NpcFriendsClient {
     @JvmStatic
     fun apply(payload: NpcFriendsSyncPayload) {
         friends = payload.friends
+        loaded = true
     }
 
     fun snapshot(): List<NpcFriendEntryPayload> = friends
+
+    fun isLoaded(): Boolean = loaded
 }
 
 private class NpcFriendsScreen : Screen(Component.literal("Friends")) {
@@ -79,7 +85,8 @@ private class NpcFriendsScreen : Screen(Component.literal("Friends")) {
         val friends = NpcFriendsClient.snapshot()
         val rowArea = Rect(inner.x, inner.y, inner.width, inner.height)
         if (friends.isEmpty()) {
-            guiGraphics.drawString(font, "Loading...", rowArea.x, rowArea.y + 8, colorWithRenderAlpha(MUTED), false)
+            val message = if (NpcFriendsClient.isLoaded()) "No spawned NPCs" else "Loading..."
+            guiGraphics.drawString(font, message, rowArea.x, rowArea.y + 8, colorWithRenderAlpha(MUTED), false)
             return
         }
         scroll = scroll.coerceIn(0, maxScroll())

@@ -776,7 +776,8 @@ object NpcFeature {
 
     fun syncFriends(player: ServerPlayer) {
         val currentHour = NpcTime.hour(player.level())
-        val entries = NpcConfig.all().sortedBy { definition -> definition.name }.map { definition ->
+        val entries = NpcConfig.all().sortedBy { definition -> definition.name }.mapNotNull { definition ->
+            existingNpc(player.server, definition.id) ?: return@mapNotNull null
             val friendship = NpcStore.friendshipSnapshot(definition.id, player)
             val giftPeriod = NpcTime.periodForReset(player.level().dayTime, definition.gifts.resetHour)
             val giftCount = NpcStore.giftCount(definition.id, player, giftPeriod)
