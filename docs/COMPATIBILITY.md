@@ -87,6 +87,16 @@ One Paraglider stamina wheel is 1000 stamina. Tune the JSON first before changin
 - AzureLib Armor crash protection is client-only and optional. CKDM still loads without AzureLib Armor.
 - BlockFactory Bosses roll removal is optional. CKDM still loads without Bosses'Rise / BlockFactory Bosses.
 
+## Yuushya Chat Noise
+
+Chow Kingdom suppresses Yuushya's startup support/creative-environment chat banner on the client before it is added to the chat HUD.
+
+Behavior:
+
+- The hook matches only Yuushya's exact startup banner text.
+- Other Yuushya chat, player chat, server messages, and CKDM snackbar messages are unchanged.
+- The hook is client-only. CKDM still loads without Yuushya.
+
 ## Xaero + Cobblemon Radar
 
 Chow Kingdom hides unknown Pokemon identity on Xaero radar.

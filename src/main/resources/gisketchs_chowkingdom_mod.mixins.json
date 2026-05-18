@@ -34,6 +34,7 @@
     "XaeroMinimapNpcRendererMixin",
     "XaeroWorldMapNpcReaderMixin",
     "XaeroWorldMapNpcRendererMixin",
+    "YuushyaStartupChatMixin",
     "XaeroRadarColorHelperMixin",
     "XaeroRadarIconManagerMixin"
   ],
