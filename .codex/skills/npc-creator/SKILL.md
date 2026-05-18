@@ -23,12 +23,13 @@ Use for full NPC config work. This skill owns the NPC TOML shape; use `npc-micro
    - `professor`: league/support NPC; full custom content if user says key NPC.
    - `debug`: transient/test only; keep out of normal content pools.
 4. Create or edit one `<id>.toml`.
-5. Run validator:
+5. Delegate lore/dialogue drafting to `pi`, then integrate the returned fragments into the NPC TOML.
+6. Run validator:
    ```powershell
    python .codex/skills/npc-creator/scripts/validate_npc_config.py --npc-file "<runtime-npcs-dir>\<id>.toml"
    ```
-6. If behavior changed, update docs or note why no doc update is needed.
-7. Run `.\gradlew.bat build`; in game run `/npc reload`.
+7. If behavior changed, update docs or note why no doc update is needed.
+8. Run `.\gradlew.bat build`; in game run `/npc reload`.
 
 ## Required NPC Shape
 
@@ -85,9 +86,33 @@ For micro interactions, add only `interaction_tags` here. Then invoke `npc-micro
 
 ## Pi Use
 
-Use `pi --model deepseek/deepseek-v4-flash` when generating large dialogue pools, LLM prompts, or mission flavor. Keep the final TOML validated locally.
+Use `pi --model deepseek/deepseek-v4-flash` as the lore/dialogue subagent for:
+
+- `personality.llm_prompt`
+- traits, speech style, and catchphrases
+- friendship/default dialogue pools
+- camper lines
+- shop message flavor
+- mission flavor text
+
+Codex owns schema, file placement, final TOML integration, and validation. Do not let `pi` rewrite code or runtime configs directly unless the user explicitly requests it.
+
+Build a prompt:
+
+```powershell
+python .codex/skills/npc-creator/scripts/build_pi_lore_prompt.py --npc-id "<id>" --npc-name "<name>" --npc-type "<resident|class_mentor|trainer|shopkeeper|professor|debug>" --concept "<short concept>" --class-id "<optional>" --store-id "<optional>" --output ".codex-analysis/pi_<id>_lore_prompt.md"
+```
+
+Run `pi`:
+
+```powershell
+pi --model deepseek/deepseek-v4-flash --no-tools --no-session -p "@.codex-analysis/pi_<id>_lore_prompt.md"
+```
+
+Paste or merge the returned TOML fragments into the NPC file, then run the validator. If `pi` returns Markdown fences, comments, non-ASCII, bad claims, or invalid TOML, sanitize or rerun with stricter instructions.
 
 ## References
 
 - Read `references/npc-config-shape.md` for a compact field checklist and TOML examples.
 - Use `scripts/validate_npc_config.py` before handoff.
+- Use `scripts/build_pi_lore_prompt.py` to create repeatable pi prompts for NPC lore/dialogue drafting.

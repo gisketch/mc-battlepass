@@ -110,3 +110,17 @@ template = "warrior"
 - Store/training NPCs need work blocks.
 - LLM prompt must say what the NPC must not claim.
 - Trainer dialogue must not claim physical old-region travel when Skylands hosting applies.
+
+## Pi Lore Delegation Contract
+
+Use `pi --model deepseek/deepseek-v4-flash` to draft lore/dialogue fragments only.
+
+Codex still decides:
+
+- NPC type.
+- final TOML shape.
+- store/class/work block validity.
+- mission mechanics.
+- validation and docs.
+
+Reject or rerun pi output if it includes Markdown fences, non-ASCII text, chain-of-thought, secrets, romance, or claims about hidden runtime state.

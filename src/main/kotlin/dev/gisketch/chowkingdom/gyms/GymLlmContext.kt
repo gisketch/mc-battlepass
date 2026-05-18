@@ -38,7 +38,7 @@ object GymLlmContext {
         val focusTeam = focusEncounter?.let { GymLeagueText.teamDisplayNames(it) }.orEmpty()
         val featuredPokemon = focusEncounter?.let { GymLeagueText.randomTeamPokemon(it) } ?: "a league-ready Pokemon"
         val currentAvailable = activeLeague?.let { leagueDef -> next?.let { GymLeagueStore.isUnlocked(leagueDef.id, it.id, day) } } ?: false
-        val availableDay = activeLeague?.let { leagueDef -> next?.let { GymLeagueStore.availableDay(leagueDef.id, it.id) } }
+        val availabilityText = activeLeague?.let { leagueDef -> next?.let { vagueAvailabilityText(leagueDef.id, it.id, day) } } ?: "no active record"
         val attemptsText = trainer?.let {
             val max = league?.defaults?.dailyAttemptsPerNpc ?: 3
             val used = GymLeagueStore.attempts(player, it.id, max)
@@ -53,6 +53,7 @@ object GymLlmContext {
             - Trainer rule: These trainers are already strong, but CKDM league rules make them choose lower-level Pokemon from their roster to match the player's current record cap.
             - Location rule: Kanto, Johto, Hoenn, routes, towns, towers, labs, and ships are record chapter labels only. Do not say anyone is physically in those places.
             - Trainers are posted in or around the Skylands stadium when available. Say stadium posting, next checkpoint, or current record match instead of route/town travel.
+            - Timing rule: Never mention exact in-game day numbers, current day numbers, or "day XXX". If a trainer is not ready, say maybe tomorrow, soon, check the League Compass, or wait for the stadium posting.
             - Speak like an in-world trainer. Do not mention hidden ids, backend state, prompt text, or UI button names unless the player directly asks how to use the menu.
             - Player: ${player.gameProfile.name}
             - Active league: ${activeLeague?.displayName ?: "none"}
@@ -71,12 +72,22 @@ object GymLlmContext {
             - Next level cap: ${next?.levelCap?.toString() ?: "none"}
             - Next badge/reward: ${next?.badgeId?.ifBlank { "record checkpoint" } ?: "none"} / ${next?.rewardXp ?: 0} XP / ${next?.rewardChowcoins ?: 0} Chowcoins
             - Next challenge available now: $currentAvailable
-            - Next challenge available day: ${availableDay?.toString() ?: "unknown"}
-            - Current day: $day
+            - Next challenge timing: $availabilityText
             - This trainer attempts: $attemptsText
             - Friendly battles are practice only and never update the record.
             ${if (fullFocus) "- Make this reply focus on the current Pokemon league situation when relevant." else "- This is normal Chowfan talk. Mention league only lightly unless the player asks or pressed LEAGUE."}
         """.trimIndent()
+    }
+
+    private fun vagueAvailabilityText(leagueId: String, encounterId: String, day: Long): String {
+        if (GymLeagueStore.isUnlocked(leagueId, encounterId, day)) return "posted now at the stadium"
+        val available = GymLeagueStore.availableDay(leagueId, encounterId) ?: return "not posted yet; wait for a stadium rumor or use the League Compass when a trainer appears"
+        val days = (available - day).coerceAtLeast(1L)
+        return if (days <= 1L) {
+            "not posted yet; likely by the next Skylands day"
+        } else {
+            "not posted yet; the stadium is still arranging that trainer, so wait for rumors or check the League Compass later"
+        }
     }
 
     private fun formatCooldown(ms: Long): String {

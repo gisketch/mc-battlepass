@@ -109,7 +109,7 @@ object GymLeagueNetwork {
         if (!GymLeagueStore.isUnlocked(league.id, next.id, day)) {
             val available = GymLeagueStore.availableDay(league.id, next.id) ?: return "Not available"
             val days = (available - day).coerceAtLeast(1L)
-            return "Available in $days day${if (days == 1L) "" else "s"}"
+            return if (days <= 1L) "Likely next Skylands day" else "Not posted yet"
         }
         val trainer = league.trainer(next.trainer) ?: return "Ready"
         val max = league.defaults.dailyAttemptsPerNpc

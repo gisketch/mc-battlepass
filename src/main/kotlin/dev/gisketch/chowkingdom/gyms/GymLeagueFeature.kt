@@ -557,7 +557,7 @@ object GymLeagueFeature {
         val fallback = when {
             activeLeague != league.id && attemptsLeft > 0 -> "FRIENDLY BATTLE is open. It will not touch your badge record. Attempts left before cooldown: $attemptsLeft."
             activeLeague != league.id -> "Friendly battle cooldown is active. Come back in ${formatCooldown(cooldownMs)}."
-            officialEncounter != null && !currentUnlocked -> "${GymLeagueText.encounterLabel(league, officialEncounter)} is next, but the stadium posting is not ready yet. FRIENDLY BATTLE is open if you want practice."
+            officialEncounter != null && !currentUnlocked -> "${GymLeagueText.encounterLabel(league, officialEncounter)} is next, but the stadium posting is not ready yet. Maybe tomorrow, maybe after Finn hears the crowd moving. FRIENDLY BATTLE is open if you want practice."
             officialEncounter != null && attemptsLeft > 0 -> "You're up for ${GymLeagueText.encounterLabel(league, officialEncounter)}. Level cap ${officialEncounter.levelCap}. Attempts left before cooldown: $attemptsLeft."
             officialForTrainer -> "Battle cooldown is active. Come back in ${formatCooldown(cooldownMs)}."
             current != null -> "Your next ${league.displayName} record match is ${GymLeagueText.encounterLabel(league, current)}. I can still do a friendly battle."
@@ -629,7 +629,7 @@ object GymLeagueFeature {
         )
         if (encounter == null) return fail(if (official) "Your ${league.displayName} record is already complete." else "${trainer.name} has no friendly team on file.", "no encounter available")
         if (official && encounter.trainer != trainer.id) return fail("Your next match is ${GymLeagueText.encounterLabel(league, encounter)}, not this one.", "wrong trainer")
-        if (official && !GymLeagueStore.isUnlocked(league.id, encounter.id, day)) return fail("${GymLeagueText.encounterLabel(league, encounter)} is not posted at the stadium yet.", "story delay")
+        if (official && !GymLeagueStore.isUnlocked(league.id, encounter.id, day)) return fail("${GymLeagueText.encounterLabel(league, encounter)} is not posted at the stadium yet. Wait for the next posting, or use your League Compass once the trainer appears.", "story delay")
         val maxAttempts = league.defaults.dailyAttemptsPerNpc
         val attempts = GymLeagueStore.attempts(player, trainer.id, maxAttempts)
         if (attempts >= maxAttempts) return fail("${trainer.name} is on cooldown. Come back in ${formatCooldown(GymLeagueStore.attemptCooldownRemainingMs(player, trainer.id, maxAttempts))}.", "attempt cooldown")
@@ -956,9 +956,9 @@ object GymLeagueFeature {
     }
 
     private fun availabilityReason(leagueId: String, encounterId: String, day: Long): String {
-        val available = GymLeagueStore.availableDay(leagueId, encounterId) ?: return "Not on today's bracket yet"
+        val available = GymLeagueStore.availableDay(leagueId, encounterId) ?: return "Not posted yet"
         val days = (available - day).coerceAtLeast(1L)
-        return "Available in $days in-game day${if (days == 1L) "" else "s"}"
+        return if (days <= 1L) "Likely next Skylands day" else "Not posted yet. Check the compass later."
     }
 
     private fun suggestEncounters(context: CommandContext<CommandSourceStack>, builder: com.mojang.brigadier.suggestion.SuggestionsBuilder): java.util.concurrent.CompletableFuture<com.mojang.brigadier.suggestion.Suggestions> {
