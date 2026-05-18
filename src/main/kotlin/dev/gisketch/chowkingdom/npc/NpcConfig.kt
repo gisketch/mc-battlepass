@@ -15,6 +15,7 @@ object NpcConfig {
     private var definitions: Map<String, NpcDefinition> = linkedMapOf()
     private var settings: NpcSettingsDefinition = NpcSettingsDefinition().normalized()
     private var genericQuests: NpcQuestPoolsDefinition = NpcQuestPoolsDefinition.defaults()
+    private var microInteractions: NpcMicroInteractionContentDefinition = NpcMicroInteractionContentDefinition().normalized()
 
     private val dir: Path
         get() = FMLPaths.CONFIGDIR.get().resolve(ChowKingdomMod.MOD_ID).resolve("npcs")
@@ -24,6 +25,7 @@ object NpcConfig {
         writeDefaultIfMissing()
         settings = loadSettings()
         genericQuests = loadGenericQuests()
+        microInteractions = loadMicroInteractions()
         val friendshipDefaults = loadFriendshipDefaults()
         val loaded = linkedMapOf<String, NpcDefinition>()
         npcDefinitionFiles().forEach { path ->
@@ -45,6 +47,8 @@ object NpcConfig {
     fun get(id: String): NpcDefinition? = definitions[id]
 
     fun settings(): NpcSettingsDefinition = settings
+
+    fun microInteractions(): NpcMicroInteractionContentDefinition = microInteractions
 
     fun llmPresetNames(): List<String> = settings.llm.presets.map { preset -> preset.name }
 
@@ -104,7 +108,8 @@ object NpcConfig {
                     path.extension.equals("toml", ignoreCase = true) &&
                     fileName != FRIENDSHIP_MESSAGES_FILE &&
                     fileName != NPC_SETTINGS_FILE &&
-                    fileName != GENERIC_QUESTS_FILE
+                    fileName != GENERIC_QUESTS_FILE &&
+                    !fileName.startsWith(MICRO_INTERACTIONS_PREFIX)
                 ) {
                     paths.add(path)
                 }
@@ -131,6 +136,28 @@ object NpcConfig {
             ChowKingdomMod.LOGGER.warn("Failed to load NPC generic quests {}", file, exception)
             NpcQuestPoolsDefinition.defaults()
         }.normalized()
+    }
+
+    private fun loadMicroInteractions(): NpcMicroInteractionContentDefinition {
+        val compiled = NpcMicroInteractionContentDefinition()
+        val files = mutableListOf<Path>()
+        Files.list(dir).use { stream ->
+            stream.forEach { path ->
+                val fileName = path.fileName.toString()
+                if (path.extension.equals("toml", ignoreCase = true) && fileName.startsWith(MICRO_INTERACTIONS_PREFIX)) files += path
+            }
+        }
+        files.sortedBy { path -> path.fileName.toString() }.forEach { file ->
+            val content = try {
+                TomlConfigIO.read(file, NpcMicroInteractionContentDefinition::class.java, ::NpcMicroInteractionContentDefinition)
+            } catch (exception: Exception) {
+                ChowKingdomMod.LOGGER.warn("Failed to load NPC micro interactions {}", file, exception)
+                NpcMicroInteractionContentDefinition()
+            }.normalized()
+            compiled.exchanges += content.exchanges
+            compiled.trainerExchanges += content.trainerExchanges
+        }
+        return compiled.normalized()
     }
 
     private fun mergeQuestPools(definition: NpcDefinition) {
@@ -236,3 +263,4 @@ class NpcLlmPresetSwitchResult(val success: Boolean, val message: String, val se
 private const val FRIENDSHIP_MESSAGES_FILE = "friendship_messages.toml"
 private const val NPC_SETTINGS_FILE = "settings.toml"
 private const val GENERIC_QUESTS_FILE = "generic_quests.toml"
+private const val MICRO_INTERACTIONS_PREFIX = "micro_interactions"

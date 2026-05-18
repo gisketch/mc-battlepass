@@ -44,6 +44,8 @@ class NpcDefinition(
     @SerializedName("shop_messages") var shopMessages: NpcShopMessagesDefinition = NpcShopMessagesDefinition(),
     @SerializedName("camper_messages") var camperMessages: NpcCamperMessagesDefinition = NpcCamperMessagesDefinition(),
     @SerializedName("npc_interaction_messages") var npcInteractionMessages: MutableList<String> = mutableListOf(),
+    @SerializedName("interaction_tags") var interactionTags: MutableList<String> = mutableListOf(),
+    @SerializedName("npc_interaction_exchanges") var npcInteractionExchanges: MutableList<NpcMicroInteractionExchangeDefinition> = mutableListOf(),
     @SerializedName("interaction_director") var interactionDirector: NpcInteractionDirectorOverridesDefinition = NpcInteractionDirectorOverridesDefinition(),
     @SerializedName("hurt_messages") var hurtMessages: MutableList<String> = mutableListOf(),
     @SerializedName("wake_messages") var wakeMessages: MutableList<String> = mutableListOf(),
@@ -78,6 +80,11 @@ class NpcDefinition(
         shopMessages = shopMessages.normalized()
         camperMessages = camperMessages.normalized()
         npcInteractionMessages = npcInteractionMessages.map(String::trim).filter(String::isNotBlank).distinct().toMutableList()
+        interactionTags = interactionTags.map(::cleanNpcMicroInteractionToken).filter(String::isNotBlank).distinct().toMutableList()
+        npcInteractionExchanges = npcInteractionExchanges.map { exchange -> exchange.normalized("npc_${id}_exchange") }
+            .filter { exchange -> exchange.line.isNotBlank() && exchange.response.isNotBlank() }
+            .distinctBy { exchange -> exchange.id }
+            .toMutableList()
         interactionDirector = interactionDirector.normalized()
         hurtMessages = hurtMessages.map(String::trim).filter(String::isNotBlank).ifEmpty { defaultHurtMessages() }.toMutableList()
         wakeMessages = wakeMessages.map(String::trim).filter(String::isNotBlank).ifEmpty { defaultWakeMessages() }.toMutableList()
@@ -312,6 +319,56 @@ class NpcInteractionSettingsDefinition(
         "Small town meeting with {other}.",
     )
 }
+
+class NpcMicroInteractionContentDefinition(
+    var exchanges: MutableList<NpcMicroInteractionExchangeDefinition> = mutableListOf(),
+    @SerializedName("trainer_exchanges") var trainerExchanges: MutableList<NpcMicroInteractionExchangeDefinition> = mutableListOf(),
+) {
+    fun normalized(): NpcMicroInteractionContentDefinition = apply {
+        exchanges = exchanges.map { exchange -> exchange.normalized("global_exchange") }
+            .filter { exchange -> exchange.line.isNotBlank() && exchange.response.isNotBlank() }
+            .distinctBy { exchange -> exchange.id }
+            .toMutableList()
+        trainerExchanges = trainerExchanges.map { exchange -> exchange.normalized("trainer_exchange") }
+            .filter { exchange -> exchange.line.isNotBlank() && exchange.response.isNotBlank() }
+            .distinctBy { exchange -> exchange.id }
+            .toMutableList()
+    }
+}
+
+class NpcMicroInteractionExchangeDefinition(
+    var id: String = "",
+    var topic: String = "",
+    var line: String = "",
+    var response: String = "",
+    var weight: Double = 1.0,
+    @SerializedName("source_ids") var sourceIds: MutableList<String> = mutableListOf(),
+    @SerializedName("target_ids") var targetIds: MutableList<String> = mutableListOf(),
+    @SerializedName("source_tags") var sourceTags: MutableList<String> = mutableListOf(),
+    @SerializedName("target_tags") var targetTags: MutableList<String> = mutableListOf(),
+) {
+    fun normalized(fallbackPrefix: String = "exchange"): NpcMicroInteractionExchangeDefinition = apply {
+        topic = cleanNpcMicroInteractionToken(topic)
+        id = cleanNpcMicroInteractionToken(id).ifBlank {
+            cleanNpcMicroInteractionToken("${fallbackPrefix}_${topic}_${line.hashCode().toUInt().toString(16)}")
+        }
+        line = cleanNpcMicroInteractionLine(line)
+        response = cleanNpcMicroInteractionLine(response)
+        weight = weight.coerceIn(0.0, 1000.0)
+        sourceIds = sourceIds.map(::cleanNpcMicroInteractionToken).filter(String::isNotBlank).distinct().toMutableList()
+        targetIds = targetIds.map(::cleanNpcMicroInteractionToken).filter(String::isNotBlank).distinct().toMutableList()
+        sourceTags = sourceTags.map(::cleanNpcMicroInteractionToken).filter(String::isNotBlank).distinct().toMutableList()
+        targetTags = targetTags.map(::cleanNpcMicroInteractionToken).filter(String::isNotBlank).distinct().toMutableList()
+    }
+}
+
+fun cleanNpcMicroInteractionToken(value: String): String = value.trim().lowercase()
+    .replace(Regex("[^a-z0-9_.:-]+"), "_")
+    .trim('_')
+
+private fun cleanNpcMicroInteractionLine(value: String): String = value.trim()
+    .replace(Regex("\\s+"), " ")
+    .take(160)
 
 class NpcChatDefinition(
     var enabled: Boolean = true,

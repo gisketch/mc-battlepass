@@ -118,6 +118,7 @@ object NpcFeature {
     private val questClaimBalloonRefreshAt: MutableMap<UUID, Long> = linkedMapOf()
     private val npcMicroInteractions: MutableMap<UUID, ActiveNpcMicroInteraction> = linkedMapOf()
     private val npcMicroInteractionCooldownUntil: MutableMap<String, Long> = linkedMapOf()
+    private val npcMicroInteractionRecent: MutableMap<String, ArrayDeque<String>> = linkedMapOf()
     private val npcAutoTaskCooldownUntil: MutableMap<UUID, Long> = linkedMapOf()
     private val pendingShopNpcs: MutableMap<UUID, String> = linkedMapOf()
     private val animationDebugTargets: MutableMap<UUID, UUID> = linkedMapOf()
@@ -1561,8 +1562,11 @@ object NpcFeature {
 
     private fun startNpcMicroInteraction(level: ServerLevel, first: ChowNpcEntity, firstDefinition: NpcDefinition, second: ChowNpcEntity, secondDefinition: NpcDefinition, settings: NpcInteractionSettingsDefinition, plazaMeetup: Boolean = false) {
         val durationTicks = settings.durationSeconds * 20L
-        val firstMessage = npcMicroInteractionMessage(firstDefinition, secondDefinition, settings)
-        val secondMessage = npcMicroInteractionMessage(secondDefinition, firstDefinition, settings)
+        val exchange = selectNpcMicroInteractionExchange(level, firstDefinition, secondDefinition, settings)
+        val firstMessage = exchange?.let { renderNpcMicroInteractionLine(it.line, firstDefinition, secondDefinition, it.topic) }
+            ?: npcMicroInteractionMessage(firstDefinition, secondDefinition, settings)
+        val secondMessage = exchange?.let { renderNpcMicroInteractionLine(it.response, secondDefinition, firstDefinition, it.topic) }
+            ?: npcMicroInteractionMessage(secondDefinition, firstDefinition, settings)
         val now = level.gameTime
         npcMicroInteractions[first.uuid] = ActiveNpcMicroInteraction(second.uuid, firstMessage, now + durationTicks)
         npcMicroInteractions[second.uuid] = ActiveNpcMicroInteraction(first.uuid, secondMessage, now + durationTicks)
@@ -1574,7 +1578,9 @@ object NpcFeature {
         }
         npcMicroInteractionCooldownUntil[firstDefinition.id] = cooldownUntil
         npcMicroInteractionCooldownUntil[secondDefinition.id] = cooldownUntil
-        NpcStore.recordGlobalEvent("npc_micro_interaction", "${firstDefinition.name} chatted with ${secondDefinition.name} near ${first.blockPosition().toShortString()}.")
+        exchange?.let { rememberNpcMicroInteraction(firstDefinition.id, secondDefinition.id, it) }
+        val topic = exchange?.topic?.takeIf(String::isNotBlank)?.let { " about $it" }.orEmpty()
+        NpcStore.recordGlobalEvent("npc_micro_interaction", "${firstDefinition.name} chatted with ${secondDefinition.name}$topic near ${first.blockPosition().toShortString()}.")
     }
 
     private fun showMicroInteractionBalloonToClosePlayers(level: ServerLevel, npc: ChowNpcEntity, active: ActiveNpcMicroInteraction) {
@@ -1592,6 +1598,97 @@ object NpcFeature {
             ?.replace("{npc}", definition.name)
             ?.replace("{other}", otherDefinition.name)
             ?: "Talking with ${otherDefinition.name}..."
+    }
+
+    private fun selectNpcMicroInteractionExchange(level: ServerLevel, firstDefinition: NpcDefinition, secondDefinition: NpcDefinition, settings: NpcInteractionSettingsDefinition): NpcMicroInteractionExchangeDefinition? {
+        val content = NpcConfig.microInteractions()
+        val firstTags = npcMicroInteractionTags(firstDefinition)
+        val secondTags = npcMicroInteractionTags(secondDefinition)
+        val candidates = buildList {
+            addAll(firstDefinition.npcInteractionExchanges.filter { exchange -> exchange.matches(firstDefinition, secondDefinition, firstTags, secondTags) })
+            addAll(content.exchanges.filter { exchange -> exchange.matches(firstDefinition, secondDefinition, firstTags, secondTags) })
+            if ("pokemon_trainer" in firstTags || "pokemon_trainer" in secondTags) {
+                addAll(content.trainerExchanges.filter { exchange -> exchange.matches(firstDefinition, secondDefinition, firstTags, secondTags) })
+            }
+            if (isEmpty()) {
+                addAll(secondDefinition.npcInteractionExchanges.filter { exchange -> exchange.matches(secondDefinition, firstDefinition, secondTags, firstTags) }.map { exchange ->
+                    NpcMicroInteractionExchangeDefinition(
+                        id = "${exchange.id}_reversed",
+                        topic = exchange.topic,
+                        line = exchange.response,
+                        response = exchange.line,
+                        weight = exchange.weight,
+                    ).normalized("reversed_${exchange.id}")
+                })
+            }
+        }.filter { exchange -> exchange.weight > 0.0 && exchange.line.isNotBlank() && exchange.response.isNotBlank() }
+        if (candidates.isEmpty()) return null
+        val recent = npcMicroInteractionRecent[npcMicroInteractionPairKey(firstDefinition.id, secondDefinition.id)].orEmpty()
+        val fresh = candidates.filterNot { exchange -> exchange.id in recent || "topic:${exchange.topic}" in recent }
+            .ifEmpty { candidates.filterNot { exchange -> exchange.id in recent } }
+            .ifEmpty { candidates }
+        return weightedNpcMicroInteraction(level, fresh)
+    }
+
+    private fun NpcMicroInteractionExchangeDefinition.matches(source: NpcDefinition, target: NpcDefinition, sourceTagSet: Set<String>, targetTagSet: Set<String>): Boolean {
+        if (sourceIds.isNotEmpty() && cleanNpcMicroInteractionToken(source.id) !in sourceIds) return false
+        if (targetIds.isNotEmpty() && cleanNpcMicroInteractionToken(target.id) !in targetIds) return false
+        if (sourceTags.isNotEmpty() && sourceTags.none { tag -> tag in sourceTagSet }) return false
+        if (targetTags.isNotEmpty() && targetTags.none { tag -> tag in targetTagSet }) return false
+        return true
+    }
+
+    private fun weightedNpcMicroInteraction(level: ServerLevel, candidates: List<NpcMicroInteractionExchangeDefinition>): NpcMicroInteractionExchangeDefinition? {
+        val totalWeight = candidates.sumOf { exchange -> exchange.weight.coerceAtLeast(0.0) }
+        if (totalWeight <= 0.0) return candidates.randomOrNull()
+        var roll = level.random.nextDouble() * totalWeight
+        candidates.forEach { exchange ->
+            roll -= exchange.weight.coerceAtLeast(0.0)
+            if (roll <= 0.0) return exchange
+        }
+        return candidates.lastOrNull()
+    }
+
+    private fun renderNpcMicroInteractionLine(text: String, speaker: NpcDefinition, other: NpcDefinition, topic: String): String = text
+        .replace("{npc}", speaker.name)
+        .replace("{other}", other.name)
+        .replace("{class}", speaker.classId.ifBlank { speaker.title })
+        .replace("{store}", speaker.storeId())
+        .replace("{topic}", topic)
+
+    private fun rememberNpcMicroInteraction(firstId: String, secondId: String, exchange: NpcMicroInteractionExchangeDefinition) {
+        val recent = npcMicroInteractionRecent.getOrPut(npcMicroInteractionPairKey(firstId, secondId)) { ArrayDeque() }
+        recent.addLast(exchange.id)
+        if (exchange.topic.isNotBlank()) recent.addLast("topic:${exchange.topic}")
+        while (recent.size > NPC_MICRO_INTERACTION_RECENT_MEMORY) recent.removeFirst()
+    }
+
+    private fun npcMicroInteractionPairKey(firstId: String, secondId: String): String = listOf(
+        cleanNpcMicroInteractionToken(firstId),
+        cleanNpcMicroInteractionToken(secondId),
+    ).sorted().joinToString("|")
+
+    private fun npcMicroInteractionTags(definition: NpcDefinition): Set<String> = buildSet {
+        add(cleanNpcMicroInteractionToken(definition.id))
+        addAll(definition.interactionTags)
+        definition.classId.takeIf(String::isNotBlank)?.let { classId ->
+            add(cleanNpcMicroInteractionToken(classId))
+            add("mentor")
+        }
+        definition.storeId().takeIf(String::isNotBlank)?.let { store -> add("store_$store") }
+        val title = definition.title.lowercase()
+        when {
+            definition.id.startsWith("gym_") -> add("gym_leader")
+            definition.id.startsWith("trainer_") -> add("rival")
+            definition.id.startsWith("elite_") || definition.id.contains("_elite_") -> add("elite_four")
+            definition.id.contains("champion") -> add("champion")
+            definition.id == "prof_chowfan" -> add("professor")
+        }
+        if (definition.id.startsWith("gym_") || definition.id.startsWith("trainer_") || definition.id.startsWith("elite_") || definition.id.startsWith("johto_") || definition.id.startsWith("hoenn_") || definition.id == "prof_chowfan" || title.contains("gym") || title.contains("elite") || title.contains("champion") || title.contains("rival")) {
+            add("pokemon_trainer")
+        } else {
+            add("town")
+        }
     }
 
     private fun isAutoTaskCoolingDown(npc: ChowNpcEntity): Boolean {
@@ -3399,6 +3496,7 @@ object NpcFeature {
     private const val NPC_MICRO_INTERACTION_DISTANCE_SQR = 2.5 * 2.5
     private const val NPC_MICRO_INTERACTION_SPEED = 0.75
     private const val NPC_MICRO_INTERACTION_BALLOON_TICKS = 100
+    private const val NPC_MICRO_INTERACTION_RECENT_MEMORY = 48
     private const val NPC_AUTO_TASK_COOLDOWN_MIN_TICKS = 200L
     private const val NPC_AUTO_TASK_COOLDOWN_MAX_TICKS = 300L
     private const val NPC_DEFAULT_MEETUP_START_HOUR = 15

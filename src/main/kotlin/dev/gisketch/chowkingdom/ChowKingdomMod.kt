@@ -27,6 +27,7 @@ import dev.gisketch.chowkingdom.compat.PunchyFirstPersonSuppressionBridge
 import dev.gisketch.chowkingdom.compat.UnifiedStaminaFeature
 import dev.gisketch.chowkingdom.compat.XaeroNpcMapCompat
 import dev.gisketch.chowkingdom.config.TomlConfigIO
+import dev.gisketch.chowkingdom.cosmetics.PokeClothingCosmeticsFeature
 import dev.gisketch.chowkingdom.debug.ExtractCommands
 import dev.gisketch.chowkingdom.discord.DiscordFeature
 import dev.gisketch.chowkingdom.discord.DiscordScreenshotClient
@@ -105,6 +106,7 @@ class ChowKingdomMod(modBus: IEventBus, container: ModContainer) {
         DiscordFeature.register()
         SnackbarFeature.register(modBus)
         RelicRouletteFeature.register(modBus)
+        PokeClothingCosmeticsFeature.register(modBus)
         RecipeDisablerFeature.register(modBus)
         NpcFeature.register(modBus)
         ClassSkillTreeFeature.register(modBus)

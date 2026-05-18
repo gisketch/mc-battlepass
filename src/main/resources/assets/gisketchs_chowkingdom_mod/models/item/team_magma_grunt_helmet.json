@@ -1,0 +1,6 @@
+{
+  "parent": "item/generated",
+  "textures": {
+    "layer0": "/team_magma_grunt_helmet"
+  }
+}
