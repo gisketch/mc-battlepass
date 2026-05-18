@@ -46,7 +46,7 @@ public class YuushyaStartupChatMixin {
         return YUUSHYA_STARTUP_MESSAGE.equals(text) || chowkingdom$containsYuushyaWarning(text);
     }
 
-    static boolean chowkingdom$containsYuushyaWarning(String text) {
+    private static boolean chowkingdom$containsYuushyaWarning(String text) {
         if (text == null) {
             return false;
         }
