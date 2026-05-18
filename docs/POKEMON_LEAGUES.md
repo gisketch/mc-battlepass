@@ -6,8 +6,11 @@ Trainer NPCs are different from town-life NPCs. They live around a Pokemon stadi
 
 ## V1 Rules
 
-- Professor Chowfan (`prof_chowfan`) starts league records.
+- Professor Chowfan (`prof_chowfan`) opens league records from the `LEAGUE` button.
 - A player can have one active generation league at a time.
+- If no league is active, Chowfan offers Kanto, Johto, and Hoenn instead of auto-picking Kanto.
+- If no league is active, the pinned mission is `Talk to Professor Chowfan about the League`.
+- If a league is active, Chowfan shows record status and can `RETIRE RECORD` after a dangerous confirmation. Retiring clears only the active route; earned badges and cleared history stay saved.
 - League progress is driven by an ordered `sequence`.
 - Gyms, rivals, Elite Four, and Champion are all encounters.
 - Rival battles are modeled as repeated encounters for one trainer identity.
@@ -19,7 +22,14 @@ Trainer NPCs are different from town-life NPCs. They live around a Pokemon stadi
 - `CHALLENGE` is always the official league-record encounter for that trainer. If the next story encounter is the same trainer but the unlock day has not arrived, `CHALLENGE` stays visible but disabled.
 - `FRIENDLY BATTLE` is separate practice. It can be offered while the official encounter is delayed or when that trainer is not the player's next record match. Friendly wins do not grant badges, league clears, BP XP, or Chowcoins.
 - Active league records add a pinned Pokemon mission only when the next official challenge is currently available. Delayed/cooldown encounters stay unpinned until ready.
-- Kanto is the first league.
+- The main inventory menu has a `Badges` tab for Kanto/Johto/Hoenn badge progress, active record, next challenge, and Pokemon stats.
+- Trainer and Professor Chowfan league surfaces are LLM-injectable. Prompt context includes the Arceus/Skylands framing, active league, next encounter, full done/not-done sequence progress, attempts, cooldowns, level cap, rewards, current RCT team Pokemon, and friendly-vs-record mode.
+- League lore: Arceus pulled strong trainers into CKDM Skylands after sensing future challengers. Trainers are already strong, but the hosted record rules make them choose lower-level roster Pokemon to match each posted cap.
+- Region/route/town names are record chapter labels only. NPC dialogue should say trainers are posted in or around the Skylands stadium, not physically in Kanto, Johto, Hoenn, New Bark, Route 22, or similar places.
+- Player-facing league UI strips chapter suffixes like `Silver - New Bark` down to the trainer-facing label, while internal ids/team refs keep exact sequence names.
+- A permanent League Compass is granted on league start and restored on login while a league is active. It tracks the next official trainer only when that trainer NPC is alive/spawned; otherwise it has no signal and its needle wanders.
+- Professor Chowfan uses normal NPC interaction by default. The league record opens only from the `LEAGUE` button.
+- Kanto, Johto, and Hoenn are default league scaffolds.
 - Blue uses one default branch in V1.
 
 ## Config Layout
@@ -43,6 +53,10 @@ League files use one ordered `[[sequence]]` list as the source of truth.
 ```toml
 id = "kanto"
 display_name = "Kanto League"
+generation = 1
+region = "Kanto"
+description = "The classic Kanto badge record, rebuilt as a CKDM Skylands stadium circuit."
+icon = "textures/gui/icons/trophy.png"
 stadium_area = "main_stadium"
 active_only = true
 starter_mode = "story_only"
@@ -126,6 +140,14 @@ spawn_delay_days = 1
 19. Elite Four #4
 20. Champion Blue
 
+## Gen 1-3 Default Records
+
+- Kanto: Blue rival route, eight Kanto badges, Elite Four, Champion Blue.
+- Johto: Silver rival route, Falkner through Clair, Elite Four, Champion Lance.
+- Hoenn: May/Wally rival route, Roxanne through Wallace, Elite Four, Champion Steven.
+
+All three records are imported league circuits hosted in the Skylands. NPC dialogue should not claim the player is physically in Kanto, Johto, or Hoenn.
+
 ## State Model
 
 Player state:
@@ -185,6 +207,10 @@ Implemented in code:
 - Strict story delay keeps delayed official encounters visible as disabled `CHALLENGE`, with separate `FRIENDLY BATTLE`.
 - Active league records sync into the pinned NPC quest HUD when the next challenge is available, and delayed challenges send a one-time `POKEMON CHALLENGE READY` snackbar when their unlock day arrives.
 - Gym trainers reconcile to one loaded NPC per trainer id, remove stale duplicates, and respawn through the gym system after the configured real-time recovery.
+- Gym/trainer/record result dialogue uses shared LLM context when enabled, with deterministic fallback lines when disabled. Trainer TALK also receives league context, while Professor Chowfan normal TALK only gets light league awareness.
+- Professor Chowfan league selection supports Kanto, Johto, and Hoenn.
+- `RETIRE RECORD` removes only the active league selection and keeps earned badge history.
+- Gym/badge state syncs to a client `Badges` menu tab showing league tabs, badge grid, active record, next challenge, caught Pokemon count, record wins, and badge count.
 
 Still needs in-game smoke testing:
 

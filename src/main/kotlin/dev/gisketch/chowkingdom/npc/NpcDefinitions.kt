@@ -415,6 +415,7 @@ class NpcLlmMessageUsageDefinition(
     @SerializedName("assigned_workplace") var assignedWorkplace: Boolean = false,
     @SerializedName("work_missing_blocks") var workMissingBlocks: Boolean = true,
     @SerializedName("class_training") var classTraining: Boolean = true,
+    @SerializedName("gym_dialogue") var gymDialogue: Boolean = true,
 ) {
     fun normalized(): NpcLlmMessageUsageDefinition = apply {
         if (shopSingle || shopNormal || shopBulk) shop = true

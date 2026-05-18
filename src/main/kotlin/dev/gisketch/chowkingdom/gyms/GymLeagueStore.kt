@@ -83,6 +83,17 @@ object GymLeagueStore {
         return true
     }
 
+    fun retireActiveLeague(player: ServerPlayer): String {
+        ensureLoaded()
+        val state = playerState(player)
+        val previous = state.activeLeague
+        if (previous.isBlank()) return ""
+        state.activeLeague = ""
+        state.lastAnnouncedAvailableEncounter = ""
+        save()
+        return previous
+    }
+
     fun resetLeague(player: ServerPlayer, leagueId: String) {
         ensureLoaded()
         val state = playerState(player)
@@ -154,6 +165,11 @@ object GymLeagueStore {
     fun badges(player: ServerPlayer, leagueId: String): Set<String> {
         ensureLoaded()
         return playerLeagueState(player, leagueId).badges.toSet()
+    }
+
+    fun clearedEncounters(player: ServerPlayer, leagueId: String): Set<String> {
+        ensureLoaded()
+        return playerLeagueState(player, leagueId).clearedEncounters.toSet()
     }
 
     fun nextPlayerEncounter(player: ServerPlayer, league: GymLeagueDefinition): GymEncounterDefinition? {

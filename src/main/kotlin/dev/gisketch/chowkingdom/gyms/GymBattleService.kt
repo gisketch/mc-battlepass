@@ -342,6 +342,8 @@ object GymBattleService {
         val friendship = NpcStore.friendshipSnapshot(definition.id, player)
         val fallback = resultFallback(won, context.official, trainer?.name ?: definition.name, encounter?.displayName.orEmpty())
         val prompt = buildString {
+            append(GymLlmContext.forEvent(player, definition.id, if (won) "battle win result" else "battle loss result", official = context.official, result = if (won) "player won" else "player lost"))
+            append("\n\n")
             append("${player.gameProfile.name} just ")
             append(if (won) "won" else "lost")
             append(" a ")

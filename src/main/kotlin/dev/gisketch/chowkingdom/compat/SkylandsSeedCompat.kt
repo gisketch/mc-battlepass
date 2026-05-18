@@ -61,6 +61,12 @@ object SkylandsSeedCompat {
     }
 
     @JvmStatic
+    fun randomStateFor(generator: Any, randomState: RandomState, settings: Holder<NoiseGeneratorSettings>): RandomState {
+        if (generator.javaClass.name != SKY_ISLAND_GENERATOR_CLASS) return randomState
+        return customRandomState(randomState, settings) ?: randomState
+    }
+
+    @JvmStatic
     fun samplerFor(randomState: RandomState, settings: Holder<NoiseGeneratorSettings>): Climate.Sampler {
         return customRandomState(randomState, settings)?.sampler() ?: randomState.sampler()
     }
@@ -104,3 +110,5 @@ data class SkylandsSeedConfig(
     var enabled: Boolean = true,
     var seed: String = "",
 )
+
+private const val SKY_ISLAND_GENERATOR_CLASS = "org.sathrek.sky_archipelago.worldgen.generator.core.SkyIslandChunkGenerator"

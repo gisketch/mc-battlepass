@@ -981,7 +981,7 @@ object NpcFeature {
         SnackbarNetwork.send(player, SnackbarNotification.item(SnackbarIcons.ERROR, title, content, type, SnackbarSounds.forType(type)))
     }
 
-    fun dialogPayload(definition: NpcDefinition, npc: ChowNpcEntity, message: String, contractGranted: Boolean, friendshipLevel: Int, closeOnly: Boolean = false, closeLabel: String = "BYE", responseToken: Long = 0L, dialogMode: String = "normal", startTalkMode: Boolean = false, friendshipDelta: Int = 0, classChangeAvailable: Boolean = false, classChangeCost: Long = 0L, classChangeOptions: List<NpcClassChangeOption> = emptyList(), quizChoices: List<NpcQuizChoice> = emptyList(), bossContractsAvailable: Boolean = BossEventsFeature.contractsAvailable(definition), bossClaimAvailable: Boolean = false, leagueAvailable: Boolean = GymLeagueFeature.leagueAvailable(definition), challengeAvailable: Boolean = false, challengeDisabledReason: String = "", friendlyBattleAvailable: Boolean = false): NpcDialogPayload = NpcDialogPayload(
+    fun dialogPayload(definition: NpcDefinition, npc: ChowNpcEntity, message: String, contractGranted: Boolean, friendshipLevel: Int, closeOnly: Boolean = false, closeLabel: String = "BYE", responseToken: Long = 0L, dialogMode: String = "normal", startTalkMode: Boolean = false, friendshipDelta: Int = 0, classChangeAvailable: Boolean = false, classChangeCost: Long = 0L, classChangeOptions: List<NpcClassChangeOption> = emptyList(), quizChoices: List<NpcQuizChoice> = emptyList(), bossContractsAvailable: Boolean = BossEventsFeature.contractsAvailable(definition), bossClaimAvailable: Boolean = false, leagueAvailable: Boolean = GymLeagueFeature.leagueAvailable(definition), challengeAvailable: Boolean = false, challengeDisabledReason: String = "", friendlyBattleAvailable: Boolean = false, leagueCompassAvailable: Boolean = false): NpcDialogPayload = NpcDialogPayload(
         definition.id,
         if (workBypassEnabled) "${definition.name} WORK OFF NPC" else definition.name,
         definition.title,
@@ -1011,6 +1011,7 @@ object NpcFeature {
         challengeAvailable = challengeAvailable,
         challengeDisabledReason = challengeDisabledReason,
         friendlyBattleAvailable = friendlyBattleAvailable,
+        leagueCompassAvailable = leagueCompassAvailable,
     )
 
     private fun friendshipMessage(set: NpcFriendshipMessageSet, friendship: NpcFriendshipSnapshot, player: ServerPlayer, definition: NpcDefinition, itemName: String = "", mood: String = "", quantity: Int = 0, totalCost: Long = 0L): String {

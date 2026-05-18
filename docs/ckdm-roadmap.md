@@ -365,9 +365,11 @@ Recommended model: shared raid/event tokens. A group clears a raid den or event;
 TODO (Configuration):
 
 - [ ] Audit Cobblemon spawn config for legendary/mythical spawn rates.
+- [ ] Curate Pokemon spawn pools and spawn data so common, rare, biome, time, and progression availability fit CKDM balance.
 - [ ] Disable or heavily reduce natural legendary farming if raid/event tokens become the main path.
 - [ ] Configure Raid Dens so legendary dens are rare, announced, and socially valuable.
 - [ ] Separate legendary, mythical, starter, and normal rare spawn policies.
+- [ ] Balance Pokemon breeding so eggs, IVs, abilities, shinies, rares, and economy outputs do not bypass exploration, gyms, or event pacing.
 - [ ] Remove or rewrite weekly legendary catch missions that encourage mass farming.
 - [ ] Use NPC quests for specific rare Pokemon stories instead of generic grind.
 
@@ -423,6 +425,19 @@ TODO (Mod):
 - [x] Add strict story-delay trainer UI: official `CHALLENGE` stays disabled until unlock day, while `FRIENDLY BATTLE` remains separate practice.
 - [x] Add pinned Pokemon league mission rows and one-time snackbar when a delayed next challenge becomes available.
 - [x] Give gym trainers a gym-owned lifecycle: duplicate reconciliation, no camper death flow, and configurable 5-minute real-time respawn.
+- [x] Add shared gym LLM context for trainer/Chowfan league surfaces, including Skylands framing and per-player sequence progress.
+- [x] Fix Professor Chowfan so normal right-click stays normal NPC dialogue and league progress lives behind the `LEAGUE` button.
+- [x] Polish Kanto trainer lore/personality defaults so trainers know they are visiting the CKDM Skylands stadium circuit, not standing in literal Kanto.
+- [x] Change Professor Chowfan `LEAGUE` flow from auto-Kanto to Kanto/Johto/Hoenn selection.
+- [x] Add no-active-league pinned mission: `Talk to Professor Chowfan about the League`.
+- [x] Add non-destructive `RETIRE RECORD` dangerous confirmation for active league records.
+- [x] Add Gen 2 Johto and Gen 3 Hoenn default league scaffolds with RCT trainer JSON stubs.
+- [x] Add gym/badge client sync and a main menu `Badges` tab for league badge progress and Pokemon stats.
+- [x] Move Chowfan league generation choices to the right dialogue action rail instead of rendering them over dialogue text.
+- [x] Add Arceus/Skylands trainer lore guardrails and current-RCT-team Pokemon context for gym LLM dialogue.
+- [x] Strip record chapter suffixes from player-facing gym UI labels while keeping internal sequence ids/team refs.
+- [x] Add Pokeball chat balloon marker aliases for gym/NPC priority balloons.
+- [x] Add permanent League Compass tracking for the next spawned official trainer.
 - [ ] Add relic-fragment rewards if gym badge rewards need relic economy hooks.
 - [ ] In-game smoke test RCT battle start/end in the Prism instance.
 
@@ -439,7 +454,7 @@ NEED MORE BRAINSTORM:
 
 - [ ] Decide if gyms are type-based, town-based, job-based, or story-based.
 - [ ] Decide if Pokemon NPC progression should be badge-first, friendship-first, research-first, or mixed.
-- [ ] Decide how gym NPC dialogue handles challenge setup, loss advice, rematches, badge rewards, and mission handoff.
+- [x] Decide how gym NPC dialogue handles challenge setup, loss advice, rematches, badge rewards, and mission handoff.
 - [ ] Decide if losing has a cost.
 - [ ] Decide if gyms should be solo only or allow spectators/group cheering.
 - [ ] Decide if gyms unlock legendary event eligibility.

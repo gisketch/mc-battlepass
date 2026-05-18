@@ -7,6 +7,7 @@
     "BlockFactoryDodgeRollMessageMixin",
     "BlockFactoryRollAttachmentMixin",
     "GameProfileMixin",
+    "NoiseBasedChunkGeneratorSeedMixin",
     "RandomStateAccessor",
     "SkyArchipelagoSeedMixin",
     "SpellBindingScreenHandlerClassLockMixin"

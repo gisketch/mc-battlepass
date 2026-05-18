@@ -20,7 +20,8 @@ Add CKDM config for a Sky Lands-only seed that can change Sky Archipelago island
 
 - Add TOML-backed seed config/service.
 - Add optional Sky Archipelago generator mixin.
-- Rebuild custom seeded `RandomState` for layout seed and biome sampler calls.
+- Rebuild custom seeded `RandomState` for Sky Archipelago generator calls.
+- Patch inherited vanilla biome creation plus Sky Archipelago terrain, surface, carver, spawn, height, and column lookup paths.
 - Document config behavior.
 
 ## Validation
@@ -32,7 +33,9 @@ Add CKDM config for a Sky Lands-only seed that can change Sky Archipelago island
 - Use blank seed as the compatibility-preserving default.
 - Parse text seeds with Java `String.hashCode()` to mirror vanilla-style text seed fallback.
 - Keep the implementation inert unless a nonblank seed is configured.
+- Chunky needs no special integration because it uses the same chunk generation entrypoints.
 
 ## Progress Log
 
 - 2026-05-18: Implemented and build-validated.
+- 2026-05-18: Expanded hook coverage so biome creation uses the Sky Lands-only seed.

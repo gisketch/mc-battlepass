@@ -608,6 +608,8 @@ object NpcClient {
     private fun balloonIcon(message: String): NpcBalloonIcon? = when {
         message.startsWith(GIFT_BALLOON_MARKER) -> NpcBalloonIcon(GIFT_BALLOON_MARKER, GIFT_BALLOON_ICON)
         message.startsWith(QUEST_BALLOON_MARKER) -> NpcBalloonIcon(QUEST_BALLOON_MARKER, QUEST_BALLOON_ICON)
+        message.startsWith(POKE_BALL_BALLOON_MARKER) -> NpcBalloonIcon(POKE_BALL_BALLOON_MARKER, POKE_BALL_BALLOON_ICON)
+        message.startsWith(POKEBALL_BALLOON_MARKER) -> NpcBalloonIcon(POKEBALL_BALLOON_MARKER, POKE_BALL_BALLOON_ICON)
         message.startsWith(HEART_BALLOON_MARKER) -> NpcBalloonIcon(HEART_BALLOON_MARKER, HEART_BALLOON_ICON)
         message.startsWith(ANGRY_BALLOON_MARKER) -> NpcBalloonIcon(ANGRY_BALLOON_MARKER, ANGRY_BALLOON_ICON)
         else -> null
@@ -632,11 +634,14 @@ private data class NpcBalloonIcon(val marker: String, val texture: ResourceLocat
     private val BALLOON_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/chat_bubble.png")
     private val GIFT_BALLOON_ICON = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/gift.png")
     private val QUEST_BALLOON_ICON = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/quest_log.png")
+    private val POKE_BALL_BALLOON_ICON = ResourceLocation.fromNamespaceAndPath("cobblemon", "textures/item/poke_ball.png")
     private val HEART_BALLOON_ICON = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/heart.png")
     private val ANGRY_BALLOON_ICON = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/angry.png")
     private val BALLOON_CKDM_FONT = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "ckdm_bold_claim")
     private const val GIFT_BALLOON_MARKER = "@gift.png"
     private const val QUEST_BALLOON_MARKER = "@quest_log.png"
+    private const val POKE_BALL_BALLOON_MARKER = "@poke_ball.png"
+    private const val POKEBALL_BALLOON_MARKER = "@pokeball.png"
     private const val HEART_BALLOON_MARKER = "@heart.png"
     private const val ANGRY_BALLOON_MARKER = "@angry.png"
     private const val GOLD_BALLOON_MARKER = "@gold"
@@ -1307,6 +1312,30 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
                 skipPendingTalkResponse()
                 NpcNetwork.sendAction(payload.npcId, "league_ticket")
             }
+            DialogAction.Compass -> if (isActionEnabled(action)) {
+                skipPendingTalkResponse()
+                NpcNetwork.sendAction(payload.npcId, "league_compass")
+            }
+            DialogAction.Kanto -> if (isActionEnabled(action)) {
+                skipPendingTalkResponse()
+                NpcNetwork.sendAction(payload.npcId, "league_choice:0")
+            }
+            DialogAction.Johto -> if (isActionEnabled(action)) {
+                skipPendingTalkResponse()
+                NpcNetwork.sendAction(payload.npcId, "league_choice:1")
+            }
+            DialogAction.Hoenn -> if (isActionEnabled(action)) {
+                skipPendingTalkResponse()
+                NpcNetwork.sendAction(payload.npcId, "league_choice:2")
+            }
+            DialogAction.Retire -> if (isActionEnabled(action)) {
+                skipPendingTalkResponse()
+                NpcNetwork.sendAction(payload.npcId, "league_retire")
+            }
+            DialogAction.Confirm -> if (isActionEnabled(action)) {
+                skipPendingTalkResponse()
+                NpcNetwork.sendAction(payload.npcId, "league_retire_confirm")
+            }
             DialogAction.Challenge -> if (isActionEnabled(action)) {
                 skipPendingTalkResponse()
                 NpcNetwork.sendAction(payload.npcId, "gym_challenge")
@@ -1342,6 +1371,9 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
             DialogAction.Bye -> if (questMode()) {
                 skipPendingTalkResponse()
                 NpcNetwork.sendAction(payload.npcId, "quest_decline")
+            } else if (leagueRetireMode()) {
+                skipPendingTalkResponse()
+                NpcNetwork.sendAction(payload.npcId, "league_retire_cancel")
             } else onClose()
             DialogAction.Claim -> if (isActionEnabled(action)) {
                 skipPendingTalkResponse()
@@ -1426,7 +1458,7 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
             val activeHover = hovered && enabled
             val highlighted = isActionHighlighted(action)
             val texture = when {
-                activeHover && (action == DialogAction.Bye || action == DialogAction.Fire) -> RED_BUTTON_HOVER_TEXTURE
+                activeHover && (action == DialogAction.Bye || action == DialogAction.Fire || action == DialogAction.Retire || action == DialogAction.Confirm) -> RED_BUTTON_HOVER_TEXTURE
                 activeHover -> BUTTON_HOVER_TEXTURE
                 highlighted && enabled -> GREEN_BUTTON_TEXTURE
                 else -> BUTTON_TEXTURE
@@ -1436,7 +1468,7 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
             val textColor = if (enabled) NAME_COLOR else DISABLED_COLOR
             renderNineSlice(guiGraphics, texture, x, buttonY, BUTTON_WIDTH, BUTTON_HEIGHT, sourceSize, sourceSize, sourceCorner, BUTTON_DEST_CORNER)
             guiGraphics.blit(action.icon, x + 6, buttonY + 3, ICON_SIZE, ICON_SIZE, 0.0f, 0.0f, ICON_SOURCE_SIZE, ICON_SOURCE_SIZE, ICON_SOURCE_SIZE, ICON_SOURCE_SIZE)
-            guiGraphics.drawString(font, ckdmSmallText(actionLabel(action)), x + 25, buttonY + 6, textColor, false)
+            guiGraphics.drawString(font, ckdmSmallText(fitActionLabel(actionLabel(action))), x + 25, buttonY + 6, textColor, false)
             if (action == DialogAction.Gift && hovered && !giftStack.isEmpty) guiGraphics.renderItem(giftStack.copyWithCount(1), x + BUTTON_WIDTH - 19, buttonY + 2)
         }
     }
@@ -1551,11 +1583,12 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         bossClaimMode() && action == DialogAction.Bye -> payload.closeLabel
         bossContractMode() && action == DialogAction.Talk -> if (talkMode) "SEND" else "TALK"
         bossContractMode() && action == DialogAction.Claim -> "CLAIM"
-        leagueChowfanMode() && action == DialogAction.Talk -> if (talkMode) "SEND" else "TALK"
+        (leagueChowfanMode() || leagueSelectMode() || leagueRecordMode()) && action == DialogAction.Talk -> if (talkMode) "SEND" else "TALK"
+        leagueRetireMode() && action == DialogAction.Bye -> "CANCEL"
         gymTrainerMode() && action == DialogAction.Talk -> if (talkMode) "SEND" else "TALK"
         joinMode() && action == DialogAction.Talk -> "JOIN CONVERSATION"
         action == DialogAction.Bye && payload.closeOnly -> payload.closeLabel
-        action == DialogAction.Bye && (payload.classChangeAvailable || classChangeMode() || quizMode()) -> payload.closeLabel
+        action == DialogAction.Bye && (payload.classChangeAvailable || classChangeMode() || quizMode() || leagueSelectMode() || leagueRetireMode()) -> payload.closeLabel
         else -> action.label
     }
 
@@ -1642,6 +1675,9 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         questMode() -> listOf(DialogAction.Talk, DialogAction.Bye)
         bossClaimMode() -> listOf(DialogAction.Talk, DialogAction.Bye)
         bossContractMode() -> listOf(DialogAction.Talk, DialogAction.Claim, DialogAction.Bye)
+        leagueSelectMode() -> listOf(DialogAction.Kanto, DialogAction.Johto, DialogAction.Hoenn, DialogAction.Talk, DialogAction.Bye)
+        leagueRecordMode() -> listOfNotNull(DialogAction.Talk, DialogAction.Compass.takeIf { payload.leagueCompassAvailable }, DialogAction.Retire, DialogAction.Bye)
+        leagueRetireMode() -> listOf(DialogAction.Confirm, DialogAction.Bye)
         leagueChowfanMode() -> listOf(DialogAction.Talk, DialogAction.League, DialogAction.Bye)
         gymTrainerMode() || gymFriendlyMode() -> trainerActions()
         quizMode() -> listOf(DialogAction.Bye)
@@ -1668,6 +1704,12 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
     private fun bossContractMode(): Boolean = payload.dialogMode == "boss_contract"
 
     private fun leagueChowfanMode(): Boolean = payload.dialogMode == "league_chowfan"
+
+    private fun leagueSelectMode(): Boolean = payload.dialogMode == "league_select"
+
+    private fun leagueRecordMode(): Boolean = payload.dialogMode == "league_record"
+
+    private fun leagueRetireMode(): Boolean = payload.dialogMode == "league_retire"
 
     private fun gymTrainerMode(): Boolean = payload.dialogMode == "gym_trainer"
 
@@ -1733,6 +1775,14 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         return "$candidate..."
     }
 
+    private fun fitActionLabel(text: String): String {
+        val maxWidth = BUTTON_WIDTH - 31
+        if (font.width(ckdmSmallText(text)) <= maxWidth) return text
+        var candidate = text
+        while (candidate.length > 4 && font.width(ckdmSmallText("$candidate...")) > maxWidth) candidate = candidate.dropLast(1)
+        return "$candidate..."
+    }
+
     private fun classChangeArea(layout: DialogLayout): ClassChangeArea {
         val width = layout.panelWidth - PAD * 2
         return ClassChangeArea(layout.x + PAD, layout.y + PAD + AVATAR_SIZE + 36, width)
@@ -1745,7 +1795,7 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         questMode() -> true
         bossContractMode() && action == DialogAction.Claim -> payload.bossClaimAvailable
         bossContractMode() && action == DialogAction.Talk -> payload.talkEnabled
-        leagueChowfanMode() && action == DialogAction.Talk -> payload.talkEnabled
+        (leagueChowfanMode() || leagueSelectMode() || leagueRecordMode()) && action == DialogAction.Talk -> payload.talkEnabled
         gymTrainerMode() && action == DialogAction.Talk -> payload.talkEnabled
         gymFriendlyMode() && action == DialogAction.Talk -> payload.talkEnabled
         (gymTrainerMode() || gymFriendlyMode()) && action == DialogAction.Challenge -> payload.challengeAvailable
@@ -2073,7 +2123,7 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         private const val NAME_SCALE = 1.25f
         private const val FRIENDSHIP_Y = 43
         private const val BASE_DIALOG_LINES = 4
-        private const val MAX_EXTRA_DIALOG_LINES = 5
+        private const val MAX_EXTRA_DIALOG_LINES = 10
         private const val INPUT_HEIGHT = 18
         private const val INPUT_GAP = 16
         private const val DYNAMIC_BOTTOM_PAD = 11
@@ -2146,6 +2196,12 @@ private enum class DialogAction(val label: String, val icon: ResourceLocation) {
     Gift("GIFT", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/gift.png")),
     Work("WORK", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/shop.png")),
     League("LEAGUE", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/trophy.png")),
+    Compass("REQUEST COMPASS", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/trophy.png")),
+    Kanto("GEN 1 KANTO", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/trophy.png")),
+    Johto("GEN 2 JOHTO", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/trophy.png")),
+    Hoenn("GEN 3 HOENN", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/trophy.png")),
+    Retire("RETIRE RECORD", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/cancel.png")),
+    Confirm("CONFIRM", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/accept.png")),
     Contracts("CONTRACTS", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/quest_log.png")),
     Challenge("CHALLENGE", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/kilic.png")),
     FriendlyBattle("FRIENDLY BATTLE", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/kilic.png")),

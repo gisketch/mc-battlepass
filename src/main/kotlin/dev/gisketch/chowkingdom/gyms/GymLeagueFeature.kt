@@ -11,6 +11,7 @@ import dev.gisketch.chowkingdom.discord.DiscordRelay
 import dev.gisketch.chowkingdom.npc.ChowNpcEntity
 import dev.gisketch.chowkingdom.npc.NpcConfig
 import dev.gisketch.chowkingdom.npc.NpcDefinition
+import dev.gisketch.chowkingdom.npc.NpcDialogTokens
 import dev.gisketch.chowkingdom.npc.NpcFeature
 import dev.gisketch.chowkingdom.npc.NpcLlmService
 import dev.gisketch.chowkingdom.npc.NpcNetwork
@@ -90,10 +91,6 @@ object GymLeagueFeature {
             openTrainerDialog(player, npc, definition, trainerBinding.first, trainerBinding.second)
             return true
         }
-        if (GymLeagueConfig.isChowfan(definition.id)) {
-            openChowfanDialog(player, npc, definition)
-            return true
-        }
         return false
     }
 
@@ -102,11 +99,26 @@ object GymLeagueFeature {
         if (GymLeagueConfig.isChowfan(definition.id)) {
             when (action) {
                 "league_ticket" -> {
-                    NpcLlmService.leaveDialog(player, definition.id)
-                    startLeagueFromChowfan(player, npc, definition)
+                    openChowfanDialog(player, npc, definition)
                     return true
                 }
                 "league_status" -> {
+                    openChowfanDialog(player, npc, definition)
+                    return true
+                }
+                "league_retire" -> {
+                    openRetireConfirmDialog(player, npc, definition)
+                    return true
+                }
+                "league_compass" -> {
+                    requestCompassFromChowfan(player, npc, definition)
+                    return true
+                }
+                "league_retire_confirm" -> {
+                    retireLeagueFromChowfan(player, npc, definition)
+                    return true
+                }
+                "league_retire_cancel" -> {
                     openChowfanDialog(player, npc, definition)
                     return true
                 }
@@ -114,6 +126,13 @@ object GymLeagueFeature {
                     NpcLlmService.joinConversation(player, definition.id)
                     return true
                 }
+            }
+            if (action.startsWith("league_choice:")) {
+                NpcLlmService.leaveDialog(player, definition.id)
+                val index = action.substringAfter(':').toIntOrNull() ?: return true
+                val league = selectableLeagues().firstOrNull { it.first == index }?.second
+                if (league != null) startLeagueFromChowfan(player, npc, definition, league.id) else openChowfanDialog(player, npc, definition)
+                return true
             }
         }
         val trainerBinding = GymLeagueConfig.trainerNpc(definition.id) ?: return false
@@ -148,13 +167,17 @@ object GymLeagueFeature {
         if (!context.official) {
             SnackbarNetwork.send(player, SnackbarNotification.item("cobblemon:poke_ball", "FRIENDLY BATTLE WON", trainer.name, SnackbarType.SUCCESS, SnackbarSounds.REWARD))
             BattlepassNetwork.syncAllPlayers()
+            GymLeagueNetwork.syncTo(player)
             NpcQuestService.syncTo(player)
+            LeagueCompassFeature.updateFor(player)
             return
         }
         recordMission(player, "gisketchs_chowkingdom_mod:gym_battle_won", league, encounter, trainer)
         val firstClear = GymLeagueStore.grantClear(player, league, encounter)
         if (!firstClear) {
+            GymLeagueNetwork.syncTo(player)
             NpcQuestService.syncTo(player)
+            LeagueCompassFeature.updateFor(player)
             return
         }
         if (encounter.rewardXp > 0) BattlepassXpStore.addXp(player, league.defaults.passId, encounter.rewardXp)
@@ -163,14 +186,16 @@ object GymLeagueFeature {
             recordMission(player, "gisketchs_chowkingdom_mod:gym_badge_earned", league, encounter, trainer)
             SnackbarNetwork.send(
                 player,
-                SnackbarNotification.item("cobblemon:poke_ball", "RECORD UPDATED", "${encounter.displayName} cleared. ${encounter.badgeId.replace('_', ' ').uppercase()}", SnackbarType.SUCCESS, SnackbarSounds.REWARD),
+                SnackbarNotification.item("cobblemon:poke_ball", "RECORD UPDATED", "${GymLeagueText.encounterLabel(league, encounter)} cleared. ${encounter.badgeId.replace('_', ' ').uppercase()}", SnackbarType.SUCCESS, SnackbarSounds.REWARD),
             )
-            DiscordRelay.gymBadgeEarned(player, league.displayName, encounter.displayName, encounter.badgeId)
+            DiscordRelay.gymBadgeEarned(player, league.displayName, GymLeagueText.encounterLabel(league, encounter), encounter.badgeId)
         } else {
-            SnackbarNetwork.send(player, SnackbarNotification.item("cobblemon:poke_ball", "LEAGUE BATTLE WON", encounter.displayName, SnackbarType.SUCCESS, SnackbarSounds.REWARD))
+            SnackbarNetwork.send(player, SnackbarNotification.item("cobblemon:poke_ball", "LEAGUE BATTLE WON", GymLeagueText.encounterLabel(league, encounter), SnackbarType.SUCCESS, SnackbarSounds.REWARD))
         }
         BattlepassNetwork.syncAllPlayers()
+        GymLeagueNetwork.syncTo(player)
         NpcQuestService.syncTo(player)
+        LeagueCompassFeature.updateFor(player)
     }
 
     fun completeEncounterLoss(player: ServerPlayer, context: GymBattleContextState) {
@@ -179,7 +204,9 @@ object GymLeagueFeature {
         val title = if (context.official) "LEAGUE BATTLE LOST" else "FRIENDLY BATTLE LOST"
         SnackbarNetwork.send(player, SnackbarNotification.item("cobblemon:poke_ball", title, trainer.name, SnackbarType.GENERIC, SnackbarSounds.GENERIC))
         BattlepassNetwork.syncAllPlayers()
+        GymLeagueNetwork.syncTo(player)
         NpcQuestService.syncTo(player)
+        LeagueCompassFeature.updateFor(player)
     }
 
     private fun onServerStarted(event: ServerStartedEvent) {
@@ -194,7 +221,9 @@ object GymLeagueFeature {
         GymBattleService.registerPlayer(player)
         reconcileGymTrainers(player.server)
         checkChallengeAvailability(player)
+        GymLeagueNetwork.syncTo(player)
         NpcQuestService.syncTo(player)
+        LeagueCompassFeature.updateFor(player)
     }
 
     private fun onPlayerLoggedOut(event: PlayerEvent.PlayerLoggedOutEvent) {
@@ -226,7 +255,23 @@ object GymLeagueFeature {
 
     fun hudEntriesFor(player: ServerPlayer): List<NpcQuestHudEntryPayload> {
         val activeLeague = GymLeagueStore.activeLeague(player)
-        if (activeLeague.isBlank()) return emptyList()
+        if (activeLeague.isBlank()) {
+            val chowfanId = GymLeagueConfig.all().firstOrNull()?.chowfanNpcId ?: "prof_chowfan"
+            val chowfanName = NpcConfig.get(chowfanId)?.name ?: "Professor Chowfan"
+            return listOf(
+                NpcQuestHudEntryPayload(
+                    npcId = chowfanId,
+                    npcName = chowfanName,
+                    description = "Talk to Professor Chowfan about the League",
+                    passId = "cozy",
+                    xp = 0,
+                    chowcoins = 0L,
+                    progress = 0,
+                    goal = 1,
+                    acceptedAtTick = 0L,
+                ),
+            )
+        }
         val league = GymLeagueConfig.league(activeLeague) ?: return emptyList()
         val encounter = GymLeagueStore.nextPlayerEncounter(player, league) ?: return emptyList()
         val day = NpcTime.day(player.level())
@@ -347,36 +392,149 @@ object GymLeagueFeature {
     private fun openChowfanDialog(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition) {
         val friendship = NpcStore.friendshipSnapshot(definition.id, player)
         val activeLeague = GymLeagueStore.activeLeague(player)
-        val message = if (activeLeague.isBlank()) {
-            "Your league record is unopened. I can start your Kanto badge record whenever you're ready."
+        if (activeLeague.isBlank()) {
+            openGymDialog(
+                player,
+                npc,
+                definition,
+                "Your league record is unopened. Choose a regional record and I will stamp your Skylands league file.",
+                "Professor Chowfan opened the LEAGUE selector. Invite the player to choose Kanto, Johto, or Hoenn as an imported Skylands-hosted badge record. Do not auto-pick Kanto. Explain that Arceus brought strong trainers to CKDM Skylands and they follow level-matching league rules.",
+                "gym_chowfan_league_select",
+                "league_select",
+                friendship.level,
+                leagueAvailable = true,
+                leagueCompassAvailable = false,
+            )
         } else {
             val league = GymLeagueConfig.league(activeLeague)
             val next = league?.let { GymLeagueStore.nextPlayerEncounter(player, it) }
-            if (league != null && next != null) "Your ${league.displayName} record is active. Next match: ${next.displayName}. Level cap ${next.levelCap}."
-            else "Your active league record is complete or missing. Ask an admin if the record looks wrong."
+            val badgeCount = league?.let { GymLeagueStore.badges(player, it.id).size } ?: 0
+            val fallback = if (league != null && next != null) {
+                "Your ${league.displayName} record is active. Next match: ${GymLeagueText.encounterLabel(league, next)}. Level cap ${next.levelCap}. Badges recorded: $badgeCount."
+            } else if (league != null) {
+                "Your ${league.displayName} record looks complete from my desk. Badges recorded: $badgeCount."
+            } else {
+                "Your active league record is missing its paperwork. Ask an admin if the record looks wrong."
+            }
+            openGymDialog(
+                player,
+                npc,
+                definition,
+                fallback,
+                "Professor Chowfan opened the active LEAGUE record screen. Explain current progress and mention that RETIRE RECORD is available only if the player wants to stop the active run. Do not sound like a normal greeting.",
+                "gym_chowfan_league_menu",
+                "league_record",
+                friendship.level,
+                leagueAvailable = true,
+                leagueCompassAvailable = !LeagueCompassFeature.hasInInventory(player),
+            )
         }
-        npc.startTalkingTo(player, 100)
-        NpcNetwork.openDialog(player, NpcFeature.dialogPayload(definition, npc, message, false, friendship.level, dialogMode = "league_chowfan", leagueAvailable = true))
     }
 
-    private fun startLeagueFromChowfan(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition) {
+    private fun startLeagueFromChowfan(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, leagueId: String) {
         val friendship = NpcStore.friendshipSnapshot(definition.id, player)
         val active = GymLeagueStore.activeLeague(player)
         if (active.isNotBlank()) {
             openChowfanDialog(player, npc, definition)
             return
         }
-        val league = GymLeagueConfig.league("kanto") ?: run {
-            NpcNetwork.openDialog(player, NpcFeature.dialogPayload(definition, npc, "Kanto paperwork is missing from the league desk.", false, friendship.level, closeOnly = true, closeLabel = "OKAY"))
+        val league = GymLeagueConfig.league(leagueId) ?: run {
+            NpcNetwork.openDialog(player, NpcFeature.dialogPayload(definition, npc, "That league paperwork is missing from the desk.", false, friendship.level, closeOnly = true, closeLabel = "OKAY"))
             return
         }
         GymLeagueStore.startLeague(player, league)
+        LeagueCompassFeature.updateFor(player)
         val first = league.firstEncounter()
-        val message = "Record opened. Your ${league.displayName} badge run starts with ${first?.displayName ?: "the first posted match"}. Keep your party under level ${first?.levelCap ?: "the posted cap"}."
+        val fallback = "Record opened. Your ${league.displayName} badge run starts with ${first?.let { GymLeagueText.encounterLabel(league, it) } ?: "the first posted match"}. Keep your party under level ${first?.levelCap ?: "the posted cap"}."
         SnackbarNetwork.send(player, SnackbarNotification.item("cobblemon:poke_ball", "LEAGUE RECORD OPEN", league.displayName, SnackbarType.SUCCESS, SnackbarSounds.REWARD))
+        GymLeagueNetwork.syncTo(player)
         NpcQuestService.syncTo(player)
-        NpcNetwork.openDialog(player, NpcFeature.dialogPayload(definition, npc, message, false, friendship.level, dialogMode = "league_chowfan", leagueAvailable = true))
+        LeagueCompassFeature.updateFor(player)
+        openGymDialog(
+            player,
+            npc,
+            definition,
+            fallback,
+            "Professor Chowfan just opened the player's ${league.displayName} record. Be excited, professor-like, and explain the first match without pretending Skylands is ${league.region}. Mention Arceus brought strong trainers here and the trainers will select lower-level Pokemon to match the posted cap.",
+            "gym_chowfan_league_start",
+            "league_record",
+            friendship.level,
+            leagueAvailable = true,
+        )
     }
+
+    private fun openRetireConfirmDialog(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition) {
+        val friendship = NpcStore.friendshipSnapshot(definition.id, player)
+        val league = GymLeagueConfig.league(GymLeagueStore.activeLeague(player))
+        val fallback = "Retiring your active ${league?.displayName ?: "league"} record will remove the active route from your tracker. Earned badges stay in your permanent record."
+        openGymDialog(
+            player,
+            npc,
+            definition,
+            fallback,
+            "Professor Chowfan is warning the player before retiring the active league record. Make it serious but not scary: active route stops, badges stay saved, confirm only if sure.",
+            "gym_chowfan_retire_warning",
+            "league_retire",
+            friendship.level,
+            leagueAvailable = true,
+        )
+    }
+
+    private fun requestCompassFromChowfan(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition) {
+        val friendship = NpcStore.friendshipSnapshot(definition.id, player)
+        val active = GymLeagueStore.activeLeague(player)
+        val fallback = when {
+            active.isBlank() -> "Open a league record first, then I can tune a compass to your next trainer."
+            LeagueCompassFeature.hasInInventory(player) -> "You are already carrying a League Compass. I will not stuff your pockets with duplicates."
+            else -> {
+                LeagueCompassFeature.giveTo(player)
+                "There. One League Compass, tuned to your active record. If the needle wanders, the next trainer is not posted in the stadium yet."
+            }
+        }
+        openGymDialog(
+            player,
+            npc,
+            definition,
+            fallback,
+            "Professor Chowfan is handling a League Compass request. Keep it short, professor-like, and explain that the compass points to the next posted trainer only when that trainer exists in the stadium.",
+            "gym_chowfan_compass",
+            if (active.isBlank()) "league_select" else "league_record",
+            friendship.level,
+            leagueAvailable = true,
+            leagueCompassAvailable = active.isNotBlank() && !LeagueCompassFeature.hasInInventory(player),
+        )
+    }
+
+    private fun retireLeagueFromChowfan(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition) {
+        val friendship = NpcStore.friendshipSnapshot(definition.id, player)
+        val retired = GymLeagueStore.retireActiveLeague(player)
+        val league = GymLeagueConfig.league(retired)
+        val fallback = if (retired.isBlank()) {
+            "No active record was open. Your badge archive is unchanged."
+        } else {
+            "Active ${league?.displayName ?: retired} record retired. Your earned badges stay in the archive."
+        }
+        SnackbarNetwork.send(player, SnackbarNotification.item("cobblemon:poke_ball", "LEAGUE RECORD RETIRED", league?.displayName ?: "No active record", SnackbarType.GENERIC, SnackbarSounds.GENERIC))
+        GymLeagueNetwork.syncTo(player)
+        NpcQuestService.syncTo(player)
+        LeagueCompassFeature.updateFor(player)
+        openGymDialog(
+            player,
+            npc,
+            definition,
+            fallback,
+            "Professor Chowfan has retired the active league route. Confirm that badges stayed archived and invite the player to choose another record later.",
+            "gym_chowfan_retired",
+            "league_select",
+            friendship.level,
+            leagueAvailable = true,
+        )
+    }
+
+    private fun selectableLeagues(): List<Pair<Int, GymLeagueDefinition>> =
+        GymLeagueConfig.all()
+            .sortedWith(compareBy<GymLeagueDefinition> { it.generation.takeIf { gen -> gen > 0 } ?: 999 }.thenBy { it.id })
+            .mapIndexed { index, league -> index to league }
 
     private fun openTrainerDialog(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, league: GymLeagueDefinition, trainer: GymTrainerDefinition) {
         val friendship = NpcStore.friendshipSnapshot(definition.id, player)
@@ -396,30 +554,35 @@ object GymLeagueFeature {
             else -> ""
         }
         val friendlyAvailable = attemptsLeft > 0
-        val message = when {
+        val fallback = when {
             activeLeague != league.id && attemptsLeft > 0 -> "FRIENDLY BATTLE is open. It will not touch your badge record. Attempts left before cooldown: $attemptsLeft."
             activeLeague != league.id -> "Friendly battle cooldown is active. Come back in ${formatCooldown(cooldownMs)}."
-            officialEncounter != null && !currentUnlocked -> "${officialEncounter.displayName} is next, but not yet. Meet me when the route opens. FRIENDLY BATTLE is open if you want practice."
-            officialEncounter != null && attemptsLeft > 0 -> "You're up for ${officialEncounter.displayName}. Level cap ${officialEncounter.levelCap}. Attempts left before cooldown: $attemptsLeft."
+            officialEncounter != null && !currentUnlocked -> "${GymLeagueText.encounterLabel(league, officialEncounter)} is next, but the stadium posting is not ready yet. FRIENDLY BATTLE is open if you want practice."
+            officialEncounter != null && attemptsLeft > 0 -> "You're up for ${GymLeagueText.encounterLabel(league, officialEncounter)}. Level cap ${officialEncounter.levelCap}. Attempts left before cooldown: $attemptsLeft."
             officialForTrainer -> "Battle cooldown is active. Come back in ${formatCooldown(cooldownMs)}."
-            current != null -> "Your next ${league.displayName} record match is ${current.displayName}. I can still do a friendly battle."
+            current != null -> "Your next ${league.displayName} record match is ${GymLeagueText.encounterLabel(league, current)}. I can still do a friendly battle."
             else -> "Your ${league.displayName} record looks complete from here."
         }
-        npc.startTalkingTo(player, 100)
-        NpcNetwork.openDialog(
+        val surface = when {
+            activeLeague != league.id -> "friendly battle offer"
+            officialEncounter != null && !currentUnlocked -> "official challenge delayed"
+            officialEncounter != null && attemptsLeft > 0 -> "official challenge ready"
+            officialForTrainer -> "trainer cooldown"
+            current != null -> "wrong trainer for current record"
+            else -> "league record complete"
+        }
+        openGymDialog(
             player,
-            NpcFeature.dialogPayload(
-                definition,
-                npc,
-                message,
-                false,
-                friendship.level,
-                dialogMode = "gym_trainer",
-                leagueAvailable = false,
-                challengeAvailable = challengeAvailable,
-                challengeDisabledReason = challengeDisabledReason,
-                friendlyBattleAvailable = friendlyAvailable,
-            ),
+            npc,
+            definition,
+            fallback,
+            "${trainer.name} opened trainer dialogue. Surface: $surface. Reply as ${trainer.name}, with concrete battle flavor and no UI wording. If naming a Pokemon, use only ${trainer.name}'s current battle team context, not another trainer's next-match team.",
+            "gym_trainer_open",
+            "gym_trainer",
+            friendship.level,
+            challengeAvailable = challengeAvailable,
+            challengeDisabledReason = challengeDisabledReason,
+            friendlyBattleAvailable = friendlyAvailable,
         )
     }
 
@@ -427,12 +590,22 @@ object GymLeagueFeature {
         val friendship = NpcStore.friendshipSnapshot(definition.id, player)
         val badges = GymLeagueStore.badges(player, league.id)
         val trainerBadge = trainer.badgeId.takeIf(String::isNotBlank)
-        val message = when {
+        val fallback = when {
             trainerBadge == null -> "${trainer.name} has no badge entry on this record. This is a league battle checkpoint."
             trainerBadge in badges -> "Record confirmed: ${trainerBadge.replace('_', ' ').uppercase()} is yours."
             else -> "Record missing: beat ${trainer.name} in your active ${league.displayName} sequence to earn ${trainerBadge.replace('_', ' ').uppercase()}."
         }
-        NpcNetwork.openDialog(player, NpcFeature.dialogPayload(definition, npc, message, false, friendship.level, dialogMode = "gym_trainer"))
+        openGymDialog(
+            player,
+            npc,
+            definition,
+            fallback,
+            "${trainer.name} is showing the player's league record/badge status. Use RECORD language, not badge-menu language.",
+            "gym_record_dialogue",
+            "gym_trainer",
+            friendship.level,
+            friendlyBattleAvailable = true,
+        )
     }
 
     private fun challengeTrainer(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, league: GymLeagueDefinition, trainer: GymTrainerDefinition, forceFriendly: Boolean) {
@@ -441,25 +614,108 @@ object GymLeagueFeature {
         val active = GymLeagueStore.activeLeague(player)
         val official = !forceFriendly && active == league.id
         val encounter = if (official) GymLeagueStore.nextPlayerEncounter(player, league) else league.sequence.firstOrNull { it.trainer == trainer.id }
-        fun fail(message: String) = NpcNetwork.openDialog(player, NpcFeature.dialogPayload(definition, npc, message, false, friendship.level, closeOnly = true, closeLabel = "OKAY"))
-        if (encounter == null) return fail(if (official) "Your ${league.displayName} record is already complete." else "${trainer.name} has no friendly team on file.")
-        if (official && encounter.trainer != trainer.id) return fail("Your next match is ${encounter.displayName}, not this one.")
-        if (official && !GymLeagueStore.isUnlocked(league.id, encounter.id, day)) return fail("${encounter.displayName} is not on today's bracket yet.")
+        fun fail(message: String, surface: String) = openGymDialog(
+            player,
+            npc,
+            definition,
+            message,
+            "${trainer.name} is blocking a Pokemon battle request. Reason: $surface. Reply in character, tell the player what changed or what to fix, and do not sound like a system message.",
+            "gym_challenge_blocked",
+            "gym_trainer",
+            friendship.level,
+            closeOnly = true,
+            closeLabel = "OKAY",
+            official = official,
+        )
+        if (encounter == null) return fail(if (official) "Your ${league.displayName} record is already complete." else "${trainer.name} has no friendly team on file.", "no encounter available")
+        if (official && encounter.trainer != trainer.id) return fail("Your next match is ${GymLeagueText.encounterLabel(league, encounter)}, not this one.", "wrong trainer")
+        if (official && !GymLeagueStore.isUnlocked(league.id, encounter.id, day)) return fail("${GymLeagueText.encounterLabel(league, encounter)} is not posted at the stadium yet.", "story delay")
         val maxAttempts = league.defaults.dailyAttemptsPerNpc
         val attempts = GymLeagueStore.attempts(player, trainer.id, maxAttempts)
-        if (attempts >= maxAttempts) return fail("${trainer.name} is on cooldown. Come back in ${formatCooldown(GymLeagueStore.attemptCooldownRemainingMs(player, trainer.id, maxAttempts))}.")
-        if (!GymBattleService.partyBattleReady(player)) return fail("Your party cannot battle right now. Heal at least one Pokemon first.")
+        if (attempts >= maxAttempts) return fail("${trainer.name} is on cooldown. Come back in ${formatCooldown(GymLeagueStore.attemptCooldownRemainingMs(player, trainer.id, maxAttempts))}.", "attempt cooldown")
+        if (!GymBattleService.partyBattleReady(player)) return fail("Your party cannot battle right now. Heal at least one Pokemon first.", "party cannot battle")
         if (official) GymBattleService.partyLevelViolation(player, encounter.levelCap)?.let { level ->
-            return fail("Level cap is ${encounter.levelCap}. One of your active party Pokemon is level $level.")
+            return fail("Level cap is ${encounter.levelCap}. One of your active party Pokemon is level $level.", "level cap violation")
         }
         GymLeagueStore.incrementAttempts(player, trainer.id, maxAttempts, league.defaults.attemptCooldownMinutes * 60_000L)
         if (official) recordMission(player, "gisketchs_chowkingdom_mod:gym_battle_attempted", league, encounter, trainer)
         val started = GymBattleService.startBattle(player, npc, league, encounter, trainer, official = official)
-        if (!started.started) return fail(started.message)
+        if (!started.started) return fail(started.message, "battle start failed")
         BattlepassNetwork.syncAllPlayers()
+        GymLeagueNetwork.syncTo(player)
         NpcQuestService.syncTo(player)
         val message = if (official) "Record battle started. Show me your badge run is real." else "Friendly battle started. No badge record pressure."
-        NpcNetwork.openDialog(player, NpcFeature.dialogPayload(definition, npc, message, false, friendship.level, closeOnly = true, closeLabel = "OKAY"))
+        openGymDialog(
+            player,
+            npc,
+            definition,
+            message,
+            "${trainer.name} just accepted a ${if (official) "league record" else "friendly practice"} battle. Give a short pre-battle line. If naming a Pokemon, use only ${trainer.name}'s current battle team context.",
+            if (official) "gym_challenge_started" else "gym_friendly_started",
+            "gym_trainer",
+            friendship.level,
+            closeOnly = true,
+            closeLabel = "OKAY",
+            official = official,
+        )
+    }
+
+    private fun openGymDialog(
+        player: ServerPlayer,
+        npc: ChowNpcEntity,
+        definition: NpcDefinition,
+        fallback: String,
+        prompt: String,
+        recordType: String,
+        dialogMode: String,
+        friendshipLevel: Int,
+        closeOnly: Boolean = false,
+        closeLabel: String = "BYE",
+        leagueAvailable: Boolean = false,
+        challengeAvailable: Boolean = false,
+        challengeDisabledReason: String = "",
+        friendlyBattleAvailable: Boolean = false,
+        leagueCompassAvailable: Boolean = false,
+        official: Boolean? = null,
+    ) {
+        val settings = NpcConfig.settings()
+        val llmEnabled = settings.llm.enabled && settings.llmMessageUsage.gymDialogue
+        val responseToken = if (llmEnabled) NpcDialogTokens.next() else 0L
+        npc.startTalkingTo(player, 100)
+        NpcNetwork.openDialog(
+            player,
+            NpcFeature.dialogPayload(
+                definition,
+                npc,
+                if (llmEnabled) "..." else fallback,
+                false,
+                friendshipLevel,
+                closeOnly = closeOnly,
+                closeLabel = closeLabel,
+                responseToken = responseToken,
+                dialogMode = dialogMode,
+                leagueAvailable = leagueAvailable,
+                challengeAvailable = challengeAvailable,
+                challengeDisabledReason = challengeDisabledReason,
+                friendlyBattleAvailable = friendlyBattleAvailable,
+                leagueCompassAvailable = leagueCompassAvailable,
+            ),
+        )
+        if (llmEnabled) {
+            val context = GymLlmContext.forEvent(player, definition.id, recordType, official)
+            NpcLlmService.event(
+                player,
+                npc,
+                definition,
+                fallback,
+                "$context\n\nCurrent gym dialogue instruction:\n$prompt",
+                inputLabel = "Gym dialogue",
+                npcRecordType = recordType,
+                responseToken = responseToken,
+            )
+        } else {
+            NpcStore.recordConversation(definition.id, player, definition.name, fallback, recordType)
+        }
     }
 
     private fun recordMission(player: ServerPlayer, eventId: String, league: GymLeagueDefinition, encounter: GymEncounterDefinition, trainer: GymTrainerDefinition) {
@@ -506,6 +762,7 @@ object GymLeagueFeature {
                 ),
         )
         .then(Commands.literal("status").executes(::statusSelf).then(Commands.argument("player", EntityArgument.player()).executes(::statusPlayer)))
+        .then(Commands.literal("compass").executes(LeagueCompassFeature::giveCommand).then(Commands.argument("player", EntityArgument.player()).requires { it.hasPermission(2) }.executes { context -> LeagueCompassFeature.giveCommand(context, EntityArgument.getPlayer(context, "player")) }))
         .then(
             Commands.literal("league")
                 .then(Commands.literal("start").requires { it.hasPermission(2) }
@@ -533,6 +790,7 @@ object GymLeagueFeature {
         GymLeagueConfig.load()
         GymLeagueStore.load()
         reconcileGymTrainers(context.source.server)
+        GymLeagueNetwork.syncAllPlayers()
         context.source.sendSuccess({ Component.literal("Reloaded ${GymLeagueConfig.all().size} gym league(s).") }, true)
         return GymLeagueConfig.all().size
     }
@@ -614,7 +872,9 @@ object GymLeagueFeature {
         val leagueId = StringArgumentType.getString(context, "league_id")
         val league = GymLeagueConfig.league(leagueId) ?: return fail(context, "Unknown league '$leagueId'.")
         if (!GymLeagueStore.startLeague(player, league)) return fail(context, "${player.gameProfile.name} already has active league ${GymLeagueStore.activeLeague(player)}.")
+        GymLeagueNetwork.syncTo(player)
         NpcQuestService.syncTo(player)
+        LeagueCompassFeature.updateFor(player)
         context.source.sendSuccess({ Component.literal("Started ${league.displayName} for ${player.gameProfile.name}.") }, true)
         return 1
     }
@@ -623,7 +883,9 @@ object GymLeagueFeature {
         val player = EntityArgument.getPlayer(context, "player")
         val leagueId = StringArgumentType.getString(context, "league_id")
         GymLeagueStore.resetLeague(player, leagueId)
+        GymLeagueNetwork.syncTo(player)
         NpcQuestService.syncTo(player)
+        LeagueCompassFeature.updateFor(player)
         context.source.sendSuccess({ Component.literal("Reset ${cleanId(leagueId)} for ${player.gameProfile.name}.") }, true)
         return 1
     }
@@ -634,6 +896,8 @@ object GymLeagueFeature {
         if (GymLeagueConfig.league(leagueId)?.encounter(encounterId) == null) return fail(context, "Unknown encounter '$encounterId'.")
         GymLeagueStore.unlock(leagueId, encounterId, NpcTime.day(context.source.server.overworld()))
         context.source.server.playerList.players.forEach { player -> checkChallengeAvailability(player) }
+        GymLeagueNetwork.syncAllPlayers()
+        context.source.server.playerList.players.forEach(LeagueCompassFeature::updateFor)
         context.source.sendSuccess({ Component.literal("Unlocked ${cleanId(encounterId)} in ${cleanId(leagueId)}.") }, true)
         return 1
     }
@@ -643,7 +907,9 @@ object GymLeagueFeature {
         val league = GymLeagueConfig.league(StringArgumentType.getString(context, "league_id")) ?: return fail(context, "Unknown league.")
         val encounter = league.encounter(StringArgumentType.getString(context, "encounter_id")) ?: return fail(context, "Unknown encounter.")
         GymLeagueStore.grantClear(player, league, encounter)
+        GymLeagueNetwork.syncTo(player)
         NpcQuestService.syncTo(player)
+        LeagueCompassFeature.updateFor(player)
         context.source.sendSuccess({ Component.literal("Granted ${encounter.id} to ${player.gameProfile.name}.") }, true)
         return 1
     }
@@ -661,7 +927,9 @@ object GymLeagueFeature {
         val player = EntityArgument.getPlayer(context, "player")
         val trainerId = StringArgumentType.getString(context, "trainer_id")
         GymLeagueStore.resetAttempts(player, trainerId)
+        GymLeagueNetwork.syncTo(player)
         NpcQuestService.syncTo(player)
+        LeagueCompassFeature.updateFor(player)
         context.source.sendSuccess({ Component.literal("Reset ${cleanId(trainerId)} attempts for ${player.gameProfile.name}.") }, true)
         return 1
     }
@@ -681,8 +949,9 @@ object GymLeagueFeature {
         GymLeagueStore.markAvailableEncounterAnnounced(player, league.id, encounter.id)
         SnackbarNetwork.send(
             player,
-            SnackbarNotification.item("cobblemon:poke_ball", "POKEMON CHALLENGE READY", "${trainer.name} is ready for your ${encounter.displayName} match.", SnackbarType.SUCCESS, SnackbarSounds.SUCCESS),
+            SnackbarNotification.item("cobblemon:poke_ball", "POKEMON CHALLENGE READY", "${trainer.name} is ready for your ${GymLeagueText.encounterLabel(league, encounter)} match.", SnackbarType.SUCCESS, SnackbarSounds.SUCCESS),
         )
+        GymLeagueNetwork.syncTo(player)
         NpcQuestService.syncTo(player)
     }
 

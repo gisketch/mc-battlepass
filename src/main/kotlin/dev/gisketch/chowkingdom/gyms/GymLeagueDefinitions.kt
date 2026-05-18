@@ -6,6 +6,10 @@ import java.util.Locale
 class GymLeagueDefinition(
     var id: String = "",
     @SerializedName("display_name") var displayName: String = "",
+    var generation: Int = 0,
+    var region: String = "",
+    var description: String = "",
+    var icon: String = "",
     @SerializedName("stadium_area") var stadiumArea: String = "main_stadium",
     @SerializedName("active_only") var activeOnly: Boolean = true,
     @SerializedName("starter_mode") var starterMode: String = "story_only",
@@ -17,6 +21,10 @@ class GymLeagueDefinition(
     fun normalized(fallbackId: String): GymLeagueDefinition = apply {
         id = cleanId(id.ifBlank { fallbackId })
         displayName = displayName.trim().ifBlank { id.replace('_', ' ').replaceFirstChar { it.titlecase(Locale.ROOT) } }
+        generation = generation.takeIf { it > 0 } ?: defaultGenerationFor(id)
+        region = region.trim().ifBlank { defaultRegionFor(id) }
+        description = description.trim().ifBlank { defaultDescriptionFor(displayName, region) }
+        icon = icon.trim().ifBlank { "textures/gui/icons/trophy.png" }
         stadiumArea = cleanId(stadiumArea.ifBlank { "main_stadium" })
         starterMode = cleanId(starterMode.ifBlank { "story_only" })
         chowfanNpcId = cleanId(chowfanNpcId.ifBlank { "chowfan" })
@@ -125,3 +133,20 @@ internal fun cleanEntityId(value: String): String {
     val clean = value.trim().lowercase(Locale.ROOT)
     return if (clean.contains(':')) clean else clean
 }
+
+private fun defaultGenerationFor(id: String): Int = when (cleanId(id)) {
+    "kanto" -> 1
+    "johto" -> 2
+    "hoenn" -> 3
+    else -> 0
+}
+
+private fun defaultRegionFor(id: String): String = when (cleanId(id)) {
+    "kanto" -> "Kanto"
+    "johto" -> "Johto"
+    "hoenn" -> "Hoenn"
+    else -> id.replace('_', ' ').replaceFirstChar { it.titlecase(Locale.ROOT) }
+}
+
+private fun defaultDescriptionFor(displayName: String, region: String): String =
+    "$displayName is an imported $region badge record hosted at the CKDM Skylands stadium."

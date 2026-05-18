@@ -7,6 +7,7 @@ import com.google.gson.JsonParser
 import dev.gisketch.chowkingdom.ChowKingdomMod
 import dev.gisketch.chowkingdom.bosses.BossEventsFeature
 import dev.gisketch.chowkingdom.discord.DiscordRelay
+import dev.gisketch.chowkingdom.gyms.GymLlmContext
 import dev.gisketch.chowkingdom.roles.RoleStore
 import dev.gisketch.chowkingdom.roles.RolesConfig
 import dev.gisketch.chowkingdom.roles.SereneSeasonSupport
@@ -180,7 +181,8 @@ object NpcLlmService {
         val session = joinConversationSession(player, definition.id)
         val rawPromptInput = addTalkTurn(session, player, message, responseToken)
         val bossContext = BossEventsFeature.bossTalkContextFor(player, definition.id)
-        val promptInput = if (bossContext.isBlank()) rawPromptInput else "$bossContext\n\n$rawPromptInput"
+        val gymContext = if (NpcConfig.settings().llmMessageUsage.gymDialogue) GymLlmContext.forTalk(player, definition.id) else ""
+        val promptInput = listOf(bossContext, gymContext, rawPromptInput).filter(String::isNotBlank).joinToString("\n\n")
         activeNpcRequests.remove(definition.id)?.let { request -> cancelledResponseTokens += request.responseToken }
         startTalkRequest(session, responseToken)
         nextAllowedAtMs[player.uuid] = now + settings.cooldownSeconds * 1000L
@@ -333,6 +335,8 @@ object NpcLlmService {
             Rules:
             - Stay in character as ${definition.name}.
             - You are not an assistant.
+            - The server/world is Chow Kingdom in the Skylands unless current context says otherwise.
+            - If you mention imported worlds, leagues, stories, or regions, treat them as histories, visitors, records, or traditions now hosted in Skylands.
             - Treat catchphrases as optional style references. Use them rarely, vary the wording, and do not repeat them every reply.
             - Reply in 1 to 3 short sentences.
             - Use plain ASCII only with letters, numbers, spaces, and basic punctuation.

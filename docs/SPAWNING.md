@@ -46,7 +46,7 @@ The base terrain values were copied from Sky Archipelago's built-in preset at `d
 
 For normal deployment, the mod-bundled `data/ckdm/dimension/sky_lands.json` defines `ckdm:sky_lands`; do not copy the standalone world datapack unless server testing proves a world-level override is needed. With Sky Archipelago `1.3.0`, prefer server-side tuning in `config/sky_archipelago-common.toml`, then restart and generate fresh chunks. Existing chunks will not reshape.
 
-CKDM adds optional Sky Lands seed compatibility in `config/gisketchs_chowkingdom_mod/compat/ckdm_sky_seed.toml`. The default blank `seed` keeps Sky Lands on the normal world seed. A numeric seed is parsed as a signed long; non-numeric text uses Java/Minecraft-style `String.hashCode()`. The seed affects new Sky Archipelago island layout and biome sampling through the Sky Lands generator path; existing generated chunks stay unchanged unless regenerated.
+CKDM adds optional Sky Lands seed compatibility in `config/gisketchs_chowkingdom_mod/compat/ckdm_sky_seed.toml`. The default blank `seed` keeps Sky Lands on the normal world seed. A numeric seed is parsed as a signed long; non-numeric text uses Java/Minecraft-style `String.hashCode()`. A nonblank seed replaces the `ckdm:sky_lands` Sky Archipelago generator `RandomState` for biome creation, terrain noise, surface, carvers, and height/column lookups, so tools like Chunky use the same Sky Lands-only seed during pregeneration. Existing generated chunks stay unchanged unless regenerated.
 
 ## Biome Mods
 
