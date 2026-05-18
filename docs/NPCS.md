@@ -87,6 +87,7 @@ Each NPC is one TOML file:
 - `chat`: World chat settings. `call_names` are names/nicknames that can address the NPC from Minecraft or Discord chat; `minecraft_chat` and `discord_chat` toggle those channels.
 - `gifts`: Gift ids/tags grouped by `loved`, `liked`, `disliked`, plus `daily_limit`, `reset_hour`, `llm_sentiment_prompt`, and reaction message pools for `loved`, `liked`, `disliked`, and `neutral`. Configured gift ids/tags decide friendship deterministically. If a player gives an unlisted item and gift LLM is enabled, the NPC asks the LLM for JSON `{ "message": "...", "gift_sentiment": "loved|liked|neutral|disliked" }`; invalid or failed sentiment falls back to `neutral`. `gifts.outgoing` configures NPC-to-player daily gifts with `enabled`, `radius`, `min_friendship_level`, `rare_friendship_level`, `follow_seconds`, `offer_messages`, `fallback_messages`, `llm_enabled`, `llm_prompt`, weighted `pool`, weighted `rare_pool`, and additive `extra_pool` / `extra_rare_pool` lists. Each pool entry has `item`, `qty`, and `weight`.
 - `missions`: NPC quest settings. `enabled`, `offer_radius`, `offer_balloon_messages`, and legacy/custom `pool` entries. Each mission has `id`, `category` (`task`, `timed`, `fetch`, `quiz`, or `food_chain`), `event`, `event_desc`, `quest_text`, `pass_id`, `xp`, optional `chowcoins`, `goal`, optional `time_window_seconds`, `fetch_item`, `fetch_count`, optional `filters`, `weight`, and optional message pools.
+- Global quest pace lives in `settings.toml` under `[quests]`. `max_daily_quests = 5` caps used NPC quest slots per reset period; active and completed quests both count.
 - `unique_quests`: Per-NPC quest template pools with the same shape as `generic_quests.toml`. These compile into `missions.pool` at reload time. Supported pools are `fetch`, `kill`, `timed`, `travel`, `craft`, `smelt`, `eat`, `quiz`, `catch_pokemon`, `quality_food_fetch`, `quality_crop_fetch`, and `food_chain_quest`.
 - `friendship_messages`: Optional per-NPC category message additions for `interact`, `gift`, `hurt`, `wake`, `greeting`, and `first_daily_chat`. Categories are `hatred`, `enemy`, `dislike`, `neutral`, `okay`, `good_friends`, and `best_friends`. Message pools resolve in order: built-in defaults, shared `friendship_messages.toml`, then NPC-specific `friendship_messages`. Each configured layer joins the inherited pool and is inserted twice, so local additions have roughly 2:1 weight against inherited generic lines.
 - `shop_messages`: Optional post-purchase message overrides with `single`, `normal`, and `bulk` buckets. Each bucket has the same friendship categories as `friendship_messages`. Supports `{player}`, `{npc}`, `{item}`, `{quantity}`, `{total}`, `{friendship_level}`, and `{friendship_points}`.
@@ -154,7 +155,7 @@ NPC quest behavior:
 - Per-NPC template quests live under `[unique_quests]` in that NPC's TOML and are added on top of generic and legacy `missions.pool` entries.
 - Quests are offered only while that NPC's schedule activity is `meetup`. Quest reset uses the earliest configured `meetup` start hour, so keep all NPCs on the same meetup window when they should gather together.
 - New quest offers require the NPC to have a valid home bed and an assigned workplace. Active quest rewards can still be claimed if the NPC later loses either assignment.
-- A player can accept at most 4 active NPC quests per reset period.
+- A player can use at most `quests.max_daily_quests` NPC quest slots per reset period, default 5. Active quests plus completed NPC ids count toward this cap, so completing one quest does not free another same-day slot.
 - Declining an NPC quest suppresses that NPC's offer for 1 in-game hour; the same daily offer remains until the next meetup reset.
 - Task quests progress from existing battlepass mission signals such as `minecraft:monster_killed` or `cobblemon:pokemon_caught`.
 - Timed quests progress from matching battlepass mission signals inside a rolling `time_window_seconds` window. Each matching signal adds one timestamp. Old timestamps fall out of the window until the goal is reached; once reached, the quest is locked complete for claim.
@@ -234,8 +235,8 @@ pool = [
 
 [quiz]
 pool = [
-  { quiz_topic = "town lore", xp = 80, chowcoins = 25, weight = 4, quest_text = "Answer a quick town lore question." },
-  { quiz_topic = "recent events", quiz_prompt = "Ask about one concrete recent global event, if any exists.", xp = 90, chowcoins = 35, weight = 4, quest_text = "Answer a question about what has been happening lately." },
+  { quiz_topic = "town lore", xp = 45, chowcoins = 25, weight = 4, quest_text = "Answer a quick town lore question." },
+  { quiz_topic = "recent events", quiz_prompt = "Ask about one concrete recent global event, if any exists.", xp = 50, chowcoins = 35, weight = 4, quest_text = "Answer a question about what has been happening lately." },
 ]
 
 [catch_pokemon]

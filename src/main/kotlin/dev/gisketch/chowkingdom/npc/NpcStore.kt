@@ -354,6 +354,14 @@ object NpcStore {
         return NpcFriendshipSnapshot.from(friendship.points)
     }
 
+    fun friendshipSnapshotsFor(player: ServerPlayer): Map<String, NpcFriendshipSnapshot> {
+        if (!loaded) load()
+        return data.npcs.mapNotNull { (npcId, state) ->
+            val friendship = state.friendships[player.stringUUID] ?: return@mapNotNull null
+            npcId to NpcFriendshipSnapshot.from(friendship.points)
+        }.toMap()
+    }
+
     fun adjustFriendship(npcId: String, player: ServerPlayer, delta: Int, reason: String): NpcFriendshipSnapshot {
         val state = state(npcId)
         val friendship = state.friendships.getOrPut(player.stringUUID) { NpcFriendshipState() }
@@ -361,7 +369,9 @@ object NpcStore {
         friendship.lastChangedAt = System.currentTimeMillis()
         friendship.lastReason = reason
         save()
-        return NpcFriendshipSnapshot.from(friendship.points)
+        val snapshot = NpcFriendshipSnapshot.from(friendship.points)
+        NpcMissionHooks.refreshFriendshipProgress(player)
+        return snapshot
     }
 
     fun effectiveFriendshipDelta(player: ServerPlayer, delta: Int): Int {
@@ -377,7 +387,9 @@ object NpcStore {
         friendship.lastChangedAt = System.currentTimeMillis()
         friendship.lastReason = reason
         save()
-        return NpcFriendshipSnapshot.from(friendship.points)
+        val snapshot = NpcFriendshipSnapshot.from(friendship.points)
+        NpcMissionHooks.refreshFriendshipProgress(player)
+        return snapshot
     }
 
     fun recordGlobalEvent(type: String, text: String) {

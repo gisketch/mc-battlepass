@@ -31,6 +31,7 @@ import dev.gisketch.chowkingdom.cosmetics.PokeClothingCosmeticsFeature
 import dev.gisketch.chowkingdom.debug.ExtractCommands
 import dev.gisketch.chowkingdom.discord.DiscordFeature
 import dev.gisketch.chowkingdom.discord.DiscordScreenshotClient
+import dev.gisketch.chowkingdom.exploration.ExplorationDiscoveryFeature
 import dev.gisketch.chowkingdom.gyms.GymLeagueFeature
 import dev.gisketch.chowkingdom.gyms.GymLeagueNetwork
 import dev.gisketch.chowkingdom.gyms.GymTransitionClient
@@ -92,6 +93,7 @@ class ChowKingdomMod(modBus: IEventBus, container: ModContainer) {
         GymLeagueNetwork.register(modBus)
         LeagueCompassFeature.register(modBus)
         GymLeagueFeature.register()
+        ExplorationDiscoveryFeature.register()
         ExtractCommands.register()
         WalletsFeature.register(modBus)
         ShippingBinFeature.register(modBus)

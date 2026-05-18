@@ -139,44 +139,48 @@ These are implemented in the gym league feature and should be added to autocompl
 | Quality food/crop fetch | `[quality_food_fetch]`, `[quality_crop_fetch]` | Quality-tier commissions |
 | Catch Pokemon | `[catch_pokemon]` | Chowfan/gym/research quests |
 
-## Hooks To Create Or Consider
+## Hooks Created For Next Curation Pass
 
-Priority labels:
+These hooks are code-backed before the next mission configuration pass.
 
-- P0: unlocks immediate planned mission variety.
-- P1: strong next layer after config pass.
-- P2: seasonal/event polish.
+| Hook | Amount | Useful Filters | Best Use |
+|---|---:|---|---|
+| `gisketchs_chowkingdom_mod:npc_friendship_level_reached` | high-water threshold count | `npc`, `level`, `friendship.level`, `friendship.category` | Social permanent missions and friendship ladders |
+| `gisketchs_chowkingdom_mod:npc_quest_completed` | +1 per NPC quest completion | `npc`, `quest_id`, `category`, `pass_id` | Weekly social goals and NPC loyalty tracks |
+| `gisketchs_chowkingdom_mod:npc_quiz_answered_correctly` | +1 per correct quiz | `npc`, `quest_id`, `quiz.topic`, `pass_id` | NPC quiz tracks |
+| `gisketchs_chowkingdom_mod:boss_first_clear` | +1 for first-clear contributors only | `boss`, `entity`, `order`, `dimension` | Permanent boss clear tracks |
+| `gisketchs_chowkingdom_mod:biome_discovered` | +1/current count per biome per dimension | `biome`, `biome.namespace`, `dimension` | Explorer weeklies and permanent exploration |
+| `gisketchs_chowkingdom_mod:structure_discovered` | +1/current count per structure instance | `structure`, `structure.namespace`, `structure.x`, `structure.z`, `dimension` | Explorer weeklies and structure milestones |
+| `gisketchs_chowkingdom_mod:gym_leader_defeated` | +1 per first official gym leader clear | `league`, `encounter`, `trainer`, `badge` | Permanent gym leader tracks |
+| `gisketchs_chowkingdom_mod:league_completed` | +1 per first league route completion | `league`, `generation`, `region` | Permanent league circuit clears |
+| `gisketchs_chowkingdom_mod:teammate_revived` | +1 per real reviver | `target`, `target.name`, `reviver_count`, `dimension` | Social helper missions |
 
-| Priority | Hook | Needed For | Code Owner Area | Notes |
-|---|---|---|---|---|
-| P0 | `gisketchs_chowkingdom_mod:npc_quest_completed` | NPC loyalty tracks, weeklies like complete 5 NPC quests | `npc` + `battlepass` | Attributes: `npc`, `quest_id`, `category`, `pass_id` |
-| P0 | `gisketchs_chowkingdom_mod:npc_friendship_level_reached` | Social permanent missions | `npc` + friendship store | Absolute or threshold signal; attrs `npc`, `level` |
-| P0 | `gisketchs_chowkingdom_mod:boss_participated` | Weekly boss participation | `bosses` | Attribute `boss`, `gate`, `role=helper|first_clear_eligible` |
-| P0 | `gisketchs_chowkingdom_mod:boss_first_clear` | Permanent boss clear tracks | `bosses` | Fire when first-clear credit is granted |
-| P0 | `gisketchs_chowkingdom_mod:vendor_contract_completed` | Merchant weeklies/permanent tracks | `shops` | If contracts do not have explicit completion, define accepted/redeemed semantics first |
-| P0 | `minecraft:block_harvested` | Non-crop block/tag harvest quests | `battlepass` vanilla integration | Add filters `block`, `block.namespace`, `tag`, `dimension` |
-| P1 | `gisketchs_chowkingdom_mod:explorer_note_collected` | Explorer NPC, exploration permanent | future `exploration` | Requires item/state first |
-| P1 | `gisketchs_chowkingdom_mod:dungeon_seal_collected` | Dungeon turn-ins and weekly dungeon goals | future `exploration` | Controlled loot replacement path |
-| P1 | `gisketchs_chowkingdom_mod:sky_shard_collected` | Sky Lands identity | future `exploration` | Great for Sky-specific permanent tracks |
-| P1 | `gisketchs_chowkingdom_mod:boss_proof_collected` | Boss access/reward proof | `bosses` or `exploration` | Avoid raw boss loot economy |
-| P1 | `gisketchs_chowkingdom_mod:ancient_sigil_collected` | Rare exploration/gym/boss gates | future `exploration` | Late/prestige track |
-| P1 | `gisketchs_chowkingdom_mod:structure_discovered` | Explorer weeklies | future `exploration` | Attributes: `structure`, `dimension`, `danger_band` |
-| P1 | `gisketchs_chowkingdom_mod:biome_discovered` | Explorer/map tasks | future `exploration` | Needs anti-spam unique discovery state |
-| P1 | `gisketchs_chowkingdom_mod:danger_band_entered` | Overworld/Sky survival onboarding | future `scaling` | Pair with snackbar |
-| P1 | `gisketchs_chowkingdom_mod:league_completed` | Permanent gym circuit clear | `gyms` | Current badge hooks cover most needs; league complete is cleaner |
-| P1 | `gisketchs_chowkingdom_mod:legendary_event_participated` | Legendary event weeklies | future `pokemon_events` | Avoid catch-grind incentives |
-| P1 | `gisketchs_chowkingdom_mod:legendary_catch_right_claimed` | Controlled legendary access | future `pokemon_events` | Not the same as actual catch |
-| P1 | `gisketchs_chowkingdom_mod:legendary_event_caught` | Permanent memory/prestige | future `pokemon_events` | Fire only from controlled event, not natural catches |
-| P1 | `gisketchs_chowkingdom_mod:raid_den_cleared` | Raid night/event weeklies | future `pokemon_events` | Attributes: tier, species/category |
-| P2 | `gisketchs_chowkingdom_mod:fish_derby_score` | Fishing Derby | future `events` | Score should be capped per event window |
-| P2 | `gisketchs_chowkingdom_mod:cooking_festival_score` | Cooking Festival | future `events` | Use requested meals and quality bonuses |
-| P2 | `gisketchs_chowkingdom_mod:market_day_trade` | Market Day | `shops` or future `events` | Attributes seller/buyer/shop type |
-| P2 | `gisketchs_chowkingdom_mod:pokemon_tournament_participated` | Tournament rewards | future `events`/RCT | Needs tournament module |
-| P2 | `gisketchs_chowkingdom_mod:pokemon_tournament_won` | Tournament prestige | future `events`/RCT | Use titles/trophies over coins |
-| P2 | `gisketchs_chowkingdom_mod:pvp_tournament_participated` | PvP event | future `events` | Needs rules/arena first |
-| P2 | `gisketchs_chowkingdom_mod:pvp_tournament_won` | PvP prestige | future `events` | Avoid gear power rewards |
-| P2 | `gisketchs_chowkingdom_mod:revive_teammate` | Social helper rewards | `revive` | Tiny helper XP only |
-| P2 | `gisketchs_chowkingdom_mod:player_trade_completed` | Social economy missions | `trading` | Attribute value if Chowcoin offer involved |
+Boss participation is intentionally excluded for now. Twice in one boss should not count, and helper reward semantics need a separate conversation.
+
+## Needs More Consideration And Conversation
+
+These are not part of the current hook batch.
+
+| Hook | Needed For | Owner Area | Reason To Defer |
+|---|---|---|---|
+| `gisketchs_chowkingdom_mod:vendor_contract_completed` | Merchant weeklies/permanent tracks | `shops` | Define accepted/redeemed/completed contract semantics first |
+| `minecraft:block_harvested` | Non-crop block/tag harvest quests | `battlepass` vanilla integration | Needs block/tag/dimension filter design |
+| `gisketchs_chowkingdom_mod:explorer_note_collected` | Explorer NPC, exploration permanent | future `exploration` | Requires item/state first |
+| `gisketchs_chowkingdom_mod:dungeon_seal_collected` | Dungeon turn-ins and weekly dungeon goals | future `exploration` | Needs controlled loot replacement path |
+| `gisketchs_chowkingdom_mod:boss_proof_collected` | Boss access/reward proof | `bosses` or `exploration` | Avoid raw boss loot economy |
+| `gisketchs_chowkingdom_mod:ancient_sigil_collected` | Rare exploration/gym/boss gates | future `exploration` | Late/prestige policy needed |
+| `gisketchs_chowkingdom_mod:sky_shard_collected` | Sky Lands identity | future `exploration` | Needs Sky-specific reward policy |
+| `gisketchs_chowkingdom_mod:legendary_catch_right_claimed` | Controlled legendary access | future `pokemon_events` | Not the same as actual catch |
+| `gisketchs_chowkingdom_mod:legendary_event_caught` | Permanent memory/prestige | future `pokemon_events` | Fire only from controlled event, not natural catches |
+| `gisketchs_chowkingdom_mod:raid_den_cleared` | Raid night/event weeklies | future `pokemon_events` | Needs raid module and tier/species attributes |
+| `gisketchs_chowkingdom_mod:fish_derby_score` | Fishing Derby | future `events` | Score should be capped per event window |
+| `gisketchs_chowkingdom_mod:cooking_festival_score` | Cooking Festival | future `events` | Needs requested meals and quality bonuses |
+| `gisketchs_chowkingdom_mod:market_day_trade` | Market Day | `shops` or future `events` | Needs seller/buyer/shop type semantics |
+| `gisketchs_chowkingdom_mod:pokemon_tournament_participated` | Tournament rewards | future `events`/RCT | Needs tournament module |
+| `gisketchs_chowkingdom_mod:pokemon_tournament_won` | Tournament prestige | future `events`/RCT | Use titles/trophies over coins |
+| `gisketchs_chowkingdom_mod:pvp_tournament_participated` | PvP event | future `events` | Needs rules/arena first |
+| `gisketchs_chowkingdom_mod:pvp_tournament_won` | PvP prestige | future `events` | Avoid gear power rewards |
+| `gisketchs_chowkingdom_mod:player_trade_completed` | Social economy missions | `trading` | Needs Chowcoin offer/value semantics |
 
 ## Quiz Curation
 
@@ -215,18 +219,18 @@ Chowcoin rewards should be curated by scarcity and repeatability, not just diffi
 
 ### NPC Quest Chowcoin Bands
 
-NPC quests reset often, so they should beat shipping for targeted requests but not replace the economy.
+NPC quests reset by the NPC quest period, currently tied to the earliest meetup start hour. Players have 5 used NPC quest slots per reset period by default; active plus completed quests both count, so finishing one does not free a same-day slot. NPC quests should beat shipping for targeted requests but not replace the economy or weekly/permanent mission pacing.
 
 | Band | Example | Coins | XP | Income Tier |
 |---|---|---:|---:|---|
-| Tiny flavor | quiz, eat food, bring common item | 25-60 | 40-80 | Early |
-| Small errand | bring 6 bread, craft 32 torches, trade 5 times | 60-120 | 70-120 | Early |
-| Normal commission | catch 5 fish, harvest 32 crops, cook 4 meals | 120-220 | 100-180 | Early/mid |
-| Medium themed | 8 quality crops, 6 gold-quality foods, 10 type catches | 220-400 | 150-250 | Mid |
-| Hard/rare NPC | diamond-quality meal, Nether item, rare Pokemon/category task | 400-700 | 220-350 | Mid/late |
+| Tiny flavor | quiz, eat food, bring common item | 20-60 | 35-60 | Early |
+| Small errand | bring 6 bread, craft 32 torches, travel route | 25-120 | 50-70 | Early |
+| Normal commission | easy combat, catch Pokemon, cook meal | 50-220 | 70-90 | Early/mid |
+| Medium themed | quality crop/food, harder combat, special prep | 75-400 | 90-120 | Mid |
+| Hard/rare NPC | diamond-quality meal, Nether item, rare Pokemon/category task | 100-700 | 120-150 | Mid/late |
 | Story gate | class trial, gym prep chain, one-time NPC arc step | 700-1500 | 300-700 | Late/limited |
 
-Session fit: an early player completing 3-5 normal NPC quests should land near 300-800 coins before shipping. A mid player doing a themed chain can reach 1,000-3,000 with shipping and shops still mattering.
+Session fit: 5 NPC quests should usually award about 300-400 battlepass XP and modest coins. With the 150-minute server day cycle, a long 6-hour session can usually fit 2-3 reset periods, so direct NPC quest XP should stay near 700-1,050 XP instead of replacing weekly or permanent goals.
 
 ### Weekly Mission Reward Bands
 
@@ -236,7 +240,7 @@ Weekly missions should mostly award battlepass XP. Use Chowcoins only for limite
 |---|---|---:|---:|
 | Normal cozy/combat | 384 crops, 30 fish, 100 mobs, 10k travel | 0-200 | 200-300 |
 | Hard weekly | 64 gold crops, 25k-50k shipped value, 16 pot meals | 200-500 | 300-500 |
-| Social/server weekly | complete 5 NPC quests, trade 20 times, participate in boss | 300-800 | 350-600 |
+| Social/server weekly | complete 10 NPC quests, answer 5 quizzes, trade 20 times | 300-800 | 250-400 |
 | Rare/special weekly | fishing derby placement, cooking festival, raid night | 500-1500 | 600-900 |
 
 Weekly coin cap guidance: a normal week should not add more than about 1,500-3,000 coins per active player unless it is a scheduled event with sinks.
@@ -262,13 +266,12 @@ Use now:
 
 - Add unique quizzes to every NPC.
 - Expand `generic_quests.toml` pools by theme: chef, fisher, botanist, merchant, explorer, Cobblemon.
+- Use NPC quest completion, correct quiz, and friendship level hooks for weekly/permanent social tracks; avoid daily repeatable battlepass missions from these hooks.
 - Use existing item/craft/smelt/eat/travel/catch/quality/food-chain shapes before adding code.
 - Fix NPCs with no mission pool or only thin pools.
 
 Needs code first:
 
-- Friendship level quests.
-- NPC quest completion tracks.
 - NPC request board aggregation.
 - Vendor contract completion missions.
 
@@ -278,12 +281,11 @@ Use now:
 
 - Rotate medium goals across farming, fishing, cooking, shipping, travel, combat, Cobblemon, gyms, shops.
 - Use `rotation_group` aggressively so one week cannot roll five similar Pokemon or combat missions.
-- Add gym hooks to pass autocomplete/docs if admins will configure them manually.
+- Use NPC quest completion, correct quiz, boss first clear, exploration discovery, gym leader, league completion, and teammate revive hooks for social/explorer/combat variety.
+- Prefer `npc_quest_completed` weekly goals around 10 completions for 300-400 XP and `npc_quiz_answered_correctly` goals around 5 correct answers for 200-300 XP.
 
 Needs code first:
 
-- Boss participation/first-clear weeklies.
-- Social friendship weeklies.
 - Explorer item collection weeklies.
 - Event-scored fishing/cooking/market weeks.
 
@@ -291,33 +293,28 @@ Needs code first:
 
 Use now:
 
-- Farming, fishing, cooking, shipping value, shop value, travel, Pokedex scan/catch, Pokemon friendship, class combat, gym badge tracks.
+- Farming, fishing, cooking, shipping value, shop value, travel, Pokedex scan/catch, Pokemon friendship, NPC friendship, class combat, boss first clears, exploration discovery, gym badge/leader, and league completion tracks.
 - Keep goals broad with 3-6 milestones.
 
 Needs code first:
 
-- NPC friendship ladders.
-- Boss first-clear/helper ladders.
 - Exploration collection ladders.
 - Legendary event memory tracks.
 - Tournament participation/win tracks.
 
 ## Code Work Backlog
 
-1. Add missing current-doc coverage for gym hooks in `PASS_EVENTS.md` and autocomplete if desired.
-2. Add NPC quest completion signal with useful attributes.
-3. Add NPC friendship threshold signal.
-4. Add boss participation and first-clear battlepass signals.
-5. Add `minecraft:block_harvested` with block/tag filters.
-6. Add vendor contract completion signal.
-7. Add exploration token items/signals: Explorer Notes, Dungeon Seals, Sky Shards.
-8. Add legendary event signals after legendary event policy is settled.
-9. Add event calendar/scoring hooks for fishing, cooking, market, tournaments.
+1. Add `minecraft:block_harvested` with block/tag filters after vanilla harvest semantics are settled.
+2. Add vendor contract completion signal after accepted/redeemed/completed semantics are settled.
+3. Add exploration token items/signals: Explorer Notes, Dungeon Seals, Sky Shards.
+4. Add legendary event signals after legendary event policy is settled.
+5. Add event calendar/scoring hooks for fishing, cooking, market, tournaments.
+6. Revisit boss helper/participation rewards after first-clear curation shows whether they are needed.
 
 ## Configuration Work Backlog
 
 1. Give every major NPC 3 unique quizzes.
-2. Normalize NPC quest reward bands to this doc.
+2. Keep NPC direct quest rewards near a 70 XP average under the 5-slot reset cap.
 3. Add themed NPC generic pools: chef, fisher, botanist, merchant, explorer, Cobblemon, class prep.
 4. Add missing or thin quest pools for Geralt, Huntress Wizard, Marin, and new gym/trainer NPCs if they should offer daily quests.
 5. Rebuild weekly pools around medium goals and rotation groups.

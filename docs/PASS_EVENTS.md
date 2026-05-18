@@ -28,7 +28,7 @@ Progressive event:
 { "id": "weekly_ship_value", "event": "gisketchs_chowkingdom_mod:shipping_bin_value_sold", "type": "progressive", "event_desc": "Ship {goal} Chowcoins Worth", "progress": 0, "progress_goals": [50000], "progress_xp": [350] }
 ```
 
-Progressive events work in permanent and weekly pools. Weekly progressive missions reset by their rotating period. NPC task quests can also reference these event ids and reset daily at in-game 15:00. NPC timed quests use the same event ids, but count only matching signals inside `time_window_seconds`.
+Progressive events work in permanent and weekly pools. Weekly progressive missions reset by their rotating period. NPC task quests can also reference these event ids and reset by the NPC quest period, currently the earliest configured meetup start hour. NPC timed quests use the same event ids, but count only matching signals inside `time_window_seconds`.
 
 Daily/weekly randomization chooses one mission per rotation family before filling a pool. For example, all `cobblemon:catch_*` variants share one catch family, so one weekly roll cannot become five catch-type missions. Auto families cover Cobblemon catch, send-out, max-friendship, friendship, and befriend variants; Quality Food harvest/cook/eat variants; shipping-bin quality-food variants; shipping value missions; and Farmer's Delight cutting-board missions.
 
@@ -261,6 +261,41 @@ Good shop quest ideas:
 - Buy 10,000 chowcoins worth from player shops.
 - Buy 100,000 chowcoins worth as a permanent market milestone.
 
+## CKDM Social, Boss, Exploration, And Gym Events
+
+Implemented now:
+
+- `gisketchs_chowkingdom_mod:npc_friendship_level_reached`: high-water NPC friendship threshold count. A friendship level 5 NPC emits threshold signals for levels 2, 3, 4, and 5, so `filters.level = "5"` counts NPCs that reached level 5 or higher. Filter with `npc`, `level`, `friendship.level`, or `friendship.category`.
+- `gisketchs_chowkingdom_mod:npc_quest_completed`: +1 when a player completes any NPC quest. Filter with `npc`, `quest_id`, `category`, or `pass_id`. Use for weekly/permanent social tracks, not daily repeatable battlepass missions.
+- `gisketchs_chowkingdom_mod:npc_quiz_answered_correctly`: +1 when a player answers an NPC quiz correctly. Filter with `npc`, `quest_id`, `quiz.topic`, or `pass_id`. Use for weekly/permanent quiz tracks.
+- `gisketchs_chowkingdom_mod:boss_first_clear`: +1 for each credited contributor when a configured boss contract is accepted as cleared for the first time. Filter with `boss`, `entity`, `order`, or `dimension`.
+- `gisketchs_chowkingdom_mod:biome_discovered`: +1/current count for each biome first entered by a player per dimension. Filter with `biome`, `biome.namespace`, or `dimension`.
+- `gisketchs_chowkingdom_mod:structure_discovered`: +1/current count for each structure instance first entered by a player. Filter with `structure`, `structure.namespace`, `structure.x`, `structure.z`, or `dimension`.
+- `gisketchs_chowkingdom_mod:gym_battle_attempted`: +1 per official gym attempt. Filter with `league`, `encounter`, `trainer`, `kind`, or `badge`.
+- `gisketchs_chowkingdom_mod:gym_battle_won`: +1 per official gym win. Same filters as gym attempts.
+- `gisketchs_chowkingdom_mod:gym_badge_earned`: +1 per first badge clear. Same filters as gym attempts.
+- `gisketchs_chowkingdom_mod:gym_leader_defeated`: +1 per first official gym leader clear. Filter with `league`, `encounter`, `trainer`, or `badge`.
+- `gisketchs_chowkingdom_mod:league_completed`: +1 when a player first completes a league route. Filter with `league`, `generation`, or `region`.
+- `gisketchs_chowkingdom_mod:teammate_revived`: +1 for each real reviver when a player revive completes. The revived target does not get this signal. Filter with `target`, `target.name`, `reviver_count`, or `dimension`.
+
+Examples:
+
+```json
+{ "id": "weekly_npc_quests", "event": "gisketchs_chowkingdom_mod:npc_quest_completed", "type": "progressive", "event_desc": "Complete {goal} NPC Quests", "progress_goals": [10], "progress_xp": [350] }
+```
+
+```json
+{ "id": "permanent_friend_level_5", "event": "gisketchs_chowkingdom_mod:npc_friendship_level_reached", "type": "progressive", "event_desc": "Reach Friendship Level 5 With {goal} NPCs", "progress_goals": [3, 8, 15], "progress_xp": [300, 900, 1800], "filters": { "level": "5" } }
+```
+
+```json
+{ "id": "weekly_explore_biomes", "event": "gisketchs_chowkingdom_mod:biome_discovered", "type": "progressive", "event_desc": "Discover {goal} New Biomes", "progress_goals": [5], "progress_xp": [300] }
+```
+
+```json
+{ "id": "permanent_kanto_clear", "event": "gisketchs_chowkingdom_mod:league_completed", "type": "progressive", "event_desc": "Complete the Kanto League", "progress_goals": [1], "progress_xp": [2000], "filters": { "league": "kanto" } }
+```
+
 ## Farmer's Delight Events
 
 Implemented now through no-hard-dependency hooks:
@@ -312,6 +347,12 @@ Battlepass mission rows choose an icon from the event id. If the target mod item
 | `quality_food:*quality_food_eaten*`, `farmersdelight:meal_eaten` | `minecraft:bowl` |
 | `quality_food:*quality_crop*`, `farmersdelight:wild_crop_harvested` | `minecraft:wheat` |
 | `gisketchs_chowkingdom_mod:*shipping_bin*` | `gisketchs_chowkingdom_mod:shipping_bin` |
+| `gisketchs_chowkingdom_mod:*npc_friendship*` | `minecraft:heart_of_the_sea` |
+| `gisketchs_chowkingdom_mod:*npc_quest*`, `gisketchs_chowkingdom_mod:*npc_quiz*` | `minecraft:paper` |
+| `gisketchs_chowkingdom_mod:boss_first_clear` | `minecraft:wither_skeleton_skull` |
+| `gisketchs_chowkingdom_mod:*discovered` | `minecraft:filled_map` |
+| `gisketchs_chowkingdom_mod:gym_*`, `gisketchs_chowkingdom_mod:league_completed` | `cobblemon:poke_ball` |
+| `gisketchs_chowkingdom_mod:teammate_revived` | `minecraft:golden_apple` |
 | `farmersdelight:*cutting_board*` | `farmersdelight:cutting_board` |
 | `farmersdelight:*knife*` | `minecraft:iron_sword` |
 | `farmersdelight:*feast*` | `minecraft:cake` |

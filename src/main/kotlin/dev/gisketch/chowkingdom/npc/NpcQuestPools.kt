@@ -55,89 +55,89 @@ class NpcQuestPoolsDefinition(
         fun defaults(): NpcQuestPoolsDefinition = NpcQuestPoolsDefinition(
             fetch = NpcQuestTemplatePoolDefinition(
                 pool = mutableListOf(
-                    NpcQuestTemplateEntryDefinition(item = "minecraft:apple", qty = 8, xp = 70, chowcoins = 25, weight = 10, questText = "Bring fresh apples for town supplies."),
-                    NpcQuestTemplateEntryDefinition(item = "minecraft:bread", qty = 6, xp = 70, chowcoins = 25, weight = 10, questText = "Bring bread for the shared pantry."),
-                    NpcQuestTemplateEntryDefinition(item = "minecraft:iron_ingot", qty = 6, xp = 90, chowcoins = 40, weight = 6, questText = "Bring iron for repairs around town."),
-                    NpcQuestTemplateEntryDefinition(item = "minecraft:ender_pearl", qty = 2, xp = 130, chowcoins = 75, weight = 2, questText = "Bring ender pearls for risky field work."),
+                    NpcQuestTemplateEntryDefinition(item = "minecraft:apple", qty = 8, xp = 50, chowcoins = 25, weight = 10, questText = "Bring fresh apples for town supplies."),
+                    NpcQuestTemplateEntryDefinition(item = "minecraft:bread", qty = 6, xp = 50, chowcoins = 25, weight = 10, questText = "Bring bread for the shared pantry."),
+                    NpcQuestTemplateEntryDefinition(item = "minecraft:iron_ingot", qty = 6, xp = 60, chowcoins = 40, weight = 6, questText = "Bring iron for repairs around town."),
+                    NpcQuestTemplateEntryDefinition(item = "minecraft:ender_pearl", qty = 2, xp = 120, chowcoins = 75, weight = 2, questText = "Bring ender pearls for risky field work."),
                 ),
             ),
             timed = NpcKillQuestPoolsDefinition(
                 easyMobs = NpcQuestTemplatePoolDefinition(
                     pool = mutableListOf(
-                        NpcQuestTemplateEntryDefinition(entity = "minecraft:zombie", qty = 4, timeWindowSeconds = 25, dimension = "minecraft:overworld", xp = 100, chowcoins = 50, weight = 10, questText = "Thin out a fast wave of zombies before they wander into town."),
-                        NpcQuestTemplateEntryDefinition(entity = "minecraft:skeleton", qty = 4, timeWindowSeconds = 25, dimension = "minecraft:overworld", xp = 100, chowcoins = 50, weight = 10, questText = "Break a skeleton line before it can regroup."),
-                        NpcQuestTemplateEntryDefinition(entity = "minecraft:spider", qty = 3, timeWindowSeconds = 20, dimension = "minecraft:overworld", xp = 100, chowcoins = 50, weight = 8, questText = "Clear a quick spider rush from the paths before nightfall."),
+                        NpcQuestTemplateEntryDefinition(entity = "minecraft:zombie", qty = 4, timeWindowSeconds = 25, dimension = "minecraft:overworld", xp = 80, chowcoins = 50, weight = 10, questText = "Thin out a fast wave of zombies before they wander into town."),
+                        NpcQuestTemplateEntryDefinition(entity = "minecraft:skeleton", qty = 4, timeWindowSeconds = 25, dimension = "minecraft:overworld", xp = 80, chowcoins = 50, weight = 10, questText = "Break a skeleton line before it can regroup."),
+                        NpcQuestTemplateEntryDefinition(entity = "minecraft:spider", qty = 3, timeWindowSeconds = 20, dimension = "minecraft:overworld", xp = 80, chowcoins = 50, weight = 8, questText = "Clear a quick spider rush from the paths before nightfall."),
                     ),
                 ),
                 rareMobs = NpcQuestTemplatePoolDefinition(
                     pool = mutableListOf(
-                        NpcQuestTemplateEntryDefinition(entity = "minecraft:blaze", qty = 3, timeWindowSeconds = 30, dimension = "minecraft:the_nether", xp = 180, chowcoins = 100, weight = 3, questText = "Drop a blaze patrol before the fire spreads."),
-                        NpcQuestTemplateEntryDefinition(entity = "minecraft:cave_spider", qty = 3, timeWindowSeconds = 25, xp = 150, chowcoins = 80, weight = 3, questText = "Clear a cave spider pocket before it scatters."),
-                        NpcQuestTemplateEntryDefinition(entity = "minecraft:wither_skeleton", qty = 2, timeWindowSeconds = 30, dimension = "minecraft:the_nether", xp = 220, chowcoins = 150, weight = 1, questText = "Cut down wither skeletons in one clean push."),
+                        NpcQuestTemplateEntryDefinition(entity = "minecraft:blaze", qty = 3, timeWindowSeconds = 30, dimension = "minecraft:the_nether", xp = 130, chowcoins = 100, weight = 3, questText = "Drop a blaze patrol before the fire spreads."),
+                        NpcQuestTemplateEntryDefinition(entity = "minecraft:cave_spider", qty = 3, timeWindowSeconds = 25, xp = 120, chowcoins = 80, weight = 3, questText = "Clear a cave spider pocket before it scatters."),
+                        NpcQuestTemplateEntryDefinition(entity = "minecraft:wither_skeleton", qty = 2, timeWindowSeconds = 30, dimension = "minecraft:the_nether", xp = 150, chowcoins = 150, weight = 1, questText = "Cut down wither skeletons in one clean push."),
                     ),
                 ),
             ),
             travel = NpcQuestTemplatePoolDefinition(
                 pool = mutableListOf(
-                    NpcQuestTemplateEntryDefinition(mode = "on_foot", qty = 1000, xp = 80, chowcoins = 25, weight = 10, questText = "Scout the roads on foot. No mounts, no flying."),
-                    NpcQuestTemplateEntryDefinition(mode = "pokemon_land", qty = 1500, xp = 90, chowcoins = 35, weight = 7, questText = "Ride a land Pokemon along the routes and check the roads."),
-                    NpcQuestTemplateEntryDefinition(mode = "pokemon_flying", qty = 2000, xp = 110, chowcoins = 50, weight = 5, questText = "Fly on a Pokemon and survey the town from above."),
+                    NpcQuestTemplateEntryDefinition(mode = "on_foot", qty = 1000, xp = 60, chowcoins = 25, weight = 10, questText = "Scout the roads on foot. No mounts, no flying."),
+                    NpcQuestTemplateEntryDefinition(mode = "pokemon_land", qty = 1500, xp = 70, chowcoins = 35, weight = 7, questText = "Ride a land Pokemon along the routes and check the roads."),
+                    NpcQuestTemplateEntryDefinition(mode = "pokemon_flying", qty = 2000, xp = 80, chowcoins = 50, weight = 5, questText = "Fly on a Pokemon and survey the town from above."),
                 ),
             ),
             craft = NpcQuestTemplatePoolDefinition(
                 pool = mutableListOf(
-                    NpcQuestTemplateEntryDefinition(item = "minecraft:torch", qty = 32, xp = 80, chowcoins = 25, weight = 8, questText = "Craft torches for safer routes."),
-                    NpcQuestTemplateEntryDefinition(item = "minecraft:chest", qty = 4, xp = 70, chowcoins = 25, weight = 6, questText = "Craft chests for storage work."),
+                    NpcQuestTemplateEntryDefinition(item = "minecraft:torch", qty = 32, xp = 55, chowcoins = 25, weight = 8, questText = "Craft torches for safer routes."),
+                    NpcQuestTemplateEntryDefinition(item = "minecraft:chest", qty = 4, xp = 50, chowcoins = 25, weight = 6, questText = "Craft chests for storage work."),
                 ),
             ),
             smelt = NpcQuestTemplatePoolDefinition(
                 pool = mutableListOf(
-                    NpcQuestTemplateEntryDefinition(item = "minecraft:iron_ingot", qty = 8, xp = 90, chowcoins = 40, weight = 8, questText = "Smelt iron for town maintenance."),
-                    NpcQuestTemplateEntryDefinition(item = "minecraft:glass", qty = 16, xp = 80, chowcoins = 30, weight = 6, questText = "Smelt glass for repairs and displays."),
+                    NpcQuestTemplateEntryDefinition(item = "minecraft:iron_ingot", qty = 8, xp = 60, chowcoins = 40, weight = 8, questText = "Smelt iron for town maintenance."),
+                    NpcQuestTemplateEntryDefinition(item = "minecraft:glass", qty = 16, xp = 55, chowcoins = 30, weight = 6, questText = "Smelt glass for repairs and displays."),
                 ),
             ),
             eat = NpcQuestTemplatePoolDefinition(
                 pool = mutableListOf(
-                    NpcQuestTemplateEntryDefinition(item = "minecraft:bread", qty = 3, xp = 60, chowcoins = 20, weight = 8, questText = "Eat proper food before more work stacks up."),
-                    NpcQuestTemplateEntryDefinition(item = "minecraft:cooked_beef", qty = 3, xp = 70, chowcoins = 25, weight = 6, questText = "Eat a solid meal before patrol."),
+                    NpcQuestTemplateEntryDefinition(item = "minecraft:bread", qty = 3, xp = 35, chowcoins = 20, weight = 8, questText = "Eat proper food before more work stacks up."),
+                    NpcQuestTemplateEntryDefinition(item = "minecraft:cooked_beef", qty = 3, xp = 45, chowcoins = 25, weight = 6, questText = "Eat a solid meal before patrol."),
                 ),
             ),
             quiz = NpcQuestTemplatePoolDefinition(
                 pool = mutableListOf(
-                    NpcQuestTemplateEntryDefinition(quizTopic = "town lore", xp = 80, chowcoins = 25, weight = 4, questText = "Answer a quick town lore question."),
-                    NpcQuestTemplateEntryDefinition(quizTopic = "recent events", xp = 90, chowcoins = 35, weight = 4, questText = "Answer a question about what has been happening lately."),
-                    NpcQuestTemplateEntryDefinition(quizTopic = "NPC personality and work", xp = 80, chowcoins = 25, weight = 3, questText = "Answer a question from the NPC's own point of view."),
+                    NpcQuestTemplateEntryDefinition(quizTopic = "town lore", xp = 45, chowcoins = 25, weight = 4, questText = "Answer a quick town lore question."),
+                    NpcQuestTemplateEntryDefinition(quizTopic = "recent events", xp = 50, chowcoins = 35, weight = 4, questText = "Answer a question about what has been happening lately."),
+                    NpcQuestTemplateEntryDefinition(quizTopic = "NPC personality and work", xp = 45, chowcoins = 25, weight = 3, questText = "Answer a question from the NPC's own point of view."),
                 ),
             ),
             catchPokemon = NpcQuestTemplatePoolDefinition(
                 pool = mutableListOf(
-                    NpcQuestTemplateEntryDefinition(pokemonType = "water", qty = 3, xp = 110, chowcoins = 50, weight = 6, questText = "Catch Water Pokemon for field support."),
-                    NpcQuestTemplateEntryDefinition(pokemonType = "fire", qty = 3, xp = 110, chowcoins = 50, weight = 6, questText = "Catch Fire Pokemon for field notes."),
-                    NpcQuestTemplateEntryDefinition(category = "starter", qty = 1, xp = 140, chowcoins = 75, weight = 2, questText = "Catch a starter Pokemon for special records."),
+                    NpcQuestTemplateEntryDefinition(pokemonType = "water", qty = 3, xp = 80, chowcoins = 50, weight = 6, questText = "Catch Water Pokemon for field support."),
+                    NpcQuestTemplateEntryDefinition(pokemonType = "fire", qty = 3, xp = 80, chowcoins = 50, weight = 6, questText = "Catch Fire Pokemon for field notes."),
+                    NpcQuestTemplateEntryDefinition(category = "starter", qty = 1, xp = 100, chowcoins = 75, weight = 2, questText = "Catch a starter Pokemon for special records."),
                 ),
             ),
             qualityFoodFetch = NpcQuestTemplatePoolDefinition(
                 pool = mutableListOf(
-                    NpcQuestTemplateEntryDefinition(qualityTier = "iron", qty = 4, xp = 100, chowcoins = 50, weight = 6, questText = "Bring iron quality food for town meals."),
-                    NpcQuestTemplateEntryDefinition(qualityTier = "gold", qty = 3, xp = 130, chowcoins = 75, weight = 4, questText = "Bring gold quality food for a special request."),
-                    NpcQuestTemplateEntryDefinition(qualityTier = "diamond", qty = 2, xp = 170, chowcoins = 110, weight = 2, questText = "Bring diamond quality food for an important meal."),
+                    NpcQuestTemplateEntryDefinition(qualityTier = "iron", qty = 4, xp = 90, chowcoins = 50, weight = 6, questText = "Bring iron quality food for town meals."),
+                    NpcQuestTemplateEntryDefinition(qualityTier = "gold", qty = 3, xp = 105, chowcoins = 75, weight = 4, questText = "Bring gold quality food for a special request."),
+                    NpcQuestTemplateEntryDefinition(qualityTier = "diamond", qty = 2, xp = 120, chowcoins = 110, weight = 2, questText = "Bring diamond quality food for an important meal."),
                 ),
             ),
             qualityCropFetch = NpcQuestTemplatePoolDefinition(
                 pool = mutableListOf(
-                    NpcQuestTemplateEntryDefinition(qualityTier = "iron", qty = 6, xp = 100, chowcoins = 50, weight = 6, questText = "Bring iron quality crops for town stores."),
-                    NpcQuestTemplateEntryDefinition(qualityTier = "gold", qty = 4, xp = 130, chowcoins = 75, weight = 4, questText = "Bring gold quality crops for premium supplies."),
-                    NpcQuestTemplateEntryDefinition(qualityTier = "diamond", qty = 2, xp = 170, chowcoins = 110, weight = 2, questText = "Bring diamond quality crops for a rare order."),
+                    NpcQuestTemplateEntryDefinition(qualityTier = "iron", qty = 6, xp = 90, chowcoins = 50, weight = 6, questText = "Bring iron quality crops for town stores."),
+                    NpcQuestTemplateEntryDefinition(qualityTier = "gold", qty = 4, xp = 105, chowcoins = 75, weight = 4, questText = "Bring gold quality crops for premium supplies."),
+                    NpcQuestTemplateEntryDefinition(qualityTier = "diamond", qty = 2, xp = 120, chowcoins = 110, weight = 2, questText = "Bring diamond quality crops for a rare order."),
                 ),
             ),
             foodChainQuest = NpcQuestTemplatePoolDefinition(
                 pool = mutableListOf(
-                    NpcQuestTemplateEntryDefinition(item = "farmersdelight:beef_stew", process = "cook", qty = 1, xp = 130, chowcoins = 70, weight = 5, questText = "Cook beef stew after accepting this order, then bring it back."),
-                    NpcQuestTemplateEntryDefinition(item = "farmersdelight:vegetable_soup", process = "cook", qty = 1, xp = 120, chowcoins = 60, weight = 6, questText = "Cook vegetable soup after accepting this order, then bring it back."),
-                    NpcQuestTemplateEntryDefinition(item = "farmersdelight:fried_rice", process = "cook", qty = 1, xp = 130, chowcoins = 70, weight = 5, questText = "Cook fried rice after accepting this order, then bring it back."),
-                    NpcQuestTemplateEntryDefinition(item = "farmersdelight:dumplings", process = "cook", qty = 2, xp = 120, chowcoins = 60, weight = 6, questText = "Cook dumplings after accepting this order, then bring them back."),
-                    NpcQuestTemplateEntryDefinition(item = "farmersdelight:mixed_salad", process = "craft", qty = 1, xp = 100, chowcoins = 45, weight = 5, questText = "Prepare a fresh mixed salad after accepting this order, then bring it back."),
-                    NpcQuestTemplateEntryDefinition(item = "farmersdelight:barbecue_stick", process = "craft", qty = 2, xp = 100, chowcoins = 45, weight = 5, questText = "Prepare barbecue sticks after accepting this order, then bring them back."),
+                    NpcQuestTemplateEntryDefinition(item = "farmersdelight:beef_stew", process = "cook", qty = 1, xp = 90, chowcoins = 70, weight = 5, questText = "Cook beef stew after accepting this order, then bring it back."),
+                    NpcQuestTemplateEntryDefinition(item = "farmersdelight:vegetable_soup", process = "cook", qty = 1, xp = 85, chowcoins = 60, weight = 6, questText = "Cook vegetable soup after accepting this order, then bring it back."),
+                    NpcQuestTemplateEntryDefinition(item = "farmersdelight:fried_rice", process = "cook", qty = 1, xp = 90, chowcoins = 70, weight = 5, questText = "Cook fried rice after accepting this order, then bring it back."),
+                    NpcQuestTemplateEntryDefinition(item = "farmersdelight:dumplings", process = "cook", qty = 2, xp = 85, chowcoins = 60, weight = 6, questText = "Cook dumplings after accepting this order, then bring them back."),
+                    NpcQuestTemplateEntryDefinition(item = "farmersdelight:mixed_salad", process = "craft", qty = 1, xp = 70, chowcoins = 45, weight = 5, questText = "Prepare a fresh mixed salad after accepting this order, then bring it back."),
+                    NpcQuestTemplateEntryDefinition(item = "farmersdelight:barbecue_stick", process = "craft", qty = 2, xp = 70, chowcoins = 45, weight = 5, questText = "Prepare barbecue sticks after accepting this order, then bring them back."),
                 ),
             ),
         ).normalized()

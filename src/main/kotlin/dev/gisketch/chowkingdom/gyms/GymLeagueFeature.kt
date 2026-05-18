@@ -4,7 +4,7 @@ import com.mojang.brigadier.arguments.IntegerArgumentType
 import com.mojang.brigadier.arguments.StringArgumentType
 import com.mojang.brigadier.context.CommandContext
 import dev.gisketch.chowkingdom.ChowKingdomMod
-import dev.gisketch.chowkingdom.battlepass.BattlepassMissionEventBank
+import dev.gisketch.chowkingdom.battlepass.BattlepassMissionHooks
 import dev.gisketch.chowkingdom.battlepass.BattlepassNetwork
 import dev.gisketch.chowkingdom.battlepass.BattlepassXpStore
 import dev.gisketch.chowkingdom.discord.DiscordRelay
@@ -197,6 +197,9 @@ object GymLeagueFeature {
         }
         if (encounter.rewardXp > 0) BattlepassXpStore.addXp(player, league.defaults.passId, encounter.rewardXp)
         if (encounter.rewardChowcoins > 0) ChowcoinStore.add(player, encounter.rewardChowcoins)
+        if (isGymLeaderClear(encounter, trainer)) {
+            recordMission(player, "gisketchs_chowkingdom_mod:gym_leader_defeated", league, encounter, trainer)
+        }
         if (encounter.badgeId.isNotBlank()) {
             recordMission(player, "gisketchs_chowkingdom_mod:gym_badge_earned", league, encounter, trainer)
             SnackbarNetwork.send(
@@ -207,6 +210,7 @@ object GymLeagueFeature {
         } else {
             SnackbarNetwork.send(player, SnackbarNotification.item("cobblemon:poke_ball", "LEAGUE BATTLE WON", GymLeagueText.encounterLabel(league, encounter), SnackbarType.SUCCESS, SnackbarSounds.REWARD))
         }
+        if (GymLeagueStore.nextPlayerEncounter(player, league) == null) recordLeagueCompleted(player, league)
         BattlepassNetwork.syncAllPlayers()
         GymLeagueNetwork.syncTo(player)
         NpcQuestService.syncTo(player)
@@ -775,8 +779,23 @@ object GymLeagueFeature {
             put("kind", encounter.kind)
             if (encounter.badgeId.isNotBlank()) put("badge", encounter.badgeId)
         }
-        if (BattlepassMissionEventBank.record(player, eventId, 1, attributes)) BattlepassNetwork.syncAllPlayers()
+        BattlepassMissionHooks.record(player, eventId, attributes = attributes)
     }
+
+    private fun recordLeagueCompleted(player: ServerPlayer, league: GymLeagueDefinition) {
+        BattlepassMissionHooks.record(
+            player,
+            "gisketchs_chowkingdom_mod:league_completed",
+            attributes = mapOf(
+                "league" to league.id,
+                "generation" to league.generation.toString(),
+                "region" to league.region,
+            ),
+        )
+    }
+
+    private fun isGymLeaderClear(encounter: GymEncounterDefinition, trainer: GymTrainerDefinition): Boolean =
+        encounter.kind == "gym" || trainer.role == "gym_leader"
 
     private fun onRegisterCommands(event: RegisterCommandsEvent) {
         event.dispatcher.register(Commands.literal("ck").then(gymsRoot()))

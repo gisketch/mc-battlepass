@@ -67,6 +67,18 @@ object BattlepassAvailableMissionEvents {
         "gisketchs_chowkingdom_mod:shipping_bin_quality_food_value_sold" to "Ship {goal} Quality Chowcoins Worth",
         "gisketchs_chowkingdom_mod:shop_value_sold" to "Sell {goal} Chowcoins Worth of Items",
         "gisketchs_chowkingdom_mod:shop_value_bought" to "Buy {goal} Chowcoins Worth of Items",
+        "gisketchs_chowkingdom_mod:npc_friendship_level_reached" to "Reach NPC Friendship Level {goal}",
+        "gisketchs_chowkingdom_mod:npc_quest_completed" to "Complete {goal} NPC Quests",
+        "gisketchs_chowkingdom_mod:npc_quiz_answered_correctly" to "Answer {goal} NPC Quizzes Correctly",
+        "gisketchs_chowkingdom_mod:boss_first_clear" to "First-Clear {goal} Bosses",
+        "gisketchs_chowkingdom_mod:biome_discovered" to "Discover {goal} Biomes",
+        "gisketchs_chowkingdom_mod:structure_discovered" to "Discover {goal} Structures",
+        "gisketchs_chowkingdom_mod:gym_battle_attempted" to "Attempt {goal} Gym Battles",
+        "gisketchs_chowkingdom_mod:gym_battle_won" to "Win {goal} Gym Battles",
+        "gisketchs_chowkingdom_mod:gym_badge_earned" to "Earn {goal} Gym Badges",
+        "gisketchs_chowkingdom_mod:gym_leader_defeated" to "Defeat {goal} Gym Leaders",
+        "gisketchs_chowkingdom_mod:league_completed" to "Complete {goal} Pokemon Leagues",
+        "gisketchs_chowkingdom_mod:teammate_revived" to "Revive {goal} Teammates",
     )
 
     fun ids(): List<String> = (descriptions.keys + cobblemonAliases()).distinct().sorted()

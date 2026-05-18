@@ -211,6 +211,7 @@ class NpcSettingsDefinition(
     var llm: NpcLlmSettingsDefinition = NpcLlmSettingsDefinition(),
     @SerializedName("llm_message_usage") var llmMessageUsage: NpcLlmMessageUsageDefinition = NpcLlmMessageUsageDefinition(),
     @SerializedName("campers") var campers: NpcCampersSettingsDefinition = NpcCampersSettingsDefinition(),
+    var quests: NpcQuestSettingsDefinition = NpcQuestSettingsDefinition(),
     var work: NpcWorkSettingsDefinition = NpcWorkSettingsDefinition(),
     var training: NpcTrainingSettingsDefinition = NpcTrainingSettingsDefinition(),
     @SerializedName("npc_interactions") var npcInteractions: NpcInteractionSettingsDefinition = NpcInteractionSettingsDefinition(),
@@ -222,10 +223,20 @@ class NpcSettingsDefinition(
         llm = llm.normalized()
         llmMessageUsage = llmMessageUsage.normalized()
         campers = campers.normalized()
+        quests = quests.normalized()
         work = work.normalized()
         training = training.normalized()
         npcInteractions = npcInteractions.normalized()
         interactionDirector = interactionDirector.normalized()
+    }
+}
+
+class NpcQuestSettingsDefinition(
+    @SerializedName("max_daily_quests") var maxDailyQuests: Int = 5,
+    @SerializedName("reset_uses_meetup_start") var resetUsesMeetupStart: Boolean = true,
+) {
+    fun normalized(): NpcQuestSettingsDefinition = apply {
+        maxDailyQuests = maxDailyQuests.coerceIn(1, 20)
     }
 }
 

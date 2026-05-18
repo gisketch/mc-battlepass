@@ -2,6 +2,7 @@ package dev.gisketch.chowkingdom.bosses
 
 import com.mojang.brigadier.arguments.StringArgumentType
 import com.mojang.brigadier.context.CommandContext
+import dev.gisketch.chowkingdom.battlepass.BattlepassMissionHooks
 import dev.gisketch.chowkingdom.battlepass.BattlepassNetwork
 import dev.gisketch.chowkingdom.battlepass.BattlepassXpStore
 import dev.gisketch.chowkingdom.discord.DiscordWebhookClient
@@ -389,7 +390,8 @@ object BossEventsFeature {
             }
             return
         }
-        BossEventsStore.recordClear(entry, contributors)
+        val firstClear = BossEventsStore.recordClear(entry, contributors)
+        if (firstClear) recordBossFirstClear(entity, entry, contributors)
         val crewNames = contributors.joinToString(", ") { it.gameProfile.name }
         NpcStore.recordGlobalEvent("boss_cleared", "${entry.displayName} was cleared by $crewNames.")
         NpcStore.recordGlobalMemory("boss_cleared", "Finn's ${entry.displayName} contract was cleared by $crewNames.")
@@ -419,6 +421,18 @@ object BossEventsFeature {
         val fight = fights.getOrPut(entity.uuid) { BossFightRecord(entry.id, entity.uuid, now) }
         fight.damagedBy[attacker.uuid] = now
         NpcQuestService.syncTo(attacker)
+    }
+
+    private fun recordBossFirstClear(entity: LivingEntity, entry: BossEventEntry, contributors: List<ServerPlayer>) {
+        val attributes = mapOf(
+            "boss" to entry.id,
+            "entity" to entry.entityId,
+            "order" to entry.order.toString(),
+            "dimension" to entity.level().dimension().location().toString(),
+        )
+        contributors.forEach { player ->
+            BattlepassMissionHooks.record(player, "gisketchs_chowkingdom_mod:boss_first_clear", attributes = attributes)
+        }
     }
 
     private fun contributors(entity: LivingEntity, entry: BossEventEntry, killer: ServerPlayer?): List<ServerPlayer> {

@@ -2052,6 +2052,7 @@ object NpcFeature {
     private fun onPlayerLoggedIn(event: PlayerEvent.PlayerLoggedInEvent) {
         val player = event.entity as? ServerPlayer ?: return
         NpcStore.recordGlobalEvent("player_join", "${player.gameProfile.name} joined the server")
+        NpcMissionHooks.refreshFriendshipProgress(player)
         NpcQuestService.syncTo(player)
     }
 

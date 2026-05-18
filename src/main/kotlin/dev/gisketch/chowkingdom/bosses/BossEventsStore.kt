@@ -106,15 +106,17 @@ object BossEventsStore {
         save()
     }
 
-    fun recordClear(entry: BossEventEntry, contributors: List<ServerPlayer>) {
+    fun recordClear(entry: BossEventEntry, contributors: List<ServerPlayer>): Boolean {
         if (!loaded) load()
         val boss = data.bosses.getOrPut(entry.id) { BossEventBossState() }
+        val firstClear = boss.clearedBy.isEmpty()
         boss.clearedAt = Instant.now().toString()
         contributors.forEach { player ->
             boss.credit.add(player.stringUUID)
             boss.clearedBy[player.stringUUID] = player.gameProfile.name
         }
         save()
+        return firstClear
     }
 
     fun claimableBosses(player: ServerPlayer): List<BossEventEntry> =

@@ -31,7 +31,6 @@ import net.minecraft.world.level.Level
 import java.util.UUID
 
 object NpcQuestService {
-    private const val MAX_ACTIVE = 4
     private const val OFFER_REFRESH_TICKS = 20L * 10L
     private const val DEBUG_NPC_PREFIX = "debug_quest_"
     private const val FOOD_CHAIN_TAG = "CkdmNpcFoodChain"
@@ -205,7 +204,7 @@ object NpcQuestService {
         val period = currentPeriod(player)
         val periodState = questState(player, period)
         val offer = selectedOffer(player, definition, period)
-        val canOffer = offer != null && NpcFeature.canOfferNpcQuests(player.level(), definition) && definition.id !in periodState.completedNpcIds && definition.id !in periodState.active && periodState.active.size < MAX_ACTIVE && (periodState.declinedUntilTick[definition.id] ?: Long.MIN_VALUE) <= player.level().dayTime
+        val canOffer = offer != null && NpcFeature.canOfferNpcQuests(player.level(), definition) && definition.id !in periodState.completedNpcIds && definition.id !in periodState.active && hasDailyQuestSlot(periodState) && (periodState.declinedUntilTick[definition.id] ?: Long.MIN_VALUE) <= player.level().dayTime
         if (offer != null && canOffer) {
             val goal = if (offer.category == "fetch" || offer.category == "food_chain") offer.fetchCount else offer.goal
             return NpcQuestFriendSummary("Quest Available", 0, goal)
@@ -315,11 +314,11 @@ object NpcQuestService {
     }
 
     private fun accept(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, offer: NpcMissionDefinition, state: NpcPlayerQuestState) {
-        if (state.active.size >= MAX_ACTIVE) {
-            openCloseDialog(player, npc, definition, "You already have $MAX_ACTIVE NPC quests today. Finish those first.")
+        if (definition.id in state.completedNpcIds || state.active.containsKey(definition.id)) return
+        if (!isDebugOffer(offer) && !hasDailyQuestSlot(state)) {
+            openCloseDialog(player, npc, definition, dailyCapMessage())
             return
         }
-        if (definition.id in state.completedNpcIds || state.active.containsKey(definition.id)) return
         if (offer.category == "quiz") {
             acceptQuiz(player, npc, definition, offer, state)
             return
@@ -351,11 +350,11 @@ object NpcQuestService {
     }
 
     private fun acceptQuiz(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, offer: NpcMissionDefinition, state: NpcPlayerQuestState) {
-        if (state.active.size >= MAX_ACTIVE && !state.active.containsKey(definition.id)) {
-            openCloseDialog(player, npc, definition, "You already have $MAX_ACTIVE NPC quests today. Finish those first.")
+        if (definition.id in state.completedNpcIds && offer.id != "debug_quiz") return
+        if (!isDebugOffer(offer) && !state.active.containsKey(definition.id) && !hasDailyQuestSlot(state)) {
+            openCloseDialog(player, npc, definition, dailyCapMessage())
             return
         }
-        if (definition.id in state.completedNpcIds && offer.id != "debug_quiz") return
         val acceptedAtTick = player.level().dayTime
         val active = NpcAcceptedQuestState(
             npcId = definition.id,
@@ -406,6 +405,7 @@ object NpcQuestService {
         state.active.remove(definition.id)
         state.completedNpcIds.add(definition.id)
         NpcStore.saveQuestState()
+        NpcMissionHooks.recordQuestCompleted(player, definition, active)
         syncTo(player)
         BattlepassNetwork.syncAllPlayers()
         val reward = buildString {
@@ -458,6 +458,7 @@ object NpcQuestService {
         if (active.category != "quiz") return
         if (index == active.quizAnswerIndex) {
             active.progress = active.goal
+            NpcMissionHooks.recordQuizAnsweredCorrectly(player, definition, active)
             finishQuest(player, definition, active, state, npc)
             return
         }
@@ -528,10 +529,23 @@ object NpcQuestService {
     private fun canOffer(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, state: NpcPlayerQuestState): Boolean {
         if (!NpcFeature.canOfferNpcQuests(npc, definition)) return false
         if (definition.id in state.completedNpcIds || definition.id in state.active) return false
-        if (state.active.size >= MAX_ACTIVE) return false
+        if (!hasDailyQuestSlot(state)) return false
         if ((state.declinedUntilTick[definition.id] ?: Long.MIN_VALUE) > player.level().dayTime) return false
         return player.distanceToSqr(npc) <= definition.missions.offerRadius * definition.missions.offerRadius
     }
+
+    private fun maxDailyQuests(): Int = NpcConfig.settings().quests.maxDailyQuests
+
+    private fun dailySlotsUsed(state: NpcPlayerQuestState): Int {
+        val activeRealQuestCount = state.active.keys.count { npcId -> !npcId.startsWith(DEBUG_NPC_PREFIX) }
+        return state.completedNpcIds.size + activeRealQuestCount
+    }
+
+    private fun hasDailyQuestSlot(state: NpcPlayerQuestState): Boolean = dailySlotsUsed(state) < maxDailyQuests()
+
+    private fun dailyCapMessage(): String = "You already took ${maxDailyQuests()} NPC quests today. Come back after the next reset."
+
+    private fun isDebugOffer(offer: NpcMissionDefinition): Boolean = offer.id == "debug_quiz" || offer.id.startsWith("debug_")
 
     private fun currentPeriod(player: ServerPlayer): Long = currentPeriod(player.level())
 

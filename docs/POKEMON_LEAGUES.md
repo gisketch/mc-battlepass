@@ -189,8 +189,11 @@ Global state:
 - `gisketchs_chowkingdom_mod:gym_battle_attempted`
 - `gisketchs_chowkingdom_mod:gym_battle_won`
 - `gisketchs_chowkingdom_mod:gym_badge_earned`
+- `gisketchs_chowkingdom_mod:gym_leader_defeated`
+- `gisketchs_chowkingdom_mod:league_completed`
 
 Attributes should include `league`, `encounter`, `trainer`, `kind`, and `badge` when available.
+`league_completed` uses `league`, `generation`, and `region`.
 
 ## V1 Implementation Status
 

@@ -1,12 +1,13 @@
 package dev.gisketch.chowkingdom.revive
 
 import dev.gisketch.chowkingdom.ChatGlyphs
+import dev.gisketch.chowkingdom.battlepass.BattlepassMissionHooks
+import dev.gisketch.chowkingdom.npc.NpcBossFights
 import dev.gisketch.chowkingdom.snackbar.SnackbarIcons
 import dev.gisketch.chowkingdom.snackbar.SnackbarNetwork
 import dev.gisketch.chowkingdom.snackbar.SnackbarNotification
 import dev.gisketch.chowkingdom.snackbar.SnackbarSounds
 import dev.gisketch.chowkingdom.snackbar.SnackbarType
-import dev.gisketch.chowkingdom.npc.NpcBossFights
 import net.minecraft.ChatFormatting
 import net.minecraft.network.chat.Component
 import net.minecraft.server.MinecraftServer
@@ -518,7 +519,11 @@ object ReviveFeature {
         restoreMinimumVitals(target)
         clearIncapacitatedPose(target)
         target.playNotifySound(SoundEvents.PLAYER_LEVELUP, SoundSource.PLAYERS, 0.7f, 1.4f)
-        ReviveStore.recordRevived(target, reviverIds.mapNotNull { target.server.playerList.getPlayer(it) })
+        val realRevivers = reviverIds.mapNotNull { target.server.playerList.getPlayer(it) }
+            .distinctBy { it.uuid }
+            .filter { it.uuid != target.uuid }
+        ReviveStore.recordRevived(target, realRevivers)
+        recordTeammateRevived(target, realRevivers)
         ReviveNetwork.syncComplete(target, reviverIds, reviverNames)
         sendRevivedSnackbar(target, reviverIds, reviverNames)
         target.server.playerList.broadcastSystemMessage(
@@ -526,6 +531,19 @@ object ReviveFeature {
                 .append(Component.literal("${target.gameProfile.name} was revived by ${formatReviverNames(reviverNames)}.").withStyle(ChatFormatting.GREEN)),
             false,
         )
+    }
+
+    private fun recordTeammateRevived(target: ServerPlayer, revivers: List<ServerPlayer>) {
+        if (revivers.isEmpty()) return
+        val attributes = mapOf(
+            "target" to target.stringUUID,
+            "target.name" to target.gameProfile.name,
+            "reviver_count" to revivers.size.toString(),
+            "dimension" to target.level().dimension().location().toString(),
+        )
+        revivers.forEach { reviver ->
+            BattlepassMissionHooks.record(reviver, "gisketchs_chowkingdom_mod:teammate_revived", attributes = attributes)
+        }
     }
 
     private fun failRevive(player: ServerPlayer, state: IncapacitatedPlayer) {

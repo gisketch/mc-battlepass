@@ -31,6 +31,7 @@ Implement Finn-driven server boss contracts gated by total shipping-bin Chowcoin
 
 ## Follow-Ups
 
-- Add mission signals for `boss_first_clear` and `boss_participated`.
+- `boss_first_clear` mission signal is implemented in the mission hook batch.
+- Defer `boss_participated`; participation semantics need more conversation and should not ship in the current hook set.
 - Add helper/repeat reward distinction if repeat clears become common.
 - Tune required player counts, thresholds, and rewards after in-game testing.

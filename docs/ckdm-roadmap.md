@@ -74,14 +74,16 @@ Core rule: reward exploration with stories, routes, trophies, cosmetics, tokens,
 - [x] Sky Lands fall-through to Overworld exists.
 - [x] Overworld high-Y return to Sky Lands exists.
 - [x] Sky Lands hostile/danger structure deny policy exists.
+- [x] Sky Lands dry island biome alias exists: ocean-tagged surfaces can report `ckdm:sky_plains` for biome-driven systems such as Cobblemon spawns and map/HUD labels.
 - [x] Town Charm return item exists.
 - [x] Explorer compass store exists for biome/structure targets.
-- [x] Cobblemon hooks exist for Pokedex scan/catch, category catch, type catch, friendship, mount travel, catch-rate jobs, mount-speed jobs, and Xaero unknown Pokemon hiding.
+- [x] Cobblemon hooks exist for Pokedex scan/catch, category catch, type catch, friendship, mount travel, catch-rate jobs, mount-speed jobs, post-onboarding starter choice, and Xaero unknown Pokemon hiding.
 - [x] Server-wide boss contracts exist with shipping-value gates, Finn dialogue, participant credit, reward claim, locked drop suppression, Discord event webhook, and admin/debug commands.
 - [x] Finn boss claim UX has claim-ready balloons, LLM claim prompts, highlighted XP/Chowcoin reward text, and green claim buttons.
 - [x] Priority NPC balloons support gold styling for first greetings, quest offers, and Finn boss discovery alerts, plus green styling for completed/claimable quest and boss reward cues.
 - [x] Finn active boss contracts auto-open on right-click, introduce the boss server-wide, and keep immersive dialogue free of shipping-gate wording.
 - [x] NPC dialogue highlights, HUD mission rows, and gold balloons use crisper CKDM font sizing with spacing cleanup for joined number/text phrases.
+- [x] Yuushya startup chat banner is suppressed client-side without touching player chat, CKDM snackbar messages, or other Yuushya messages.
 
 ## Phase 0 - Balance Audit Before More Features
 
@@ -197,6 +199,7 @@ Recommended model: scale hostile mobs by zone and distance, not by raw global pl
 DONE:
 
 - [x] Sky Lands natural hostile spawns are blocked for cozy hub use.
+- [x] Sky Lands biome alias keeps dry ocean-tagged island surfaces usable as plains/grassland/sky biome surfaces for compatibility.
 - [x] Unified stamina and class equipment locks already give combat a shared balance layer.
 
 TODO (Mod):
@@ -312,8 +315,8 @@ TODO (Mod):
 - [x] Make boss event opens Finn-discovered instead of auto-broadcasted: no pinned mission until `CONTRACTS` is opened.
 - [x] Add snackbar broadcast when a group clears a boss.
 - [x] Add Discord relay for boss open/clear milestones through `events_webhook_url`.
-- [ ] Add mission signal `gisketchs_chowkingdom_mod:boss_first_clear`.
-- [ ] Add mission signal `gisketchs_chowkingdom_mod:boss_participated`.
+- [x] Add mission signal `gisketchs_chowkingdom_mod:boss_first_clear`.
+- [ ] Revisit boss helper/participation mission semantics after first-clear curation.
 
 TODO (Configuration):
 
@@ -505,9 +508,11 @@ DONE:
 - [x] Locked common and rare relic tokens exist.
 - [x] Per-player no-duplicate reward rule exists.
 - [x] Locked rewards cannot be traded, sold in shops, vendor-linked, shipped, or used by non-owners.
+- [x] Pokemon clothing cosmetic armor items exist with models, textures, names, and zero-stat armor material shells.
 
 TODO (Configuration):
 
+- [ ] Route Pokemon clothing cosmetics through shops, relic pools, event rewards, or other controlled cosmetic sinks with prices/rarity set.
 - [ ] Replace placeholder common relic pool with real common cosmetics/utility rewards.
 - [ ] Replace placeholder rare relic pool with controlled rare cosmetics/trophies/tokens.
 - [ ] Avoid raw netherite, totems, and high-power progression unless the reward is very limited.
@@ -565,6 +570,7 @@ DONE:
 - [x] NPC stores and workplace requirements exist.
 - [x] NPC-to-player gifts exist.
 - [x] NPC-to-NPC micro interactions exist.
+- [x] NPC and micro-interaction authoring guides/skills exist for future NPC config validation and dialogue expansion.
 - [x] NPC Friends UI exists.
 - [x] Discord NPC relay exists.
 
@@ -708,6 +714,17 @@ Operations:
 - [ ] Build passes.
 - [ ] Multiplayer smoke test passes.
 - [ ] Backup process known before pasting schematics or changing worldgen.
+
+## Needs More Consideration And Conversation
+
+Do not implement these as mission hooks until their gameplay semantics are settled:
+
+- Vendor contracts: define accepted, redeemed, and completed semantics before `gisketchs_chowkingdom_mod:vendor_contract_completed`.
+- Non-crop harvest quests: define block/tag/dimension filters before `minecraft:block_harvested`.
+- Exploration tokens: define item/state and loot path before `explorer_note_collected`, `dungeon_seal_collected`, `boss_proof_collected`, `ancient_sigil_collected`, or `sky_shard_collected`.
+- Legendary and raid events: define controlled catch rights and event-only catches before `legendary_catch_right_claimed`, `legendary_event_caught`, or `raid_den_cleared`.
+- Seasonal events: define scoring caps before `fish_derby_score`, `cooking_festival_score`, or `market_day_trade`.
+- Tournaments: define tournament modules, rules, arenas, and reward philosophy before Pokemon or PvP participation/win hooks.
 
 ## Questions For Owner
 
