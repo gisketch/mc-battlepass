@@ -2,6 +2,7 @@ package dev.gisketch.chowkingdom.battlepass
 
 import dev.gisketch.chowkingdom.ChowKingdomMod
 import dev.gisketch.chowkingdom.config.TomlConfigIO
+import dev.gisketch.chowkingdom.mobility.MobilityLicenseStore
 import net.neoforged.fml.loading.FMLPaths
 import java.nio.file.Files
 import java.nio.file.Path
@@ -227,6 +228,15 @@ object BattlepassPassRegistry {
             isProminent = false
         }
 
+    private fun ridingLicenseReward(): BattlepassRewardDefinition =
+        BattlepassRewardDefinition().apply {
+            type = "license"
+            item = "minecraft:saddle"
+            quantity = 1
+            isProminent = true
+            data = mutableMapOf("license" to MobilityLicenseStore.RIDING_LICENSE, "name" to "Riding License")
+        }
+
     private fun withChowcoinRewards(base: Map<Int, List<BattlepassRewardDefinition>>): Map<Int, List<BattlepassRewardDefinition>> {
         val rewards = base.mapValuesTo(linkedMapOf()) { (_, value) -> value.toMutableList() }
         for (level in 25..MAX_LEVEL step 25) {
@@ -360,6 +370,7 @@ object BattlepassPassRegistry {
         1 to listOf(fixedItemReward("minecraft:torch", 16, prominent = false)),
         3 to listOf(fixedItemReward("paraglider:paraglider")),
         10 to listOf(fixedItemReward("cobblemon:poke_bait", 8)),
+        45 to listOf(ridingLicenseReward()),
         500 to listOf(fixedItemReward("minecraft:elytra")),
     ))
 

@@ -24,10 +24,16 @@ Boss Events V1 makes Finn the server-wide boss contract NPC.
 - Defaults: 96 block radius, 10 minute participation window, 8 required credited players.
 - Finn always shows a `CONTRACTS` button in normal dialogue.
 - `CONTRACTS` opens a nested boss contract dialogue for locked, active, claimable, or completed states.
-- After a valid clear, players with credit see `Talk to Finn to claim <Boss>` in the mission HUD and can claim through the contract dialogue.
+- After a valid clear or debug credit grant, players with claimable credit see `Talk to Finn to claim your rewards` in the pinned mission HUD and can claim through the contract dialogue.
+- Once a boss has enough credited players, it is treated as contract-complete for HUD/dialogue purposes even if credit was granted through debug commands.
+- After the player claims, Finn no longer keeps that boss as the active contract; he moves to the next locked/active contract or says no contract is ready.
 - Claiming happens through Finn dialogue using `boss_contract` / `boss_claim` actions.
+- If a player has claimable boss credit, Finn shows a quest balloon and right-click opens a claim-ready LLM prompt instead of the generic greeting.
+- Boss reward claim lines support `<xp>`, `<coin>`, and `<b>` dialogue highlights.
 - LLM is optional. When enabled, Finn receives boss context variables and authored config lines are the fallback.
 - TALK from inside `CONTRACTS` receives boss-focused context with lore, location hints, access hints, fight tips, reward, threshold, and next-boss data.
+- Locked/no-contract Finn dialogue is lore-only: Finn says he is scouting for strange trouble and does not reveal shipping totals, thresholds, hidden boss ids, or the next boss.
+- Dialogue highlight tags auto-space around LLM text and render in CKDM bold styling.
 
 ## NPC Memory
 
@@ -42,10 +48,11 @@ Boss Events V1 makes Finn the server-wide boss contract NPC.
 - `/ck bosses unlock <boss_id>`
 - `/ck bosses credit get <boss_id> <player>`
 - `/ck bosses credit set <boss_id> <player> <true|false>`
+- `/ck bosses <boss_id> credit <player> <true|false>` legacy/debug shorthand
 - `/ck bosses required <boss_id|all> <players>`
 - `/ck bosses reset <boss_id> confirm`
 
-Boss command tails are greedy strings so namespaced ids like `cataclysm:ignis` and `fdbosses:chesed` work cleanly. `required` updates `required_players` in `server_bosses.toml`; use `/ck bosses required all 1` for solo testing.
+Boss command tails are greedy strings so namespaced ids like `cataclysm:ignis` and `fdbosses:chesed` work cleanly. Debug credit updates sync the pinned boss mission progress immediately. `required` updates `required_players` in `server_bosses.toml`; use `/ck bosses required all 1` for solo testing.
 
 ## Default Boss Order
 

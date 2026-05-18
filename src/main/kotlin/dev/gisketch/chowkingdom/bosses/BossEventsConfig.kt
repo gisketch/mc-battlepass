@@ -97,7 +97,7 @@ object BossEventsConfig {
                     finnUnlockAnnouncement = "Finn slams a contract on the board: $displayName is open. Shipments hit {total_shipped_chowcoins} Chowcoins. Adventure time.",
                     finnLockedWarning = "Finn has not opened the $displayName contract yet. The town needs {threshold} shipped Chowcoins first.",
                     finnContractDialog = "This contract is for {boss}. {location_hint} {access_hint} Bring a crew of {required_players}; I want everyone coming back with all their bones where they started.",
-                    finnLockedContractDialog = "I can feel something moving past the edge of the map, but the town is not ready. Keep the shipping routes alive until we reach {threshold} Chowcoins, then I will pin the next contract.",
+                    finnLockedContractDialog = "I do not have a clean contract yet. The roads are quiet in that suspicious way. Go have an adventure; I will shout when I find something ugly enough for the board.",
                     finnClaimDialog = "You helped clear $displayName, {player}. That was brave, loud, and exactly what the town needed. Claim your contract reward.",
                     finnClaimUnavailableDialog = "{boss} is still on the board. Scout it, gather the crew, and come back when the deed is done.",
                     finnClearBroadcast = "$displayName is down. Finn is counting the crew and readying rewards.",
@@ -214,7 +214,7 @@ class BossEventEntry(
         finnUnlockAnnouncement = finnUnlockAnnouncement.trim().ifBlank { "Finn opened a new boss contract: {boss}." }
         finnLockedWarning = finnLockedWarning.trim().ifBlank { "Finn has not opened {boss} yet. Ship more Chowcoins first." }
         finnContractDialog = finnContractDialog.trim().ifBlank { "This contract is for {boss}. {location_hint} {access_hint} Bring {required_players} credited players if you want me to count it." }
-        finnLockedContractDialog = finnLockedContractDialog.trim().ifBlank { "I am still tracking the next threat. The town needs {threshold} shipped Chowcoins before I pin the contract." }
+        finnLockedContractDialog = finnLockedContractDialog.trim().ifBlank { "I do not have a clean contract yet. The roads are quiet in that suspicious way. Go have an adventure; I will shout when I find something ugly enough for the board." }
         finnClaimDialog = finnClaimDialog.trim().ifBlank { "You cleared {boss}, {player}. Claim your contract reward." }
         finnClaimUnavailableDialog = finnClaimUnavailableDialog.trim().ifBlank { "{boss} is not cleared for you yet. Finish the contract, then come back." }
         finnClearBroadcast = finnClearBroadcast.trim().ifBlank { "{boss} is defeated. Talk to Finn to claim." }

@@ -16,6 +16,8 @@ Implement Finn-driven server boss contracts gated by total shipping-bin Chowcoin
 - Boss-focused Finn TALK context from the nested contract screen.
 - Subtle `boss_cleared` global NPC memory for later LLM references.
 - Greedy boss command tails for colon-safe ids, plus `/ck bosses required <boss_id|all> <players>` to tune crew size in config.
+- Debug credit updates now sync pinned mission progress, including `/ck bosses <boss_id> credit <player> <true|false>` shorthand.
+- Claim-ready Finn UX: quest balloon, automatic claim prompt on right-click, LLM-backed reward paid line, highlighted XP/Chowcoin text, and green claim buttons.
 
 ## Validation
 

@@ -24,6 +24,8 @@ Use this when someone can launch a client/server. These checks were deferred bec
 - [ ] Confirm Cozy level 1 grants starter bread/torches.
 - [ ] Confirm Cozy level 3 grants `paraglider:paraglider`.
 - [ ] Confirm Cozy level 10 grants `cobblemon:poke_bait` and `cobblemon:poke_ball`.
+- [ ] Confirm Cozy level 45 shows Riding License with saddle icon and `Unlocks Cobblemon riding` tooltip.
+- [ ] Claim Cozy level 45 and confirm it grants player/account Riding License state, not an item.
 - [ ] Confirm Combat level 1 grants starter bread/arrows.
 - [ ] Confirm Combat level 8 grants `sophisticatedbackpacks:backpack`.
 - [ ] Confirm Combat pass grants only these backpack upgrades:
@@ -52,6 +54,16 @@ Use this when someone can launch a client/server. These checks were deferred bec
 - [ ] Locked Elytra inventory slot uses the same lock overlay as class-locked items.
 - [ ] At overall Battlepass Level 500 or higher, Elytra can be worn normally.
 - [ ] Elytra from End loot and item frames remains obtainable.
+
+## Riding License
+
+- [ ] Before claiming Cozy level 45, trying to ride any Cobblemon Pokemon is canceled.
+- [ ] Before claiming Cozy level 45, the `RIDING LICENSE REQUIRED` snackbar appears.
+- [ ] After claiming Cozy level 45, Cobblemon riding works normally.
+- [ ] Confirm `/ck mobility license get <player>` reports the expected state.
+- [ ] Confirm `/ck mobility license grant <player>` allows riding.
+- [ ] Confirm `/ck mobility license revoke <player>` blocks riding again.
+- [ ] Confirm Cobblemon mount-speed perks still apply after riding is allowed.
 
 ## Shipping Bin
 

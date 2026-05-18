@@ -1,6 +1,7 @@
 package dev.gisketch.chowkingdom.battlepass
 
 import dev.gisketch.chowkingdom.ChowKingdomMod
+import dev.gisketch.chowkingdom.mobility.MobilityLicenseFeature
 import dev.gisketch.chowkingdom.roles.CobblemonMountSpeedStyleDebug
 import dev.gisketch.chowkingdom.roles.DrakeTamerPerks
 import dev.gisketch.chowkingdom.roles.FieldResearcherProgressStore
@@ -43,6 +44,7 @@ object CobblemonBattlepassIntegration {
             subscribeRaw(eventsClass, "POKEMON_CATCH_RATE", ::handlePokemonCatchRate)
             subscribeRaw(eventsClass, "POKEMON_CAPTURED", ::handlePokemonCaught)
             subscribeRaw(eventsClass, "POKEMON_SENT_POST", ::handlePokemonSentOut)
+            subscribeRaw(eventsClass, "RIDE_EVENT_PRE", MobilityLicenseFeature::handleCobblemonRidePre)
             subscribeRaw(eventsClass, "RIDE_EVENT_POST", ::handleRidePost)
             subscribeRaw(eventsClass, "FRIENDSHIP_UPDATED", ::handleFriendshipUpdated)
             ChowKingdomMod.LOGGER.info("Registered Cobblemon battlepass integration")

@@ -63,6 +63,17 @@ object BossEventsStore {
         return player.stringUUID in data.bosses[bossId]?.claimed.orEmpty()
     }
 
+    fun creditCount(bossId: String): Int {
+        if (!loaded) load()
+        return data.bosses[bossId]?.credit?.size ?: 0
+    }
+
+    fun clearedOrCreditedEnough(entry: BossEventEntry): Boolean {
+        if (!loaded) load()
+        val boss = data.bosses[entry.id] ?: return false
+        return boss.clearedBy.isNotEmpty() || boss.credit.size >= entry.requiredPlayers
+    }
+
     fun claim(player: ServerPlayer, bossId: String): Boolean {
         if (!loaded) load()
         val boss = data.bosses.getOrPut(bossId) { BossEventBossState() }
@@ -102,7 +113,7 @@ object BossEventsStore {
             val boss = data.bosses[entry.id]
             val state = when {
                 entry.id !in data.unlockedBossIds -> "locked"
-                boss?.clearedBy.orEmpty().isNotEmpty() -> "cleared"
+                boss?.clearedBy.orEmpty().isNotEmpty() || (boss?.credit?.size ?: 0) >= entry.requiredPlayers -> "cleared"
                 else -> "unlocked"
             }
             "${entry.order}. ${entry.id} $state threshold=${entry.thresholdChowcoins} credit=${boss?.credit?.size ?: 0} claimed=${boss?.claimed?.size ?: 0}"

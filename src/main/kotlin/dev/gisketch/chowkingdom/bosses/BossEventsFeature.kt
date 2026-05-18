@@ -80,12 +80,10 @@ object BossEventsFeature {
 
     fun hudEntriesFor(player: ServerPlayer): List<NpcQuestHudEntryPayload> {
         if (!BossEventsConfig.settings().enabled) return emptyList()
-        val entry = BossEventsConfig.firstUnlockedUncleared(
-            cleared = BossEventsStore::clearedByAny,
-            unlocked = BossEventsStore::unlocked,
-        ) ?: return claimableEntries(player)
+        claimableEntries(player).takeIf { it.isNotEmpty() }?.let { return it }
+        val entry = activeContractEntry() ?: return emptyList()
         val fight = fights.values.firstOrNull { it.bossId == entry.id }
-        val progress = fight?.damagedBy?.size ?: 0
+        val progress = maxOf(fight?.damagedBy?.size ?: 0, BossEventsStore.creditCount(entry.id))
         return listOf(hudEntry(entry, progress.coerceAtMost(entry.requiredPlayers), entry.requiredPlayers))
     }
 
@@ -93,7 +91,11 @@ object BossEventsFeature {
         BossEventsConfig.settings().enabled && definition.id.lowercase(Locale.ROOT) == BossEventsConfig.settings().finnNpcId
 
     fun tryOpenFinnDialog(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition): Boolean {
-        return false
+        if (definition.id.lowercase(Locale.ROOT) != BossEventsConfig.settings().finnNpcId) return false
+        val entry = BossEventsStore.claimableBosses(player).firstOrNull() ?: return false
+        showClaimBalloon(player, npc, entry)
+        openClaimDialog(player, npc, definition, entry)
+        return true
     }
 
     fun handleFinnAction(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, action: String): Boolean {
@@ -129,6 +131,10 @@ object BossEventsFeature {
             return lightBossContext(player, npcId)
         }
         val entry = BossEventsConfig.entry(focus.bossId) ?: return lightBossContext(player, npcId)
+        if (BossEventsStore.hasClaimed(player, entry.id) && BossEventsStore.clearedOrCreditedEnough(entry)) {
+            bossTalkFocus.remove(focusKey)
+            return lightBossContext(player, npcId)
+        }
         return contractTalkContext(player, entry, primary = true)
     }
 
@@ -156,12 +162,18 @@ object BossEventsFeature {
         )
         if (llmEnabled) {
             val focusedEntry = entry
+            val context = contractTalkContext(player, focusedEntry, primary = true)
+            val instruction = if (view.state == "locked") {
+                "Open the boss contract screen. Finn has no clean contract yet. Reply in character that he is scouting for strange trouble and needs more adventure before he pins another fight. Do not mention shipping, Chowcoins, thresholds, hidden boss ids, required players, or the next boss."
+            } else {
+                "Open the boss contract screen. Explain the contract in character and invite the player to ask questions or claim if they have credit."
+            }
             NpcLlmService.event(
                 player,
                 npc,
                 definition,
                 fallback,
-                contractTalkContext(player, focusedEntry, primary = true) + "\n\nOpen the boss contract screen. Explain the contract in character and invite the player to ask questions or claim if they have credit.",
+                "$context\n\n$instruction",
                 inputLabel = "Finn boss contract screen",
                 npcRecordType = "npc_boss_contract",
                 responseToken = token,
@@ -197,18 +209,21 @@ object BossEventsFeature {
 
     private fun contractView(player: ServerPlayer): BossContractView {
         BossEventsStore.claimableBosses(player).firstOrNull()?.let { entry -> return BossContractView("claimable", entry, claimAvailable = true) }
-        BossEventsConfig.firstUnlockedUncleared(cleared = BossEventsStore::clearedByAny, unlocked = BossEventsStore::unlocked)?.let { entry -> return BossContractView("active", entry) }
+        activeContractEntry()?.let { entry -> return BossContractView("active", entry) }
         BossEventsConfig.entries().firstOrNull { entry -> !BossEventsStore.unlocked(entry.id) }?.let { entry -> return BossContractView("locked", entry) }
-        BossEventsConfig.entries().lastOrNull { entry -> BossEventsStore.clearedByAny(entry.id) }?.let { entry -> return BossContractView("complete", entry) }
+        BossEventsConfig.entries().lastOrNull { entry -> BossEventsStore.clearedOrCreditedEnough(entry) }?.let { entry -> return BossContractView("complete", entry) }
         return BossContractView("empty", null)
     }
+
+    private fun activeContractEntry(): BossEventEntry? =
+        BossEventsConfig.entries().firstOrNull { entry -> BossEventsStore.unlocked(entry.id) && !BossEventsStore.clearedOrCreditedEnough(entry) }
 
     private fun contractDialogText(player: ServerPlayer, view: BossContractView): String {
         val entry = view.entry ?: return "No contracts on the board yet. I am watching the roads, the ruins, and the weird noises under the map."
         return when (view.state) {
             "claimable" -> render(entry.finnClaimDialog, entry, player = player, total = ShippingBinStore.totalChowcoinsSold())
             "active" -> render(entry.finnContractDialog, entry, player = player, total = ShippingBinStore.totalChowcoinsSold())
-            "locked" -> render(entry.finnLockedContractDialog, entry, player = player, total = ShippingBinStore.totalChowcoinsSold())
+            "locked" -> "I do not have a clean contract yet. The roads are quiet in that suspicious way. Go have an adventure; I will shout when I find something ugly enough for the board."
             "complete" -> "The ${entry.displayName} contract is closed. I logged the crew, checked the scratches, and started watching for the next shadow."
             else -> entry.description.ifBlank { entry.displayName }
         }
@@ -224,22 +239,40 @@ object BossEventsFeature {
         if (npcId.lowercase(Locale.ROOT) != BossEventsConfig.settings().finnNpcId) return ""
         val view = contractView(player)
         val entry = view.entry ?: return ""
+        if (view.state == "locked") {
+            return """
+                Light Finn boss context:
+                - Current contract state: locked
+                - Finn has not found a clean new boss contract yet.
+                If this comes up, say he is scouting for weird trouble and the town needs more adventure before he pins another fight.
+                Do not mention shipping, Chowcoins, thresholds, hidden boss ids, required players, or the next boss.
+            """.trimIndent()
+        }
         return """
             Light Finn boss context:
             - Current contract state: ${view.state}
             - Boss: ${entry.displayName}
-            - Total shipped Chowcoins: ${ShippingBinStore.totalChowcoinsSold()}
             Mention this only if it naturally fits. Do not force the whole conversation onto the boss contract unless the player asks.
         """.trimIndent()
     }
 
     private fun contractTalkContext(player: ServerPlayer, entry: BossEventEntry, primary: Boolean): String {
-        val total = ShippingBinStore.totalChowcoinsSold()
         val status = when {
             BossEventsStore.hasCredit(player, entry.id) && !BossEventsStore.hasClaimed(player, entry.id) -> "claimable"
             !BossEventsStore.unlocked(entry.id) -> "locked"
-            BossEventsStore.clearedByAny(entry.id) -> "cleared"
+            BossEventsStore.clearedOrCreditedEnough(entry) -> "cleared"
             else -> "active"
+        }
+        if (status == "locked") {
+            return """
+                ${if (primary) "Primary" else "Light"} Finn boss contract context:
+                - Status for ${player.gameProfile.name}: locked
+                - Finn has not found a clean new boss contract yet.
+                - Finn's lore: he runs into threats while scouting, exploring, and chasing weird reports. When he finds one, he pins the contract and announces it.
+                - Current guidance: tell the player to keep adventuring, exploring, and checking back.
+                Do not mention shipping, Chowcoins, thresholds, hidden boss ids, required players, or the next boss.
+                Do not name the locked boss.
+            """.trimIndent()
         }
         val next = BossEventsConfig.nextAfter(entry)
         return """
@@ -248,8 +281,6 @@ object BossEventsFeature {
             - Boss id: ${entry.id}
             - Boss order: ${entry.order}
             - Status for ${player.gameProfile.name}: $status
-            - Threshold: ${entry.thresholdChowcoins}
-            - Total shipped Chowcoins: $total
             - Required credited players: ${entry.requiredPlayers}
             - Reward XP: ${entry.firstClearXp}
             - Reward Chowcoins: ${entry.firstClearChowcoins}
@@ -392,7 +423,7 @@ object BossEventsFeature {
 
     private fun openClaimDialog(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, entry: BossEventEntry) {
         val friendship = NpcStore.friendshipSnapshot(definition.id, player)
-        val fallback = render(entry.finnClaimDialog, entry, player = player, total = ShippingBinStore.totalChowcoinsSold())
+        val fallback = claimOfferFallback(player, entry)
         val llmEnabled = NpcConfig.settings().llm.enabled
         val token = if (llmEnabled) NpcDialogTokens.next() else 0L
         NpcNetwork.openDialog(
@@ -403,9 +434,10 @@ object BossEventsFeature {
                 if (llmEnabled) "..." else fallback,
                 false,
                 friendship.level,
-                closeLabel = "LATER",
+                closeLabel = "BYE",
                 responseToken = token,
-                dialogMode = "boss_claim",
+                dialogMode = "boss_contract",
+                bossClaimAvailable = true,
             ),
         )
         if (llmEnabled) {
@@ -414,7 +446,7 @@ object BossEventsFeature {
                 npc,
                 definition,
                 fallback,
-                bossPrompt(player, entry),
+                bossClaimOfferPrompt(player, entry),
                 inputLabel = "Finn boss claim",
                 npcRecordType = "npc_boss_claim_offer",
                 responseToken = token,
@@ -435,10 +467,27 @@ object BossEventsFeature {
         }
         BattlepassNetwork.syncAllPlayers()
         NpcQuestService.syncTo(player)
-        val message = "Contract paid: +$xp Combat XP, +$coins Chowcoins for ${entry.displayName}."
-        SnackbarNetwork.send(player, SnackbarNotification.item(entry.iconItem, "BOSS REWARD CLAIMED", message, SnackbarType.SUCCESS, SnackbarSounds.REWARD))
+        bossTalkFocus.remove(focusKey(player.uuid, definition.id))
+        val message = claimPaidFallback(entry)
+        SnackbarNetwork.send(player, SnackbarNotification.item(entry.iconItem, "BOSS REWARD CLAIMED", stripDialogTags(message), SnackbarType.SUCCESS, SnackbarSounds.REWARD))
         val friendship = NpcStore.friendshipSnapshot(definition.id, player)
-        NpcNetwork.openDialog(player, NpcFeature.dialogPayload(definition, npc, message, false, friendship.level, closeOnly = true, closeLabel = "OKAY"))
+        val llmEnabled = NpcConfig.settings().llm.enabled
+        val token = if (llmEnabled) NpcDialogTokens.next() else 0L
+        NpcNetwork.openDialog(player, NpcFeature.dialogPayload(definition, npc, if (llmEnabled) "..." else message, false, friendship.level, closeOnly = true, closeLabel = "OKAY", responseToken = token))
+        if (llmEnabled) {
+            NpcLlmService.event(
+                player,
+                npc,
+                definition,
+                message,
+                bossClaimPaidPrompt(player, entry),
+                inputLabel = "Finn boss reward paid",
+                npcRecordType = "npc_boss_claim_paid",
+                responseToken = token,
+            )
+        } else {
+            NpcStore.recordConversation(definition.id, player, definition.name, message, "npc_boss_claim_paid")
+        }
     }
 
     private fun announceUnlock(server: MinecraftServer, entry: BossEventEntry, total: Long) {
@@ -476,7 +525,7 @@ object BossEventsFeature {
         NpcQuestHudEntryPayload(
             npcId = BossEventsConfig.settings().finnNpcId,
             npcName = "Finn",
-            description = if (claim) "Talk to Finn to claim ${entry.displayName}" else "Finn: Defeat ${entry.displayName}",
+            description = if (claim) "Talk to Finn to claim your rewards" else "Finn: Defeat ${entry.displayName}",
             passId = "combat",
             xp = entry.firstClearXp,
             chowcoins = entry.firstClearChowcoins,
@@ -489,10 +538,17 @@ object BossEventsFeature {
         server.playerList.players.forEach(NpcQuestService::syncTo)
     }
 
-    private fun bossPrompt(player: ServerPlayer, entry: BossEventEntry): String {
+    private fun claimOfferFallback(player: ServerPlayer, entry: BossEventEntry): String =
+        render(entry.finnClaimDialog, entry, player = player, total = ShippingBinStore.totalChowcoinsSold()) +
+            " Reward: <xp>+${entry.firstClearXp} Combat XP</xp> and <coin>+${entry.firstClearChowcoins} Chowcoins</coin>."
+
+    private fun claimPaidFallback(entry: BossEventEntry): String =
+        "Contract paid for <b>${entry.displayName}</b>: <xp>+${entry.firstClearXp} Combat XP</xp> and <coin>+${entry.firstClearChowcoins} Chowcoins</coin>."
+
+    private fun bossClaimOfferPrompt(player: ServerPlayer, entry: BossEventEntry): String {
         val next = BossEventsConfig.nextAfter(entry)
         return """
-            Boss contract claim context for Finn.
+            Boss contract claim-ready context for Finn.
             Player: ${player.gameProfile.name}
             Boss: ${entry.displayName}
             Boss id: ${entry.id}
@@ -502,9 +558,34 @@ object BossEventsFeature {
             Reward XP: ${entry.firstClearXp}
             Reward Chowcoins: ${entry.firstClearChowcoins}
             Next boss: ${next?.displayName ?: "none"}
-            Reply as Finn. Keep it short, excited, and in character. Tell the player to claim the reward.
+            Reply as Finn. Keep it short, excited, and in character.
+            Tell the player their reward is ready and point them to the CLAIM button.
+            Wrap the XP reward with <xp>...</xp> and the Chowcoin reward with <coin>...</coin>.
+            You may wrap the boss name or player name with <b>...</b>.
         """.trimIndent()
     }
+
+    private fun bossClaimPaidPrompt(player: ServerPlayer, entry: BossEventEntry): String {
+        val next = BossEventsConfig.nextAfter(entry)
+        return """
+            Boss contract reward-paid context for Finn.
+            Player: ${player.gameProfile.name}
+            Boss: ${entry.displayName}
+            Reward XP paid: ${entry.firstClearXp}
+            Reward Chowcoins paid: ${entry.firstClearChowcoins}
+            Next boss: ${next?.displayName ?: "none"}
+            Reply as Finn with a short congratulations line.
+            Mention that payment is complete.
+            Wrap the XP reward with <xp>...</xp> and the Chowcoin reward with <coin>...</coin>.
+            You may wrap the boss name or player name with <b>...</b>.
+        """.trimIndent()
+    }
+
+    private fun showClaimBalloon(player: ServerPlayer, npc: ChowNpcEntity, entry: BossEventEntry) {
+        NpcNetwork.showBalloon(player, npc.id, "@quest_log.png I have your ${entry.displayName} contract reward ready.", 120)
+    }
+
+    private fun stripDialogTags(message: String): String = message.replace(Regex("(?i)</?(mission|coin|xp|player|b)>"), "")
 
     private fun render(template: String, entry: BossEventEntry, player: ServerPlayer? = null, total: Long): String = template
         .replace("{boss}", entry.displayName)
@@ -538,6 +619,7 @@ object BossEventsFeature {
                 .then(Commands.literal("get").then(commandTailArgument().suggests { context, builder -> suggestCreditTail(context, builder, includeValue = false) }.executes(::creditGet)))
                 .then(Commands.literal("set").then(commandTailArgument().suggests { context, builder -> suggestCreditTail(context, builder, includeValue = true) }.executes(::creditSet))),
         )
+        .then(Commands.argument("legacy_args", StringArgumentType.greedyString()).requires { it.hasPermission(2) }.executes(::legacyBossCommand))
 
     private fun bossTailArgument() = Commands.argument("boss_id", StringArgumentType.greedyString())
         .suggests { _, builder -> SharedSuggestionProvider.suggest(BossEventsConfig.entries().map { it.id }, builder) }
@@ -656,7 +738,23 @@ object BossEventsFeature {
         val player = playerFrom(context, playerName) ?: return 0
         val value = boolFrom(context, rawValue) ?: return 0
         BossEventsStore.setCredit(player, entry.id, value)
-        NpcQuestService.syncTo(player)
+        syncAll(context.source.server)
+        context.source.sendSuccess({ Component.literal("Set ${player.gameProfile.name} ${entry.id} credit=$value.") }, true)
+        return 1
+    }
+
+    private fun legacyBossCommand(context: CommandContext<CommandSourceStack>): Int {
+        val raw = StringArgumentType.getString(context, "legacy_args").trim()
+        val match = Regex("(.+)\\s+credit\\s+(\\S+)\\s+(\\S+)", RegexOption.IGNORE_CASE).matchEntire(raw)
+        if (match == null) {
+            context.source.sendFailure(Component.literal("Usage: /ck bosses <boss_id> credit <player> <true|false>"))
+            return 0
+        }
+        val entry = bossFrom(context, match.groupValues[1]) ?: return 0
+        val player = playerFrom(context, match.groupValues[2]) ?: return 0
+        val value = boolFrom(context, match.groupValues[3]) ?: return 0
+        BossEventsStore.setCredit(player, entry.id, value)
+        syncAll(context.source.server)
         context.source.sendSuccess({ Component.literal("Set ${player.gameProfile.name} ${entry.id} credit=$value.") }, true)
         return 1
     }

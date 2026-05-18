@@ -85,6 +85,10 @@ function Chowcoin-Reward([int]$Amount) {
     "{ type = `"chowcoin`", item = `"minecraft:gold_ingot`", quantity = $Amount, is_prominent = false }"
 }
 
+function License-Reward([string]$License, [string]$Name, [string]$Icon) {
+    "{ type = `"license`", item = $(Q $Icon), quantity = 1, is_prominent = true, data = { license = $(Q $License), name = $(Q $Name) } }"
+}
+
 function Add-Chowcoin-Rewards([hashtable]$Rewards) {
     for ($level = 25; $level -le $MaxLevel; $level += 25) {
         $amount = switch ($level) {
@@ -352,6 +356,7 @@ $cozyExtraRewards = @{
     10 = @((Fixed-Reward "cobblemon:poke_bait" 8 $true), (Fixed-Reward "cobblemon:poke_ball" 6 $true))
     18 = @((Fixed-Reward "cobblemon:poke_ball" 8 $true))
     35 = @((Fixed-Reward "cobblemon:great_ball" 4 $true))
+    45 = @((License-Reward "cobblemon_riding" "Riding License" "minecraft:saddle"))
     75 = @((Fixed-Reward "cobblemon:heal_ball" 4 $true))
     125 = @((Fixed-Reward "cobblemon:nest_ball" 4 $true))
     175 = @((Fixed-Reward "cobblemon:lure_ball" 4 $true))

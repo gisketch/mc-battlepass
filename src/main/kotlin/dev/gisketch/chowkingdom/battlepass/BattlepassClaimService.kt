@@ -2,6 +2,7 @@ package dev.gisketch.chowkingdom.battlepass
 
 import dev.gisketch.chowkingdom.wallets.ChowcoinNetwork
 import dev.gisketch.chowkingdom.wallets.ChowcoinStore
+import dev.gisketch.chowkingdom.mobility.MobilityLicenseFeature
 import dev.gisketch.chowkingdom.relicroulette.RelicRouletteFeature
 import dev.gisketch.chowkingdom.snackbar.SnackbarIcons
 import dev.gisketch.chowkingdom.snackbar.SnackbarNetwork
@@ -78,6 +79,10 @@ object BattlepassClaimService {
             RelicRouletteFeature.giveLockedStack(player, stack)
             return
         }
+        if (MobilityLicenseFeature.isLicenseReward(reward.type)) {
+            MobilityLicenseFeature.grantReward(player, reward.data["license"].orEmpty(), "battlepass")
+            return
+        }
         if (reward.type != "item") return
         val item = runCatching { ResourceLocation.parse(reward.item) }.getOrNull()
             ?.let { id -> BuiltInRegistries.ITEM.getOptional(id).orElse(Items.AIR) }
@@ -105,6 +110,7 @@ object BattlepassClaimService {
         if (reward == null) return SnackbarIcons.BATTLEPASS
         if (isChowcoinReward(reward)) return "minecraft:gold_ingot"
         if (RelicRouletteFeature.isRelicTokenReward(reward.type)) return RelicRouletteFeature.tokenItemIdForReward(reward.item, reward.data["pool"]).takeIf(String::isNotBlank) ?: SnackbarIcons.BATTLEPASS
+        if (MobilityLicenseFeature.isLicenseReward(reward.type)) return reward.item.takeIf(String::isNotBlank) ?: "minecraft:saddle"
         return reward.item.takeIf(String::isNotBlank) ?: SnackbarIcons.BATTLEPASS
     }
 }

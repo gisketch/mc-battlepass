@@ -29,6 +29,7 @@ import dev.gisketch.chowkingdom.config.TomlConfigIO
 import dev.gisketch.chowkingdom.debug.ExtractCommands
 import dev.gisketch.chowkingdom.discord.DiscordFeature
 import dev.gisketch.chowkingdom.discord.DiscordScreenshotClient
+import dev.gisketch.chowkingdom.mobility.MobilityLicenseFeature
 import dev.gisketch.chowkingdom.npc.NpcBossBarClient
 import dev.gisketch.chowkingdom.npc.NpcClient
 import dev.gisketch.chowkingdom.npc.NpcFeature
@@ -75,6 +76,7 @@ class ChowKingdomMod(modBus: IEventBus, container: ModContainer) {
         BattlepassFarmersDelightEventIntegration.register()
         CobblemonBattlepassIntegration.register()
         BattlepassElytraGate.register()
+        MobilityLicenseFeature.register()
         BattlepassCommands.register()
         BossEventsFeature.register()
         ExtractCommands.register()

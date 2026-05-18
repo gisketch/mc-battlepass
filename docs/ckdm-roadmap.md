@@ -77,6 +77,8 @@ Core rule: reward exploration with stories, routes, trophies, cosmetics, tokens,
 - [x] Town Charm return item exists.
 - [x] Explorer compass store exists for biome/structure targets.
 - [x] Cobblemon hooks exist for Pokedex scan/catch, category catch, type catch, friendship, mount travel, catch-rate jobs, mount-speed jobs, and Xaero unknown Pokemon hiding.
+- [x] Server-wide boss contracts exist with shipping-value gates, Finn dialogue, participant credit, reward claim, locked drop suppression, Discord event webhook, and admin/debug commands.
+- [x] Finn boss claim UX has claim-ready balloons, LLM claim prompts, highlighted XP/Chowcoin reward text, and green claim buttons.
 
 ## Phase 0 - Balance Audit Before More Features
 
@@ -156,12 +158,14 @@ DONE:
 - [x] Mission rotation families exist to avoid five similar missions in one week.
 - [x] NPC quests can use same event hooks for daily-sized goals.
 - [x] Class mentor quests reuse event hooks for one-time progression.
+- [x] Riding License exists as Cozy Pass level 45 account/player data.
+- [x] Cobblemon riding is blocked by default until the Riding License is claimed.
 
 TODO (Configuration):
 
 - [ ] Redesign Cozy Pass as farming, cooking, fishing, friendship, travel, Pokedex scan, and shop/social milestones.
-- [ ] Add Cozy Pass level 45 riding license reward. Reward is account/player data, not an item.
-- [ ] Give riding license reward an icon in the pass UI so it reads like a normal reward even though it only flips player state.
+- [x] Add Cozy Pass level 45 riding license reward. Reward is account/player data, not an item.
+- [x] Give riding license reward an icon in the pass UI so it reads like a normal reward even though it only flips player state.
 - [ ] Redesign Combat Pass as class combat practice, dungeon preparation, boss participation, and exploration survival.
 - [ ] Move small 10-20 action tasks into NPC quests, not weekly pass.
 - [ ] Make weekly missions medium goals: 64 cooks, 128 shipped items, 50,000 shipped value, 25 fish, 100 monsters, 10 type catches.
@@ -173,10 +177,10 @@ TODO (Configuration):
 
 TODO (Mod):
 
-- [ ] Add player persistent data property for Cobblemon riding license, e.g. `hasRidingLicense`.
-- [ ] Block riding/mounting any Cobblemon Pokemon by default when the player does not have the riding license.
-- [ ] Add battlepass reward action that sets the riding license data property to true.
-- [ ] Add snackbar denial when a player tries to mount without the riding license.
+- [x] Add player persistent data property for Cobblemon riding license, e.g. `hasRidingLicense`.
+- [x] Block riding/mounting any Cobblemon Pokemon by default when the player does not have the riding license.
+- [x] Add battlepass reward action that sets the riding license data property to true.
+- [x] Add snackbar denial when a player tries to mount without the riding license.
 - [ ] Add mission hooks for boss-event participation and first-clear credit.
 - [ ] Add mission hooks for NPC friendship level reached.
 - [ ] Add mission hooks for Explorer Notes / Dungeon Seals / Sky Shards collected.
@@ -282,20 +286,28 @@ TODO (Mod):
 - [ ] Add per-player boss HP scaling.
 - [ ] Add per-player boss add/spawn scaling only for specific bosses.
 - [ ] Add max participant scaling cap so 10 players does not create an impossible sponge.
-- [ ] Add minimum solo/duo floor so 1-2 players can still attempt smaller bosses.
-- [ ] Add reward channels: first-clear rewards, helper rewards, repeat rewards, server unlock rewards.
-- [ ] Add Chowcoin reward support.
-- [ ] Add battlepass XP reward support.
+- [x] Add configurable minimum credited-player count so solo/duo testing can count smaller bosses.
+- [x] Add first-clear reward channel.
+- [ ] Add helper reward channel separate from first-clear rewards.
+- [ ] Add repeat reward channel separate from first-clear rewards.
+- [ ] Add server unlock reward channel.
+- [x] Add Chowcoin reward support.
+- [x] Add battlepass XP reward support.
 - [ ] Add relic-token / relic-fragment reward support.
 - [ ] Add title/badge/trophy reward support.
 - [ ] Add configurable repeat cooldowns.
 - [x] Add configurable minimum participants for a fight to count.
 - [ ] Add configurable gate open policy: all active players, percent of active players, minimum clears, or admin unlock.
 - [x] Add command `/ck bosses status`.
+- [x] Add command `/ck bosses reload`.
 - [x] Add command `/ck bosses credit get <boss> <player>`.
 - [x] Add command `/ck bosses credit set <boss> <player> <true|false>`.
+- [x] Add debug shorthand `/ck bosses <boss> credit <player> <true|false>`.
 - [x] Add command `/ck bosses unlock <gate>`.
 - [x] Add command `/ck bosses reset <boss> confirm`.
+- [x] Add command `/ck bosses required <boss|all> <players>`.
+- [x] Make boss command ids colon-safe / greedy so namespaced ids work.
+- [x] Sync pinned boss mission progress after debug credit changes.
 - [x] Add snackbar broadcast when a boss event opens.
 - [x] Add snackbar broadcast when a group clears a boss.
 - [x] Add Discord relay for boss open/clear milestones through `events_webhook_url`.
@@ -308,6 +320,8 @@ TODO (Configuration):
 - [x] Configure boss gates with cumulative server shipping Chowcoin thresholds. Example: first boss opens at 50,000 total shipped Chowcoin value, second boss opens at 100,000 total shipped Chowcoin value, later bosses keep increasing.
 - [ ] Create sample `wither.toml` only as a test fixture.
 - [x] Define default first-clear rewards as modest Chowcoins and BP XP.
+- [x] Add immersion config fields for each boss: lore, location hint, access hint, fight tips, Finn contract/locked/claim lines, and clear broadcasts.
+- [x] Set Prism test config `required_players = 1` for all current boss contracts.
 - [x] Keep raw boss loot controlled before unlock by suppressing locked boss item drops.
 - [ ] Start boss HP scaling around `base * (1.0 + 0.65 * extra_players)` with a cap.
 - [ ] Avoid scaling boss damage strongly with player count. More players already create chaos and revive load.
@@ -318,7 +332,8 @@ NEED MORE BRAINSTORM:
 - [ ] Decide active player definition: ever joined, joined in last 14 days, has chosen class, or manually registered.
 - [ ] Decide default gate policy. Best current guess: majority/minimum gate, not all players, to avoid one inactive player blocking the server.
 - [ ] Decide if helper players get small BP XP, social currency, or nothing after first clear.
-- [ ] Decide if bosses are summoned manually by admins, spawned by ritual item, scheduled weekly, or unlocked by NPC quest.
+- [x] Decide V1 boss access policy: bosses remain fightable through native mod mechanics; CKDM gates Finn credit/rewards and suppresses locked item drops.
+- [ ] Decide V2 boss access policy: admin summon, ritual item, scheduled weekly, or NPC quest chain.
 - [ ] Decide how failed boss attempts consume keys/materials.
 - [ ] Decide if boss arena protection is CKDM-owned or handled by claims/admin setup.
 - [ ] Decide if boss scaling locks at start or updates when players join/leave mid-fight.

@@ -1361,7 +1361,13 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
             val hovered = mouseX in x until x + BUTTON_WIDTH && mouseY in buttonY until buttonY + BUTTON_HEIGHT
             val enabled = isActionEnabled(action, giftStack)
             val activeHover = hovered && enabled
-            val texture = if (activeHover && (action == DialogAction.Bye || action == DialogAction.Fire)) RED_BUTTON_HOVER_TEXTURE else if (activeHover) BUTTON_HOVER_TEXTURE else BUTTON_TEXTURE
+            val highlighted = isActionHighlighted(action)
+            val texture = when {
+                activeHover && (action == DialogAction.Bye || action == DialogAction.Fire) -> RED_BUTTON_HOVER_TEXTURE
+                activeHover -> BUTTON_HOVER_TEXTURE
+                highlighted && enabled -> GREEN_BUTTON_TEXTURE
+                else -> BUTTON_TEXTURE
+            }
             val sourceSize = if (activeHover) BUTTON_HOVER_TEXTURE_SIZE else BUTTON_TEXTURE_SIZE
             val sourceCorner = if (activeHover) BUTTON_HOVER_SOURCE_CORNER else BUTTON_SOURCE_CORNER
             val textColor = if (enabled) NAME_COLOR else DISABLED_COLOR
@@ -1659,6 +1665,13 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         else -> true
     }
 
+    private fun isActionHighlighted(action: DialogAction): Boolean = when {
+        action == DialogAction.Contracts && payload.bossClaimAvailable -> true
+        bossContractMode() && action == DialogAction.Claim && payload.bossClaimAvailable -> true
+        bossClaimMode() && action == DialogAction.Talk -> true
+        else -> false
+    }
+
     private fun buttonTop(panelHeight: Int, actionCount: Int): Int {
         if (payload.closeOnly) return (panelHeight - BUTTON_HEIGHT) / 2
         val stackHeight = BUTTON_HEIGHT + (actionCount - 1).coerceAtLeast(0) * BUTTON_STEP
@@ -1762,11 +1775,12 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
 
     private fun dialogTextComponent(text: String, shadow: Boolean = false): Component {
         val playerName = minecraft?.player?.gameProfile?.name.orEmpty()
+        val normalizedText = normalizeDialogMarkupSpacing(text)
         val root = Component.literal("").withStyle { style -> style.withColor(if (shadow) DIALOG_SHADOW else DIALOG_COLOR) }
         var color = DIALOG_COLOR
         var cursor = 0
-        DIALOG_TAG_REGEX.findAll(text).forEach { match ->
-            appendDialogText(root, text.substring(cursor, match.range.first), color, playerName, shadow)
+        DIALOG_TAG_REGEX.findAll(normalizedText).forEach { match ->
+            appendDialogText(root, normalizedText.substring(cursor, match.range.first), color, playerName, shadow)
             val tag = match.groupValues[1].lowercase(Locale.ROOT)
             val closing = match.value.startsWith("</")
             color = if (closing) DIALOG_COLOR else when (tag) {
@@ -1778,9 +1792,13 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
             }
             cursor = match.range.last + 1
         }
-        appendDialogText(root, text.substring(cursor).replace(Regex("<[^>]*$"), ""), color, playerName, shadow)
+        appendDialogText(root, normalizedText.substring(cursor).replace(Regex("<[^>]*$"), ""), color, playerName, shadow)
         return root
     }
+
+    private fun normalizeDialogMarkupSpacing(text: String): String = text
+        .replace(Regex("(?<=[A-Za-z0-9])(?=<(?:mission|coin|xp|player|b)>)", RegexOption.IGNORE_CASE), " ")
+        .replace(Regex("(</(?:mission|coin|xp|player|b)>)(?=[A-Za-z0-9])", RegexOption.IGNORE_CASE), "$1 ")
 
     private fun appendDialogText(root: MutableComponent, text: String, color: Int, playerName: String, shadow: Boolean) {
         if (text.isEmpty()) return
@@ -1801,7 +1819,7 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
     private fun styledDialogText(text: String, color: Int, highlight: Boolean, shadow: Boolean): Component {
         val displayText = if (highlight) text.uppercase(Locale.ROOT) else text
         return Component.literal(displayText).withStyle { style ->
-            val fontStyle = if (highlight) style.withFont(CKDM_SMALL_FONT) else style
+            val fontStyle = if (highlight) style.withFont(CKDM_BOLD_FONT) else style
             fontStyle.withColor(if (shadow) DIALOG_SHADOW else color)
         }
     }
@@ -1933,6 +1951,7 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         private val CKDM_BOLD_FONT = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "ckdm_bold")
         private val CKDM_SMALL_FONT = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "ckdm_bold_small")
         private val BUTTON_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_btn_gray.png")
+        private val GREEN_BUTTON_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_btn_green.png")
         private val BUTTON_HOVER_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_btn_green_hover.png")
         private val RED_BUTTON_HOVER_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_btn_red_hover.png")
         private val HEART_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/heart.png")

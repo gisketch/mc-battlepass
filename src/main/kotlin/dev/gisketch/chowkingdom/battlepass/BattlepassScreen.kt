@@ -2,6 +2,7 @@ package dev.gisketch.chowkingdom.battlepass
 
 import com.mojang.blaze3d.systems.RenderSystem
 import dev.gisketch.chowkingdom.ChowKingdomMod
+import dev.gisketch.chowkingdom.mobility.MobilityLicenseFeature
 import dev.gisketch.chowkingdom.relicroulette.RelicRouletteFeature
 import dev.gisketch.chowkingdom.discord.DiscordQuickSkinSupport
 import com.mojang.blaze3d.platform.NativeImage
@@ -1193,7 +1194,17 @@ class BattlepassScreen(initialPassId: String? = null) : Screen(Component.transla
             slot.current -> Component.literal("$remaining XP to claim").withStyle(ChatFormatting.AQUA)
             else -> Component.literal("Locked - $remaining XP needed").withStyle(ChatFormatting.GRAY)
         }
-        return listOf(Component.literal("Tier ${slot.tier.xp} XP").withStyle(ChatFormatting.GOLD), Component.literal("${rewardName(slot.reward, slot.stack)} x${slot.reward.quantity}"), status)
+        val rewardLine = if (MobilityLicenseFeature.isLicenseReward(slot.reward.type)) {
+            Component.literal(rewardName(slot.reward, slot.stack))
+        } else {
+            Component.literal("${rewardName(slot.reward, slot.stack)} x${slot.reward.quantity}")
+        }
+        val details = if (MobilityLicenseFeature.isLicenseReward(slot.reward.type)) {
+            listOf(Component.literal("Unlocks Cobblemon riding").withStyle(ChatFormatting.GRAY))
+        } else {
+            emptyList()
+        }
+        return listOf(Component.literal("Tier ${slot.tier.xp} XP").withStyle(ChatFormatting.GOLD), rewardLine) + details + status
     }
 
     private fun tooltipFor(slot: MissionSlot): List<Component> {
@@ -1235,7 +1246,11 @@ class BattlepassScreen(initialPassId: String? = null) : Screen(Component.transla
         return ItemStack(item, reward.quantity.coerceIn(1, 64))
     }
 
-    private fun rewardName(reward: BattlepassRewardDefinition, stack: ItemStack): String = if (isChowcoinReward(reward)) "Chowcoins" else stack.hoverName.string
+    private fun rewardName(reward: BattlepassRewardDefinition, stack: ItemStack): String = when {
+        isChowcoinReward(reward) -> "Chowcoins"
+        MobilityLicenseFeature.isLicenseReward(reward.type) -> MobilityLicenseFeature.licenseDisplayName(reward.data["license"].orEmpty(), reward.data["name"])
+        else -> stack.hoverName.string
+    }
 
     private fun compactQuantity(quantity: Int): String = when {
         quantity >= 1_000_000 -> "${quantity / 1_000_000}M"
