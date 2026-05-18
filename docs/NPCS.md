@@ -19,12 +19,12 @@ Custom Gecko animation AI planning lives in [NPC Custom Animation AI](NPC_CUSTOM
 - Custom animation experiment: per-NPC `custom_animation = true` routes that entity to the GeckoLib playerlike model and bypasses the EMF-oriented playerlike renderer so CKDM owns the pose. Per-NPC `playerlike_animation = true` routes that entity to the Better Combat-compatible PlayerModel path and disables Gecko custom animation mode.
 - Custom animation IDs are read from `assets/gisketchs_chowkingdom_mod/animations/npc/playerlike.animation.json`; `/npc animations reload` refreshes command suggestions and asks the caller's client to reload resources.
 - Shared friendship message fallback: `friendship_messages.toml`, written if missing and used by all NPCs unless a definition overrides `friendship_messages`.
-- Intro block: `gisketchs_chowkingdom_mod:camping_block`.
+- Camping point: OPs set it with `/ck camping set`.
 - Contract item: `gisketchs_chowkingdom_mod:rent_contract`.
 - Job application item: `gisketchs_chowkingdom_mod:job_application`.
 - Entity id: `gisketchs_chowkingdom_mod:npc`.
 
-Place a camping block to spawn a random eligible camper from the configured NPC pool. Right-click the block later to retry if no NPC is currently present and camp cooldown is ready. Right-click an unhoused camper to open dialog and receive a rent contract. Use the rent contract on a bed to assign that NPC's home. Use the WORK dialog action to receive a job application when the NPC has no workplace; the NPC follows nearby players holding their job application. Right-click a block with it while the NPC is nearby to set that block as the workplace, after configured `work_blocks` are present nearby.
+Use `/ck camping set` to store the camping point at the caller's position and spawn a random eligible camper from the configured NPC pool when camp is ready. Right-click an unhoused camper to open dialog and receive a rent contract. Use the rent contract on a bed to assign that NPC's home. Use the WORK dialog action to receive a job application when the NPC has no workplace; the NPC follows nearby players holding their job application. Right-click a block with it while the NPC is nearby to set that block as the workplace, after configured `work_blocks` are present nearby.
 
 ## Dialog
 
@@ -427,11 +427,13 @@ Home beds are validated against live bed blocks. If the assigned bed is broken o
 - The pool is unique by NPC id; once every configured NPC has a home, camp stops spawning new campers.
 - Assigning a bed clears active camper state and schedules the next camper after a random `campers.cooldown_min_hours..cooldown_max_hours` Minecraft-hour delay.
 - Breaking an assigned bed cancels that NPC's housed status and makes that NPC the active camper again, ahead of any new camper.
-- If the camping block is removed, automatic cooldown spawning pauses until a camping block position is stored again by placing or right-clicking one.
+- Automatic cooldown spawning uses the stored camping point from `/ck camping set`.
 
 ## Commands
 
 - `/npc reload`: reload NPC config files.
+- `/ck camping set`: OP-only command that stores the camping point at the caller's position and tries to spawn the current eligible camper.
+- `/ck town_center set <radius>`: OP-only command that stores the town center at the caller's position and sets meetup radius in blocks.
 - `/npc spawn <id>`: spawn an NPC at the command source player's position.
 - `/npc respawn status <id>`: show live/dead state, current day/hour, stored respawn day, home bed validity, and whether the NPC is ready to respawn.
 - `/npc respawn <id>`: force-respawn a dead or missing NPC at its valid home bed.

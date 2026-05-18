@@ -1,0 +1,4 @@
+interface:
+  display_name: "NPC Creator"
+  short_description: "Create and validate CKDM NPC TOML configs"
+  default_prompt: "Create a CKDM NPC config with correct type, lore, missions, LLM prompts, balloons, and validation."

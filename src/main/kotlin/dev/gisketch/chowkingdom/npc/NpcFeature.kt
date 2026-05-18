@@ -64,7 +64,6 @@ import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.entity.Mob
 import net.minecraft.world.entity.MobCategory
 import net.minecraft.world.entity.ai.attributes.Attributes
-import net.minecraft.world.item.BlockItem
 import net.minecraft.world.item.Item
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
@@ -128,9 +127,7 @@ object NpcFeature {
     private var debugTimeMultiplier: Int = 1
 
     val CAMPING_BLOCK: DeferredHolder<Block, CampingBlock> = BLOCKS.register("camping_block", Supplier { CampingBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.OAK_PLANKS).strength(1.5f).noOcclusion()) })
-    val CAMPING_BLOCK_ITEM: DeferredHolder<Item, BlockItem> = ITEMS.register("camping_block", Supplier { BlockItem(CAMPING_BLOCK.get(), Item.Properties()) })
     val TOWN_CENTER_BLOCK: DeferredHolder<Block, TownCenterBlock> = BLOCKS.register("town_center_block", Supplier { TownCenterBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.STONE_BRICKS).strength(1.5f).noOcclusion()) })
-    val TOWN_CENTER_BLOCK_ITEM: DeferredHolder<Item, BlockItem> = ITEMS.register("town_center_block", Supplier { BlockItem(TOWN_CENTER_BLOCK.get(), Item.Properties()) })
     val CAMPING_BLOCK_ENTITY: DeferredHolder<BlockEntityType<*>, BlockEntityType<CampingBlockEntity>> = BLOCK_ENTITIES.register(
         "camping_block",
         Supplier { BlockEntityType.Builder.of(::CampingBlockEntity, CAMPING_BLOCK.get()).build(null) },
@@ -2102,8 +2099,8 @@ object NpcFeature {
 
     private fun onRegisterCommands(event: RegisterCommandsEvent) {
         event.dispatcher.register(npcRoot("npc"))
-        event.dispatcher.register(Commands.literal("ck").then(npcRoot("npc")))
-        event.dispatcher.register(Commands.literal("chowkingdom").then(npcRoot("npc")))
+        event.dispatcher.register(ckRoot("ck"))
+        event.dispatcher.register(ckRoot("chowkingdom"))
         event.dispatcher.register(llmRoot())
         NpcQuestDebugCommands.register(event.dispatcher)
     }
@@ -2333,6 +2330,22 @@ object NpcFeature {
                 )
         )
 
+    private fun ckRoot(name: String): LiteralArgumentBuilder<CommandSourceStack> = Commands.literal(name)
+        .then(npcRoot("npc"))
+        .then(
+            Commands.literal("camping")
+                .requires { source -> source.hasPermission(2) }
+                .then(Commands.literal("set").executes(::campingSetCommand)),
+        )
+        .then(
+            Commands.literal("town_center")
+                .requires { source -> source.hasPermission(2) }
+                .then(
+                    Commands.literal("set")
+                        .then(Commands.argument("radius", IntegerArgumentType.integer(4, 64)).executes(::townCenterSetCommand)),
+                ),
+        )
+
     private fun suggestNpcIds(context: CommandContext<CommandSourceStack>, builder: com.mojang.brigadier.suggestion.SuggestionsBuilder) =
         SharedSuggestionProvider.suggest(NpcConfig.all().map { definition -> definition.id }, builder)
 
@@ -2496,6 +2509,29 @@ object NpcFeature {
         NpcStore.setTownCenter(pos)
         context.source.sendSuccess({ Component.literal("NPC town center set to ${pos.toShortString()} radius=${NpcStore.townCenterRadius()}.") }, true)
         return 1
+    }
+
+    private fun campingSetCommand(context: CommandContext<CommandSourceStack>): Int {
+        val player = context.source.playerOrException
+        val pos = player.blockPosition()
+        NpcStore.setCampBlock(pos)
+        val spawned = spawnFromCamp(player.level(), pos)
+        val message = if (spawned) {
+            "NPC camping point set to ${pos.toShortString()}. A traveler has arrived at camp."
+        } else {
+            "NPC camping point set to ${pos.toShortString()}. No new traveler is waiting right now."
+        }
+        context.source.sendSuccess({ Component.literal(message) }, true)
+        return 1
+    }
+
+    private fun townCenterSetCommand(context: CommandContext<CommandSourceStack>): Int {
+        val player = context.source.playerOrException
+        val pos = player.blockPosition()
+        val radius = IntegerArgumentType.getInteger(context, "radius")
+        NpcStore.setTownCenter(pos, radius)
+        context.source.sendSuccess({ Component.literal("NPC town center set to ${pos.toShortString()} radius=${NpcStore.townCenterRadius()}.") }, true)
+        return radius
     }
 
     private fun plazaClearCommand(context: CommandContext<CommandSourceStack>): Int {
@@ -3150,7 +3186,6 @@ object NpcFeature {
         if (server.tickCount % RESPAWN_SCAN_INTERVAL_TICKS != 0) return
         val camp = NpcStore.campBlockPos() ?: return
         val level = server.overworld()
-        if (!level.getBlockState(camp).`is`(CAMPING_BLOCK.get())) return
         if (activeUnhousedCamper(server) ?: migrateLiveUnhousedCamper(server) != null) return
         val cooldownUntil = NpcStore.camperCooldownUntilTick()
         if (cooldownUntil > level.dayTime) return
