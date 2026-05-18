@@ -87,7 +87,7 @@ object NpcQuestService {
         val key = "${npc.uuid}:${player.uuid}:${currentPeriod(level)}"
         if ((nextOfferBalloonAt[key] ?: 0L) > level.gameTime) return false
         val offer = selectedOffer(player, definition, currentPeriod(level)) ?: return false
-        val message = template(definition.missions.offerBalloonMessages.randomOrNull() ?: "@quest_log.png {quest_text}", player, definition, offer, 0)
+        val message = NpcNetwork.goldBalloon(template(definition.missions.offerBalloonMessages.randomOrNull() ?: "@quest_log.png {quest_text}", player, definition, offer, 0))
         NpcNetwork.showBalloon(player, npc.id, message, 100)
         nextOfferBalloonAt[key] = level.gameTime + OFFER_REFRESH_TICKS
         return true
@@ -496,7 +496,7 @@ object NpcQuestService {
         } else {
             "@quest_log.png Mission complete, ${player.gameProfile.name}."
         }
-        NpcFeature.showBalloonToNearby(level, npc, message, 100)
+        NpcFeature.showBalloonToNearby(level, npc, NpcNetwork.goldBalloon(message), 100)
     }
 
     private fun openOfferDialog(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, offer: NpcMissionDefinition) {

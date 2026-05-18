@@ -23,6 +23,7 @@ object ClassSkillTreeFeature {
         NeoForge.EVENT_BUS.addListener(::onRegisterCommands)
         NeoForge.EVENT_BUS.addListener(::onServerStarted)
         NeoForge.EVENT_BUS.addListener(::onPlayerLoggedIn)
+        NeoForge.EVENT_BUS.addListener(::onPlayerLoggedOut)
     }
 
     private fun registerClientHooks() {
@@ -35,11 +36,16 @@ object ClassSkillTreeFeature {
     }
 
     private fun onServerStarted(event: ServerStartedEvent) {
+        PuffishSkillsBridge.clearAll()
         event.server.playerList.players.forEach(ClassSkillTrees::reconcile)
     }
 
     private fun onPlayerLoggedIn(event: PlayerEvent.PlayerLoggedInEvent) {
         ClassSkillTrees.reconcile(event.entity as? ServerPlayer ?: return)
+    }
+
+    private fun onPlayerLoggedOut(event: PlayerEvent.PlayerLoggedOutEvent) {
+        PuffishSkillsBridge.clear(event.entity as? ServerPlayer ?: return)
     }
 
     private fun onRegisterCommands(event: RegisterCommandsEvent) {

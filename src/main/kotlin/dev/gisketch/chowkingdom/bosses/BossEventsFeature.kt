@@ -52,6 +52,7 @@ object BossEventsFeature {
     private val lockedDeathEntities: MutableSet<UUID> = linkedSetOf()
     private val nextLockedWarningAt: MutableMap<String, Long> = linkedMapOf()
     private val bossTalkFocus = ConcurrentHashMap<String, BossTalkFocus>()
+    private val nextFinnBossBalloonAt: MutableMap<String, Long> = linkedMapOf()
 
     fun register() {
         BossEventsConfig.load()
@@ -82,6 +83,7 @@ object BossEventsFeature {
         if (!BossEventsConfig.settings().enabled) return emptyList()
         claimableEntries(player).takeIf { it.isNotEmpty() }?.let { return it }
         val entry = activeContractEntry() ?: return emptyList()
+        if (!BossEventsStore.introduced(entry.id)) return emptyList()
         val fight = fights.values.firstOrNull { it.bossId == entry.id }
         val progress = maxOf(fight?.damagedBy?.size ?: 0, BossEventsStore.creditCount(entry.id))
         return listOf(hudEntry(entry, progress.coerceAtMost(entry.requiredPlayers), entry.requiredPlayers))
@@ -89,6 +91,26 @@ object BossEventsFeature {
 
     fun contractsAvailable(definition: NpcDefinition): Boolean =
         BossEventsConfig.settings().enabled && definition.id.lowercase(Locale.ROOT) == BossEventsConfig.settings().finnNpcId
+
+    fun tryShowFinnBossBalloon(npc: ChowNpcEntity, definition: NpcDefinition): Boolean {
+        if (!BossEventsConfig.settings().enabled || definition.id.lowercase(Locale.ROOT) != BossEventsConfig.settings().finnNpcId) return false
+        if (npc.isSleeping || npc.isTalking()) return false
+        val level = npc.level() as? ServerLevel ?: return false
+        val player = level.players().asSequence()
+            .filter { candidate -> candidate.isAlive && !candidate.isSpectator && candidate.distanceToSqr(npc.x, npc.y, npc.z) <= FINN_BOSS_BALLOON_RADIUS_SQR }
+            .minByOrNull { candidate -> candidate.distanceToSqr(npc.x, npc.y, npc.z) }
+            ?: return false
+        val key = "${npc.uuid}:${player.uuid}"
+        if ((nextFinnBossBalloonAt[key] ?: 0L) > level.gameTime) return false
+        val message = when {
+            BossEventsStore.claimableBosses(player).isNotEmpty() -> "@quest_log.png CONTRACT REWARD READY"
+            activeContractEntry()?.let { entry -> !BossEventsStore.introduced(entry.id) } == true -> "@quest_log.png ${FINN_BOSS_TEASES[level.random.nextInt(FINN_BOSS_TEASES.size)]}"
+            else -> return false
+        }
+        NpcNetwork.showBalloon(player, npc.id, NpcNetwork.goldBalloon(message), 120)
+        nextFinnBossBalloonAt[key] = level.gameTime + FINN_BOSS_BALLOON_COOLDOWN_TICKS
+        return true
+    }
 
     fun tryOpenFinnDialog(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition): Boolean {
         if (definition.id.lowercase(Locale.ROOT) != BossEventsConfig.settings().finnNpcId) return false
@@ -144,6 +166,9 @@ object BossEventsFeature {
         val entry = view.entry
         val fallback = contractDialogText(player, view)
         if (entry != null) focusBossTalk(player, definition.id, entry)
+        if (view.state == "active" && entry != null && BossEventsStore.introduce(entry.id)) {
+            syncAll(player.server)
+        }
         val llmEnabled = NpcConfig.settings().llm.enabled && entry != null
         val token = if (llmEnabled) NpcDialogTokens.next() else 0L
         NpcNetwork.openDialog(
@@ -490,11 +515,8 @@ object BossEventsFeature {
         }
     }
 
-    private fun announceUnlock(server: MinecraftServer, entry: BossEventEntry, total: Long) {
-        val message = render(entry.finnUnlockAnnouncement, entry, total = total)
-        broadcastFinn(server, message)
-        SnackbarNetwork.sendToAllKnown(server, SnackbarNotification.item(entry.iconItem, "FINN BOSS CONTRACT", "${entry.displayName} unlocked.", SnackbarType.SUCCESS, SnackbarSounds.REWARD))
-        sendDiscord(message)
+    private fun announceUnlock(server: MinecraftServer, @Suppress("UNUSED_PARAMETER") entry: BossEventEntry, @Suppress("UNUSED_PARAMETER") total: Long) {
+        syncAll(server)
     }
 
     private fun announceClear(server: MinecraftServer, entry: BossEventEntry, contributors: List<ServerPlayer>) {
@@ -582,7 +604,7 @@ object BossEventsFeature {
     }
 
     private fun showClaimBalloon(player: ServerPlayer, npc: ChowNpcEntity, entry: BossEventEntry) {
-        NpcNetwork.showBalloon(player, npc.id, "@quest_log.png I have your ${entry.displayName} contract reward ready.", 120)
+        NpcNetwork.showBalloon(player, npc.id, NpcNetwork.goldBalloon("@quest_log.png CONTRACT REWARD READY"), 120)
     }
 
     private fun stripDialogTags(message: String): String = message.replace(Regex("(?i)</?(mission|coin|xp|player|b)>"), "")
@@ -783,4 +805,20 @@ object BossEventsFeature {
     private data class BossTalkFocus(val bossId: String, val expiresAtMs: Long)
 
     private const val BOSS_TALK_FOCUS_MS = 5L * 60L * 1000L
+    private const val FINN_BOSS_BALLOON_RADIUS_SQR = 8.0 * 8.0
+    private const val FINN_BOSS_BALLOON_COOLDOWN_TICKS = 20L * 10L
+    private val FINN_BOSS_TEASES = listOf(
+        "FOUND A MONSTER",
+        "I FOUND SOMETHING UGLY",
+        "NEED A CREW FOR THIS",
+        "SOMETHING IS STIRRING",
+        "CHECK THE CONTRACT BOARD",
+        "ADVENTURE FOUND US",
+        "WE MAY NEED SWORDS",
+        "I FOUND CLAW MARKS",
+        "BAD NOISES OUT THERE",
+        "SOMETHING LEFT TRACKS",
+        "THIS ONE NEEDS ARMOR",
+        "I FOUND A REAL PROBLEM",
+    )
 }

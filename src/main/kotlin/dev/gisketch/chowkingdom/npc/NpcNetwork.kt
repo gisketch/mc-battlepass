@@ -40,6 +40,11 @@ private const val MAX_NPC_BOSS_PHASE_LENGTH = 64
 private const val MAX_NPC_BOSS_MUSIC_ID_LENGTH = 128
 
 object NpcNetwork {
+    fun goldBalloon(message: String): String {
+        val clean = message.trim()
+        return if (clean.startsWith("@gold")) clean else "@gold $clean"
+    }
+
     fun register(modBus: IEventBus) {
         modBus.addListener(::registerPayloads)
     }

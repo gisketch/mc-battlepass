@@ -1184,7 +1184,7 @@ object NpcFeature {
         return hasHome && NpcStore.workplacePos(definition.id) != null
     }
 
-    fun tickSmartBrainQuestClaim(npc: ChowNpcEntity): Boolean = smartBrainDefinition(npc)?.let { definition -> tryQuestClaimApproach(npc, definition) } ?: false
+    fun tickSmartBrainQuestClaim(npc: ChowNpcEntity): Boolean = smartBrainDefinition(npc)?.let { definition -> BossEventsFeature.tryShowFinnBossBalloon(npc, definition) || tryQuestClaimApproach(npc, definition) } ?: false
 
     fun tickSmartBrainRentContractFollow(npc: ChowNpcEntity): Boolean = smartBrainDefinition(npc)?.let { definition -> tryFollowRentContractHolder(npc, definition) } ?: false
 
@@ -1194,7 +1194,7 @@ object NpcFeature {
 
     fun tickSmartBrainOutgoingGift(npc: ChowNpcEntity): Boolean = smartBrainDefinition(npc)?.let { definition -> tryOutgoingGift(npc, definition) } ?: false
 
-    fun tickSmartBrainQuestOffer(npc: ChowNpcEntity): Boolean = smartBrainDefinition(npc)?.let { definition -> NpcQuestService.tryShowOfferBalloon(npc, definition) } ?: false
+    fun tickSmartBrainQuestOffer(npc: ChowNpcEntity): Boolean = smartBrainDefinition(npc)?.let { definition -> BossEventsFeature.tryShowFinnBossBalloon(npc, definition) || NpcQuestService.tryShowOfferBalloon(npc, definition) } ?: false
 
     fun tickSmartBrainGreeting(npc: ChowNpcEntity): Boolean = smartBrainDefinition(npc)?.let { definition -> !needsCamperHousingBalloon(npc, definition) && tryGreetNearbyPlayer(npc, definition) } ?: false
 
@@ -1458,7 +1458,8 @@ object NpcFeature {
         val nowMs = System.currentTimeMillis()
         if (!NpcStore.canShowGreeting(definition.id, player, day, nowMs)) return false
         val friendship = NpcStore.friendshipSnapshot(definition.id, player)
-        val message = friendshipMessage(definition.friendshipMessages.greeting, friendship, player, definition)
+        val baseMessage = friendshipMessage(definition.friendshipMessages.greeting, friendship, player, definition)
+        val message = NpcNetwork.goldBalloon(baseMessage)
         val durationTicks = greeting.balloonDurationSeconds * 20
         NpcStore.markGreetingShown(definition.id, player, day, nowMs + greeting.cooldownSeconds * 1000L)
         if (NpcConfig.settings().llm.enabled && NpcConfig.settings().llmMessageUsage.greeting) {
@@ -1468,7 +1469,7 @@ object NpcFeature {
                 npc,
                 definition,
                 message,
-                "${player.gameProfile.name} walked near you. Reply with a very short ambient greeting balloon.",
+                "${player.gameProfile.name} walked near you. Reply with a very short first-greeting balloon. Prefix the reply with @gold.",
                 sendTalkResponse = false,
                 excludePlayerFromBalloon = false,
                 npcRecordType = "npc_greeting_balloon",
@@ -1478,7 +1479,7 @@ object NpcFeature {
         sendNpcBalloon(level, npc, message, durationTicks)
         npc.startTalkingTo(player, durationTicks)
         markAutoTaskCooldown(npc, durationTicks.toLong())
-        NpcStore.recordConversation(definition.id, player, definition.name, message, "npc_greeting_balloon")
+        NpcStore.recordConversation(definition.id, player, definition.name, baseMessage, "npc_greeting_balloon")
         return true
     }
 

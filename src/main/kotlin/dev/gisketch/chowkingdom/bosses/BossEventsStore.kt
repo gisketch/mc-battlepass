@@ -35,6 +35,18 @@ object BossEventsStore {
         return bossId in data.unlockedBossIds
     }
 
+    fun introduced(bossId: String): Boolean {
+        if (!loaded) load()
+        return bossId in data.introducedBossIds
+    }
+
+    fun introduce(bossId: String): Boolean {
+        if (!loaded) load()
+        if (!data.introducedBossIds.add(bossId)) return false
+        save()
+        return true
+    }
+
     fun unlock(bossId: String): Boolean {
         if (!loaded) load()
         if (!data.unlockedBossIds.add(bossId)) return false
@@ -45,6 +57,7 @@ object BossEventsStore {
     fun clearUnlocked(bossId: String) {
         if (!loaded) load()
         data.unlockedBossIds.remove(bossId)
+        data.introducedBossIds.remove(bossId)
         save()
     }
 
@@ -116,13 +129,14 @@ object BossEventsStore {
                 boss?.clearedBy.orEmpty().isNotEmpty() || (boss?.credit?.size ?: 0) >= entry.requiredPlayers -> "cleared"
                 else -> "unlocked"
             }
-            "${entry.order}. ${entry.id} $state threshold=${entry.thresholdChowcoins} credit=${boss?.credit?.size ?: 0} claimed=${boss?.claimed?.size ?: 0}"
+            "${entry.order}. ${entry.id} $state introduced=${entry.id in data.introducedBossIds} threshold=${entry.thresholdChowcoins} credit=${boss?.credit?.size ?: 0} claimed=${boss?.claimed?.size ?: 0}"
         }
     }
 
     fun resetBoss(bossId: String) {
         if (!loaded) load()
         data.unlockedBossIds.remove(bossId)
+        data.introducedBossIds.remove(bossId)
         data.bosses.remove(bossId)
         save()
     }
@@ -134,6 +148,7 @@ object BossEventsStore {
 
 class BossEventsWorldState(
     var unlockedBossIds: MutableSet<String> = linkedSetOf(),
+    var introducedBossIds: MutableSet<String> = linkedSetOf(),
     var bosses: MutableMap<String, BossEventBossState> = linkedMapOf(),
 )
 

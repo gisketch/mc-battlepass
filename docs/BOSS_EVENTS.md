@@ -8,7 +8,7 @@ Boss Events V1 makes Finn the server-wide boss contract NPC.
 - Defaults live in `config/gisketchs_chowkingdom_mod/bosses/events/server_bosses.toml`.
 - Settings live in `config/gisketchs_chowkingdom_mod/bosses/settings.toml`.
 - World state persists in `<world>/data/gisketchs_chowkingdom_mod/bosses/state.json`.
-- When a threshold is reached, Finn announces the new contract in world chat, a snackbar is sent, and `events_webhook_url` is posted if configured.
+- When a threshold is reached, the next contract unlocks silently. Finn teases it with a gold priority balloon when players are near him, but the boss name and gate details stay hidden until someone opens `CONTRACTS`.
 - Bosses stay fightable through their native mods. CKDM controls contract unlocks, contributor credit, claim rewards, and locked drop suppression.
 
 ## Locked Bosses
@@ -24,11 +24,13 @@ Boss Events V1 makes Finn the server-wide boss contract NPC.
 - Defaults: 96 block radius, 10 minute participation window, 8 required credited players.
 - Finn always shows a `CONTRACTS` button in normal dialogue.
 - `CONTRACTS` opens a nested boss contract dialogue for locked, active, claimable, or completed states.
+- Active boss contracts are not pinned immediately on unlock. The first player who opens Finn `CONTRACTS` for that active contract introduces it server-wide, then everyone sees the pinned boss mission.
 - After a valid clear or debug credit grant, players with claimable credit see `Talk to Finn to claim your rewards` in the pinned mission HUD and can claim through the contract dialogue.
 - Once a boss has enough credited players, it is treated as contract-complete for HUD/dialogue purposes even if credit was granted through debug commands.
 - After the player claims, Finn no longer keeps that boss as the active contract; he moves to the next locked/active contract or says no contract is ready.
 - Claiming happens through Finn dialogue using `boss_contract` / `boss_claim` actions.
-- If a player has claimable boss credit, Finn shows a quest balloon and right-click opens a claim-ready LLM prompt instead of the generic greeting.
+- If a player has claimable boss credit, Finn shows a gold quest balloon and right-click opens a claim-ready LLM prompt instead of the generic greeting.
+- Important NPC balloons can use the `@gold` prefix before icon markers, such as `@gold @quest_log.png CONTRACT REWARD READY`. Gold balloons render with a tinted background, CKDM bold white text, and black shadow.
 - Boss reward claim lines support `<xp>`, `<coin>`, and `<b>` dialogue highlights.
 - LLM is optional. When enabled, Finn receives boss context variables and authored config lines are the fallback.
 - TALK from inside `CONTRACTS` receives boss-focused context with lore, location hints, access hints, fight tips, reward, threshold, and next-boss data.

@@ -32,7 +32,7 @@ import org.lwjgl.glfw.GLFW
 import java.util.Locale
 
 object ChowKingdomHud {
-    private data class HudMission(val title: String, val icon: ItemStack, val npcQuest: NpcQuestHudEntryPayload? = null)
+    private data class HudMission(val title: String, val icon: ItemStack, val npcQuest: NpcQuestHudEntryPayload? = null, val complete: Boolean = false)
     private data class ActiveCompletionToast(val title: String, val missionName: String, val startedAt: Long)
     private data class ActiveShippingSaleToast(val itemCount: Int, val amount: Long, val startedAt: Long)
 
@@ -89,7 +89,7 @@ object ChowKingdomHud {
             val rowY = headerY + COMPACT_HEADER_LINE_HEIGHT + COMPACT_MISSION_HEADER_GAP + index * COMPACT_MISSION_ROW_HEIGHT
             if (mission.npcQuest != null) {
                 renderNpcHead(guiGraphics, mission.npcQuest.npcId, rowX, rowY, COMPACT_MISSION_ICON_SIZE)
-                drawCkdmShadowedScaled(guiGraphics, font, mission.title, rowX + COMPACT_MISSION_ICON_SIZE + COMPACT_MISSION_ICON_GAP, rowY + COMPACT_MISSION_TEXT_Y, COMPACT_MISSION_TEXT_SCALE, COMPACT_WHITE, COMPACT_BLACK_SHADOW, COMPACT_SMALL_SHADOW_OFFSET, CKDM_BOLD_SMALL_FONT)
+                drawCkdmShadowedScaled(guiGraphics, font, mission.title, rowX + COMPACT_MISSION_ICON_SIZE + COMPACT_MISSION_ICON_GAP, rowY + COMPACT_MISSION_TEXT_Y, COMPACT_MISSION_TEXT_SCALE, if (mission.complete) COMPACT_GOLD else COMPACT_WHITE, COMPACT_BLACK_SHADOW, COMPACT_SMALL_SHADOW_OFFSET, CKDM_BOLD_SMALL_FONT)
             } else {
                 renderScaledItem(guiGraphics, mission.icon, rowX, rowY, COMPACT_MISSION_ICON_SIZE)
                 drawCkdmShadowedScaled(guiGraphics, font, mission.title, rowX + COMPACT_MISSION_ICON_SIZE + COMPACT_MISSION_ICON_GAP, rowY + COMPACT_MISSION_TEXT_Y, COMPACT_MISSION_TEXT_SCALE, COMPACT_WHITE, COMPACT_BLACK_SHADOW, COMPACT_SMALL_SHADOW_OFFSET, CKDM_BOLD_SMALL_FONT)
@@ -99,13 +99,14 @@ object ChowKingdomHud {
 
     private fun npcQuestHudMissions(minecraft: Minecraft, maxTextWidth: Int): List<HudMission> =
         NpcQuestClientState.activeQuests().take(MAX_NPC_QUEST_HUD_ROWS).map { quest ->
-            val title = if (quest.goal > 0 && quest.progress >= quest.goal) {
+            val complete = quest.goal > 0 && quest.progress >= quest.goal
+            val title = if (complete) {
                 "Talk to ${quest.npcName} to claim your rewards"
             } else {
                 val details = if (quest.goal > 0) " (${quest.progress.coerceAtMost(quest.goal)}/${quest.goal})" else ""
                 quest.description + details
             }
-            HudMission(fitCkdmText(minecraft.font, title, (maxTextWidth / COMPACT_MISSION_TEXT_SCALE).toInt(), CKDM_BOLD_SMALL_FONT), ItemStack.EMPTY, quest)
+            HudMission(fitCkdmText(minecraft.font, title, (maxTextWidth / COMPACT_MISSION_TEXT_SCALE).toInt(), CKDM_BOLD_SMALL_FONT), ItemStack.EMPTY, quest, complete)
         }
 
     private fun compactHudMissions(minecraft: Minecraft, missions: List<BattlepassTrackedMissions.TrackedMission>, playerId: java.util.UUID, showGoal: Boolean, maxTextWidth: Int): List<HudMission> =

@@ -4,13 +4,23 @@ import dev.gisketch.chowkingdom.ChowKingdomMod
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerPlayer
 import java.util.Optional
+import java.util.UUID
 import java.util.stream.Stream
 
 object PuffishSkillsBridge {
     private val categoryId: ResourceLocation = ResourceLocation.fromNamespaceAndPath("skill_tree_rpgs", "skill_tree_rpgs")
     private val pointSourceId: ResourceLocation = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "battlepass")
+    private val mirroredStates: MutableMap<UUID, MirrorState> = linkedMapOf()
 
     fun mirror(player: ServerPlayer, rootSkillId: String?, paidSkillIds: Set<String>, pointsTotal: Int) {
+        val state = MirrorState(
+            rootSkillId = rootSkillId.orEmpty(),
+            paidSkillIds = paidSkillIds.map(String::trim).filter(String::isNotBlank).sorted(),
+            pointsTotal = pointsTotal.coerceAtLeast(0),
+        )
+        synchronized(mirroredStates) {
+            if (mirroredStates[player.uuid] == state) return
+        }
         val category = category() ?: return
         runCatching {
             category.javaClass.getMethod("unlock", ServerPlayer::class.java).invoke(category, player)
@@ -19,14 +29,29 @@ object PuffishSkillsBridge {
             category.javaClass.getMethod("setExtraPoints", ServerPlayer::class.java, Int::class.javaPrimitiveType).invoke(category, player, 0)
             category.javaClass.getMethod("resetSkills", ServerPlayer::class.java).invoke(category, player)
             category.javaClass.getMethod("setPointsSilently", ServerPlayer::class.java, ResourceLocation::class.java, Int::class.javaPrimitiveType)
-                .invoke(category, player, pointSourceId, pointsTotal.coerceAtLeast(0))
+                .invoke(category, player, pointSourceId, state.pointsTotal)
             val ids = buildList {
-                if (!rootSkillId.isNullOrBlank()) add(rootSkillId)
-                addAll(paidSkillIds)
+                if (state.rootSkillId.isNotBlank()) add(state.rootSkillId)
+                addAll(state.paidSkillIds)
             }
             ids.forEach { id -> unlock(category, player, id) }
+            synchronized(mirroredStates) {
+                mirroredStates[player.uuid] = state
+            }
         }.onFailure { exception ->
             ChowKingdomMod.LOGGER.debug("Failed to mirror CKDM class skill state to Puffish Skills", exception)
+        }
+    }
+
+    fun clear(player: ServerPlayer) {
+        synchronized(mirroredStates) {
+            mirroredStates.remove(player.uuid)
+        }
+    }
+
+    fun clearAll() {
+        synchronized(mirroredStates) {
+            mirroredStates.clear()
         }
     }
 
@@ -58,3 +83,9 @@ object PuffishSkillsBridge {
         }
     }
 }
+
+private data class MirrorState(
+    val rootSkillId: String,
+    val paidSkillIds: List<String>,
+    val pointsTotal: Int,
+)

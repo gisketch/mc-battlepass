@@ -172,10 +172,12 @@ object NpcClient {
             renderFriendshipDeltaPopup(entity, poseStack, guiGraphics, rotation, font, activeDelta, now, visibilityAlpha)
             return
         }
-        val balloonIcon = balloonIcon(activeBalloon.message)
+        val styledBalloon = balloonStyle(activeBalloon.message)
+        val balloonIcon = balloonIcon(styledBalloon.message)
         val hasBalloonIcon = balloonIcon != null
-        val balloonMessage = balloonIcon?.let { activeBalloon.message.removePrefix(it.marker).trimStart() } ?: activeBalloon.message
-        val lines = font.split(FormattedText.of(balloonMessage), BALLOON_MAX_TEXT_WIDTH)
+        val balloonMessage = balloonIcon?.let { styledBalloon.message.removePrefix(it.marker).trimStart() } ?: styledBalloon.message
+        val text = if (styledBalloon.gold) Component.literal(balloonMessage).withStyle { style -> style.withFont(BALLOON_CKDM_FONT) } else FormattedText.of(balloonMessage)
+        val lines = font.split(text, BALLOON_MAX_TEXT_WIDTH)
         if (lines.isEmpty()) {
             renderFriendshipDeltaPopup(entity, poseStack, guiGraphics, rotation, font, activeDelta, now, visibilityAlpha)
             return
@@ -199,7 +201,11 @@ object NpcClient {
         RenderSystem.enableDepthTest()
         RenderSystem.enablePolygonOffset()
         RenderSystem.polygonOffset(3.0f, 3.0f)
-        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, BALLOON_BG_ALPHA * alpha)
+        if (styledBalloon.gold) {
+            RenderSystem.setShaderColor(1.0f, 0.78f, 0.23f, BALLOON_BG_ALPHA * alpha)
+        } else {
+            RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, BALLOON_BG_ALPHA * alpha)
+        }
         renderBalloonNineSlice(guiGraphics, balloonX, balloonY, balloonWidth, balloonHeight)
         RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f)
         RenderSystem.polygonOffset(0.0f, 0.0f)
@@ -218,7 +224,12 @@ object NpcClient {
                 guiGraphics.blit(balloonIcon.texture, iconX, textY, BALLOON_ICON_SIZE, BALLOON_ICON_SIZE, 0.0f, 0.0f, BALLOON_ICON_TEXTURE_SIZE, BALLOON_ICON_TEXTURE_SIZE, BALLOON_ICON_TEXTURE_SIZE, BALLOON_ICON_TEXTURE_SIZE)
                 RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f)
             }
-            guiGraphics.drawString(font, line, textX, textY, withAlpha(BALLOON_TEXT_COLOR, alpha), false)
+            if (styledBalloon.gold) {
+                guiGraphics.drawString(font, line, textX + 1, textY + 1, withAlpha(BALLOON_GOLD_SHADOW_COLOR, alpha), false)
+                guiGraphics.drawString(font, line, textX, textY, withAlpha(BALLOON_GOLD_TEXT_COLOR, alpha), false)
+            } else {
+                guiGraphics.drawString(font, line, textX, textY, withAlpha(BALLOON_TEXT_COLOR, alpha), false)
+            }
             textY += BALLOON_LINE_HEIGHT
         }
         guiGraphics.flush()
@@ -591,9 +602,17 @@ object NpcClient {
         else -> null
     }
 
+    private fun balloonStyle(message: String): NpcBalloonStyle {
+        val clean = message.trimStart()
+        if (!clean.startsWith(GOLD_BALLOON_MARKER)) return NpcBalloonStyle(message, false)
+        return NpcBalloonStyle(clean.removePrefix(GOLD_BALLOON_MARKER).trimStart(), true)
+    }
+
 
 private data class NpcBalloonIcon(val marker: String, val texture: ResourceLocation)
+    private data class NpcBalloonStyle(val message: String, val gold: Boolean)
     private val BALLOON_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/chat_bubble.png")
+    private val BALLOON_CKDM_FONT = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "ckdm_bold")
     private val GIFT_BALLOON_ICON = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/gift.png")
     private val QUEST_BALLOON_ICON = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/quest_log.png")
     private val HEART_BALLOON_ICON = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/heart.png")
@@ -602,6 +621,7 @@ private data class NpcBalloonIcon(val marker: String, val texture: ResourceLocat
     private const val QUEST_BALLOON_MARKER = "@quest_log.png"
     private const val HEART_BALLOON_MARKER = "@heart.png"
     private const val ANGRY_BALLOON_MARKER = "@angry.png"
+    private const val GOLD_BALLOON_MARKER = "@gold"
     private const val BALLOON_ICON_SIZE = 8
     private const val BALLOON_ICON_TEXTURE_SIZE = 16
     private const val BALLOON_SCALE = 0.020f
@@ -617,6 +637,8 @@ private data class NpcBalloonIcon(val marker: String, val texture: ResourceLocat
     private const val BALLOON_TEXTURE_SIZE = 16
     private const val BALLOON_LINE_HEIGHT = 9
     private const val BALLOON_TEXT_COLOR = 0xFF24201C.toInt()
+    private const val BALLOON_GOLD_TEXT_COLOR = 0xFFFFFFFF.toInt()
+    private const val BALLOON_GOLD_SHADOW_COLOR = 0xCC000000.toInt()
     private const val FRIENDSHIP_DELTA_WORLD_SCALE = 0.021f
     private const val FRIENDSHIP_DELTA_WORLD_ENTITY_Y_OFFSET = 1.04
     private const val FRIENDSHIP_DELTA_WORLD_X = 14

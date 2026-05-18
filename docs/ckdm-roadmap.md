@@ -79,6 +79,7 @@ Core rule: reward exploration with stories, routes, trophies, cosmetics, tokens,
 - [x] Cobblemon hooks exist for Pokedex scan/catch, category catch, type catch, friendship, mount travel, catch-rate jobs, mount-speed jobs, and Xaero unknown Pokemon hiding.
 - [x] Server-wide boss contracts exist with shipping-value gates, Finn dialogue, participant credit, reward claim, locked drop suppression, Discord event webhook, and admin/debug commands.
 - [x] Finn boss claim UX has claim-ready balloons, LLM claim prompts, highlighted XP/Chowcoin reward text, and green claim buttons.
+- [x] Priority NPC balloons support gold styling for first greetings, quest offers, quest-ready cues, and Finn boss contract alerts.
 
 ## Phase 0 - Balance Audit Before More Features
 
@@ -308,7 +309,9 @@ TODO (Mod):
 - [x] Add command `/ck bosses required <boss|all> <players>`.
 - [x] Make boss command ids colon-safe / greedy so namespaced ids work.
 - [x] Sync pinned boss mission progress after debug credit changes.
-- [x] Add snackbar broadcast when a boss event opens.
+- [x] Keep active boss missions hidden until someone opens Finn `CONTRACTS`; claim-ready boss rewards still pin immediately.
+- [x] Add gold Finn tease balloons for unintroduced active boss contracts and gold reward-ready balloons for claimable boss credit.
+- [x] Make boss event opens Finn-discovered instead of auto-broadcasted: no pinned mission until `CONTRACTS` is opened.
 - [x] Add snackbar broadcast when a group clears a boss.
 - [x] Add Discord relay for boss open/clear milestones through `events_webhook_url`.
 - [ ] Add mission signal `gisketchs_chowkingdom_mod:boss_first_clear`.
