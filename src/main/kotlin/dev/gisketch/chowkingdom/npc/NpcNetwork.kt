@@ -252,6 +252,7 @@ data class NpcDialogPayload(
     val challengeAvailable: Boolean = false,
     val challengeDisabledReason: String = "",
     val friendlyBattleAvailable: Boolean = false,
+    val retryBattleAvailable: Boolean = false,
     val leagueCompassAvailable: Boolean = false,
 ) : CustomPacketPayload {
     override fun type(): CustomPacketPayload.Type<NpcDialogPayload> = TYPE
@@ -292,6 +293,7 @@ data class NpcDialogPayload(
                 buffer.readBoolean(),
                 buffer.readBoolean(),
                 buffer.readUtf(MAX_NPC_CHALLENGE_REASON_LENGTH),
+                buffer.readBoolean(),
                 buffer.readBoolean(),
                 buffer.readBoolean(),
             )
@@ -337,6 +339,7 @@ data class NpcDialogPayload(
                 buffer.writeBoolean(value.challengeAvailable)
                 buffer.writeBoundedUtf(value.challengeDisabledReason, MAX_NPC_CHALLENGE_REASON_LENGTH)
                 buffer.writeBoolean(value.friendlyBattleAvailable)
+                buffer.writeBoolean(value.retryBattleAvailable)
                 buffer.writeBoolean(value.leagueCompassAvailable)
             }
         }

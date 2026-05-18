@@ -206,6 +206,7 @@ private const val MAX_NPC_BODY_SCALE = 1.4
 private const val DEFAULT_NPC_BODY_SCALE = 1.0
 
 class NpcSettingsDefinition(
+    @SerializedName("protect_npcs_during_pokemon_battles") var protectNpcsDuringPokemonBattles: Boolean = true,
     var greetings: NpcGreetingsDefinition = NpcGreetingsDefinition(),
     var rendering: NpcRenderingSettingsDefinition = NpcRenderingSettingsDefinition(),
     var llm: NpcLlmSettingsDefinition = NpcLlmSettingsDefinition(),

@@ -278,15 +278,16 @@ object NpcFeature {
             else -> null
         }
         val friendlyBattleAvailable = hasHome && NpcPokemonBattleService.friendlyBattleAvailable(player, npc, definition)
+        val retryBattleAvailable = hasHome && NpcQuestService.retryBattleAvailable(player, definition)
         if (settings.llm.enabled && llmInput != null) {
             val responseToken = NpcDialogTokens.next()
-            NpcNetwork.openDialog(player, dialogPayload(definition, npc, "...", contractGranted, friendship.level, closeOnly = !hasHome || contractGranted, closeLabel = if (!hasHome || contractGranted) "OKAY" else "BYE", responseToken = responseToken, friendshipDelta = firstChatFriendshipDelta, friendlyBattleAvailable = friendlyBattleAvailable))
+            NpcNetwork.openDialog(player, dialogPayload(definition, npc, "...", contractGranted, friendship.level, closeOnly = !hasHome || contractGranted, closeLabel = if (!hasHome || contractGranted) "OKAY" else "BYE", responseToken = responseToken, friendshipDelta = firstChatFriendshipDelta, friendlyBattleAvailable = friendlyBattleAvailable, retryBattleAvailable = retryBattleAvailable))
             if (!recognized) NpcStore.markRecognized(definition.id, player)
             NpcLlmService.event(player, npc, definition, message, llmInput, npcRecordType = "npc_llm_interact", responseToken = responseToken)
             return
         }
         NpcStore.recordConversation(definition.id, player, definition.name, message, "npc_message")
-        NpcNetwork.openDialog(player, dialogPayload(definition, npc, message, contractGranted, friendship.level, closeOnly = !hasHome || contractGranted, closeLabel = if (!hasHome || contractGranted) "OKAY" else "BYE", friendshipDelta = firstChatFriendshipDelta, friendlyBattleAvailable = friendlyBattleAvailable))
+        NpcNetwork.openDialog(player, dialogPayload(definition, npc, message, contractGranted, friendship.level, closeOnly = !hasHome || contractGranted, closeLabel = if (!hasHome || contractGranted) "OKAY" else "BYE", friendshipDelta = firstChatFriendshipDelta, friendlyBattleAvailable = friendlyBattleAvailable, retryBattleAvailable = retryBattleAvailable))
         if (!recognized) NpcStore.markRecognized(definition.id, player)
         relayNpcDialog(player, npc, definition, message)
     }
@@ -306,7 +307,7 @@ object NpcFeature {
             }
         }
         val normalizedAction = action.lowercase()
-        if (normalizedAction in setOf("quest_accept", "quest_decline") && !hasValidHomeForActions(player, definition)) return
+        if (normalizedAction in setOf("quest_accept", "quest_decline", "quest_retry_battle") && !hasValidHomeForActions(player, definition)) return
         if (BossEventsFeature.handleFinnAction(player, npc, definition, action)) return
         if (GymLeagueFeature.handleAction(player, npc, definition, action)) return
         if (NpcQuestService.handleAction(player, npc, definition, action)) return
@@ -1019,7 +1020,7 @@ object NpcFeature {
         SnackbarNetwork.send(player, SnackbarNotification.item(SnackbarIcons.ERROR, title, content, type, SnackbarSounds.forType(type)))
     }
 
-    fun dialogPayload(definition: NpcDefinition, npc: ChowNpcEntity, message: String, contractGranted: Boolean, friendshipLevel: Int, closeOnly: Boolean = false, closeLabel: String = "BYE", responseToken: Long = 0L, dialogMode: String = "normal", startTalkMode: Boolean = false, friendshipDelta: Int = 0, classChangeAvailable: Boolean = false, classChangeCost: Long = 0L, classChangeOptions: List<NpcClassChangeOption> = emptyList(), quizChoices: List<NpcQuizChoice> = emptyList(), bossContractsAvailable: Boolean = BossEventsFeature.contractsAvailable(definition), bossClaimAvailable: Boolean = false, leagueAvailable: Boolean = GymLeagueFeature.leagueAvailable(definition), challengeAvailable: Boolean = false, challengeDisabledReason: String = "", friendlyBattleAvailable: Boolean = false, leagueCompassAvailable: Boolean = false): NpcDialogPayload = NpcDialogPayload(
+    fun dialogPayload(definition: NpcDefinition, npc: ChowNpcEntity, message: String, contractGranted: Boolean, friendshipLevel: Int, closeOnly: Boolean = false, closeLabel: String = "BYE", responseToken: Long = 0L, dialogMode: String = "normal", startTalkMode: Boolean = false, friendshipDelta: Int = 0, classChangeAvailable: Boolean = false, classChangeCost: Long = 0L, classChangeOptions: List<NpcClassChangeOption> = emptyList(), quizChoices: List<NpcQuizChoice> = emptyList(), bossContractsAvailable: Boolean = BossEventsFeature.contractsAvailable(definition), bossClaimAvailable: Boolean = false, leagueAvailable: Boolean = GymLeagueFeature.leagueAvailable(definition), challengeAvailable: Boolean = false, challengeDisabledReason: String = "", friendlyBattleAvailable: Boolean = false, retryBattleAvailable: Boolean = false, leagueCompassAvailable: Boolean = false): NpcDialogPayload = NpcDialogPayload(
         definition.id,
         if (workBypassEnabled) "${definition.name} WORK OFF NPC" else definition.name,
         definition.title,
@@ -1049,6 +1050,7 @@ object NpcFeature {
         challengeAvailable = challengeAvailable,
         challengeDisabledReason = challengeDisabledReason,
         friendlyBattleAvailable = friendlyBattleAvailable,
+        retryBattleAvailable = retryBattleAvailable,
         leagueCompassAvailable = leagueCompassAvailable,
     )
 
@@ -2011,6 +2013,12 @@ object NpcFeature {
             event.newDamage = 0.0f
             return
         }
+        val battleNpc = event.entity as? ChowNpcEntity
+        if (battleNpc != null && shouldProtectPokemonBattleNpc(battleNpc)) {
+            event.newDamage = 0.0f
+            if (battleNpc.health < battleNpc.maxHealth) battleNpc.setHealth(battleNpc.maxHealth)
+            return
+        }
         val targetPlayer = event.entity as? ServerPlayer
         if (targetPlayer != null && NpcBossFights.handlePlayerDamagePre(targetPlayer, event.source, event.newDamage)) {
             event.newDamage = 0.0f
@@ -2048,6 +2056,11 @@ object NpcFeature {
             event.isCanceled = true
             return
         }
+        val battleNpc = event.target as? ChowNpcEntity
+        if (battleNpc != null && shouldProtectPokemonBattleNpc(battleNpc)) {
+            event.isCanceled = true
+            return
+        }
         val npc = event.target as? ChowNpcEntity ?: return
         if (!NpcBossFights.handleNpcAttackAttempt(npc, player)) return
         event.isCanceled = true
@@ -2060,6 +2073,12 @@ object NpcFeature {
             return
         }
         val npc = event.entity as? ChowNpcEntity
+        if (npc != null && shouldProtectPokemonBattleNpc(npc)) {
+            event.isCanceled = true
+            event.amount = 0.0f
+            if (npc.health < npc.maxHealth) npc.setHealth(npc.maxHealth)
+            return
+        }
         if (npc != null && NpcBossFights.handleNpcAttackAttempt(npc, event.source.entity as? ServerPlayer)) {
             event.isCanceled = true
             event.amount = 0.0f
@@ -2116,6 +2135,11 @@ object NpcFeature {
     private fun onLivingDeath(event: LivingDeathEvent) {
         val npc = event.entity as? ChowNpcEntity
         if (npc != null) {
+            if (shouldProtectPokemonBattleNpc(npc)) {
+                event.isCanceled = true
+                npc.setHealth(npc.maxHealth)
+                return
+            }
             NpcBossFights.clear(npc)
             NpcSmartBrainOverrides.clear(npc)
             val definition = NpcConfig.get(npc.npcId) ?: return
@@ -2159,6 +2183,9 @@ object NpcFeature {
         NpcStore.recordGlobalMemory("notable_kill", killMessage)
         NpcStore.recordPlayerMemory(killer, "notable_kill", killMessage)
     }
+
+    private fun shouldProtectPokemonBattleNpc(npc: ChowNpcEntity): Boolean =
+        NpcConfig.settings().protectNpcsDuringPokemonBattles && (GymBattleService.isBattleLocked(npc) || NpcPokemonBattleService.isBattleLocked(npc))
 
     private fun announceNpcDeath(server: MinecraftServer, definition: NpcDefinition, killer: ServerPlayer?, deathText: String) {
         val content = killer?.let { "Killed by ${it.gameProfile.name}" } ?: "No killer recorded"

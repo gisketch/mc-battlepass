@@ -38,6 +38,29 @@ public class YuushyaStartupChatMixin {
     }
 
     private static boolean chowkingdom$isYuushyaStartupMessage(Component message) {
-        return message != null && YUUSHYA_STARTUP_MESSAGE.equals(message.getString());
+        if (message == null) {
+            return false;
+        }
+
+        String text = message.getString();
+        return YUUSHYA_STARTUP_MESSAGE.equals(text) || chowkingdom$containsYuushyaWarning(text);
+    }
+
+    static boolean chowkingdom$containsYuushyaWarning(String text) {
+        if (text == null) {
+            return false;
+        }
+
+        String normalized = text
+            .replace('\n', ' ')
+            .replace('\r', ' ')
+            .replaceAll("\\s+", " ")
+            .trim()
+            .toLowerCase(java.util.Locale.ROOT);
+
+        return normalized.contains("thank you for your support")
+            && normalized.contains("yuushya")
+            && normalized.contains("safeguard")
+            && normalized.contains("creative environment");
     }
 }

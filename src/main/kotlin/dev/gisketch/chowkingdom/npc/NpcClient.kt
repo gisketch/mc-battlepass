@@ -1344,6 +1344,10 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
                 skipPendingTalkResponse()
                 NpcNetwork.sendAction(payload.npcId, if (gymTrainerMode() || gymFriendlyMode()) "gym_friendly_battle" else "npc_friendly_battle")
             }
+            DialogAction.RetryBattle -> if (isActionEnabled(action)) {
+                skipPendingTalkResponse()
+                NpcNetwork.sendAction(payload.npcId, "quest_retry_battle")
+            }
             DialogAction.Badge -> if (isActionEnabled(action)) {
                 skipPendingTalkResponse()
                 NpcNetwork.sendAction(payload.npcId, "gym_badge")
@@ -1686,7 +1690,7 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         classChangeMode() -> listOf(DialogAction.Bye)
         payload.classChangeAvailable -> listOf(DialogAction.Change, DialogAction.Bye)
         payload.closeOnly -> listOf(DialogAction.Bye)
-        else -> listOfNotNull(DialogAction.Talk, DialogAction.League.takeIf { payload.leagueAvailable }, DialogAction.Contracts.takeIf { payload.bossContractsAvailable }, DialogAction.FriendlyBattle.takeIf { payload.friendlyBattleAvailable }, DialogAction.Buy, DialogAction.Gift, DialogAction.Work, DialogAction.Training.takeIf { payload.trainingAvailable }, DialogAction.Bye)
+        else -> listOfNotNull(DialogAction.Talk, DialogAction.League.takeIf { payload.leagueAvailable }, DialogAction.Contracts.takeIf { payload.bossContractsAvailable }, DialogAction.RetryBattle.takeIf { payload.retryBattleAvailable }, DialogAction.FriendlyBattle.takeIf { payload.friendlyBattleAvailable }, DialogAction.Buy, DialogAction.Gift, DialogAction.Work, DialogAction.Training.takeIf { payload.trainingAvailable }, DialogAction.Bye)
     }
 
     private fun trainerActions(): List<DialogAction> = listOfNotNull(
@@ -1800,6 +1804,7 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         gymFriendlyMode() && action == DialogAction.Talk -> payload.talkEnabled
         (gymTrainerMode() || gymFriendlyMode()) && action == DialogAction.Challenge -> payload.challengeAvailable
         action == DialogAction.FriendlyBattle -> payload.friendlyBattleAvailable
+        action == DialogAction.RetryBattle -> payload.retryBattleAvailable
         action == DialogAction.Gift -> payload.talkEnabled || !giftStack.isEmpty
         action == DialogAction.Talk -> payload.talkEnabled
         else -> true
@@ -1811,6 +1816,7 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         bossContractMode() && action == DialogAction.Claim && payload.bossClaimAvailable -> true
         (gymTrainerMode() || gymFriendlyMode()) && action == DialogAction.Challenge && payload.challengeAvailable -> true
         action == DialogAction.FriendlyBattle && payload.friendlyBattleAvailable -> true
+        action == DialogAction.RetryBattle && payload.retryBattleAvailable -> true
         bossClaimMode() && action == DialogAction.Talk -> true
         else -> false
     }
@@ -2205,6 +2211,7 @@ private enum class DialogAction(val label: String, val icon: ResourceLocation) {
     Contracts("CONTRACTS", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/quest_log.png")),
     Challenge("CHALLENGE", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/kilic.png")),
     FriendlyBattle("FRIENDLY BATTLE", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/kilic.png")),
+    RetryBattle("RETRY BATTLE", ResourceLocation.fromNamespaceAndPath("cobblemon", "textures/gui/ball/poke_ball.png")),
     Badge("BADGE", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/trophy.png")),
     Record("RECORD", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/trophy.png")),
     Training("TRAINING", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/chat_bubble_white.png")),

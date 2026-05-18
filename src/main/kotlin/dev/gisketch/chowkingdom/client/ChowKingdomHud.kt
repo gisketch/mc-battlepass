@@ -116,7 +116,7 @@ object ChowKingdomHud {
             val progress = BattlepassClientState.missionProgress(playerId, mission.pass.id, mission.entry.key)
                 ?: BattlepassClientState.missionProgress(playerId, mission.pass.id, event.event)
                 ?: event.progress
-            val goal = missionGoal(event)
+            val goal = missionGoal(event, progress)
             val completed = BattlepassClientState.isMissionCompleted(playerId, mission.pass.id, mission.entry.key)
             if (completed || goal <= 0) return@mapNotNull null
             val title = fitCkdmText(minecraft.font, compactMissionDescription(event, progress, goal, showGoal), maxTextWidth, CKDM_BOLD_SMALL_FONT)
@@ -216,11 +216,8 @@ object ChowKingdomHud {
 
     private fun overallBattlepassLevel(playerId: java.util.UUID): Int = (BattlepassClientState.playerProgress(playerId)?.xpByPass?.values?.sum() ?: 0) / BATTLEPASS_XP_PER_LEVEL
 
-    private fun missionGoal(event: BattlepassXpEventDefinition): Int = when {
-        BattlepassMissionService.isCappedRepeating(event) -> event.xpCap
-        BattlepassMissionService.isProgressive(event) -> BattlepassMissionService.progressiveGoal(event)
-        else -> 0
-    }
+    private fun missionGoal(event: BattlepassXpEventDefinition, progress: Int): Int =
+        BattlepassMissionService.displayGoal(event, progress) ?: 0
 
     private fun formatChowcoins(amount: Long): String = String.format(Locale.US, "%,d", amount)
 

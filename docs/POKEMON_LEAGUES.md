@@ -208,6 +208,7 @@ Implemented in code:
 - First badge clear sends snackbar and Discord webhook relay.
 - Friendly battles are available from trainer NPCs when the player is not on that trainer's active league record.
 - NPC main Pokemon companions are recalled with a short particle/sound cue before RCT battles, hidden during the battle, then restored after the battle ends.
+- CKDM NPCs locked in RCT battles are protected by NPC `settings.toml` top-level `protect_npcs_during_pokemon_battles = true`; this prevents world damage/death while the battle is active.
 - Battle start sends a black client fade, waits briefly, teleports the player and trainer NPC to the configured stadium battle spots, faces them toward each other, then starts the RCT battle while the screen fades back in.
 - Strict story delay keeps delayed official encounters visible as disabled `CHALLENGE`, with separate `FRIENDLY BATTLE`.
 - Active league records sync into the pinned NPC quest HUD when the next challenge is available, and delayed challenges send a one-time `POKEMON CHALLENGE READY` snackbar when their unlock day arrives.

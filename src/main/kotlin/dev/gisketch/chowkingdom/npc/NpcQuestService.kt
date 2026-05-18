@@ -63,8 +63,7 @@ object NpcQuestService {
                 return true
             }
             if (active.category == "pokemon_battle" || active.category == "sparring") {
-                retryBattleQuest(player, npc, definition, active)
-                return true
+                return false
             }
             if (tryClaim(player, npc, definition, active, playerState)) return true
             return false
@@ -110,6 +109,13 @@ object NpcQuestService {
             return true
         }
         return when (normalizedAction) {
+            "quest_retry_battle" -> {
+                val active = state.active[definition.id]
+                if (active != null && (active.category == "pokemon_battle" || active.category == "sparring")) {
+                    retryBattleQuest(player, npc, definition, active)
+                }
+                true
+            }
             "quest_accept" -> {
                 val offer = debugForcedOffer(player, definition) ?: selectedOffer(player, definition, period) ?: return true
                 accept(player, npc, definition, offer, state)
@@ -517,6 +523,11 @@ object NpcQuestService {
             showCompletionBalloon(player, npc, definition, active)
             openCloseDialog(player, npc, definition, "You did it, {player}. That helps more than you know.".replace("{player}", player.gameProfile.name))
         }
+    }
+
+    fun retryBattleAvailable(player: ServerPlayer, definition: NpcDefinition): Boolean {
+        val active = questState(player).active[definition.id] ?: return false
+        return active.category == "pokemon_battle" || active.category == "sparring"
     }
 
     fun completeBattleQuest(player: ServerPlayer, definition: NpcDefinition, category: String, npc: ChowNpcEntity? = null): Boolean {
