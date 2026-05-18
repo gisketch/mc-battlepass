@@ -496,7 +496,7 @@ object NpcQuestService {
         } else {
             "@quest_log.png Mission complete, ${player.gameProfile.name}."
         }
-        NpcFeature.showBalloonToNearby(level, npc, NpcNetwork.goldBalloon(message), 100)
+        NpcFeature.showBalloonToNearby(level, npc, NpcNetwork.greenBalloon(message), 100)
     }
 
     private fun openOfferDialog(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, offer: NpcMissionDefinition) {
@@ -574,6 +574,7 @@ object NpcQuestService {
         .replace("{goal}", goal.toString())
         .replace("{progress}", "0")
         .replace("{seconds}", offer.timeWindowSeconds.toString())
+        .let(::normalizeDisplaySpacing)
 
     private fun offerGoal(offer: NpcMissionDefinition): Int =
         if (offer.category == "fetch" || offer.category == "food_chain") offer.fetchCount else offer.goal
@@ -581,7 +582,7 @@ object NpcQuestService {
     private fun template(template: String, player: ServerPlayer, definition: NpcDefinition, offer: NpcMissionDefinition, progress: Int): String = template
         .replace("{player}", player.gameProfile.name)
         .replace("{npc}", definition.name)
-        .replace("{quest_text}", offer.questText.ifBlank { missionText(offer, offerGoal(offer)) })
+        .replace("{quest_text}", normalizeDisplaySpacing(offer.questText.ifBlank { missionText(offer, offerGoal(offer)) }))
         .replace("{goal}", offerGoal(offer).toString())
         .replace("{progress}", progress.toString())
         .replace("{seconds}", offer.timeWindowSeconds.toString())
@@ -592,13 +593,17 @@ object NpcQuestService {
     private fun questOfferDialogText(template: String, player: ServerPlayer, definition: NpcDefinition, offer: NpcMissionDefinition): String = template
         .replace("{player}", "<player>${player.gameProfile.name}</player>")
         .replace("{npc}", definition.name)
-        .replace("{quest_text}", "<mission>${offer.questText.ifBlank { missionText(offer, offerGoal(offer)) }}</mission>")
+        .replace("{quest_text}", "<mission>${normalizeDisplaySpacing(offer.questText.ifBlank { missionText(offer, offerGoal(offer)) })}</mission>")
         .replace("{goal}", offerGoal(offer).toString())
         .replace("{progress}", "0")
         .replace("{seconds}", offer.timeWindowSeconds.toString())
         .replace("{pass}", offer.passId)
         .replace("{xp}", "<xp>${offer.xp} xp</xp>")
         .replace("{chowcoins}", if (offer.chowcoins > 0L) "<coin>${offer.chowcoins}</coin>" else "<coin>0</coin>")
+
+    private fun normalizeDisplaySpacing(text: String): String = text
+        .replace(Regex("(?<=[A-Za-z])(?=\\d)"), " ")
+        .replace(Regex("(?<=\\d)(?=[A-Za-z]{2})"), " ")
 
     private fun countRequiredItems(player: ServerPlayer, quest: NpcAcceptedQuestState): Int {
         return player.inventory.items.sumOf { stack -> if (stackMatchesRequired(player, stack, quest)) stack.count else 0 } +

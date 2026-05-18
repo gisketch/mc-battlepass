@@ -128,6 +128,7 @@ dependencies {
     compileOnly("maven.modrinth:jade:15.9.3+neoforge")
 
     testImplementation(kotlin("test"))
+    testImplementation("com.google.code.gson:gson:2.11.0")
 }
 
 tasks.processResources {

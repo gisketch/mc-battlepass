@@ -520,5 +520,21 @@
   "skill.gisketchs_chowkingdom_mod.wizard_boost_2.title": "Wizard Study II",
   "skill.gisketchs_chowkingdom_mod.wizard_boost_2.description": "Gain +1% generic spell power.",
   "skill.gisketchs_chowkingdom_mod.wizard_boost_3.title": "Wizard Study III",
-  "skill.gisketchs_chowkingdom_mod.wizard_boost_3.description": "Gain +1% generic spell power."
+  "skill.gisketchs_chowkingdom_mod.wizard_boost_3.description": "Gain +1% generic spell power.",
+  "skill.gisketchs_chowkingdom_mod.warrior_root.description": "Begin the Warrior path. Gain +1% melee attack damage and unlock Warrior progression.",
+  "skill.gisketchs_chowkingdom_mod.warrior_boost.description": "Gain +1% melee attack damage. This boost supports both Warrior branches.",
+  "skill.gisketchs_chowkingdom_mod.warrior_spec_a_modifier_1.description": "Unlock Shattering Throw tuning: improves the thrown weapon opener.",
+  "skill.gisketchs_chowkingdom_mod.warrior_spec_a_modifier_2.description": "Unlock Demoralizing Shout tuning: strengthens the shout branch.",
+  "skill.gisketchs_chowkingdom_mod.warrior_spec_a_modifier_3.description": "Unlock Charge tuning: improves the mobility branch.",
+  "skill.gisketchs_chowkingdom_mod.warrior_spec_a_modifier_4.description": "Unlock Whirlwind tuning: improves the branch finisher.",
+  "skill.gisketchs_chowkingdom_mod.warrior_spec_a_passive_1.description": "Warrior throwing skills gain more combat value.",
+  "skill.gisketchs_chowkingdom_mod.warrior_spec_a_passive_2.description": "Warrior shout skills gain more combat value.",
+  "skill.gisketchs_chowkingdom_mod.warrior_spec_a_passive_3.description": "Warrior charge skills gain more combat value.",
+  "skill.gisketchs_chowkingdom_mod.warrior_spec_b_modifier_1.description": "Unlock Shattering Throw tuning for the alternate Warrior branch.",
+  "skill.gisketchs_chowkingdom_mod.warrior_spec_b_modifier_2.description": "Unlock Demoralizing Shout tuning for the alternate Warrior branch.",
+  "skill.gisketchs_chowkingdom_mod.warrior_spec_b_modifier_3.description": "Unlock Charge tuning for the alternate Warrior branch.",
+  "skill.gisketchs_chowkingdom_mod.warrior_spec_b_modifier_4.description": "Unlock Whirlwind tuning for the alternate Warrior branch.",
+  "skill.gisketchs_chowkingdom_mod.warrior_spec_b_passive_1.description": "Alternate Warrior throwing skills gain more combat value.",
+  "skill.gisketchs_chowkingdom_mod.warrior_spec_b_passive_2.description": "Alternate Warrior shout skills gain more combat value.",
+  "skill.gisketchs_chowkingdom_mod.warrior_spec_b_passive_3.description": "Alternate Warrior charge skills gain more combat value."
 }

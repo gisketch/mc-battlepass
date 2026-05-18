@@ -1284,7 +1284,7 @@ object NpcFeature {
         val nextAt = camperBalloonRefreshAt[npc.uuid] ?: 0L
         if (level.gameTime < nextAt) return
         val pool = if (NpcStore.camperReturnReason(definition.id) == "lost_house") definition.camperMessages.lostHouseBalloon else definition.camperMessages.needsHouseBalloon
-        sendNpcBalloon(level, npc, camperMessage(pool, player, definition), NPC_CAMPER_HOUSING_BALLOON_TICKS)
+        sendNpcBalloon(level, npc, NpcNetwork.goldBalloon(camperMessage(pool, player, definition)), NPC_CAMPER_HOUSING_BALLOON_TICKS)
         camperBalloonRefreshAt[npc.uuid] = level.gameTime + NPC_CAMPER_HOUSING_BALLOON_REFRESH_TICKS
     }
 
@@ -1448,6 +1448,7 @@ object NpcFeature {
         val playersInRadius = level.players()
             .filter { player -> player.isAlive && !player.isSpectator && player.distanceToSqr(npc.x, npc.y, npc.z) <= radiusSqr }
         updateGreetingRadiusState(npc, definition, playersInRadius)
+        if (BossEventsFeature.hasFinnBossBalloonPriority(npc, definition)) return false
         if (npc.isTalking() || npc.isSleeping) return false
         if (isAutoTaskCoolingDown(npc)) return false
         val player = playersInRadius
@@ -1900,7 +1901,7 @@ object NpcFeature {
                 npc.campPos = camp.immutable()
                 npc.navigation.stop()
                 npc.moveTo(camp.x + 0.5, camp.y + 1.0, camp.z + 0.5, level.random.nextFloat() * 360.0f, 0.0f)
-                if (listener != null) sendNpcBalloon(level, npc, camperMessage(definition.camperMessages.lostHouseBalloon, listener, definition), 120)
+                if (listener != null) sendNpcBalloon(level, npc, NpcNetwork.goldBalloon(camperMessage(definition.camperMessages.lostHouseBalloon, listener, definition)), 120)
             }
         }
         NpcStore.recordGlobalEvent("npc_home_lost", "$npcId lost assigned bed")
@@ -3114,7 +3115,7 @@ object NpcFeature {
         if (markActiveCamper) {
             NpcStore.setActiveCamper(definition.id, campPos)
             level.players().firstOrNull()?.let { player ->
-                val message = camperMessage(definition.camperMessages.needsHouseBalloon, player, definition)
+                val message = NpcNetwork.goldBalloon(camperMessage(definition.camperMessages.needsHouseBalloon, player, definition))
                 sendNpcBalloon(level, npc, message, 120)
             }
             if (announceCamperArrival) announceCamperArrival(level, definition)

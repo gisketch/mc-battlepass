@@ -175,8 +175,13 @@ object NpcClient {
         val styledBalloon = balloonStyle(activeBalloon.message)
         val balloonIcon = balloonIcon(styledBalloon.message)
         val hasBalloonIcon = balloonIcon != null
-        val balloonMessage = balloonIcon?.let { styledBalloon.message.removePrefix(it.marker).trimStart() } ?: styledBalloon.message
-        val text = if (styledBalloon.gold) Component.literal(balloonMessage).withStyle { style -> style.withFont(BALLOON_CKDM_FONT) } else FormattedText.of(balloonMessage)
+        val balloonMessage = normalizeBalloonDisplaySpacing(balloonIcon?.let { styledBalloon.message.removePrefix(it.marker).trimStart() } ?: styledBalloon.message)
+        val priorityBalloon = styledBalloon.gold || styledBalloon.green
+        val text = if (priorityBalloon) {
+            Component.literal(balloonMessage.uppercase(Locale.ROOT)).withStyle { style -> style.withFont(BALLOON_CKDM_FONT) }
+        } else {
+            FormattedText.of(balloonMessage)
+        }
         val lines = font.split(text, BALLOON_MAX_TEXT_WIDTH)
         if (lines.isEmpty()) {
             renderFriendshipDeltaPopup(entity, poseStack, guiGraphics, rotation, font, activeDelta, now, visibilityAlpha)
@@ -184,9 +189,12 @@ object NpcClient {
         }
         val alpha = animationAlpha(activeBalloon.startedAtMs, activeBalloon.expiresAtMs, now, BALLOON_FADE_MS) * visibilityAlpha
         val iconSpace = if (hasBalloonIcon) BALLOON_ICON_SIZE + 2 else 0
+        val balloonPaddingX = if (priorityBalloon) BALLOON_PRIORITY_PADDING_X else BALLOON_PADDING
+        val balloonPaddingY = if (priorityBalloon) BALLOON_PRIORITY_PADDING_Y else BALLOON_PADDING
+        val balloonLineHeight = if (priorityBalloon) BALLOON_PRIORITY_LINE_HEIGHT else BALLOON_LINE_HEIGHT
         val greatestTextWidth = lines.mapIndexed { index, line -> font.width(line) + if (index == 0) iconSpace else 0 }.maxOrNull() ?: 0
-        val balloonWidth = (greatestTextWidth + BALLOON_PADDING * 2).coerceAtLeast(BALLOON_MIN_WIDTH)
-        val balloonHeight = lines.size * BALLOON_LINE_HEIGHT + BALLOON_PADDING * 2
+        val balloonWidth = (greatestTextWidth + balloonPaddingX * 2).coerceAtLeast(BALLOON_MIN_WIDTH)
+        val balloonHeight = lines.size * balloonLineHeight + balloonPaddingY * 2
         val balloonX = -balloonWidth / 2
         val balloonY = -balloonHeight
 
@@ -201,7 +209,9 @@ object NpcClient {
         RenderSystem.enableDepthTest()
         RenderSystem.enablePolygonOffset()
         RenderSystem.polygonOffset(3.0f, 3.0f)
-        if (styledBalloon.gold) {
+        if (styledBalloon.green) {
+            RenderSystem.setShaderColor(0.23f, 0.72f, 0.32f, BALLOON_BG_ALPHA * alpha)
+        } else if (styledBalloon.gold) {
             RenderSystem.setShaderColor(1.0f, 0.78f, 0.23f, BALLOON_BG_ALPHA * alpha)
         } else {
             RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, BALLOON_BG_ALPHA * alpha)
@@ -212,7 +222,8 @@ object NpcClient {
         RenderSystem.disablePolygonOffset()
         RenderSystem.disableBlend()
 
-        var textY = balloonY + BALLOON_PADDING
+        RenderSystem.disableDepthTest()
+        var textY = balloonY + balloonPaddingY
         lines.forEachIndexed { index, line ->
             val lineIconSpace = if (hasBalloonIcon && index == 0) iconSpace else 0
             val lineWidth = font.width(line) + lineIconSpace
@@ -224,15 +235,15 @@ object NpcClient {
                 guiGraphics.blit(balloonIcon.texture, iconX, textY, BALLOON_ICON_SIZE, BALLOON_ICON_SIZE, 0.0f, 0.0f, BALLOON_ICON_TEXTURE_SIZE, BALLOON_ICON_TEXTURE_SIZE, BALLOON_ICON_TEXTURE_SIZE, BALLOON_ICON_TEXTURE_SIZE)
                 RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f)
             }
-            if (styledBalloon.gold) {
-                guiGraphics.drawString(font, line, textX + 1, textY + 1, withAlpha(BALLOON_GOLD_SHADOW_COLOR, alpha), false)
-                guiGraphics.drawString(font, line, textX, textY, withAlpha(BALLOON_GOLD_TEXT_COLOR, alpha), false)
+            if (priorityBalloon) {
+                guiGraphics.drawString(font, line, textX, textY, withAlpha(BALLOON_PRIORITY_TEXT_COLOR, alpha), false)
             } else {
                 guiGraphics.drawString(font, line, textX, textY, withAlpha(BALLOON_TEXT_COLOR, alpha), false)
             }
-            textY += BALLOON_LINE_HEIGHT
+            textY += balloonLineHeight
         }
         guiGraphics.flush()
+        RenderSystem.enableDepthTest()
         poseStack.popPose()
         renderFriendshipDeltaPopup(entity, poseStack, guiGraphics, rotation, font, activeDelta, now, visibilityAlpha)
     }
@@ -604,24 +615,32 @@ object NpcClient {
 
     private fun balloonStyle(message: String): NpcBalloonStyle {
         val clean = message.trimStart()
-        if (!clean.startsWith(GOLD_BALLOON_MARKER)) return NpcBalloonStyle(message, false)
-        return NpcBalloonStyle(clean.removePrefix(GOLD_BALLOON_MARKER).trimStart(), true)
+        return when {
+            clean.startsWith(GREEN_BALLOON_MARKER) -> NpcBalloonStyle(clean.removePrefix(GREEN_BALLOON_MARKER).trimStart(), gold = false, green = true)
+            clean.startsWith(GOLD_BALLOON_MARKER) -> NpcBalloonStyle(clean.removePrefix(GOLD_BALLOON_MARKER).trimStart(), gold = true, green = false)
+            else -> NpcBalloonStyle(message, gold = false, green = false)
+        }
     }
+
+    private fun normalizeBalloonDisplaySpacing(text: String): String = text
+        .replace(Regex("(?<=[A-Za-z])(?=\\d)"), " ")
+        .replace(Regex("(?<=\\d)(?=[A-Za-z]{2})"), " ")
 
 
 private data class NpcBalloonIcon(val marker: String, val texture: ResourceLocation)
-    private data class NpcBalloonStyle(val message: String, val gold: Boolean)
+    private data class NpcBalloonStyle(val message: String, val gold: Boolean, val green: Boolean)
     private val BALLOON_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/chat_bubble.png")
-    private val BALLOON_CKDM_FONT = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "ckdm_bold")
     private val GIFT_BALLOON_ICON = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/gift.png")
     private val QUEST_BALLOON_ICON = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/quest_log.png")
     private val HEART_BALLOON_ICON = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/heart.png")
     private val ANGRY_BALLOON_ICON = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/angry.png")
+    private val BALLOON_CKDM_FONT = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "ckdm_bold_claim")
     private const val GIFT_BALLOON_MARKER = "@gift.png"
     private const val QUEST_BALLOON_MARKER = "@quest_log.png"
     private const val HEART_BALLOON_MARKER = "@heart.png"
     private const val ANGRY_BALLOON_MARKER = "@angry.png"
     private const val GOLD_BALLOON_MARKER = "@gold"
+    private const val GREEN_BALLOON_MARKER = "@green"
     private const val BALLOON_ICON_SIZE = 8
     private const val BALLOON_ICON_TEXTURE_SIZE = 16
     private const val BALLOON_SCALE = 0.020f
@@ -633,12 +652,14 @@ private data class NpcBalloonIcon(val marker: String, val texture: ResourceLocat
     private const val BALLOON_MAX_TEXT_WIDTH = 118
     private const val BALLOON_MIN_WIDTH = 45
     private const val BALLOON_PADDING = 6
+    private const val BALLOON_PRIORITY_PADDING_X = 8
+    private const val BALLOON_PRIORITY_PADDING_Y = 9
     private const val BALLOON_CORNER = 4
     private const val BALLOON_TEXTURE_SIZE = 16
     private const val BALLOON_LINE_HEIGHT = 9
+    private const val BALLOON_PRIORITY_LINE_HEIGHT = 10
     private const val BALLOON_TEXT_COLOR = 0xFF24201C.toInt()
-    private const val BALLOON_GOLD_TEXT_COLOR = 0xFFFFFFFF.toInt()
-    private const val BALLOON_GOLD_SHADOW_COLOR = 0xCC000000.toInt()
+    private const val BALLOON_PRIORITY_TEXT_COLOR = 0xFFFFFFFF.toInt()
     private const val FRIENDSHIP_DELTA_WORLD_SCALE = 0.021f
     private const val FRIENDSHIP_DELTA_WORLD_ENTITY_Y_OFFSET = 1.04
     private const val FRIENDSHIP_DELTA_WORLD_X = 14
@@ -1819,8 +1840,13 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
     }
 
     private fun normalizeDialogMarkupSpacing(text: String): String = text
+        .let(::normalizeDisplaySpacing)
         .replace(Regex("(?<=[A-Za-z0-9])(?=<(?:mission|coin|xp|player|b)>)", RegexOption.IGNORE_CASE), " ")
         .replace(Regex("(</(?:mission|coin|xp|player|b)>)(?=[A-Za-z0-9])", RegexOption.IGNORE_CASE), "$1 ")
+
+    private fun normalizeDisplaySpacing(text: String): String = text
+        .replace(Regex("(?<=[A-Za-z])(?=\\d)"), " ")
+        .replace(Regex("(?<=\\d)(?=[A-Za-z]{2})"), " ")
 
     private fun appendDialogText(root: MutableComponent, text: String, color: Int, playerName: String, shadow: Boolean) {
         if (text.isEmpty()) return
@@ -1841,7 +1867,7 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
     private fun styledDialogText(text: String, color: Int, highlight: Boolean, shadow: Boolean): Component {
         val displayText = if (highlight) text.uppercase(Locale.ROOT) else text
         return Component.literal(displayText).withStyle { style ->
-            val fontStyle = if (highlight) style.withFont(CKDM_BOLD_FONT) else style
+            val fontStyle = if (highlight) style.withFont(CKDM_CLAIM_FONT) else style
             fontStyle.withColor(if (shadow) DIALOG_SHADOW else color)
         }
     }
@@ -1972,6 +1998,7 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         private val PANEL_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_container_grey.png")
         private val CKDM_BOLD_FONT = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "ckdm_bold")
         private val CKDM_SMALL_FONT = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "ckdm_bold_small")
+        private val CKDM_CLAIM_FONT = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "ckdm_bold_claim")
         private val BUTTON_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_btn_gray.png")
         private val GREEN_BUTTON_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_btn_green.png")
         private val BUTTON_HOVER_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_btn_green_hover.png")
@@ -1990,8 +2017,8 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         private const val AVATAR_SIZE = 42
         private const val SKIN_TEXTURE_SIZE = 64
         private const val TEXT_GAP = 12
-        private const val LINE_HEIGHT = 13
-        private const val DIALOG_TEXT_SCALE = 1.16f
+        private const val LINE_HEIGHT = 11
+        private const val DIALOG_TEXT_SCALE = 1.0f
         private const val NAME_Y = 19
         private const val NAME_SCALE = 1.25f
         private const val FRIENDSHIP_Y = 43

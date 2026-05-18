@@ -63,25 +63,21 @@ object ClassSkillTrees {
         ClassSkillTreeNetwork.syncTo(player, openScreen = true)
     }
 
-    fun unlock(player: ServerPlayer, rootSkillId: String, skillId: String) {
+    fun unlock(player: ServerPlayer, rootSkillId: String, skillId: String): ClassSkillTreeUnlockResult {
         val root = rootSkillId.trim()
         val skill = skillId.trim()
         val allowed = ownedRootIds(player)
-        if (root !in allowed || skill.isBlank()) return
+        if (root !in allowed) return ClassSkillTreeUnlockResult(false, "Skill path is not owned")
+        if (skill.isBlank()) return ClassSkillTreeUnlockResult(false, "Unknown skill")
         val budget = budget(player)
         val spent = totalSpent(player, allowed)
-        if (spent >= budget) return
-        val tree = data.rootTrees[root] ?: return
-        val node = data.nodes[skill] ?: return
-        if (node.root || skill !in tree.skillIds) return
-        val unlocked = RoleStore.classSkillIds(player, root) + root
-        if (skill in unlocked) return
-        if (!tree.neighbors(skill).any { neighbor -> neighbor in unlocked }) return
-        if (data.exclusiveNeighbors(skill).any { other -> other in unlocked }) return
+        val state = unlockState(root, skill, RoleStore.classSkillIds(player, root), budget - spent)
+        if (!state.available) return ClassSkillTreeUnlockResult(false, state.reason.ifBlank { "Skill is locked" })
         RoleStore.unlockClassSkill(player, root, skill)
         RoleStore.setSelectedClassSkillRoot(player, root)
         reconcile(player)
         ClassSkillTreeNetwork.syncTo(player, openScreen = true)
+        return ClassSkillTreeUnlockResult(true, "")
     }
 
     fun reset(player: ServerPlayer, rootSkillId: String? = null) {
@@ -116,6 +112,23 @@ object ClassSkillTrees {
         return data.rootByDefinition[rootDefinition]
     }
 
+    internal fun rootSkillIdForDefinition(definitionId: String): String? =
+        data.rootByDefinition[definitionId]?.id
+
+    internal fun skillIdsForDefinition(definitionId: String): List<String> =
+        data.nodes.values.filter { node -> node.definitionId == definitionId }.map(SkillNode::id)
+
+    internal fun definitionIdForSkill(skillId: String): String? =
+        data.nodes[skillId]?.definitionId
+
+    internal fun availableSkillIds(rootSkillId: String, unlockedPaidSkillIds: Set<String>, pointsLeft: Int): Set<String> =
+        data.rootTrees[rootSkillId]?.skillIds.orEmpty()
+            .filter { skillId -> unlockState(rootSkillId, skillId, unlockedPaidSkillIds, pointsLeft).available }
+            .toSet()
+
+    internal fun unlockStateFor(rootSkillId: String, skillId: String, unlockedPaidSkillIds: Set<String>, pointsLeft: Int): ClassSkillTreeUnlockState =
+        unlockState(rootSkillId, skillId, unlockedPaidSkillIds, pointsLeft)
+
     private fun rootDefinitionForClass(classId: String): String = when (classId) {
         "wizard", "arcane_wizard", "fire_wizard", "frost_wizard", "water_wizard", "earth_wizard", "wind_wizard" -> "wizard_root"
         "bounty_hunter" -> "deadeye_root"
@@ -143,11 +156,7 @@ object ClassSkillTrees {
             selected = rootId == selectedRoot,
             nodes = tree.skillIds.mapNotNull { id ->
                 val node = data.nodes[id] ?: return@mapNotNull null
-                val available = !node.root &&
-                    id !in unlocked &&
-                    pointsLeft >= node.cost &&
-                    tree.neighbors(id).any { neighbor -> neighbor in unlocked } &&
-                    data.exclusiveNeighbors(id).none { other -> other in unlocked }
+                val state = unlockState(rootId, id, paidUnlocked, pointsLeft)
                 ClassSkillTreeNodePayload(
                     skillId = node.id,
                     definitionId = node.definitionId,
@@ -159,8 +168,9 @@ object ClassSkillTrees {
                     root = node.root,
                     cost = node.cost,
                     unlocked = node.id in unlocked,
-                    available = available,
-                    blocked = !node.root && node.id !in unlocked && !available,
+                    available = state.available,
+                    blocked = state.blocked,
+                    blockedReason = state.reason,
                 )
             },
             connections = tree.connections.map { (a, b) -> ClassSkillTreeConnectionPayload(a, b) },
@@ -182,6 +192,23 @@ object ClassSkillTrees {
     private fun totalSpent(player: ServerPlayer, roots: Set<String>): Int =
         roots.sumOf { root -> RoleStore.classSkillIds(player, root).sumOf { id -> data.nodes[id]?.cost ?: 0 } }
 
+    private fun unlockState(rootSkillId: String, skillId: String, unlockedPaidSkillIds: Set<String>, pointsLeft: Int): ClassSkillTreeUnlockState {
+        val tree = data.rootTrees[rootSkillId] ?: return ClassSkillTreeUnlockState(false, false, "Unknown skill path")
+        val node = data.nodes[skillId] ?: return ClassSkillTreeUnlockState(false, false, "Unknown skill")
+        val unlocked = unlockedPaidSkillIds + rootSkillId
+        if (skillId !in tree.skillIds) return ClassSkillTreeUnlockState(false, false, "Skill is outside this path")
+        if (node.root) return ClassSkillTreeUnlockState(false, false, "Root is already active")
+        if (skillId in unlocked) return ClassSkillTreeUnlockState(false, false, "Already unlocked")
+        if (pointsLeft < node.cost) return ClassSkillTreeUnlockState(false, true, "Need ${node.cost} skill point${if (node.cost == 1) "" else "s"}")
+        if (!tree.neighbors(skillId).any { neighbor -> neighbor in unlocked }) {
+            return ClassSkillTreeUnlockState(false, true, "Requires a connected unlocked skill")
+        }
+        if (data.exclusiveNeighbors(skillId).any { other -> other in unlocked }) {
+            return ClassSkillTreeUnlockState(false, true, "Blocked by another branch")
+        }
+        return ClassSkillTreeUnlockState(true, false, "")
+    }
+
     private fun loadData(): SkillTreeData {
         val skills = readJson("$CATEGORY_PATH/skills.json").asJsonObject
         val definitions = readJson("$CATEGORY_PATH/definitions.json").asJsonObject
@@ -197,7 +224,7 @@ object ClassSkillTrees {
                 id = id,
                 definitionId = definitionId,
                 titleKey = titleKey,
-                descriptionKey = descriptionKey(definition?.get("description"), definitionId, titleKey),
+                descriptionKey = descriptionKey(definition?.get("description"), definitionId),
                 icon = icon(definition),
                 x = skill.get("x")?.asInt ?: 0,
                 y = skill.get("y")?.asInt ?: 0,
@@ -270,15 +297,12 @@ object ClassSkillTrees {
         return "skill.${ChowKingdomMod.MOD_ID}.${definitionId}.$suffix"
     }
 
-    private fun descriptionKey(element: JsonElement?, definitionId: String, titleKey: String): String {
+    private fun descriptionKey(element: JsonElement?, definitionId: String): String {
         val obj = element as? JsonObject
         val translate = obj?.get("translate")?.asString
-        if (!translate.isNullOrBlank()) return translate
-        if (titleKey.startsWith("skill.") && titleKey.endsWith(".title")) {
-            return titleKey.removePrefix("skill.").removeSuffix(".title").let { "spell.$it.description" }
-        }
-        if (titleKey.endsWith(".title")) return titleKey.removeSuffix(".title") + ".description"
-        return "skill.${ChowKingdomMod.MOD_ID}.${definitionId}.description"
+        if (!translate.isNullOrBlank() && translate.startsWith("skill.${ChowKingdomMod.MOD_ID}.")) return translate
+        val ckdmKey = "skill.${ChowKingdomMod.MOD_ID}.${definitionId}.description"
+        return ckdmKey
     }
 
     private fun icon(definition: JsonObject?): String {
@@ -319,6 +343,17 @@ data class SkillNode(
     val y: Int,
     val root: Boolean,
     val cost: Int,
+)
+
+data class ClassSkillTreeUnlockResult(
+    val unlocked: Boolean,
+    val reason: String,
+)
+
+data class ClassSkillTreeUnlockState(
+    val available: Boolean,
+    val blocked: Boolean,
+    val reason: String,
 )
 
 private data class SkillTreeData(

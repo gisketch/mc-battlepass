@@ -89,10 +89,10 @@ object ChowKingdomHud {
             val rowY = headerY + COMPACT_HEADER_LINE_HEIGHT + COMPACT_MISSION_HEADER_GAP + index * COMPACT_MISSION_ROW_HEIGHT
             if (mission.npcQuest != null) {
                 renderNpcHead(guiGraphics, mission.npcQuest.npcId, rowX, rowY, COMPACT_MISSION_ICON_SIZE)
-                drawCkdmShadowedScaled(guiGraphics, font, mission.title, rowX + COMPACT_MISSION_ICON_SIZE + COMPACT_MISSION_ICON_GAP, rowY + COMPACT_MISSION_TEXT_Y, COMPACT_MISSION_TEXT_SCALE, if (mission.complete) COMPACT_GOLD else COMPACT_WHITE, COMPACT_BLACK_SHADOW, COMPACT_SMALL_SHADOW_OFFSET, CKDM_BOLD_SMALL_FONT)
+                drawCkdmShadowed(guiGraphics, font, mission.title, rowX + COMPACT_MISSION_ICON_SIZE + COMPACT_MISSION_ICON_GAP, rowY + COMPACT_MISSION_TEXT_Y, if (mission.complete) COMPACT_GOLD else COMPACT_WHITE, COMPACT_BLACK_SHADOW, COMPACT_SMALL_SHADOW_OFFSET, CKDM_BOLD_SMALL_FONT)
             } else {
                 renderScaledItem(guiGraphics, mission.icon, rowX, rowY, COMPACT_MISSION_ICON_SIZE)
-                drawCkdmShadowedScaled(guiGraphics, font, mission.title, rowX + COMPACT_MISSION_ICON_SIZE + COMPACT_MISSION_ICON_GAP, rowY + COMPACT_MISSION_TEXT_Y, COMPACT_MISSION_TEXT_SCALE, COMPACT_WHITE, COMPACT_BLACK_SHADOW, COMPACT_SMALL_SHADOW_OFFSET, CKDM_BOLD_SMALL_FONT)
+                drawCkdmShadowed(guiGraphics, font, mission.title, rowX + COMPACT_MISSION_ICON_SIZE + COMPACT_MISSION_ICON_GAP, rowY + COMPACT_MISSION_TEXT_Y, COMPACT_WHITE, COMPACT_BLACK_SHADOW, COMPACT_SMALL_SHADOW_OFFSET, CKDM_BOLD_SMALL_FONT)
             }
         }
     }
@@ -106,7 +106,7 @@ object ChowKingdomHud {
                 val details = if (quest.goal > 0) " (${quest.progress.coerceAtMost(quest.goal)}/${quest.goal})" else ""
                 quest.description + details
             }
-            HudMission(fitCkdmText(minecraft.font, title, (maxTextWidth / COMPACT_MISSION_TEXT_SCALE).toInt(), CKDM_BOLD_SMALL_FONT), ItemStack.EMPTY, quest, complete)
+            HudMission(fitCkdmText(minecraft.font, title, maxTextWidth, CKDM_BOLD_SMALL_FONT), ItemStack.EMPTY, quest, complete)
         }
 
     private fun compactHudMissions(minecraft: Minecraft, missions: List<BattlepassTrackedMissions.TrackedMission>, playerId: java.util.UUID, showGoal: Boolean, maxTextWidth: Int): List<HudMission> =
@@ -118,7 +118,7 @@ object ChowKingdomHud {
             val goal = missionGoal(event)
             val completed = BattlepassClientState.isMissionCompleted(playerId, mission.pass.id, mission.entry.key)
             if (completed || goal <= 0) return@mapNotNull null
-            val title = fitCkdmText(minecraft.font, compactMissionDescription(event, progress, goal, showGoal), (maxTextWidth / COMPACT_MISSION_TEXT_SCALE).toInt(), CKDM_BOLD_SMALL_FONT)
+            val title = fitCkdmText(minecraft.font, compactMissionDescription(event, progress, goal, showGoal), maxTextWidth, CKDM_BOLD_SMALL_FONT)
             HudMission(title, BattlepassMissionIcons.stack(mission.entry))
         }
 
@@ -413,7 +413,6 @@ object ChowKingdomHud {
     private const val COMPACT_MISSION_ICON_SIZE = 11
     private const val COMPACT_MISSION_ICON_GAP = 4
     private const val COMPACT_MISSION_TEXT_Y = 1
-    private const val COMPACT_MISSION_TEXT_SCALE = 0.92f
     private const val COMPACT_WHITE = 0xFFFFFFFF.toInt()
     private const val COMPACT_GOLD = 0xFFFFD24A.toInt()
     private const val CHOWCOIN_DELTA_GAIN = 0xFF4BFF7A.toInt()

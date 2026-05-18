@@ -92,31 +92,48 @@ object BossEventsFeature {
     fun contractsAvailable(definition: NpcDefinition): Boolean =
         BossEventsConfig.settings().enabled && definition.id.lowercase(Locale.ROOT) == BossEventsConfig.settings().finnNpcId
 
+    fun hasFinnBossBalloonPriority(npc: ChowNpcEntity, definition: NpcDefinition): Boolean {
+        if (!BossEventsConfig.settings().enabled || definition.id.lowercase(Locale.ROOT) != BossEventsConfig.settings().finnNpcId) return false
+        if (npc.isSleeping || npc.isTalking()) return false
+        val level = npc.level() as? ServerLevel ?: return false
+        val player = finnBossBalloonTarget(level, npc) ?: return false
+        return BossEventsStore.claimableBosses(player).isNotEmpty() ||
+            activeContractEntry()?.let { entry -> !BossEventsStore.introduced(entry.id) } == true
+    }
+
     fun tryShowFinnBossBalloon(npc: ChowNpcEntity, definition: NpcDefinition): Boolean {
         if (!BossEventsConfig.settings().enabled || definition.id.lowercase(Locale.ROOT) != BossEventsConfig.settings().finnNpcId) return false
         if (npc.isSleeping || npc.isTalking()) return false
         val level = npc.level() as? ServerLevel ?: return false
-        val player = level.players().asSequence()
-            .filter { candidate -> candidate.isAlive && !candidate.isSpectator && candidate.distanceToSqr(npc.x, npc.y, npc.z) <= FINN_BOSS_BALLOON_RADIUS_SQR }
-            .minByOrNull { candidate -> candidate.distanceToSqr(npc.x, npc.y, npc.z) }
-            ?: return false
+        val player = finnBossBalloonTarget(level, npc) ?: return false
         val key = "${npc.uuid}:${player.uuid}"
         if ((nextFinnBossBalloonAt[key] ?: 0L) > level.gameTime) return false
+        val claimable = BossEventsStore.claimableBosses(player).isNotEmpty()
         val message = when {
-            BossEventsStore.claimableBosses(player).isNotEmpty() -> "@quest_log.png CONTRACT REWARD READY"
+            claimable -> "@quest_log.png CONTRACT REWARD READY"
             activeContractEntry()?.let { entry -> !BossEventsStore.introduced(entry.id) } == true -> "@quest_log.png ${FINN_BOSS_TEASES[level.random.nextInt(FINN_BOSS_TEASES.size)]}"
             else -> return false
         }
-        NpcNetwork.showBalloon(player, npc.id, NpcNetwork.goldBalloon(message), 120)
+        NpcNetwork.showBalloon(player, npc.id, if (claimable) NpcNetwork.greenBalloon(message) else NpcNetwork.goldBalloon(message), 120)
         nextFinnBossBalloonAt[key] = level.gameTime + FINN_BOSS_BALLOON_COOLDOWN_TICKS
         return true
     }
 
+    private fun finnBossBalloonTarget(level: ServerLevel, npc: ChowNpcEntity): ServerPlayer? =
+        level.players().asSequence()
+            .filter { candidate -> candidate.isAlive && !candidate.isSpectator && candidate.distanceToSqr(npc.x, npc.y, npc.z) <= FINN_BOSS_BALLOON_RADIUS_SQR }
+            .minByOrNull { candidate -> candidate.distanceToSqr(npc.x, npc.y, npc.z) }
+
     fun tryOpenFinnDialog(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition): Boolean {
         if (definition.id.lowercase(Locale.ROOT) != BossEventsConfig.settings().finnNpcId) return false
-        val entry = BossEventsStore.claimableBosses(player).firstOrNull() ?: return false
-        showClaimBalloon(player, npc, entry)
-        openClaimDialog(player, npc, definition, entry)
+        val claimable = BossEventsStore.claimableBosses(player).firstOrNull()
+        if (claimable != null) {
+            showClaimBalloon(player, npc, claimable)
+            openClaimDialog(player, npc, definition, claimable)
+            return true
+        }
+        activeContractEntry() ?: return false
+        openContractDialog(player, npc, definition)
         return true
     }
 
@@ -191,7 +208,7 @@ object BossEventsFeature {
             val instruction = if (view.state == "locked") {
                 "Open the boss contract screen. Finn has no clean contract yet. Reply in character that he is scouting for strange trouble and needs more adventure before he pins another fight. Do not mention shipping, Chowcoins, thresholds, hidden boss ids, required players, or the next boss."
             } else {
-                "Open the boss contract screen. Explain the contract in character and invite the player to ask questions or claim if they have credit."
+                "Open the boss contract screen. Explain the contract in character. Mention the boss name, where to look, how to access it, fight preparation, crew requirement, and reward. Do not mention shipping, thresholds, hidden boss ids, or UI button names."
             }
             NpcLlmService.event(
                 player,
@@ -303,8 +320,6 @@ object BossEventsFeature {
         return """
             ${if (primary) "Primary" else "Light"} Finn boss contract context:
             - Boss: ${entry.displayName}
-            - Boss id: ${entry.id}
-            - Boss order: ${entry.order}
             - Status for ${player.gameProfile.name}: $status
             - Required credited players: ${entry.requiredPlayers}
             - Reward XP: ${entry.firstClearXp}
@@ -315,6 +330,7 @@ object BossEventsFeature {
             - Fight tips: ${entry.fightTips}
             - Next boss: ${next?.displayName ?: "none"}
             If this is primary context, keep the conversation focused on the contract, scouting, how to find the boss, and how to prepare.
+            Do not mention shipping, thresholds, hidden boss ids, or UI button names.
         """.trimIndent()
     }
 
@@ -573,15 +589,12 @@ object BossEventsFeature {
             Boss contract claim-ready context for Finn.
             Player: ${player.gameProfile.name}
             Boss: ${entry.displayName}
-            Boss id: ${entry.id}
-            Boss order: ${entry.order}
-            Threshold: ${entry.thresholdChowcoins}
-            Total shipped Chowcoins: ${ShippingBinStore.totalChowcoinsSold()}
             Reward XP: ${entry.firstClearXp}
             Reward Chowcoins: ${entry.firstClearChowcoins}
             Next boss: ${next?.displayName ?: "none"}
             Reply as Finn. Keep it short, excited, and in character.
-            Tell the player their reward is ready and point them to the CLAIM button.
+            Tell the player their reward is ready and they can collect it whenever they want.
+            Do not mention shipping, thresholds, hidden boss ids, or UI button names.
             Wrap the XP reward with <xp>...</xp> and the Chowcoin reward with <coin>...</coin>.
             You may wrap the boss name or player name with <b>...</b>.
         """.trimIndent()
@@ -604,7 +617,7 @@ object BossEventsFeature {
     }
 
     private fun showClaimBalloon(player: ServerPlayer, npc: ChowNpcEntity, entry: BossEventEntry) {
-        NpcNetwork.showBalloon(player, npc.id, NpcNetwork.goldBalloon("@quest_log.png CONTRACT REWARD READY"), 120)
+        NpcNetwork.showBalloon(player, npc.id, NpcNetwork.greenBalloon("@quest_log.png CONTRACT REWARD READY"), 120)
     }
 
     private fun stripDialogTags(message: String): String = message.replace(Regex("(?i)</?(mission|coin|xp|player|b)>"), "")

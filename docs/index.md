@@ -44,6 +44,7 @@
 - [Compatibility](COMPATIBILITY.md)
 - [Harness Workflow](HARNESS.md)
 - [SmartBrainLib Reference](references/smartbrainlib.md)
+- [Radical Cobblemon Trainers API Reference](references/rct-api.md)
 
 ## Harness Context
 

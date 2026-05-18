@@ -24,18 +24,20 @@ Boss Events V1 makes Finn the server-wide boss contract NPC.
 - Defaults: 96 block radius, 10 minute participation window, 8 required credited players.
 - Finn always shows a `CONTRACTS` button in normal dialogue.
 - `CONTRACTS` opens a nested boss contract dialogue for locked, active, claimable, or completed states.
-- Active boss contracts are not pinned immediately on unlock. The first player who opens Finn `CONTRACTS` for that active contract introduces it server-wide, then everyone sees the pinned boss mission.
+- Active boss contracts are not pinned immediately on unlock. Right-clicking Finn with an active contract opens the contract screen directly; the first such open introduces it server-wide, then everyone sees the pinned boss mission.
 - After a valid clear or debug credit grant, players with claimable credit see `Talk to Finn to claim your rewards` in the pinned mission HUD and can claim through the contract dialogue.
 - Once a boss has enough credited players, it is treated as contract-complete for HUD/dialogue purposes even if credit was granted through debug commands.
 - After the player claims, Finn no longer keeps that boss as the active contract; he moves to the next locked/active contract or says no contract is ready.
 - Claiming happens through Finn dialogue using `boss_contract` / `boss_claim` actions.
-- If a player has claimable boss credit, Finn shows a gold quest balloon and right-click opens a claim-ready LLM prompt instead of the generic greeting.
-- Important NPC balloons can use the `@gold` prefix before icon markers, such as `@gold @quest_log.png CONTRACT REWARD READY`. Gold balloons render with a tinted background, CKDM bold white text, and black shadow.
+- If a player has claimable boss credit, Finn shows a green quest balloon and right-click opens a claim-ready LLM prompt instead of the generic greeting.
+- Finn boss balloons have priority over lower-priority greeting, quest-offer, and quest-claim reminder balloons so multiple NPC balloon systems do not overwrite an urgent boss cue.
+- Important NPC balloons can use `@gold` or `@green` before icon markers. Gold is for new attention/discovery, camper housing needs, and boss discovery; green is for completion, boss defeated, and reward-ready cues. Both render with a tinted background and plain white text.
+- Boss reward claims are per player. One credited player claiming their reward does not remove claim credit or reward availability for other credited players.
 - Boss reward claim lines support `<xp>`, `<coin>`, and `<b>` dialogue highlights.
 - LLM is optional. When enabled, Finn receives boss context variables and authored config lines are the fallback.
-- TALK from inside `CONTRACTS` receives boss-focused context with lore, location hints, access hints, fight tips, reward, threshold, and next-boss data.
+- TALK from inside `CONTRACTS` receives boss-focused context with lore, location hints, access hints, fight tips, rewards, and next-boss data. Finn dialogue avoids shipping totals, thresholds, hidden ids, and UI-button wording.
 - Locked/no-contract Finn dialogue is lore-only: Finn says he is scouting for strange trouble and does not reveal shipping totals, thresholds, hidden boss ids, or the next boss.
-- Dialogue highlight tags auto-space around LLM text and render in CKDM bold styling.
+- Dialogue highlight tags and quest text auto-space common number/text joins, and highlighted rewards render with the smaller crisp CKDM claim font.
 
 ## NPC Memory
 

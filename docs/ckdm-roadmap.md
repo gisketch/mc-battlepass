@@ -79,7 +79,9 @@ Core rule: reward exploration with stories, routes, trophies, cosmetics, tokens,
 - [x] Cobblemon hooks exist for Pokedex scan/catch, category catch, type catch, friendship, mount travel, catch-rate jobs, mount-speed jobs, and Xaero unknown Pokemon hiding.
 - [x] Server-wide boss contracts exist with shipping-value gates, Finn dialogue, participant credit, reward claim, locked drop suppression, Discord event webhook, and admin/debug commands.
 - [x] Finn boss claim UX has claim-ready balloons, LLM claim prompts, highlighted XP/Chowcoin reward text, and green claim buttons.
-- [x] Priority NPC balloons support gold styling for first greetings, quest offers, quest-ready cues, and Finn boss contract alerts.
+- [x] Priority NPC balloons support gold styling for first greetings, quest offers, and Finn boss discovery alerts, plus green styling for completed/claimable quest and boss reward cues.
+- [x] Finn active boss contracts auto-open on right-click, introduce the boss server-wide, and keep immersive dialogue free of shipping-gate wording.
+- [x] NPC dialogue highlights, HUD mission rows, and gold balloons use crisper CKDM font sizing with spacing cleanup for joined number/text phrases.
 
 ## Phase 0 - Balance Audit Before More Features
 
@@ -124,13 +126,8 @@ DONE:
 
 TODO (Configuration):
 
-- [ ] Keep shipping focused on crops, fish, animal products, cooked food, Farmer's Delight meals, Quality Food variants, Cobblemon berries/apricorns.
-- [ ] Keep ores, diamonds, boss drops, weapons, armor, relics, tokens, dungeon loot, store-bought items, and random modded valuables out of shipping.
-- [ ] Add Chef NPC commissions for cooked meals where limited quest payout beats shipping.
-- [ ] Add Fisher NPC commissions for fish/seafood where limited quest payout beats shipping.
-- [ ] Add Botanist NPC commissions for crops/berries/flowers.
-- [ ] Add Merchant NPC tasks for shops/trading/vendor contracts.
-- [ ] Add Explorer NPC tasks for notes/seals/ruins instead of raw loot selling.
+- [x] Keep shipping focused on crops, fish, animal products, cooked food, Farmer's Delight meals, Quality Food variants, Cobblemon berries/apricorns.
+- [x] Keep ores, diamonds, boss drops, weapons, armor, relics, tokens, dungeon loot, store-bought items, and random modded valuables out of shipping.
 - [ ] Tune tiny NPC fetch rewards to 40-80 coins.
 - [ ] Tune small NPC tasks to 100-180 coins.
 - [ ] Tune medium combat/fishing tasks to 180-300 coins.
@@ -146,6 +143,7 @@ NEED MORE BRAINSTORM:
 
 - [ ] Decide whether Chowcoins should ever buy power directly, or only access, cosmetics, convenience, and controlled progression.
 - [ ] Decide if late-game tech automation should reduce effort only, or also increase income with stricter caps.
+- [ ] Revisit NPC commission economy after Pokemon gym/NPC progression is designed, so gym quests and NPC commissions share the same mission language instead of becoming two separate systems.
 
 ## Phase 2 - Missions And Battlepass
 
@@ -403,7 +401,7 @@ Goal: Gym leaders are NPCs, using RCT API for Pokemon battles while CKDM owns pr
 
 TODO (Mod):
 
-- [ ] Research RCT API entry points in the current modpack.
+- [x] Research RCT API entry points in the current modpack and save repo reference at `docs/references/rct-api.md`.
 - [ ] Create `gyms/` module.
 - [ ] Add gym definitions under `config/gisketchs_chowkingdom_mod/gyms/*.toml`.
 - [ ] Add per-player gym state under world data.
@@ -421,6 +419,8 @@ TODO (Mod):
 TODO (Configuration):
 
 - [ ] Design first 3 gym leaders around cozy onboarding, not hard competitive battles.
+- [ ] Plan Pokemon NPC roles first: gym leaders, rival/coach NPCs, tournament host, professor/research NPC, breeder/daycare NPC, and rare-encounter storyteller.
+- [ ] Decide which Pokemon NPC quests become missions, battlepass goals, badge gates, or story-only dialogue.
 - [ ] Use level caps or team caps if RCT supports them.
 - [ ] Keep legendary Pokemon out of normal gym teams.
 - [ ] Use badges to unlock shops, raids, or regions only after balance is known.
@@ -428,6 +428,8 @@ TODO (Configuration):
 NEED MORE BRAINSTORM:
 
 - [ ] Decide if gyms are type-based, town-based, job-based, or story-based.
+- [ ] Decide if Pokemon NPC progression should be badge-first, friendship-first, research-first, or mixed.
+- [ ] Decide how gym NPC dialogue handles challenge setup, loss advice, rematches, badge rewards, and mission handoff.
 - [ ] Decide if losing has a cost.
 - [ ] Decide if gyms should be solo only or allow spectators/group cheering.
 - [ ] Decide if gyms unlock legendary event eligibility.
@@ -548,6 +550,14 @@ TODO (Configuration):
 - [ ] Add daily/weekly quest pools per NPC theme.
 - [ ] Add loved/liked/disliked gifts per NPC.
 - [ ] Add friendship rewards that are cozy/convenience, not OP power.
+
+LATER FIXES / POLISHES AFTER POKEMON NPCS AND GYMS:
+
+- [ ] Add Chef NPC commissions for cooked meals where limited quest payout beats shipping.
+- [ ] Add Fisher NPC commissions for fish/seafood where limited quest payout beats shipping.
+- [ ] Add Botanist NPC commissions for crops/berries/flowers.
+- [ ] Add Merchant NPC tasks for shops/trading/vendor contracts.
+- [ ] Add Explorer NPC tasks for notes/seals/ruins instead of raw loot selling.
 - [ ] Put cooking/fishing/farming high-value payouts behind limited NPC requests.
 
 TODO (Mod):
@@ -641,7 +651,7 @@ NEED MORE BRAINSTORM:
 
 Economy:
 
-- [ ] Shipping prices audited.
+- [x] Shipping prices audited.
 - [ ] Store prices audited.
 - [ ] Vendor contract price audited.
 - [ ] Relic rewards audited.

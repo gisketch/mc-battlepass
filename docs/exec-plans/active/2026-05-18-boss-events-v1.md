@@ -18,8 +18,12 @@ Implement Finn-driven server boss contracts gated by total shipping-bin Chowcoin
 - Greedy boss command tails for colon-safe ids, plus `/ck bosses required <boss_id|all> <players>` to tune crew size in config.
 - Debug credit updates now sync pinned mission progress, including `/ck bosses <boss_id> credit <player> <true|false>` shorthand.
 - Claim-ready Finn UX: quest balloon, automatic claim prompt on right-click, LLM-backed reward paid line, highlighted XP/Chowcoin text, and green claim buttons.
-- Gold priority balloons for first greetings, quest offers, quest-ready cues, Finn unintroduced boss teases, and boss reward-ready alerts.
+- Priority balloons: gold for first greetings, quest offers, and Finn unintroduced boss teases; green for quest-ready, boss defeated, and boss reward-ready alerts.
+- Finn boss balloons suppress lower-priority greeting/quest reminder balloons when an urgent boss cue is available.
 - Active boss HUD rows appear only after the first player opens Finn `CONTRACTS`; claimable reward rows still pin immediately and render gold.
+- Boss reward claiming is per-player; one player's claim does not consume rewards for other credited players.
+- Active Finn boss contracts now auto-open on right-click, use boss details immediately, and avoid shipping-gate or UI-button wording in immersive dialogue.
+- NPC dialogue, HUD mission rows, and gold balloons use crisper CKDM font sizing plus display spacing cleanup for joined number/text phrases.
 
 ## Validation
 

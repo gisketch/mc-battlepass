@@ -4,6 +4,7 @@ import com.mojang.blaze3d.systems.RenderSystem
 import dev.gisketch.chowkingdom.ChowKingdomMod
 import dev.gisketch.chowkingdom.roles.roleIconStack
 import dev.gisketch.chowkingdom.roles.roleIconTexture
+import net.minecraft.ChatFormatting
 import net.minecraft.Util
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
@@ -61,6 +62,8 @@ private class ClassSkillTreeScreen(private var payload: ClassSkillTreeSyncPayloa
     private var lastMouseY = 0.0
     private var hoveredNode: ClassSkillTreeNodePayload? = null
     private var lastSelectedRoot = payload.selectedRootSkillId
+    private var noticeText = ""
+    private var noticeUntilMs = 0L
 
     fun update(next: ClassSkillTreeSyncPayload) {
         val previous = payload.selectedRootSkillId
@@ -105,6 +108,8 @@ private class ClassSkillTreeScreen(private var payload: ClassSkillTreeSyncPayloa
                     ClassSkillTreeNetwork.unlock(selectedRoot()?.rootSkillId.orEmpty(), slot.node.skillId)
                     return true
                 }
+                showNotice(clickNotice(slot.node))
+                return true
             }
         }
         if (layout.graph.contains(mouseX.toInt(), mouseY.toInt())) {
@@ -136,6 +141,9 @@ private class ClassSkillTreeScreen(private var payload: ClassSkillTreeSyncPayloa
         drawCkdm(guiGraphics, "SKILLS", layout.graph.x + 18, layout.graph.y + 16, GOLD, CKDM_LARGE)
         drawCkdm(guiGraphics, "OVERALL LV. ${payload.overallLevel}", layout.graph.right - 170, layout.graph.y + 18, WHITE_MUTED, CKDM_SMALL)
         drawCkdm(guiGraphics, "POINTS ${payload.pointsLeft}/${payload.budget}", layout.graph.right - 170, layout.graph.y + 32, if (payload.pointsLeft > 0) GOLD else WHITE_MUTED, CKDM_SMALL)
+        if (noticeText.isNotBlank() && Util.getMillis() < noticeUntilMs) {
+            drawCkdm(guiGraphics, fitText(noticeText, layout.graph.width - 220, CKDM_SMALL), layout.graph.x + 18, layout.graph.y + 40, RED, CKDM_SMALL)
+        }
         drawCenteredCkdm(guiGraphics, "CLASSES", layout.left.x + 16, layout.left.y + 16, layout.left.width - 32, WHITE, CKDM_BOLD)
     }
 
@@ -272,32 +280,62 @@ private class ClassSkillTreeScreen(private var payload: ClassSkillTreeSyncPayloa
         val lines = mutableListOf<Component>()
         lines += nodeTitle(node)
         lines += nodeDescription(node)
-        lines += Component.literal(if (node.root) "Free class root" else "Cost: ${node.cost} point")
-        lines += Component.literal(
-            when {
-                node.unlocked -> "Unlocked"
-                node.available -> "Click to unlock"
-                else -> "Locked"
-            },
-        )
+        lines += nodeCost(node)
+        lines += nodeStatus(node)
+        if (node.blocked && node.blockedReason.isNotBlank()) lines += Component.literal(node.blockedReason).withStyle(ChatFormatting.RED)
         guiGraphics.renderTooltip(fontRef, lines.flatMap { line -> fontRef.split(line, 220) }, mouseX, mouseY)
     }
 
     private fun nodeTitle(node: ClassSkillTreeNodePayload): Component =
-        if (I18n.exists(node.titleKey)) Component.literal(I18n.get(node.titleKey)) else Component.literal(titleCase(node.definitionId))
+        Component.literal(if (I18n.exists(node.titleKey)) I18n.get(node.titleKey) else titleCase(node.definitionId))
+            .withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD)
 
     private fun nodeDescription(node: ClassSkillTreeNodePayload): Component {
         val titleBase = node.titleKey.removeSuffix(".title")
         val candidates = listOf(
             node.descriptionKey,
+            "skill.${ChowKingdomMod.MOD_ID}.${node.definitionId}.description",
+            "spell.${ChowKingdomMod.MOD_ID}.${node.definitionId}.description",
             "$titleBase.description",
             titleBase.replaceFirst("skill.", "spell.") + ".description",
         ).distinct()
-        val translated = candidates.firstOrNull(I18n::exists)
-        if (translated != null) return Component.literal(I18n.get(translated))
+        val translated = candidates.firstNotNullOfOrNull { key ->
+            if (!I18n.exists(key)) null else I18n.get(key).takeUnless(::hasUnresolvedPlaceholder)
+        }
+        if (translated != null) return Component.literal(translated).withStyle(ChatFormatting.GRAY)
         val title = if (I18n.exists(node.titleKey)) I18n.get(node.titleKey) else titleCase(node.definitionId)
         return Component.literal(if (node.root) "Unlocks this class skill path." else "Unlocks $title.")
+            .withStyle(ChatFormatting.GRAY)
     }
+
+    private fun nodeCost(node: ClassSkillTreeNodePayload): Component =
+        Component.literal(if (node.root) "Free class root" else "Cost: ${node.cost} skill point${if (node.cost == 1) "" else "s"}")
+            .withStyle(if (node.root) ChatFormatting.DARK_GRAY else ChatFormatting.YELLOW)
+
+    private fun nodeStatus(node: ClassSkillTreeNodePayload): Component {
+        val (text, color) = when {
+            node.root -> "Root unlocked" to ChatFormatting.DARK_GRAY
+            node.unlocked -> "Unlocked" to ChatFormatting.GREEN
+            node.available -> "Click to unlock" to ChatFormatting.GREEN
+            else -> "Locked" to ChatFormatting.RED
+        }
+        return Component.literal(text).withStyle(color, ChatFormatting.BOLD)
+    }
+
+    private fun clickNotice(node: ClassSkillTreeNodePayload): String = when {
+        node.root -> "Root is already active"
+        node.unlocked -> "Skill already unlocked"
+        node.blockedReason.isNotBlank() -> node.blockedReason
+        else -> "Skill is locked"
+    }
+
+    private fun showNotice(text: String) {
+        noticeText = text
+        noticeUntilMs = Util.getMillis() + NOTICE_MS
+    }
+
+    private fun hasUnresolvedPlaceholder(text: String): Boolean =
+        PLACEHOLDER_PATTERN.containsMatchIn(text)
 
     private fun selectedRoot(): ClassSkillTreeRootPayload? =
         payload.roots.firstOrNull { it.rootSkillId == payload.selectedRootSkillId } ?: payload.roots.firstOrNull()
@@ -518,6 +556,7 @@ private class ClassSkillTreeScreen(private var payload: ClassSkillTreeSyncPayloa
         private const val WHITE = 0xFFFFFFFF.toInt()
         private const val WHITE_MUTED = 0xFFD8D0B8.toInt()
         private const val GOLD = 0xFFFFD66B.toInt()
+        private const val RED = 0xFFFF7676.toInt()
         private const val LINE_COLOR = 0x887A725B.toInt()
         private const val EXCLUSIVE_LINE_COLOR = 0x88C55252.toInt()
         private const val CONTAINER_TEXTURE_WIDTH = 1646
@@ -530,6 +569,8 @@ private class ClassSkillTreeScreen(private var payload: ClassSkillTreeSyncPayloa
         private const val BACKGROUND_PADDING = 36
         private const val BACKGROUND_PARALLAX = 18.0f
         private const val BACKGROUND_ALPHA = 0.5f
+        private const val NOTICE_MS = 2_400L
+        private val PLACEHOLDER_PATTERN = Regex("\\{[A-Za-z0-9_]+}")
         private val YELLOW_CONTAINER_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_container_yellow.png")
         private val GREY_CONTAINER_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_container_grey.png")
         private val GOLD_CONTAINER_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_container_gold.png")

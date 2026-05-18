@@ -1,6 +1,11 @@
 package dev.gisketch.chowkingdom.skilltree
 
 import dev.gisketch.chowkingdom.ChowKingdomMod
+import dev.gisketch.chowkingdom.snackbar.SnackbarIcons
+import dev.gisketch.chowkingdom.snackbar.SnackbarNetwork
+import dev.gisketch.chowkingdom.snackbar.SnackbarNotification
+import dev.gisketch.chowkingdom.snackbar.SnackbarSounds
+import dev.gisketch.chowkingdom.snackbar.SnackbarType
 import net.minecraft.network.RegistryFriendlyByteBuf
 import net.minecraft.network.codec.StreamCodec
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload
@@ -34,7 +39,7 @@ object ClassSkillTreeNetwork {
     }
 
     private fun registerPayloads(event: RegisterPayloadHandlersEvent) {
-        val registrar = event.registrar("1")
+        val registrar = event.registrar("2")
         registrar.playToServer(ClassSkillTreeOpenRequestPayload.TYPE, ClassSkillTreeOpenRequestPayload.STREAM_CODEC, ::handleOpenRequest)
         registrar.playToServer(ClassSkillTreeSelectRootPayload.TYPE, ClassSkillTreeSelectRootPayload.STREAM_CODEC, ::handleSelectRoot)
         registrar.playToServer(ClassSkillTreeUnlockPayload.TYPE, ClassSkillTreeUnlockPayload.STREAM_CODEC, ::handleUnlock)
@@ -54,7 +59,21 @@ object ClassSkillTreeNetwork {
 
     private fun handleUnlock(payload: ClassSkillTreeUnlockPayload, context: IPayloadContext) {
         val player = context.player() as? ServerPlayer ?: return
-        ClassSkillTrees.unlock(player, payload.rootSkillId, payload.skillId)
+        val result = ClassSkillTrees.unlock(player, payload.rootSkillId, payload.skillId)
+        if (!result.unlocked) {
+            ChowKingdomMod.LOGGER.info(
+                "Rejected CKDM class skill unlock for {} root={} skill={} reason={}",
+                player.gameProfile.name,
+                payload.rootSkillId,
+                payload.skillId,
+                result.reason,
+            )
+            SnackbarNetwork.send(
+                player,
+                SnackbarNotification.item(SnackbarIcons.ERROR, "SKILL LOCKED", result.reason, SnackbarType.ERROR, SnackbarSounds.ERROR),
+            )
+            syncTo(player, openScreen = true)
+        }
     }
 
     private fun handleSync(payload: ClassSkillTreeSyncPayload, context: IPayloadContext) {
@@ -219,6 +238,7 @@ data class ClassSkillTreeNodePayload(
     val unlocked: Boolean,
     val available: Boolean,
     val blocked: Boolean,
+    val blockedReason: String,
 ) {
     fun encode(buffer: RegistryFriendlyByteBuf) {
         buffer.writeUtf(skillId.take(MAX_ID_LENGTH), MAX_ID_LENGTH)
@@ -233,6 +253,7 @@ data class ClassSkillTreeNodePayload(
         buffer.writeBoolean(unlocked)
         buffer.writeBoolean(available)
         buffer.writeBoolean(blocked)
+        buffer.writeUtf(blockedReason.take(MAX_TEXT_LENGTH), MAX_TEXT_LENGTH)
     }
 
     companion object {
@@ -249,6 +270,7 @@ data class ClassSkillTreeNodePayload(
             unlocked = buffer.readBoolean(),
             available = buffer.readBoolean(),
             blocked = buffer.readBoolean(),
+            blockedReason = buffer.readUtf(MAX_TEXT_LENGTH),
         )
     }
 }

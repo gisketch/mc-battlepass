@@ -45,6 +45,15 @@ object NpcNetwork {
         return if (clean.startsWith("@gold")) clean else "@gold $clean"
     }
 
+    fun greenBalloon(message: String): String {
+        val clean = message.trim()
+        return when {
+            clean.startsWith("@green") -> clean
+            clean.startsWith("@gold") -> "@green ${clean.removePrefix("@gold").trimStart()}"
+            else -> "@green $clean"
+        }
+    }
+
     fun register(modBus: IEventBus) {
         modBus.addListener(::registerPayloads)
     }
