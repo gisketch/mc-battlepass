@@ -49,6 +49,8 @@ object GymLeagueFeature {
     private const val DEFAULT_STADIUM_AREA = "main_stadium"
     private var nextSpawnTick = 0L
     private var nextAvailabilityTick = 0L
+    private var nextTrainerReconcileTick = 0L
+    private val pendingTrainerReconcile: MutableSet<String> = linkedSetOf()
 
     fun register() {
         GymLeagueConfig.load()
@@ -190,6 +192,7 @@ object GymLeagueFeature {
     private fun onPlayerLoggedIn(event: PlayerEvent.PlayerLoggedInEvent) {
         val player = event.entity as? ServerPlayer ?: return
         GymBattleService.registerPlayer(player)
+        reconcileGymTrainers(player.server)
         checkChallengeAvailability(player)
         NpcQuestService.syncTo(player)
     }
@@ -202,8 +205,7 @@ object GymLeagueFeature {
     private fun onEntityJoinLevel(event: EntityJoinLevelEvent) {
         val npc = event.entity as? ChowNpcEntity ?: return
         if (!isTrainerNpc(npc.npcId)) return
-        val level = event.level as? ServerLevel ?: return
-        reconcileTrainer(level.server, npc.npcId)
+        pendingTrainerReconcile += npc.npcId
     }
 
     private fun onServerTick(event: ServerTickEvent.Post) {
@@ -213,9 +215,12 @@ object GymLeagueFeature {
             nextAvailabilityTick = now + 20L * 30L
             server.playerList.players.forEach { player -> checkChallengeAvailability(player) }
         }
+        if (now >= nextTrainerReconcileTick || pendingTrainerReconcile.isNotEmpty()) {
+            nextTrainerReconcileTick = now + 20L
+            reconcilePendingGymTrainers(server)
+        }
         if (now < nextSpawnTick) return
         nextSpawnTick = now + 20L * 30L
-        reconcileGymTrainers(server)
         spawnUnlockedTrainers(server.overworld())
     }
 
@@ -270,6 +275,16 @@ object GymLeagueFeature {
         GymLeagueConfig.all().forEach { league ->
             league.trainers.forEach { trainer -> reconcileTrainer(server, trainer.npcId) }
         }
+    }
+
+    private fun reconcilePendingGymTrainers(server: net.minecraft.server.MinecraftServer) {
+        if (pendingTrainerReconcile.isEmpty()) {
+            reconcileGymTrainers(server)
+            return
+        }
+        val ids = pendingTrainerReconcile.toList()
+        pendingTrainerReconcile.clear()
+        ids.forEach { npcId -> reconcileTrainer(server, npcId) }
     }
 
     private fun reconcileTrainer(server: net.minecraft.server.MinecraftServer, npcId: String): ChowNpcEntity? {

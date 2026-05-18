@@ -1537,6 +1537,7 @@ object NpcFeature {
                 !other.isSleeping &&
                 !other.isTalking() &&
                 other.distanceToSqr(npc) <= radiusSqr &&
+                other.npcId != npc.npcId &&
                 other.uuid !in npcMicroInteractions &&
                 other.uuid !in outgoingGiftApproaches &&
                 (!trainerMeetup || GymLeagueFeature.isTrainerNpc(other.npcId))
