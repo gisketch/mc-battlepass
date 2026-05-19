@@ -188,6 +188,7 @@ object NpcFeature {
             if (npc == null && NpcStore.isDead(active.id)) return spawnNpc(level, active, pos, markActiveCamper = true)
             return false
         }
+        if (TechLicenseFeature.trySpawnPriorityCamper(level.server)) return true
         val cooldownUntil = NpcStore.camperCooldownUntilTick()
         if (cooldownUntil > level.dayTime) return false
         val definition = randomEligibleCamper(level) ?: return false
@@ -2412,6 +2413,7 @@ object NpcFeature {
         .then(
             Commands.literal("spawn")
                 .requires { source -> source.hasPermission(2) }
+                .then(Commands.literal("when").executes(::spawnWhenCommand))
                 .then(
                     Commands.argument("id", StringArgumentType.word())
                         .suggests { _, builder -> SharedSuggestionProvider.suggest(NpcConfig.all().map { definition -> definition.id }, builder) }
@@ -3371,6 +3373,7 @@ object NpcFeature {
         val camp = NpcStore.campBlockPos() ?: return
         val level = server.overworld()
         if (activeUnhousedCamper(server) ?: migrateLiveUnhousedCamper(server) != null) return
+        if (TechLicenseFeature.trySpawnPriorityCamper(server)) return
         val cooldownUntil = NpcStore.camperCooldownUntilTick()
         if (cooldownUntil > level.dayTime) return
         val definition = randomEligibleCamper(level) ?: return
@@ -3405,14 +3408,18 @@ object NpcFeature {
     }
 
     private fun randomEligibleCamper(level: ServerLevel): NpcDefinition? {
-        val candidates = NpcConfig.all()
-            .filterNot { definition -> GymLeagueFeature.isTrainerNpc(definition.id) }
-            .filter { definition -> definition.housing.canMoveIn }
-            .filter { definition -> NpcStore.homePos(definition.id) == null }
-            .filter { definition -> existingNpc(level.server, definition.id) == null || NpcStore.isDead(definition.id) }
+        val candidates = normalEligibleCampers(level)
         if (candidates.isEmpty()) return null
         return candidates[level.random.nextInt(candidates.size)]
     }
+
+    private fun normalEligibleCampers(level: ServerLevel): List<NpcDefinition> =
+        NpcConfig.all()
+            .filterNot { definition -> GymLeagueFeature.isTrainerNpc(definition.id) }
+            .filterNot { definition -> TechLicenseFeature.isTechExpertNpc(definition.id) }
+            .filter { definition -> definition.housing.canMoveIn }
+            .filter { definition -> NpcStore.homePos(definition.id) == null }
+            .filter { definition -> existingNpc(level.server, definition.id) == null || NpcStore.isDead(definition.id) }
 
     private fun scheduleNextCamper(level: Level) {
         val settings = NpcConfig.settings().campers
@@ -3480,6 +3487,55 @@ object NpcFeature {
         val clock = NpcTime.at(npc.level().dayTime)
         val time = if (debugTimeMultiplier > 1) " time=${debugTimeMultiplier}x" else ""
         return "${npc.npcId} | ${clock.displayTime()} tick=${clock.tickOfCycle} activity=${npc.debugActivity} task=${npc.debugGoal} nav=$nav target=$target$time"
+    }
+
+    private fun spawnWhenCommand(context: CommandContext<CommandSourceStack>): Int {
+        NpcConfig.load()
+        NpcStore.load()
+        val server = context.source.server
+        val camp = NpcStore.campBlockPos()
+        if (camp == null) {
+            context.source.sendSuccess({ Component.literal("No camper can spawn: camping point is unset. Use /ck camping set.") }, false)
+            return 1
+        }
+        val active = activeUnhousedCamper(server) ?: migrateLiveUnhousedCamper(server)
+        if (active != null) {
+            context.source.sendSuccess({ Component.literal("Active camper: ${active.name} is waiting at camp. House them before another camper can spawn.") }, false)
+            return 1
+        }
+        TechLicenseFeature.nextPriorityCamper(server)?.let { priority ->
+            context.source.sendSuccess({ Component.literal("Next priority camper: ${priority.npcName} for ${priority.licenseName}. Camp is free; spawn check is ready now.") }, false)
+            return 1
+        }
+        val level = server.overworld()
+        val candidates = normalEligibleCampers(level).sortedBy { definition -> definition.name.lowercase() }
+        if (candidates.isEmpty()) {
+            context.source.sendSuccess({ Component.literal("No eligible campers remain.") }, false)
+            return 1
+        }
+        val cooldownUntil = NpcStore.camperCooldownUntilTick()
+        val timing = if (cooldownUntil > level.dayTime) {
+            "Cooldown ends in ${formatSpawnDelay(cooldownUntil - level.dayTime)}."
+        } else {
+            "Spawn check is ready now."
+        }
+        context.source.sendSuccess({ Component.literal("Next normal camper: random from ${candidates.size} eligible NPC(s): ${camperPoolLabel(candidates)}. $timing") }, false)
+        return 1
+    }
+
+    private fun camperPoolLabel(candidates: List<NpcDefinition>): String {
+        val names = candidates.take(8).joinToString(", ") { definition -> definition.name }
+        return if (candidates.size > 8) "$names, ..." else names
+    }
+
+    private fun formatSpawnDelay(ticks: Long): String {
+        val remaining = ticks.coerceAtLeast(0L)
+        val days = remaining / 24000L
+        val hours = (remaining % 24000L) / 1000L
+        val parts = mutableListOf<String>()
+        if (days > 0) parts += "$days in-game day${if (days == 1L) "" else "s"}"
+        if (hours > 0) parts += "$hours hour${if (hours == 1L) "" else "s"}"
+        return parts.joinToString(" ").ifBlank { "less than 1 in-game hour" }
     }
 
     private fun spawnCommand(context: CommandContext<CommandSourceStack>): Int {

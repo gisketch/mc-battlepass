@@ -77,6 +77,7 @@ object TechLicenseFeature {
         reached
             .filter { license -> !TechLicenseStore.spawned(license.id) }
             .forEach { license -> TechLicenseStore.markPending(license.id) }
+        markAlreadyPresentExpertsSpawned(server)
         spawnPending(server)
     }
 
@@ -113,6 +114,59 @@ object TechLicenseFeature {
         return licenseId.isBlank() || TechLicenseStore.has(player, licenseId)
     }
 
+    fun isTechExpertNpc(npcId: String): Boolean {
+        if (!TechLicenseConfig.enabled()) return false
+        val normalized = npcId.trim().lowercase(Locale.ROOT)
+        return TechLicenseConfig.all().any { license -> license.npcId == normalized }
+    }
+
+    fun nextPriorityCamper(server: MinecraftServer): TechLicensePriorityCamper? {
+        if (!TechLicenseConfig.enabled()) return null
+        val pending = TechLicenseStore.pendingLicenseIds()
+        if (pending.isEmpty()) return null
+        val total = ShippingBinStore.totalChowcoinsSold()
+        return TechLicenseConfig.all()
+            .asSequence()
+            .filter { license -> license.id in pending && total >= license.thresholdChowcoins && !TechLicenseStore.spawned(license.id) }
+            .sortedBy { license -> license.thresholdChowcoins }
+            .mapNotNull { license ->
+                val definition = NpcConfig.get(license.npcId) ?: return@mapNotNull null
+                if (NpcStore.homePos(definition.id) != null) return@mapNotNull null
+                if (NpcStore.activeCamperId().equals(definition.id, ignoreCase = true)) return@mapNotNull null
+                if (NpcFeature.existingConfiguredNpc(server, definition.id) != null && !NpcStore.isDead(definition.id)) return@mapNotNull null
+                TechLicensePriorityCamper(license.id, license.displayName, license.thresholdChowcoins, total, definition.id, definition.name)
+            }
+            .firstOrNull()
+    }
+
+    fun trySpawnPriorityCamper(server: MinecraftServer): Boolean {
+        val level = server.overworld()
+        val camp = NpcStore.campBlockPos() ?: return false
+        if (NpcFeature.hasActiveUnhousedCamper(server)) return false
+        val priority = nextPriorityCamper(server) ?: return false
+        val definition = NpcConfig.get(priority.npcId) ?: return false
+        if (!NpcFeature.spawnConfiguredNpcAsCamper(level, definition, camp, announceCamperArrival = true)) return false
+        TechLicenseStore.markSpawned(priority.licenseId)
+        SnackbarNetwork.sendToAllKnown(
+            server,
+            SnackbarNotification.npc(definition.id, "TECH EXPERT UNLOCKED", "${definition.name} can certify ${priority.licenseName}.", SnackbarType.SUCCESS, SnackbarSounds.REWARD),
+        )
+        return true
+    }
+
+    private fun markAlreadyPresentExpertsSpawned(server: MinecraftServer) {
+        val total = ShippingBinStore.totalChowcoinsSold()
+        TechLicenseConfig.all()
+            .filter { license -> TechLicenseStore.pending(license.id) && total >= license.thresholdChowcoins && !TechLicenseStore.spawned(license.id) }
+            .forEach { license ->
+                val definition = NpcConfig.get(license.npcId) ?: return@forEach
+                val activeCamper = NpcStore.activeCamperId().equals(definition.id, ignoreCase = true)
+                val housed = NpcStore.homePos(definition.id) != null
+                val live = NpcFeature.existingConfiguredNpc(server, definition.id) != null && !NpcStore.isDead(definition.id)
+                if (activeCamper || housed || live) TechLicenseStore.markSpawned(license.id)
+            }
+    }
+
     private fun onServerStarted(event: ServerStartedEvent) {
         TechLicenseConfig.load()
         TechLicenseStore.load()
@@ -128,29 +182,7 @@ object TechLicenseFeature {
     }
 
     private fun spawnPending(server: MinecraftServer) {
-        val pending = TechLicenseStore.pendingLicenseIds()
-        if (pending.isEmpty()) return
-        val level = server.overworld()
-        val camp = NpcStore.campBlockPos() ?: return
-        if (NpcFeature.hasActiveUnhousedCamper(server)) return
-        val total = ShippingBinStore.totalChowcoinsSold()
-        val license = TechLicenseConfig.all()
-            .filter { entry -> entry.id in pending && total >= entry.thresholdChowcoins && !TechLicenseStore.spawned(entry.id) }
-            .sortedBy { entry -> entry.thresholdChowcoins }
-            .firstOrNull()
-            ?: return
-        NpcConfig.load()
-        val definition = NpcConfig.get(license.npcId) ?: return
-        if (NpcStore.homePos(definition.id) != null || NpcStore.activeCamperId().equals(definition.id, ignoreCase = true)) {
-            TechLicenseStore.markSpawned(license.id)
-            return
-        }
-        if (!NpcFeature.spawnConfiguredNpcAsCamper(level, definition, camp, announceCamperArrival = true)) return
-        TechLicenseStore.markSpawned(license.id)
-        SnackbarNetwork.sendToAllKnown(
-            server,
-            SnackbarNotification.npc(definition.id, "TECH EXPERT UNLOCKED", "${definition.name} can certify ${license.displayName}.", SnackbarType.SUCCESS, SnackbarSounds.REWARD),
-        )
+        trySpawnPriorityCamper(server)
     }
 
     private fun onRegisterCommands(event: RegisterCommandsEvent) {
@@ -405,6 +437,15 @@ data class TechLicenseDialogOption(
     val label: String,
     val iconItem: String,
     val cost: Long,
+)
+
+data class TechLicensePriorityCamper(
+    val licenseId: String,
+    val licenseName: String,
+    val thresholdChowcoins: Long,
+    val currentChowcoins: Long,
+    val npcId: String,
+    val npcName: String,
 )
 
 private data class TechGateDenial(
