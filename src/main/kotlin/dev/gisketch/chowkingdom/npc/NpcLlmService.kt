@@ -119,6 +119,7 @@ object NpcLlmService {
         relayToNearby: Boolean = true,
         npcRecordType: String = "npc_llm_event",
         responseToken: Long = NpcDialogTokens.next(),
+        messageFilter: ((String) -> String)? = null,
     ) {
         val settings = NpcConfig.settings().llm
         if (!startRequest(definition.id, player, responseToken)) {
@@ -132,7 +133,8 @@ object NpcLlmService {
                 val liveNpc = NpcFeature.existingNpc(player.server, definition.id) ?: return@execute NpcNetwork.sendTalkResponse(player, definition.id, fallbackMessage, responseToken)
                 if (throwable != null) ChowKingdomMod.LOGGER.warn("NPC LLM event request failed npc={} player={}", definition.id, player.gameProfile.name, throwable)
                 val completion = if (throwable == null) result else NpcLlmCompletion(fallbackMessage)
-                sendFinal(player, liveNpc, definition, completion.message, fallbackMessage = fallbackMessage, sendTalkResponse = sendTalkResponse, excludePlayerFromBalloon = excludePlayerFromBalloon, showBalloon = showBalloon, relayToNearby = relayToNearby, npcRecordType = npcRecordType, responseToken = responseToken, memorable = completion.memorable)
+                val filteredMessage = messageFilter?.invoke(completion.message) ?: completion.message
+                sendFinal(player, liveNpc, definition, filteredMessage, fallbackMessage = fallbackMessage, sendTalkResponse = sendTalkResponse, excludePlayerFromBalloon = excludePlayerFromBalloon, showBalloon = showBalloon, relayToNearby = relayToNearby, npcRecordType = npcRecordType, responseToken = responseToken, memorable = completion.memorable)
             }
         }
     }

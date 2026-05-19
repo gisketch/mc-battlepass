@@ -255,7 +255,17 @@ object TechLicenseQuestService {
         val responseToken = if (llmEnabled) NpcDialogTokens.next() else 0L
         NpcNetwork.openDialog(player, NpcFeature.dialogPayload(definition, npc, if (llmEnabled) "..." else fallback, false, friendship.level, closeOnly = true, closeLabel = "OKAY", responseToken = responseToken))
         if (llmEnabled) {
-            NpcLlmService.event(player, npc, definition, fallback, prompt, inputLabel = "Tech license quest", npcRecordType = "npc_tech_license_$recordType", responseToken = responseToken)
+            NpcLlmService.event(
+                player,
+                npc,
+                definition,
+                fallback,
+                techPrompt(prompt),
+                inputLabel = "Tech license quest",
+                npcRecordType = "npc_tech_license_$recordType",
+                responseToken = responseToken,
+                messageFilter = { message -> filterTechLicenseReply(message, fallback) },
+            )
         } else {
             NpcStore.recordConversation(definition.id, player, definition.name, fallback, "npc_tech_license_$recordType")
             NpcFeature.relayNpcDialogToDiscord(player, definition, fallback)
@@ -290,6 +300,41 @@ object TechLicenseQuestService {
         "payment" -> "<b>${step.title.ifBlank { "License Fee" }}</b>: pay <b>{cost} Chowcoins</b>."
         "grant" -> "<b>${step.title.ifBlank { "License Grant" }}</b>: receive the license."
         else -> "<b>${step.title.ifBlank { "Training" }}</b>: ${step.objective.ifBlank { "continue" }}"
+    }
+
+    private fun techPrompt(prompt: String): String =
+        """
+            $prompt
+
+            Hard tech-license truth rules:
+            - Tech licenses are earned only by finishing the configured certification steps and then talking to the tech expert NPC.
+            - Never tell the player to right-click a camp block, camping block, workplace block, bed, house, rent contract, or job application for this tech license.
+            - Never invent a license application item or claim form.
+            - If this is the unlock/grant step, the license is already granted now. There are no extra claim steps after this dialogue.
+            - If a mission step is complete, the next real action is only to talk to this NPC, unless the prompt lists a concrete next quest step.
+            - Ignore NPC state fields named camp, home bed, workplace, and schedule unless this prompt explicitly asks about NPC housing/work.
+        """.trimIndent()
+
+    private fun filterTechLicenseReply(message: String, fallback: String): String {
+        val lower = message.lowercase(Locale.ROOT)
+        val forbidden = listOf(
+            "camp block",
+            "camping block",
+            "license application",
+            "job application",
+            "rent contract",
+            "right click the camp",
+            "right-click the camp",
+            "right click a camp",
+            "right-click a camp",
+            "right click the workplace",
+            "right-click the workplace",
+            "use it on a bed",
+            "click the bed",
+            "claim form",
+            "application form",
+        )
+        return if (forbidden.any { phrase -> phrase in lower }) fallback else message
     }
 
     private fun hudDescription(license: TechLicenseDefinition, step: TechLicenseQuestStepDefinition?, npcName: String, progress: Int, goal: Int): String {
@@ -361,7 +406,7 @@ object TechLicenseQuestService {
             ${player.gameProfile.name} completed every certification step with ${definition.name}.
             License unlocked: ${license.displayName}
             Title: ${license.quest.unlockTitle.ifBlank { license.displayName }}
-            Reply as ${definition.name} with a short in-character certification ceremony line. Name the license and make the moment feel earned. Use <b>...</b> on the license name.
+            Reply as ${definition.name} with a short in-character certification ceremony line. Name the license and make the moment feel earned. Use <b>...</b> on the license name. The license is already granted now; do not mention any application, claim, camp block, job application, bed, house, or extra step.
         """.trimIndent()
 
     private fun countRequiredItems(player: ServerPlayer, step: TechLicenseQuestStepDefinition): Int =
