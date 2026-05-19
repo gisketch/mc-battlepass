@@ -7,8 +7,12 @@ import dev.gisketch.chowkingdom.battlepass.BattlepassXpEventDefinition
 import dev.gisketch.chowkingdom.npc.ChowNpcEntity
 import dev.gisketch.chowkingdom.npc.NpcConfig
 import dev.gisketch.chowkingdom.npc.NpcDefinition
+import dev.gisketch.chowkingdom.npc.NpcDialogTokens
 import dev.gisketch.chowkingdom.npc.NpcFeature
+import dev.gisketch.chowkingdom.npc.NpcLlmService
 import dev.gisketch.chowkingdom.npc.NpcNetwork
+import dev.gisketch.chowkingdom.npc.NpcQuestHudEntryPayload
+import dev.gisketch.chowkingdom.npc.NpcQuestService
 import dev.gisketch.chowkingdom.npc.NpcStore
 import dev.gisketch.chowkingdom.snackbar.SnackbarIcons
 import dev.gisketch.chowkingdom.snackbar.SnackbarNetwork
@@ -31,27 +35,27 @@ object TechLicenseQuestService {
         if (!license.npcId.equals(definition.id, ignoreCase = true)) return false
         val friendship = NpcStore.friendshipSnapshot(definition.id, player)
         if (TechLicenseStore.has(player, license.id)) {
-            openDialog(player, npc, definition, "You already have the ${license.displayName}. Keep the workshop clean.", friendship.level)
+            openLicenseDialog(player, npc, definition, license, null, "You already have <b>${license.displayName}</b>. Keep the workshop clean.", "already_unlocked", null, null, "The player already owns this tech license. Reply in character and keep it short.")
             return true
         }
         if (!TechLicenseFeature.thresholdReached(license)) {
-            openDialog(player, npc, definition, "The server has not shipped enough yet for ${license.displayName}. Current total: ${TechLicenseFeature.currentShippingTotal()}/${license.thresholdChowcoins}.", friendship.level)
+            openLicenseDialog(player, npc, definition, license, null, "The server has not shipped enough yet for <b>${license.displayName}</b>. Current total: ${TechLicenseFeature.currentShippingTotal()}/${license.thresholdChowcoins}.", "threshold_locked", null, null, "The player asked too early. Tell them this license is still locked behind server shipping progress.")
             return true
         }
         if (!NpcFeature.hasReadyWorkplace(player.level(), definition)) {
-            openDialog(player, npc, definition, "Set up my workplace first, then we can start the ${license.displayName}.", friendship.level)
+            openLicenseDialog(player, npc, definition, license, null, "Set up my workplace first, then we can start the <b>${license.displayName}</b>.", "workplace_missing", null, null, "The NPC workplace is not ready. Tell the player to settle the workplace before certification.")
             return true
         }
 
         val steps = license.quest.steps
         if (steps.isEmpty()) {
-            openDialog(player, npc, definition, "This license has no questline configured yet.", friendship.level)
+            openLicenseDialog(player, npc, definition, license, null, "This license has no questline configured yet.", "missing_config", null, null, "The license quest config is missing. Tell the player this cannot be trained yet.")
             return true
         }
         val existing = TechLicenseStore.quest(player, license.id)
         if (existing?.npcId?.isNotBlank() == true && !existing.npcId.equals(definition.id, ignoreCase = true)) {
             val mentorName = NpcConfig.get(existing.npcId)?.name ?: existing.npcId
-            openDialog(player, npc, definition, "$mentorName is already handling your ${license.displayName}. Finish that path first.", friendship.level)
+            openLicenseDialog(player, npc, definition, license, existing, "$mentorName is already handling your <b>${license.displayName}</b>. Finish that path first.", "locked_mentor", null, null, "Another NPC is already handling this license quest. Tell the player who to return to.")
             return true
         }
         val state = existing ?: PlayerTechLicenseQuestState(
@@ -59,17 +63,32 @@ object TechLicenseQuestService {
             npcId = definition.id,
             startedAtTick = player.level().dayTime,
             stepStartedAtTick = player.level().dayTime,
-        ).also { TechLicenseStore.putQuest(player, it) }
+        ).also {
+            TechLicenseStore.putQuest(player, it)
+            NpcQuestService.syncTo(player)
+        }
         if (state.npcId.isBlank()) {
             state.npcId = definition.id
             TechLicenseStore.saveQuest(player, state)
+            NpcQuestService.syncTo(player)
         }
 
         val step = steps.getOrNull(state.stepIndex) ?: return grant(player, npc, definition, license, state, friendship.level)
         return when (step.kind) {
             "dialogue" -> {
-                openDialog(player, npc, definition, render(step.startMessage.ifBlank { step.objective.ifBlank { license.quest.introMessage } }, player, definition, license, state, step), friendship.level)
                 advance(player, state)
+                openLicenseDialog(
+                    player,
+                    npc,
+                    definition,
+                    license,
+                    state,
+                    completionTemplate(step.startMessage.ifBlank { step.objective.ifBlank { license.quest.introMessage } }, steps.getOrNull(state.stepIndex)),
+                    "step_dialogue",
+                    step,
+                    steps.getOrNull(state.stepIndex),
+                    stepPrompt(player, definition, license, state, step, steps.getOrNull(state.stepIndex), "Start the tech license safety or introduction step, then point to the next certification task."),
+                )
                 true
             }
             "fetch" -> handleFetch(player, npc, definition, license, state, step, friendship.level)
@@ -77,7 +96,7 @@ object TechLicenseQuestService {
             "payment" -> handlePayment(player, npc, definition, license, state, step, friendship.level)
             "grant" -> grant(player, npc, definition, license, state, friendship.level)
             else -> {
-                openDialog(player, npc, definition, render(step.startMessage.ifBlank { step.objective.ifBlank { "Continue ${license.displayName} work." } }, player, definition, license, state, step), friendship.level)
+                openLicenseDialog(player, npc, definition, license, state, step.startMessage.ifBlank { step.objective.ifBlank { "Continue <b>{license}</b> work." } }, "step_unknown", step, null, stepPrompt(player, definition, license, state, step, null, "Explain this tech license step and what the player should do next."))
                 true
             }
         }
@@ -100,18 +119,46 @@ object TechLicenseQuestService {
             changed = true
             if (state.progress >= step.goalValue()) notifyReady(player, license, state, step)
         }
-        if (changed) TechLicenseStore.saveQuests()
+        if (changed) {
+            TechLicenseStore.saveQuests()
+            NpcQuestService.syncTo(player)
+        }
         return changed
     }
 
+    fun hudEntriesFor(player: ServerPlayer): List<NpcQuestHudEntryPayload> =
+        TechLicenseConfig.all()
+            .mapNotNull { license ->
+                val state = TechLicenseStore.quest(player, license.id) ?: return@mapNotNull null
+                if (TechLicenseStore.has(player, license.id)) return@mapNotNull null
+                val step = license.quest.steps.getOrNull(state.stepIndex)
+                val definition = NpcConfig.get(state.npcId.ifBlank { license.npcId })
+                val npcId = definition?.id ?: state.npcId.ifBlank { license.npcId }
+                val npcName = definition?.name ?: license.displayName
+                val goal = step?.goalValue() ?: 1
+                NpcQuestHudEntryPayload(
+                    npcId = npcId,
+                    npcName = npcName,
+                    description = hudDescription(license, step, npcName, hudProgress(player, state, step), goal),
+                    passId = "cozy",
+                    xp = 0,
+                    chowcoins = 0L,
+                    progress = hudProgress(player, state, step).coerceAtMost(goal),
+                    goal = goal,
+                    acceptedAtTick = state.startedAtTick,
+                )
+            }
+            .sortedBy { entry -> entry.acceptedAtTick }
+
     private fun handleFetch(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, license: TechLicenseDefinition, state: PlayerTechLicenseQuestState, step: TechLicenseQuestStepDefinition, friendshipLevel: Int): Boolean {
         if (countRequiredItems(player, step) < step.goalValue()) {
-            openDialog(player, npc, definition, render(step.startMessage.ifBlank { "Bring {qty} {item} for ${license.displayName}." }, player, definition, license, state, step), friendshipLevel)
+            openLicenseDialog(player, npc, definition, license, state, step.startMessage.ifBlank { "Bring <b>{qty} {item}</b> for {license}." }, "step_progress", step, null, stepPrompt(player, definition, license, state, step, null, "The player has not brought the required items yet. Tell them the exact item and count."))
             return true
         }
         consumeRequiredItems(player, step)
-        openDialog(player, npc, definition, render(step.completeMessage.ifBlank { "Good. This step is done." }, player, definition, license, state, step), friendshipLevel)
         advance(player, state)
+        val nextStep = license.quest.steps.getOrNull(state.stepIndex)
+        openLicenseDialog(player, npc, definition, license, state, completionTemplate(step.completeMessage.ifBlank { "Good. This step is done." }, nextStep), "step_complete", step, nextStep, stepPrompt(player, definition, license, state, step, nextStep, "The player completed this item turn-in. Acknowledge it and clearly introduce the next certification step."))
         stepComplete(player, definition, license)
         return true
     }
@@ -119,11 +166,12 @@ object TechLicenseQuestService {
     private fun handleTask(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, license: TechLicenseDefinition, state: PlayerTechLicenseQuestState, step: TechLicenseQuestStepDefinition, friendshipLevel: Int): Boolean {
         val progress = if (step.kind == "timed") refreshTimedProgress(player, state, step) else state.progress
         if (progress < step.goalValue()) {
-            openDialog(player, npc, definition, render(step.startMessage.ifBlank { "{objective} Progress: {progress}/{goal}." }, player, definition, license, state, step), friendshipLevel)
+            openLicenseDialog(player, npc, definition, license, state, step.startMessage.ifBlank { "{objective} Progress: <b>{progress}/{goal}</b>." }, "step_progress", step, null, stepPrompt(player, definition, license, state, step, null, "The player is still working on this tech certification task. Mention progress and the exact objective."))
             return true
         }
-        openDialog(player, npc, definition, render(step.completeMessage.ifBlank { "Good. This step is done." }, player, definition, license, state, step), friendshipLevel)
         advance(player, state)
+        val nextStep = license.quest.steps.getOrNull(state.stepIndex)
+        openLicenseDialog(player, npc, definition, license, state, completionTemplate(step.completeMessage.ifBlank { "Good. This step is done." }, nextStep), "step_complete", step, nextStep, stepPrompt(player, definition, license, state, step, nextStep, "The player completed this field task. Acknowledge it and clearly introduce the next certification step."))
         stepComplete(player, definition, license)
         return true
     }
@@ -134,14 +182,15 @@ object TechLicenseQuestService {
         if (balance < cost) {
             ChowcoinNetwork.syncTo(player)
             SnackbarNetwork.send(player, SnackbarNotification.texture(SnackbarIcons.CHOWCOIN_TEXTURE, "TECH LICENSE NEEDED", "Need $cost chowcoins.", SnackbarType.ERROR, SnackbarSounds.ERROR))
-            openDialog(player, npc, definition, render(step.startMessage.ifBlank { "The ${license.displayName} fee is {cost} Chowcoins. You do not have enough yet." }, player, definition, license, state, step), friendshipLevel)
+            openLicenseDialog(player, npc, definition, license, state, step.startMessage.ifBlank { "The {license} fee is <b>{cost} Chowcoins</b>. You do not have enough yet." }, "payment_missing", step, null, stepPrompt(player, definition, license, state, step, null, "The player reached payment but lacks chowcoins. Tell them the exact cost."))
             return true
         }
         ChowcoinStore.set(player, balance - cost)
         ChowcoinNetwork.syncTo(player)
         state.paid = true
-        openDialog(player, npc, definition, render(step.completeMessage.ifBlank { "License fee paid." }, player, definition, license, state, step), friendshipLevel)
         advance(player, state)
+        val nextStep = license.quest.steps.getOrNull(state.stepIndex)
+        openLicenseDialog(player, npc, definition, license, state, completionTemplate(step.completeMessage.ifBlank { "License fee paid." }, nextStep), "payment_complete", step, nextStep, stepPrompt(player, definition, license, state, step, nextStep, "The player paid the license fee. Point them to the final grant step."))
         SnackbarNetwork.send(player, SnackbarNotification.texture(SnackbarIcons.CHOWCOIN_TEXTURE, "TECH LICENSE PAID", "$cost chowcoins for ${license.displayName}.", SnackbarType.SUCCESS, SnackbarSounds.REWARD))
         return true
     }
@@ -159,12 +208,14 @@ object TechLicenseQuestService {
         val grantMessage = license.quest.steps.getOrNull(state.stepIndex)?.startMessage
             ?.ifBlank { "Done. {license} is unlocked." }
             ?: "Done. {license} is unlocked."
-        openDialog(player, npc, definition, render(grantMessage, player, definition, license, state, null), friendshipLevel)
+        openLicenseDialog(player, npc, definition, license, state, grantMessage.ifBlank { "Done. <b>{license}</b> is unlocked." }, "unlock", null, null, buildUnlockPrompt(player, definition, license))
         NpcStore.recordPlayerMemory(player, "tech_license_unlock", "${player.gameProfile.name} earned ${license.displayName} from ${definition.name}.")
         if (changed) {
             BattlepassMissionEventBank.record(player, TechLicenseFeature.TECH_LICENSE_UNLOCKED_EVENT, 1, mapOf("license" to license.id, "npc" to definition.id))
             BattlepassNetwork.syncAllPlayers()
+            TechLicenseNetwork.syncTo(player)
         }
+        NpcQuestService.syncTo(player)
         return true
     }
 
@@ -174,6 +225,7 @@ object TechLicenseQuestService {
         state.stepStartedAtTick = player.level().dayTime
         state.timedEventTicks.clear()
         TechLicenseStore.saveQuest(player, state)
+        NpcQuestService.syncTo(player)
     }
 
     private fun stepComplete(player: ServerPlayer, definition: NpcDefinition, license: TechLicenseDefinition) {
@@ -184,15 +236,33 @@ object TechLicenseQuestService {
         SnackbarNetwork.send(player, SnackbarNotification.npc(state.npcId, "TECH LICENSE READY", "${license.displayName}: ${step.title.ifBlank { step.objective }}", SnackbarType.SUCCESS, SnackbarSounds.REWARD))
     }
 
-    private fun openDialog(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, message: String, friendshipLevel: Int) {
+    private fun openLicenseDialog(
+        player: ServerPlayer,
+        npc: ChowNpcEntity,
+        definition: NpcDefinition,
+        license: TechLicenseDefinition,
+        state: PlayerTechLicenseQuestState?,
+        fallbackTemplate: String,
+        recordType: String,
+        step: TechLicenseQuestStepDefinition?,
+        nextStep: TechLicenseQuestStepDefinition?,
+        prompt: String,
+    ) {
         npc.startTalkingTo(player, 100)
-        val clean = message.trim().ifBlank { "Done." }
-        NpcNetwork.openDialog(player, NpcFeature.dialogPayload(definition, npc, clean, false, friendshipLevel, closeOnly = true, closeLabel = "OKAY"))
-        NpcStore.recordConversation(definition.id, player, definition.name, clean, "npc_tech_license")
-        NpcFeature.relayNpcDialogToDiscord(player, definition, clean)
+        val friendship = NpcStore.friendshipSnapshot(definition.id, player)
+        val fallback = render(fallbackTemplate, player, definition, license, state, step, nextStep).trim().ifBlank { "Done." }
+        val llmEnabled = NpcConfig.settings().llm.enabled && NpcConfig.settings().llmMessageUsage.classTraining
+        val responseToken = if (llmEnabled) NpcDialogTokens.next() else 0L
+        NpcNetwork.openDialog(player, NpcFeature.dialogPayload(definition, npc, if (llmEnabled) "..." else fallback, false, friendship.level, closeOnly = true, closeLabel = "OKAY", responseToken = responseToken))
+        if (llmEnabled) {
+            NpcLlmService.event(player, npc, definition, fallback, prompt, inputLabel = "Tech license quest", npcRecordType = "npc_tech_license_$recordType", responseToken = responseToken)
+        } else {
+            NpcStore.recordConversation(definition.id, player, definition.name, fallback, "npc_tech_license_$recordType")
+            NpcFeature.relayNpcDialogToDiscord(player, definition, fallback)
+        }
     }
 
-    private fun render(template: String, player: ServerPlayer, definition: NpcDefinition, license: TechLicenseDefinition, state: PlayerTechLicenseQuestState, step: TechLicenseQuestStepDefinition?): String = template
+    private fun render(template: String, player: ServerPlayer, definition: NpcDefinition, license: TechLicenseDefinition, state: PlayerTechLicenseQuestState?, step: TechLicenseQuestStepDefinition?, nextStep: TechLicenseQuestStepDefinition?): String = template
         .replace("{player}", player.gameProfile.name)
         .replace("{npc}", definition.name)
         .replace("{license}", license.displayName)
@@ -201,10 +271,98 @@ object TechLicenseQuestService {
         .replace("{title}", license.quest.unlockTitle.ifBlank { license.displayName })
         .replace("{step}", step?.title.orEmpty())
         .replace("{objective}", step?.objective.orEmpty())
-        .replace("{progress}", state.progress.toString())
+        .replace("{progress}", (state?.progress ?: 0).toString())
         .replace("{goal}", (step?.goalValue() ?: 1).toString())
         .replace("{qty}", (step?.qty ?: 1).toString())
         .replace("{item}", step?.item?.let(::displayName).orEmpty())
+        .replace("{next_step}", nextStep?.title.orEmpty())
+        .replace("{next_objective}", nextStep?.objective.orEmpty())
+
+    private fun completionTemplate(message: String, nextStep: TechLicenseQuestStepDefinition?): String =
+        "${message.trim().ifBlank { "Step complete." }}\n\n${nextStepLine(nextStep)}"
+
+    private fun nextStepLine(nextStep: TechLicenseQuestStepDefinition?): String =
+        nextStep?.let { "Next: ${stepSummary(it)}" } ?: "Next: final certification."
+
+    private fun stepSummary(step: TechLicenseQuestStepDefinition): String = when (step.kind) {
+        "fetch" -> "<b>${step.title.ifBlank { "Item Turn-In" }}</b>: bring <b>${step.goalValue()} ${displayName(step.item)}</b>."
+        "task", "timed" -> "<b>${step.title.ifBlank { "Field Task" }}</b>: ${step.objective.ifBlank { "make progress" }}"
+        "payment" -> "<b>${step.title.ifBlank { "License Fee" }}</b>: pay <b>{cost} Chowcoins</b>."
+        "grant" -> "<b>${step.title.ifBlank { "License Grant" }}</b>: receive the license."
+        else -> "<b>${step.title.ifBlank { "Training" }}</b>: ${step.objective.ifBlank { "continue" }}"
+    }
+
+    private fun hudDescription(license: TechLicenseDefinition, step: TechLicenseQuestStepDefinition?, npcName: String, progress: Int, goal: Int): String {
+        if (step == null) return "Talk to $npcName to receive ${license.displayName}"
+        if (progress >= goal && step.kind in setOf("task", "timed")) return "Talk to $npcName about ${license.displayName}"
+        val template = step.objective.ifBlank {
+            when (step.kind) {
+                "dialogue" -> "Talk to $npcName about ${license.displayName}"
+                "fetch" -> "Bring {qty} {item} to $npcName"
+                "payment" -> "Pay {cost} Chowcoins for ${license.displayName}"
+                "grant" -> "Receive ${license.displayName}"
+                else -> "Continue ${license.displayName}"
+            }
+        }
+        return renderHudTemplate(template, license, step, progress, goal)
+    }
+
+    private fun renderHudTemplate(template: String, license: TechLicenseDefinition, step: TechLicenseQuestStepDefinition, progress: Int, goal: Int): String =
+        template
+            .replace("{license}", license.displayName)
+            .replace("{cost}", license.feeChowcoins.toString())
+            .replace("{title}", license.quest.unlockTitle.ifBlank { license.displayName })
+            .replace("{step}", step.title)
+            .replace("{objective}", step.objective)
+            .replace("{progress}", progress.toString())
+            .replace("{goal}", goal.toString())
+            .replace("{qty}", step.qty.toString())
+            .replace("{item}", step.item.takeIf(String::isNotBlank)?.let(::displayName).orEmpty())
+            .replace(Regex("</?b>"), "")
+
+    private fun hudProgress(player: ServerPlayer, state: PlayerTechLicenseQuestState, step: TechLicenseQuestStepDefinition?): Int = when (step?.kind) {
+        "fetch" -> countRequiredItems(player, step)
+        "timed" -> refreshTimedProgress(player, state, step)
+        "dialogue", "payment", "grant" -> 0
+        else -> state.progress
+    }
+
+    private fun stepPrompt(player: ServerPlayer, definition: NpcDefinition, license: TechLicenseDefinition, state: PlayerTechLicenseQuestState, step: TechLicenseQuestStepDefinition, nextStep: TechLicenseQuestStepDefinition?, instruction: String): String {
+        val steps = license.quest.steps
+        val currentIndex = steps.indexOfFirst { it.id == step.id }.takeIf { it >= 0 } ?: state.stepIndex
+        val outline = steps.mapIndexed { index, entry ->
+            val window = if (entry.kind == "timed") ", ${entry.timeWindowSeconds.coerceAtLeast(1)}s window" else ""
+            "${index + 1}. ${entry.title.ifBlank { entry.objective }} (${entry.kind}, goal ${entry.goalValue()}$window)"
+        }.joinToString("\n")
+        return """
+            $instruction
+
+            Tech license questline context:
+            Player: ${player.gameProfile.name}
+            NPC expert: ${definition.name}
+            License: ${license.displayName}
+            Unlock cost: ${license.feeChowcoins} chowcoins
+            Server shipping total: ${TechLicenseFeature.currentShippingTotal()}/${license.thresholdChowcoins}
+            Current step: ${currentIndex + 1}/${steps.size}
+            Current progress: ${state.progress}/${step.goalValue()}
+            Current title: ${step.title}
+            Current objective: ${step.objective}
+            Next step: ${nextStep?.title.orEmpty()} ${nextStep?.objective.orEmpty()}
+
+            Full certification path:
+            $outline
+
+            Reply as ${definition.name}. Make this feel like technical certification, training, and trust-building, not a generic quest. Mention the exact item, action, count, or cost when useful. Use <b>...</b> for the key license, item, cost, or next action. Keep it concise.
+        """.trimIndent()
+    }
+
+    private fun buildUnlockPrompt(player: ServerPlayer, definition: NpcDefinition, license: TechLicenseDefinition): String =
+        """
+            ${player.gameProfile.name} completed every certification step with ${definition.name}.
+            License unlocked: ${license.displayName}
+            Title: ${license.quest.unlockTitle.ifBlank { license.displayName }}
+            Reply as ${definition.name} with a short in-character certification ceremony line. Name the license and make the moment feel earned. Use <b>...</b> on the license name.
+        """.trimIndent()
 
     private fun countRequiredItems(player: ServerPlayer, step: TechLicenseQuestStepDefinition): Int =
         player.inventory.items.sumOf { stack -> if (stackMatchesRequired(stack, step)) stack.count else 0 } +

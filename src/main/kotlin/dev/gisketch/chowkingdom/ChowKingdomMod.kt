@@ -88,7 +88,7 @@ class ChowKingdomMod(modBus: IEventBus, container: ModContainer) {
         CobblemonBattlepassIntegration.register()
         BattlepassElytraGate.register()
         MobilityLicenseFeature.register()
-        TechLicenseFeature.register()
+        TechLicenseFeature.register(modBus)
         BattlepassCommands.register()
         BossEventsFeature.register()
         GymTransitionNetwork.register(modBus)

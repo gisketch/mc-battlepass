@@ -15,6 +15,7 @@ import dev.gisketch.chowkingdom.snackbar.SnackbarNotification
 import dev.gisketch.chowkingdom.snackbar.SnackbarSounds
 import dev.gisketch.chowkingdom.snackbar.SnackbarType
 import dev.gisketch.chowkingdom.tech.TechLicenseFeature
+import dev.gisketch.chowkingdom.tech.TechLicenseQuestService
 import dev.gisketch.chowkingdom.wallets.ChowcoinNetwork
 import dev.gisketch.chowkingdom.wallets.ChowcoinStore
 import net.minecraft.core.component.DataComponents
@@ -206,7 +207,7 @@ object NpcQuestService {
                 acceptedAtTick = quest.acceptedAtTick,
             )
         }
-        NpcNetwork.syncQuests(player, NpcQuestSyncPayload((BossEventsFeature.hudEntriesFor(player) + GymLeagueFeature.hudEntriesFor(player) + quests).take(8)))
+        NpcNetwork.syncQuests(player, NpcQuestSyncPayload((BossEventsFeature.hudEntriesFor(player) + GymLeagueFeature.hudEntriesFor(player) + TechLicenseQuestService.hudEntriesFor(player) + quests).take(8)))
     }
 
     fun friendSummary(player: ServerPlayer, definition: NpcDefinition): NpcQuestFriendSummary {

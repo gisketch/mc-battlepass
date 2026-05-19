@@ -10,6 +10,7 @@ import dev.gisketch.chowkingdom.npc.NpcStore
 import dev.gisketch.chowkingdom.shipping.ShippingBinStore
 import dev.gisketch.chowkingdom.snackbar.SnackbarNetwork
 import dev.gisketch.chowkingdom.snackbar.SnackbarNotification
+import dev.gisketch.chowkingdom.snackbar.SnackbarPayload
 import dev.gisketch.chowkingdom.snackbar.SnackbarSounds
 import dev.gisketch.chowkingdom.snackbar.SnackbarType
 import net.minecraft.ChatFormatting
@@ -23,8 +24,10 @@ import net.minecraft.server.MinecraftServer
 import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.InteractionResult
 import net.minecraft.world.entity.EquipmentSlot
+import net.minecraft.world.item.ArmorItem
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.block.Block
+import net.neoforged.bus.api.IEventBus
 import net.neoforged.bus.api.EventPriority
 import net.neoforged.neoforge.common.NeoForge
 import net.neoforged.neoforge.event.RegisterCommandsEvent
@@ -34,17 +37,20 @@ import net.neoforged.neoforge.event.entity.player.ItemTooltipEvent
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent
 import net.neoforged.neoforge.event.level.BlockEvent
 import net.neoforged.neoforge.event.server.ServerStartedEvent
-import net.neoforged.neoforge.event.tick.PlayerTickEvent
 import net.neoforged.neoforge.event.tick.ServerTickEvent
 import java.util.Locale
 
 object TechLicenseFeature {
     const val TECH_LICENSE_UNLOCKED_EVENT = "gisketchs_chowkingdom_mod:tech_license_unlocked"
     private const val DENIAL_COOLDOWN_TICKS = 40L
-    private const val EQUIPMENT_CHECK_INTERVAL = 20
+    private const val CLIENT_DENIAL_COOLDOWN_MS = 1_500L
+    private const val DIALOG_ACTION_COOLDOWN_TICKS = 10L
     private val recentDenials: MutableMap<String, Long> = linkedMapOf()
+    private val recentClientDenials: MutableMap<String, Long> = linkedMapOf()
+    private val recentDialogActions: MutableMap<String, Long> = linkedMapOf()
 
-    fun register() {
+    fun register(modBus: IEventBus) {
+        TechLicenseNetwork.register(modBus)
         TechLicenseConfig.load()
         TechLicenseStore.load()
         NeoForge.EVENT_BUS.addListener(::onServerStarted)
@@ -55,7 +61,6 @@ object TechLicenseFeature {
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, ::onUseItemStart)
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, ::onBlockPlace)
         NeoForge.EVENT_BUS.addListener(::onEquipmentChange)
-        NeoForge.EVENT_BUS.addListener(::onPlayerTickPost)
         NeoForge.EVENT_BUS.addListener(::onItemTooltip)
     }
 
@@ -67,8 +72,10 @@ object TechLicenseFeature {
     fun checkShippingUnlocks(server: MinecraftServer) {
         if (!TechLicenseConfig.enabled()) return
         val total = ShippingBinStore.totalChowcoinsSold()
-        TechLicenseConfig.all()
-            .filter { license -> total >= license.thresholdChowcoins && !TechLicenseStore.spawned(license.id) }
+        val reached = TechLicenseConfig.all().filter { license -> total >= license.thresholdChowcoins }
+        TechLicenseStore.retainPending(reached.map { it.id }.toSet())
+        reached
+            .filter { license -> !TechLicenseStore.spawned(license.id) }
             .forEach { license -> TechLicenseStore.markPending(license.id) }
         spawnPending(server)
     }
@@ -91,6 +98,12 @@ object TechLicenseFeature {
         val definition = NpcConfig.get(npcId) ?: return true
         val npc = NpcFeature.existingConfiguredNpc(player.server, definition.id) ?: return true
         if (npc.level() != player.level() || player.distanceToSqr(npc) > 9.0 * 9.0) return true
+        val now = player.level().gameTime
+        val key = "${player.uuid}:$npcId:$normalized"
+        val previous = recentDialogActions[key]
+        if (previous != null && now - previous < DIALOG_ACTION_COOLDOWN_TICKS) return true
+        recentDialogActions[key] = now
+        recentDialogActions.entries.removeIf { (_, tick) -> now - tick > 20L * 10L }
         TechLicenseQuestService.handle(player, npc, definition, normalized.substringAfter(':'))
         return true
     }
@@ -104,6 +117,7 @@ object TechLicenseFeature {
         TechLicenseConfig.load()
         TechLicenseStore.load()
         checkShippingUnlocks(event.server)
+        TechLicenseNetwork.syncAllPlayers()
     }
 
     private fun onServerTick(event: ServerTickEvent.Post) {
@@ -119,8 +133,9 @@ object TechLicenseFeature {
         val level = server.overworld()
         val camp = NpcStore.campBlockPos() ?: return
         if (NpcFeature.hasActiveUnhousedCamper(server)) return
+        val total = ShippingBinStore.totalChowcoinsSold()
         val license = TechLicenseConfig.all()
-            .filter { entry -> entry.id in pending }
+            .filter { entry -> entry.id in pending && total >= entry.thresholdChowcoins && !TechLicenseStore.spawned(entry.id) }
             .sortedBy { entry -> entry.thresholdChowcoins }
             .firstOrNull()
             ?: return
@@ -159,6 +174,7 @@ object TechLicenseFeature {
         TechLicenseConfig.load()
         TechLicenseStore.load()
         NpcConfig.load()
+        TechLicenseNetwork.syncAllPlayers()
         context.source.sendSuccess({ Component.literal("Reloaded ${TechLicenseConfig.all().size} tech license(s).") }, true)
         return TechLicenseConfig.all().size.coerceAtLeast(1)
     }
@@ -184,6 +200,7 @@ object TechLicenseFeature {
         if (changed) {
             SnackbarNetwork.send(player, SnackbarNotification.item(license.iconItem, "TECH LICENSE UNLOCKED", license.displayName, SnackbarType.SUCCESS, SnackbarSounds.REWARD))
             BattlepassNetwork.syncAllPlayers()
+            TechLicenseNetwork.syncTo(player)
         }
         context.source.sendSuccess({ Component.literal("${if (changed) "Granted" else "Already had"} ${license.displayName} for ${player.gameProfile.name}.") }, true)
         return if (changed) 1 else 0
@@ -194,6 +211,7 @@ object TechLicenseFeature {
         val licenseId = StringArgumentType.getString(context, "license")
         val license = TechLicenseConfig.get(licenseId) ?: return unknownLicense(context, licenseId)
         val changed = TechLicenseStore.revoke(player, license.id)
+        if (changed) TechLicenseNetwork.syncTo(player)
         context.source.sendSuccess({ Component.literal("${if (changed) "Revoked" else "No active"} ${license.displayName} for ${player.gameProfile.name}.") }, true)
         return if (changed) 1 else 0
     }
@@ -235,17 +253,31 @@ object TechLicenseFeature {
         SharedSuggestionProvider.suggest(TechLicenseConfig.all().map { it.id }, builder)
 
     private fun onRightClickItem(event: PlayerInteractEvent.RightClickItem) {
+        if (event.entity !is ServerPlayer) {
+            val lockInfo = TechLicenseClientState.lockInfo(event.itemStack, allowConfiguredExemptions = !isEquippable(event.itemStack)) ?: return
+            event.isCanceled = true
+            event.cancellationResult = InteractionResult.FAIL
+            denyClient(lockInfo)
+            return
+        }
         val player = event.entity as? ServerPlayer ?: return
-        val denial = denialForItem(player, event.itemStack) ?: return
+        val denial = denialForItem(player, event.itemStack, allowConfiguredExemptions = !isEquippable(event.itemStack)) ?: return
         event.isCanceled = true
         event.cancellationResult = InteractionResult.FAIL
         deny(player, denial)
     }
 
     private fun onRightClickBlock(event: PlayerInteractEvent.RightClickBlock) {
+        if (event.entity !is ServerPlayer) {
+            val lockInfo = TechLicenseClientState.lockInfo(event.itemStack, allowConfiguredExemptions = !isEquippable(event.itemStack)) ?: return
+            event.isCanceled = true
+            event.cancellationResult = InteractionResult.FAIL
+            denyClient(lockInfo)
+            return
+        }
         val player = event.entity as? ServerPlayer ?: return
         val blockDenial = denialForBlock(player, player.level().getBlockState(event.pos).block)
-        val itemDenial = denialForItem(player, event.itemStack)
+        val itemDenial = denialForItem(player, event.itemStack, allowConfiguredExemptions = !isEquippable(event.itemStack))
         val denial = blockDenial ?: itemDenial ?: return
         event.isCanceled = true
         event.cancellationResult = InteractionResult.FAIL
@@ -254,7 +286,7 @@ object TechLicenseFeature {
 
     private fun onUseItemStart(event: LivingEntityUseItemEvent.Start) {
         val player = event.entity as? ServerPlayer ?: return
-        val denial = denialForItem(player, event.item) ?: return
+        val denial = denialForItem(player, event.item, allowConfiguredExemptions = true) ?: return
         event.isCanceled = true
         event.duration = 0
         deny(player, denial)
@@ -269,40 +301,34 @@ object TechLicenseFeature {
 
     private fun onEquipmentChange(event: LivingEquipmentChangeEvent) {
         val player = event.entity as? ServerPlayer ?: return
-        val denial = denialForItem(player, event.to) ?: return
+        if (event.slot !in setOf(EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET)) return
+        val denial = denialForItem(player, event.to, allowConfiguredExemptions = false) ?: return
         player.setItemSlot(event.slot, ItemStack.EMPTY)
         giveBack(player, event.to)
         deny(player, denial)
     }
 
-    private fun onPlayerTickPost(event: PlayerTickEvent.Post) {
-        val player = event.entity as? ServerPlayer ?: return
-        if (player.tickCount % EQUIPMENT_CHECK_INTERVAL != 0) return
-        EquipmentSlot.values().forEach { slot ->
-            val stack = player.getItemBySlot(slot)
-            val denial = denialForItem(player, stack) ?: return@forEach
-            player.setItemSlot(slot, ItemStack.EMPTY)
-            giveBack(player, stack)
-            deny(player, denial)
-        }
-    }
-
     private fun onItemTooltip(event: ItemTooltipEvent) {
         val stack = event.itemStack
         if (stack.isEmpty) return
+        if (event.entity !is ServerPlayer) {
+            val lockInfo = TechLicenseClientState.lockInfo(stack) ?: return
+            event.toolTip.add(1.coerceAtMost(event.toolTip.size), Component.literal(lockInfo.message).withStyle(ChatFormatting.DARK_RED))
+            return
+        }
         val id = BuiltInRegistries.ITEM.getKey(stack.item).toString()
         val license = licenseForItemId(id) ?: return
         val serverPlayer = event.entity as? ServerPlayer
         if (serverPlayer != null && TechLicenseStore.has(serverPlayer, license.id)) return
-        event.toolTip.add(1.coerceAtMost(event.toolTip.size), Component.literal("Locked: ${license.displayName} required").withStyle(ChatFormatting.DARK_RED))
+        event.toolTip.add(1.coerceAtMost(event.toolTip.size), Component.literal("Must unlock ${license.displayName}.").withStyle(ChatFormatting.DARK_RED))
     }
 
-    private fun denialForItem(player: ServerPlayer, stack: ItemStack): TechGateDenial? {
+    private fun denialForItem(player: ServerPlayer, stack: ItemStack, allowConfiguredExemptions: Boolean): TechGateDenial? {
         if (stack.isEmpty) return null
         val id = BuiltInRegistries.ITEM.getKey(stack.item).toString()
         val license = licenseForItemId(id) ?: return null
         if (matchesAny(id, license.alwaysBannedItems)) return TechGateDenial(license, "Item is disabled by server config.")
-        if (matchesAny(id, license.allowedWithoutLicense)) return null
+        if (allowConfiguredExemptions && matchesAny(id, license.allowedWithoutLicense)) return null
         if (TechLicenseStore.has(player, license.id)) return null
         return TechGateDenial(license, "${license.displayName} required.")
     }
@@ -341,7 +367,27 @@ object TechLicenseFeature {
         recentDenials[key] = now
         recentDenials.entries.removeIf { (_, tick) -> now - tick > DENIAL_COOLDOWN_TICKS * 6 }
         SnackbarNetwork.send(player, SnackbarNotification.item(denial.license.iconItem, denial.license.displayName.uppercase(Locale.ROOT), denial.message, SnackbarType.ERROR, SnackbarSounds.ERROR))
-        player.displayClientMessage(Component.literal(denial.message), true)
+    }
+
+    private fun denyClient(lockInfo: TechLicenseItemLockInfo) {
+        val now = System.currentTimeMillis()
+        val previous = recentClientDenials[lockInfo.licenseId]
+        if (previous != null && now - previous < CLIENT_DENIAL_COOLDOWN_MS) return
+        recentClientDenials[lockInfo.licenseId] = now
+        recentClientDenials.entries.removeIf { (_, timestamp) -> now - timestamp > CLIENT_DENIAL_COOLDOWN_MS * 4 }
+        val payload = SnackbarPayload(
+            iconKind = "item",
+            icon = lockInfo.iconItem,
+            title = lockInfo.displayName.uppercase(Locale.ROOT),
+            content = lockInfo.message,
+            type = SnackbarType.ERROR.id,
+            sound = SnackbarSounds.ERROR,
+            durationMs = 2_400L,
+        )
+        runCatching {
+            val client = Class.forName("dev.gisketch.chowkingdom.snackbar.SnackbarClient")
+            client.getMethod("show", SnackbarPayload::class.java).invoke(client.getField("INSTANCE").get(null), payload)
+        }
     }
 
     private fun giveBack(player: ServerPlayer, stack: ItemStack) {
@@ -349,6 +395,9 @@ object TechLicenseFeature {
         if (copy.isEmpty) return
         if (!player.inventory.add(copy)) player.drop(copy, false)
     }
+
+    private fun isEquippable(stack: ItemStack): Boolean =
+        stack.item is ArmorItem
 }
 
 data class TechLicenseDialogOption(

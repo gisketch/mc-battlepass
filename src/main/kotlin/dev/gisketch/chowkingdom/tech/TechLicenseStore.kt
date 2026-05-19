@@ -137,6 +137,13 @@ object TechLicenseStore {
         return data.pendingLicenseIds.toSet()
     }
 
+    fun retainPending(validLicenseIds: Set<String>): Boolean {
+        if (!loaded) load()
+        val changed = data.pendingLicenseIds.retainAll(validLicenseIds)
+        if (changed) save()
+        return changed
+    }
+
     fun resetThresholdState(licenseId: String): Boolean {
         if (!loaded) load()
         val id = TechLicenseConfig.normalizeId(licenseId)

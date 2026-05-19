@@ -4,6 +4,7 @@ import com.mojang.blaze3d.systems.RenderSystem
 import dev.gisketch.chowkingdom.ChowKingdomMod
 import dev.gisketch.chowkingdom.battlepass.BattlepassClientState
 import dev.gisketch.chowkingdom.battlepass.BattlepassElytraGate
+import dev.gisketch.chowkingdom.tech.TechLicenseClientState
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.world.inventory.Slot
@@ -22,7 +23,7 @@ object RoleEquipmentOverlayClient {
         val playerId = BattlepassClientState.selfId() ?: Minecraft.getInstance().player?.uuid ?: return
         if (!slot.isActive || !slot.hasItem()) return
         val activeClassIds = RolesClientState.activeClassIdsFor(playerId)
-        if (!shouldGreyOut(activeClassIds, slot.item)) return
+        if (!shouldGreyOut(activeClassIds, slot.item) && TechLicenseClientState.lockInfo(slot.item) == null) return
         renderLockedOverlay(guiGraphics, x, y)
     }
 
@@ -36,7 +37,7 @@ object RoleEquipmentOverlayClient {
         val y = event.guiGraphics.guiHeight() - HOTBAR_ITEM_BOTTOM_OFFSET
         for (slotIndex in 0 until HOTBAR_SLOT_COUNT) {
             val stack = player.inventory.getItem(slotIndex)
-            if (stack.isEmpty || !shouldGreyOut(activeClassIds, stack)) continue
+            if (stack.isEmpty || (!shouldGreyOut(activeClassIds, stack) && TechLicenseClientState.lockInfo(stack) == null)) continue
             val x = left + HOTBAR_ITEM_X_OFFSET + slotIndex * HOTBAR_SLOT_SPACING
             renderLockedOverlay(event.guiGraphics, x, y)
         }
