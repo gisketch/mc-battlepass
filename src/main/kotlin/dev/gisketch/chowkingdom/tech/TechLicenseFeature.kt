@@ -114,6 +114,31 @@ object TechLicenseFeature {
         return licenseId.isBlank() || TechLicenseStore.has(player, licenseId)
     }
 
+    fun shopLock(player: ServerPlayer, definition: NpcDefinition): TechLicenseDefinition? {
+        if (!TechLicenseConfig.enabled()) return null
+        val license = TechLicenseConfig.forNpc(definition.id) ?: return null
+        return license.takeUnless { TechLicenseStore.has(player, it.id) }
+    }
+
+    fun shopLock(player: ServerPlayer, storeId: String): TechLicenseDefinition? {
+        if (!TechLicenseConfig.enabled()) return null
+        val normalizedStore = storeId.trim().lowercase(Locale.ROOT)
+        val license = TechLicenseConfig.all().firstOrNull { license ->
+            val definition = NpcConfig.get(license.npcId) ?: return@firstOrNull false
+            definition.storeId().equals(normalizedStore, ignoreCase = true)
+        } ?: return null
+        return license.takeUnless { TechLicenseStore.has(player, it.id) }
+    }
+
+    fun shopLock(player: ServerPlayer, storeId: String, stockKey: String): TechLicenseDefinition? {
+        if (!TechLicenseConfig.enabled()) return null
+        val npcId = stockKey.trim().lowercase(Locale.ROOT).removePrefix("npc_").takeIf(String::isNotBlank) ?: return null
+        val license = TechLicenseConfig.forNpc(npcId) ?: return null
+        val definition = NpcConfig.get(npcId) ?: return null
+        if (!definition.storeId().equals(storeId.trim(), ignoreCase = true)) return null
+        return license.takeUnless { TechLicenseStore.has(player, it.id) }
+    }
+
     fun isTechExpertNpc(npcId: String): Boolean {
         if (!TechLicenseConfig.enabled()) return false
         val normalized = npcId.trim().lowercase(Locale.ROOT)

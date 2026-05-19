@@ -647,6 +647,19 @@ object NpcFeature {
 
     private fun openNpcShop(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition) {
         val currentHour = NpcTime.hour(player.level())
+        val storeId = definition.storeId().lowercase()
+        if (storeId.isBlank()) {
+            npcSnackbar(player, definition.name, "No shop ready.", SnackbarType.ERROR)
+            pendingShopNpcs.remove(player.uuid)
+            return
+        }
+        val lockedLicense = TechLicenseFeature.shopLock(player, definition)
+        if (lockedLicense != null) {
+            val friendship = NpcStore.friendshipSnapshot(definition.id, player)
+            val message = "Earn <b>${lockedLicense.displayName}</b> before using my shop."
+            NpcNetwork.openDialog(player, dialogPayload(definition, npc, message, false, friendship.level, closeOnly = true, closeLabel = "OKAY", player = player))
+            return
+        }
         if (!workBypassEnabled && NpcStore.workplacePos(definition.id) == null) {
             val friendship = NpcStore.friendshipSnapshot(definition.id, player)
             val message = if (NpcStore.workFired(definition.id)) "I do not have a job right now." else "I need a workplace before I can open shop."
@@ -683,8 +696,7 @@ object NpcFeature {
                 return
             }
         }
-        val storeId = definition.storeId().lowercase()
-        if (storeId.isBlank() || !StoreShopFeature.openStore(player, storeId, definition.storeStockKey(), "${definition.name}'s stock")) {
+        if (!StoreShopFeature.openStore(player, storeId, definition.storeStockKey(), "${definition.name}'s stock")) {
             npcSnackbar(player, definition.name, "No shop ready.", SnackbarType.ERROR)
             pendingShopNpcs.remove(player.uuid)
             return
@@ -1026,6 +1038,7 @@ object NpcFeature {
 
     fun dialogPayload(definition: NpcDefinition, npc: ChowNpcEntity, message: String, contractGranted: Boolean, friendshipLevel: Int, closeOnly: Boolean = false, closeLabel: String = "BYE", responseToken: Long = 0L, dialogMode: String = "normal", startTalkMode: Boolean = false, friendshipDelta: Int = 0, classChangeAvailable: Boolean = false, classChangeCost: Long = 0L, classChangeOptions: List<NpcClassChangeOption> = emptyList(), quizChoices: List<NpcQuizChoice> = emptyList(), bossContractsAvailable: Boolean = BossEventsFeature.contractsAvailable(definition), bossClaimAvailable: Boolean = false, leagueAvailable: Boolean = GymLeagueFeature.leagueAvailable(definition), challengeAvailable: Boolean = false, challengeDisabledReason: String = "", friendlyBattleAvailable: Boolean = false, retryBattleAvailable: Boolean = false, leagueCompassAvailable: Boolean = false, player: ServerPlayer? = null): NpcDialogPayload {
         val techOption = player?.let { TechLicenseFeature.dialogOption(it, definition, hasReadyWorkplace(it.level(), definition)) }
+        val shopAvailable = definition.storeId().isNotBlank() && (player == null || TechLicenseFeature.shopLock(player, definition) == null)
         return NpcDialogPayload(
         definition.id,
         if (workBypassEnabled) "${definition.name} WORK OFF NPC" else definition.name,
@@ -1058,6 +1071,7 @@ object NpcFeature {
         friendlyBattleAvailable = friendlyBattleAvailable,
         retryBattleAvailable = retryBattleAvailable,
         leagueCompassAvailable = leagueCompassAvailable,
+        shopAvailable = shopAvailable,
         techLicenseAvailable = techOption != null,
         techLicenseId = techOption?.licenseId.orEmpty(),
         techLicenseLabel = techOption?.label.orEmpty(),

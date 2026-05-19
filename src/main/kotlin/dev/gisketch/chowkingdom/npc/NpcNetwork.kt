@@ -256,6 +256,7 @@ data class NpcDialogPayload(
     val friendlyBattleAvailable: Boolean = false,
     val retryBattleAvailable: Boolean = false,
     val leagueCompassAvailable: Boolean = false,
+    val shopAvailable: Boolean = false,
     val techLicenseAvailable: Boolean = false,
     val techLicenseId: String = "",
     val techLicenseLabel: String = "",
@@ -300,6 +301,7 @@ data class NpcDialogPayload(
                 buffer.readBoolean(),
                 buffer.readBoolean(),
                 buffer.readUtf(MAX_NPC_CHALLENGE_REASON_LENGTH),
+                buffer.readBoolean(),
                 buffer.readBoolean(),
                 buffer.readBoolean(),
                 buffer.readBoolean(),
@@ -353,6 +355,7 @@ data class NpcDialogPayload(
                 buffer.writeBoolean(value.friendlyBattleAvailable)
                 buffer.writeBoolean(value.retryBattleAvailable)
                 buffer.writeBoolean(value.leagueCompassAvailable)
+                buffer.writeBoolean(value.shopAvailable)
                 buffer.writeBoolean(value.techLicenseAvailable)
                 buffer.writeBoundedUtf(value.techLicenseId, MAX_NPC_ID_LENGTH)
                 buffer.writeBoundedUtf(value.techLicenseLabel, MAX_NPC_TECH_LICENSE_LABEL_LENGTH)

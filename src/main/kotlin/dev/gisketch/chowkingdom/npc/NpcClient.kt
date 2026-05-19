@@ -1699,7 +1699,7 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         classChangeMode() -> listOf(DialogAction.Bye)
         payload.classChangeAvailable -> listOf(DialogAction.Change, DialogAction.Bye)
         payload.closeOnly -> listOf(DialogAction.Bye)
-        else -> listOfNotNull(DialogAction.Talk, DialogAction.League.takeIf { payload.leagueAvailable }, DialogAction.Contracts.takeIf { payload.bossContractsAvailable }, DialogAction.RetryBattle.takeIf { payload.retryBattleAvailable }, DialogAction.FriendlyBattle.takeIf { payload.friendlyBattleAvailable }, DialogAction.Buy, DialogAction.Gift, DialogAction.Work, DialogAction.TechLicense.takeIf { payload.techLicenseAvailable }, DialogAction.Training.takeIf { payload.trainingAvailable }, DialogAction.Bye)
+        else -> listOfNotNull(DialogAction.Talk, DialogAction.League.takeIf { payload.leagueAvailable }, DialogAction.Contracts.takeIf { payload.bossContractsAvailable }, DialogAction.RetryBattle.takeIf { payload.retryBattleAvailable }, DialogAction.FriendlyBattle.takeIf { payload.friendlyBattleAvailable }, DialogAction.Buy.takeIf { payload.shopAvailable }, DialogAction.Gift, DialogAction.Work, DialogAction.TechLicense.takeIf { payload.techLicenseAvailable }, DialogAction.Training.takeIf { payload.trainingAvailable }, DialogAction.Bye)
     }
 
     private fun trainerActions(): List<DialogAction> = listOfNotNull(
@@ -1814,6 +1814,7 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         (gymTrainerMode() || gymFriendlyMode()) && action == DialogAction.Challenge -> payload.challengeAvailable
         action == DialogAction.FriendlyBattle -> payload.friendlyBattleAvailable
         action == DialogAction.RetryBattle -> payload.retryBattleAvailable
+        action == DialogAction.Buy -> payload.shopAvailable
         action == DialogAction.TechLicense -> payload.techLicenseAvailable && payload.techLicenseId.isNotBlank()
         action == DialogAction.Gift -> payload.talkEnabled || !giftStack.isEmpty
         action == DialogAction.Talk -> payload.talkEnabled

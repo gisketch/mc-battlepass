@@ -16,6 +16,7 @@ import dev.gisketch.chowkingdom.snackbar.SnackbarNetwork
 import dev.gisketch.chowkingdom.snackbar.SnackbarNotification
 import dev.gisketch.chowkingdom.snackbar.SnackbarSounds
 import dev.gisketch.chowkingdom.snackbar.SnackbarType
+import dev.gisketch.chowkingdom.tech.TechLicenseFeature
 import dev.gisketch.chowkingdom.wallets.ChowcoinNetwork
 import dev.gisketch.chowkingdom.wallets.ChowcoinStore
 import net.minecraft.commands.CommandSourceStack
@@ -167,6 +168,12 @@ object StoreShopFeature {
         reloadDefinitions()
         val definition = definitions[storeId.lowercase(Locale.ROOT)] ?: return false
         val normalizedStockKey = runtimeStockKey(player, definition, stockKey(stockKey, definition.id))
+        val lockedLicense = TechLicenseFeature.shopLock(player, definition.id, normalizedStockKey)
+            ?: TechLicenseFeature.shopLock(player, definition.id)
+        if (lockedLicense != null) {
+            SnackbarNetwork.send(player, SnackbarNotification.item(lockedLicense.iconItem, "TECH SHOP LOCKED", "${lockedLicense.displayName} required.", SnackbarType.ERROR, SnackbarSounds.ERROR))
+            return false
+        }
         ensureActive(definition, normalizedStockKey, player.dimensionId(), player)
         PacketDistributor.sendToPlayer(player, StoreShopOpenPayload(view(player, definition, normalizedStockKey, subtitle)))
         return true
@@ -195,6 +202,12 @@ object StoreShopFeature {
 
     private fun buy(player: ServerPlayer, storeId: String, stockKey: String, lines: List<ShopViewCartLine>) {
         val definition = definitions[storeId] ?: return
+        val lockedLicense = TechLicenseFeature.shopLock(player, storeId, stockKey)
+            ?: TechLicenseFeature.shopLock(player, storeId)
+        if (lockedLicense != null) {
+            SnackbarNetwork.send(player, SnackbarNotification.item(lockedLicense.iconItem, "TECH SHOP LOCKED", "${lockedLicense.displayName} required.", SnackbarType.ERROR, SnackbarSounds.ERROR))
+            return
+        }
         ensureActive(definition, stockKey, player.dimensionId(), player)
         val activeOffers = activeOffers(definition, stockKey, player.dimensionId(), player).associateBy { it.offer.id }
         val requested = lines.filter { it.quantity > 0 }.take(100)
