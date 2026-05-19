@@ -2,6 +2,7 @@ package dev.gisketch.chowkingdom.npc
 
 import dev.gisketch.chowkingdom.ChowKingdomMod
 import dev.gisketch.chowkingdom.config.TomlConfigIO
+import dev.gisketch.chowkingdom.tech.TechLicenseConfig
 import net.neoforged.fml.loading.FMLPaths
 import java.nio.file.Files
 import java.nio.file.Path
@@ -161,9 +162,11 @@ object NpcConfig {
     }
 
     private fun mergeQuestPools(definition: NpcDefinition) {
-        if (!definition.missions.enabled) return
-        val compiled = genericQuests.compile(definition.id, "generic") + definition.uniqueQuests.compile(definition.id, "unique")
+        val techMissions = TechLicenseConfig.dailyMissionsForNpc(definition.id)
+        if (!definition.missions.enabled && techMissions.isEmpty()) return
+        val compiled = (if (definition.missions.enabled) genericQuests.compile(definition.id, "generic") + definition.uniqueQuests.compile(definition.id, "unique") else emptyList()) + techMissions
         if (compiled.isEmpty()) return
+        if (techMissions.isNotEmpty()) definition.missions.enabled = true
         definition.missions.pool = (definition.missions.pool + compiled)
             .distinctBy { mission -> mission.id }
             .toMutableList()

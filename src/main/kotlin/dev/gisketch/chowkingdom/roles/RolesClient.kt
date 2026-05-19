@@ -362,24 +362,6 @@ data class JobStatusDisplay(
     val tooltip: List<Component>,
 )
 
-fun roleIconTexture(rawIcon: String): ResourceLocation? {
-    val icon = rawIcon.trim()
-    if (icon.isBlank()) return null
-    return runCatching {
-        when {
-            icon.startsWith("textures/") -> ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, icon)
-            icon.contains(":textures/") -> ResourceLocation.parse(icon)
-            icon.endsWith(".png") && icon.contains(":") -> ResourceLocation.parse(icon)
-            icon.endsWith(".png") -> ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/$icon")
-            else -> null
-        }
-    }.getOrNull()
-}
-
-fun roleIconStack(rawIcon: String): ItemStack {
-    return RoleItemStacks.fromId(rawIcon, "role icon") ?: ItemStack.EMPTY
-}
-
 private const val NAMETAG_ICON_SIZE = 9.0f
 private const val NAMETAG_ICON_GAP = 1.0f
 private const val NAMETAG_ICON_TEXT_GAP = 3.0f

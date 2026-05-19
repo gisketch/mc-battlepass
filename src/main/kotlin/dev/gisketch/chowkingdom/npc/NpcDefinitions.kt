@@ -1098,6 +1098,15 @@ class NpcMissionDefinition(
     @SerializedName("progress_messages") var progressMessages: MutableList<String> = mutableListOf(),
     @SerializedName("complete_messages") var completeMessages: MutableList<String> = mutableListOf(),
 ) {
+    @SerializedName(value = "required_tech_license", alternate = ["requiredTechLicense"])
+    var requiredTechLicense: String = ""
+
+    @SerializedName(value = "ignore_daily_cap", alternate = ["ignoreDailyCap"])
+    var ignoreDailyCap: Boolean = false
+
+    @SerializedName(value = "daily_cap_group", alternate = ["dailyCapGroup"])
+    var dailyCapGroup: String = "normal"
+
     fun normalized(): NpcMissionDefinition = apply {
         id = id.trim().lowercase().replace(Regex("[^a-z0-9_.:-]+"), "_").trim('_')
         category = category.trim().lowercase().let {
@@ -1128,6 +1137,8 @@ class NpcMissionDefinition(
             .filter { (key, value) -> key.isNotBlank() && value.isNotBlank() }
             .toMutableMap()
         weight = weight.coerceIn(1, 1000)
+        requiredTechLicense = requiredTechLicense.trim().lowercase()
+        dailyCapGroup = dailyCapGroup.trim().lowercase().replace(Regex("[^a-z0-9_.:-]+"), "_").trim('_').ifBlank { if (ignoreDailyCap) "tech" else "normal" }
         offerMessages = cleanMessages(offerMessages, listOf("Hey {player}, I have a favor to ask. {quest_text}"))
         acceptedMessages = cleanMessages(acceptedMessages, listOf("Thanks, {player}. I will be waiting for good news."))
         progressMessages = cleanMessages(progressMessages, listOf("Still working on it? {progress}/{goal}"))

@@ -54,6 +54,7 @@ import dev.gisketch.chowkingdom.shops.ShopsFeature
 import dev.gisketch.chowkingdom.snackbar.SnackbarClient
 import dev.gisketch.chowkingdom.snackbar.SnackbarFeature
 import dev.gisketch.chowkingdom.skilltree.ClassSkillTreeFeature
+import dev.gisketch.chowkingdom.tech.TechLicenseFeature
 import dev.gisketch.chowkingdom.trading.TradingClient
 import dev.gisketch.chowkingdom.trading.TradingFeature
 import dev.gisketch.chowkingdom.town.TownReturnFeature
@@ -87,6 +88,7 @@ class ChowKingdomMod(modBus: IEventBus, container: ModContainer) {
         CobblemonBattlepassIntegration.register()
         BattlepassElytraGate.register()
         MobilityLicenseFeature.register()
+        TechLicenseFeature.register()
         BattlepassCommands.register()
         BossEventsFeature.register()
         GymTransitionNetwork.register(modBus)

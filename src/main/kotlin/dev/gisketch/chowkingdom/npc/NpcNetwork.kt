@@ -27,6 +27,8 @@ private const val MAX_NPC_TALK_MESSAGE_LENGTH = 2000
 private const val MAX_NPC_CLOSE_LABEL_LENGTH = 24
 private const val MAX_NPC_VOICE_PITCH_LENGTH = 16
 private const val MAX_NPC_DIALOG_MODE_LENGTH = 16
+private const val MAX_NPC_TECH_LICENSE_LABEL_LENGTH = 24
+private const val MAX_NPC_TECH_LICENSE_ICON_LENGTH = 128
 private const val MAX_NPC_CHALLENGE_REASON_LENGTH = 160
 private const val MAX_NPC_WORLD_CHAT_TARGET_KIND_LENGTH = 16
 private const val MAX_NPC_WORLD_CHAT_MESSAGE_LENGTH = 512
@@ -254,6 +256,11 @@ data class NpcDialogPayload(
     val friendlyBattleAvailable: Boolean = false,
     val retryBattleAvailable: Boolean = false,
     val leagueCompassAvailable: Boolean = false,
+    val techLicenseAvailable: Boolean = false,
+    val techLicenseId: String = "",
+    val techLicenseLabel: String = "",
+    val techLicenseIconItem: String = "",
+    val techLicenseCost: Long = 0L,
 ) : CustomPacketPayload {
     override fun type(): CustomPacketPayload.Type<NpcDialogPayload> = TYPE
 
@@ -296,6 +303,11 @@ data class NpcDialogPayload(
                 buffer.readBoolean(),
                 buffer.readBoolean(),
                 buffer.readBoolean(),
+                buffer.readBoolean(),
+                buffer.readUtf(MAX_NPC_ID_LENGTH),
+                buffer.readUtf(MAX_NPC_TECH_LICENSE_LABEL_LENGTH),
+                buffer.readUtf(MAX_NPC_TECH_LICENSE_ICON_LENGTH),
+                buffer.readVarLong(),
             )
 
             override fun encode(buffer: RegistryFriendlyByteBuf, value: NpcDialogPayload) {
@@ -341,6 +353,11 @@ data class NpcDialogPayload(
                 buffer.writeBoolean(value.friendlyBattleAvailable)
                 buffer.writeBoolean(value.retryBattleAvailable)
                 buffer.writeBoolean(value.leagueCompassAvailable)
+                buffer.writeBoolean(value.techLicenseAvailable)
+                buffer.writeBoundedUtf(value.techLicenseId, MAX_NPC_ID_LENGTH)
+                buffer.writeBoundedUtf(value.techLicenseLabel, MAX_NPC_TECH_LICENSE_LABEL_LENGTH)
+                buffer.writeBoundedUtf(value.techLicenseIconItem, MAX_NPC_TECH_LICENSE_ICON_LENGTH)
+                buffer.writeVarLong(value.techLicenseCost.coerceAtLeast(0L))
             }
         }
     }

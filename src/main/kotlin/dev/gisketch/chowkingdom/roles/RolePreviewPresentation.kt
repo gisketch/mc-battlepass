@@ -2,7 +2,7 @@ package dev.gisketch.chowkingdom.roles
 
 import java.util.Locale
 
-internal data class RoleClassConfigSummary(
+data class RoleClassConfigSummary(
     val starterKitCount: Int,
     val weaponRuleCount: Int,
     val armorRuleCount: Int,
@@ -14,13 +14,13 @@ internal data class RoleClassConfigSummary(
     val wrongArmorDisablesSprint: Boolean,
 )
 
-internal fun previewItemCandidateIds(items: List<String>): List<String> =
+fun previewItemCandidateIds(items: List<String>): List<String> =
     items.map { raw -> raw.substringBefore('*').trim() }.filter(String::isNotBlank)
 
-internal fun firstPreviewItemId(items: List<String>, isAvailable: (String) -> Boolean): String? =
+fun firstPreviewItemId(items: List<String>, isAvailable: (String) -> Boolean): String? =
     previewItemCandidateIds(items).firstOrNull(isAvailable)
 
-internal fun roleClassConfigSummary(role: RoleUiDefinitionPayload): RoleClassConfigSummary {
+fun roleClassConfigSummary(role: RoleUiDefinitionPayload): RoleClassConfigSummary {
     val equipment = role.perks.filter { perk -> perk.type == "equipment_affinity" }
     val starterKitCount = role.perks
         .filter { perk -> perk.type == "starting_items" }

@@ -19,6 +19,7 @@ import dev.gisketch.chowkingdom.snackbar.SnackbarNetwork
 import dev.gisketch.chowkingdom.snackbar.SnackbarNotification
 import dev.gisketch.chowkingdom.snackbar.SnackbarSounds
 import dev.gisketch.chowkingdom.snackbar.SnackbarType
+import dev.gisketch.chowkingdom.tech.TechLicenseFeature
 import dev.gisketch.chowkingdom.wallets.ChowcoinNetwork
 import net.minecraft.commands.CommandSourceStack
 import net.minecraft.commands.Commands
@@ -111,6 +112,7 @@ object ShippingBinFeature {
         }
         announceTopSeller(event.server, sales)
         BossEventsFeature.checkShippingUnlocks(event.server)
+        TechLicenseFeature.checkShippingUnlocks(event.server)
     }
 
     private fun onPlayerLoggedIn(event: PlayerEvent.PlayerLoggedInEvent) {
@@ -145,6 +147,7 @@ object ShippingBinFeature {
             recordShippingMissions(player, payout)
             announceTopSeller(player.server, listOf(ShippingBinSaleResult(NicknameStore.displayName(player), payout)))
             BossEventsFeature.checkShippingUnlocks(player.server)
+            TechLicenseFeature.checkShippingUnlocks(player.server)
         }
         return payout.amount.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
     }
@@ -158,6 +161,7 @@ object ShippingBinFeature {
         }
         BattlepassNetwork.syncAllPlayers()
         BossEventsFeature.checkShippingUnlocks(context.source.server)
+        TechLicenseFeature.checkShippingUnlocks(context.source.server)
         context.source.sendSuccess(
             {
                 val playerText = player?.gameProfile?.name?.let { " Recorded $amount shipping value for $it battlepass testing." }.orEmpty()

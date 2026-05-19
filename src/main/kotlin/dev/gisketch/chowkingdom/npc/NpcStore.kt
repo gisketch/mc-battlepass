@@ -80,6 +80,7 @@ object NpcStore {
             state.period = period
             state.active = kept.associateByTo(linkedMapOf()) { quest -> quest.npcId }
             state.completedNpcIds.clear()
+            state.completedNoCapNpcIds.clear()
             state.declinedUntilTick.clear()
             if (expired.isNotEmpty()) onExpired?.invoke(expired)
             save()
@@ -572,6 +573,7 @@ class NpcPlayerQuestState(
     var period: Long = Long.MIN_VALUE,
     var active: MutableMap<String, NpcAcceptedQuestState> = linkedMapOf(),
     var completedNpcIds: MutableSet<String> = linkedSetOf(),
+    var completedNoCapNpcIds: MutableSet<String> = linkedSetOf(),
     var declinedUntilTick: MutableMap<String, Long> = linkedMapOf(),
 )
 
@@ -595,6 +597,8 @@ class NpcAcceptedQuestState(
     var quizMessage: String = "",
     var quizChoices: MutableList<String> = mutableListOf(),
     var quizAnswerIndex: Int = -1,
+    var ignoreDailyCap: Boolean = false,
+    var dailyCapGroup: String = "normal",
     var acceptedAtTick: Long = 0L,
     var expiresAtTick: Long = 0L,
 )

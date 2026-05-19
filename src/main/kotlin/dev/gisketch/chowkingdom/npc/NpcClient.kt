@@ -1360,6 +1360,10 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
                 skipPendingTalkResponse()
                 NpcNetwork.sendAction(payload.npcId, "training")
             }
+            DialogAction.TechLicense -> if (isActionEnabled(action)) {
+                skipPendingTalkResponse()
+                NpcNetwork.sendAction(payload.npcId, "tech_license:${payload.techLicenseId}")
+            }
             DialogAction.Change -> if (isActionEnabled(action)) {
                 skipPendingTalkResponse()
                 NpcNetwork.sendAction(payload.npcId, "class_change_offer")
@@ -1591,6 +1595,7 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         leagueRetireMode() && action == DialogAction.Bye -> "CANCEL"
         gymTrainerMode() && action == DialogAction.Talk -> if (talkMode) "SEND" else "TALK"
         joinMode() && action == DialogAction.Talk -> "JOIN CONVERSATION"
+        action == DialogAction.TechLicense -> payload.techLicenseLabel.ifBlank { "LICENSE" }
         action == DialogAction.Bye && payload.closeOnly -> payload.closeLabel
         action == DialogAction.Bye && (payload.classChangeAvailable || classChangeMode() || quizMode() || leagueSelectMode() || leagueRetireMode()) -> payload.closeLabel
         else -> action.label
@@ -1599,6 +1604,10 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
     private fun renderActionTooltip(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, action: DialogAction?) {
         if (!talkMode && action == DialogAction.Change) {
             guiGraphics.renderTooltip(font, Component.literal("Job change: ${payload.classChangeCost} chowcoins"), mouseX, mouseY)
+            return
+        }
+        if (!talkMode && action == DialogAction.TechLicense) {
+            guiGraphics.renderTooltip(font, Component.literal("Tech license: ${payload.techLicenseCost} chowcoins"), mouseX, mouseY)
             return
         }
         if (!talkMode && action == DialogAction.Challenge && !payload.challengeAvailable && payload.challengeDisabledReason.isNotBlank()) {
@@ -1690,7 +1699,7 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         classChangeMode() -> listOf(DialogAction.Bye)
         payload.classChangeAvailable -> listOf(DialogAction.Change, DialogAction.Bye)
         payload.closeOnly -> listOf(DialogAction.Bye)
-        else -> listOfNotNull(DialogAction.Talk, DialogAction.League.takeIf { payload.leagueAvailable }, DialogAction.Contracts.takeIf { payload.bossContractsAvailable }, DialogAction.RetryBattle.takeIf { payload.retryBattleAvailable }, DialogAction.FriendlyBattle.takeIf { payload.friendlyBattleAvailable }, DialogAction.Buy, DialogAction.Gift, DialogAction.Work, DialogAction.Training.takeIf { payload.trainingAvailable }, DialogAction.Bye)
+        else -> listOfNotNull(DialogAction.Talk, DialogAction.League.takeIf { payload.leagueAvailable }, DialogAction.Contracts.takeIf { payload.bossContractsAvailable }, DialogAction.RetryBattle.takeIf { payload.retryBattleAvailable }, DialogAction.FriendlyBattle.takeIf { payload.friendlyBattleAvailable }, DialogAction.Buy, DialogAction.Gift, DialogAction.Work, DialogAction.TechLicense.takeIf { payload.techLicenseAvailable }, DialogAction.Training.takeIf { payload.trainingAvailable }, DialogAction.Bye)
     }
 
     private fun trainerActions(): List<DialogAction> = listOfNotNull(
@@ -1805,6 +1814,7 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         (gymTrainerMode() || gymFriendlyMode()) && action == DialogAction.Challenge -> payload.challengeAvailable
         action == DialogAction.FriendlyBattle -> payload.friendlyBattleAvailable
         action == DialogAction.RetryBattle -> payload.retryBattleAvailable
+        action == DialogAction.TechLicense -> payload.techLicenseAvailable && payload.techLicenseId.isNotBlank()
         action == DialogAction.Gift -> payload.talkEnabled || !giftStack.isEmpty
         action == DialogAction.Talk -> payload.talkEnabled
         else -> true
@@ -1817,6 +1827,7 @@ private class NpcDialogScreen(private val payload: NpcDialogPayload) : Screen(Co
         (gymTrainerMode() || gymFriendlyMode()) && action == DialogAction.Challenge && payload.challengeAvailable -> true
         action == DialogAction.FriendlyBattle && payload.friendlyBattleAvailable -> true
         action == DialogAction.RetryBattle && payload.retryBattleAvailable -> true
+        action == DialogAction.TechLicense && payload.techLicenseAvailable -> true
         bossClaimMode() && action == DialogAction.Talk -> true
         else -> false
     }
@@ -2215,6 +2226,7 @@ private enum class DialogAction(val label: String, val icon: ResourceLocation) {
     Badge("BADGE", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/trophy.png")),
     Record("RECORD", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/trophy.png")),
     Training("TRAINING", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/chat_bubble_white.png")),
+    TechLicense("LICENSE", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/quest_log.png")),
     Change("CHANGE", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/coins.png")),
     Move("MOVE", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/chat_bubble_white.png")),
     Fire("FIRE", ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/icons/chat_bubble_orange.png")),

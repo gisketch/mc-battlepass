@@ -38,6 +38,7 @@ import dev.gisketch.chowkingdom.snackbar.SnackbarNetwork
 import dev.gisketch.chowkingdom.snackbar.SnackbarNotification
 import dev.gisketch.chowkingdom.snackbar.SnackbarSounds
 import dev.gisketch.chowkingdom.snackbar.SnackbarType
+import dev.gisketch.chowkingdom.tech.TechLicenseFeature
 import dev.gisketch.chowkingdom.wallets.ChowcoinNetwork
 import dev.gisketch.chowkingdom.wallets.ChowcoinStore
 import net.minecraft.ChatFormatting
@@ -220,7 +221,7 @@ object NpcFeature {
                 val names = activeTalk.participants.joinToString(", ") { participant -> participant.name }
                 "${definition.name} is currently talking to $names."
             }
-            NpcNetwork.openDialog(player, dialogPayload(definition, npc, message, false, friendship.level, dialogMode = "join", startTalkMode = activeTalk.contains(player.uuid)))
+            NpcNetwork.openDialog(player, dialogPayload(definition, npc, message, false, friendship.level, dialogMode = "join", startTalkMode = activeTalk.contains(player.uuid), player = player))
             return
         }
         if (hasHome) {
@@ -281,13 +282,13 @@ object NpcFeature {
         val retryBattleAvailable = hasHome && NpcQuestService.retryBattleAvailable(player, definition)
         if (settings.llm.enabled && llmInput != null) {
             val responseToken = NpcDialogTokens.next()
-            NpcNetwork.openDialog(player, dialogPayload(definition, npc, "...", contractGranted, friendship.level, closeOnly = !hasHome || contractGranted, closeLabel = if (!hasHome || contractGranted) "OKAY" else "BYE", responseToken = responseToken, friendshipDelta = firstChatFriendshipDelta, friendlyBattleAvailable = friendlyBattleAvailable, retryBattleAvailable = retryBattleAvailable))
+            NpcNetwork.openDialog(player, dialogPayload(definition, npc, "...", contractGranted, friendship.level, closeOnly = !hasHome || contractGranted, closeLabel = if (!hasHome || contractGranted) "OKAY" else "BYE", responseToken = responseToken, friendshipDelta = firstChatFriendshipDelta, friendlyBattleAvailable = friendlyBattleAvailable, retryBattleAvailable = retryBattleAvailable, player = player))
             if (!recognized) NpcStore.markRecognized(definition.id, player)
             NpcLlmService.event(player, npc, definition, message, llmInput, npcRecordType = "npc_llm_interact", responseToken = responseToken)
             return
         }
         NpcStore.recordConversation(definition.id, player, definition.name, message, "npc_message")
-        NpcNetwork.openDialog(player, dialogPayload(definition, npc, message, contractGranted, friendship.level, closeOnly = !hasHome || contractGranted, closeLabel = if (!hasHome || contractGranted) "OKAY" else "BYE", friendshipDelta = firstChatFriendshipDelta, friendlyBattleAvailable = friendlyBattleAvailable, retryBattleAvailable = retryBattleAvailable))
+        NpcNetwork.openDialog(player, dialogPayload(definition, npc, message, contractGranted, friendship.level, closeOnly = !hasHome || contractGranted, closeLabel = if (!hasHome || contractGranted) "OKAY" else "BYE", friendshipDelta = firstChatFriendshipDelta, friendlyBattleAvailable = friendlyBattleAvailable, retryBattleAvailable = retryBattleAvailable, player = player))
         if (!recognized) NpcStore.markRecognized(definition.id, player)
         relayNpcDialog(player, npc, definition, message)
     }
@@ -310,6 +311,7 @@ object NpcFeature {
         if (normalizedAction in setOf("quest_accept", "quest_decline", "quest_retry_battle") && !hasValidHomeForActions(player, definition)) return
         if (BossEventsFeature.handleFinnAction(player, npc, definition, action)) return
         if (GymLeagueFeature.handleAction(player, npc, definition, action)) return
+        if (TechLicenseFeature.handleDialogAction(player, definition.id, action)) return
         if (NpcQuestService.handleAction(player, npc, definition, action)) return
         if (normalizedAction.startsWith("class_change:")) {
             if (!hasValidHomeForActions(player, definition)) return
@@ -1021,7 +1023,9 @@ object NpcFeature {
         SnackbarNetwork.send(player, SnackbarNotification.item(SnackbarIcons.ERROR, title, content, type, SnackbarSounds.forType(type)))
     }
 
-    fun dialogPayload(definition: NpcDefinition, npc: ChowNpcEntity, message: String, contractGranted: Boolean, friendshipLevel: Int, closeOnly: Boolean = false, closeLabel: String = "BYE", responseToken: Long = 0L, dialogMode: String = "normal", startTalkMode: Boolean = false, friendshipDelta: Int = 0, classChangeAvailable: Boolean = false, classChangeCost: Long = 0L, classChangeOptions: List<NpcClassChangeOption> = emptyList(), quizChoices: List<NpcQuizChoice> = emptyList(), bossContractsAvailable: Boolean = BossEventsFeature.contractsAvailable(definition), bossClaimAvailable: Boolean = false, leagueAvailable: Boolean = GymLeagueFeature.leagueAvailable(definition), challengeAvailable: Boolean = false, challengeDisabledReason: String = "", friendlyBattleAvailable: Boolean = false, retryBattleAvailable: Boolean = false, leagueCompassAvailable: Boolean = false): NpcDialogPayload = NpcDialogPayload(
+    fun dialogPayload(definition: NpcDefinition, npc: ChowNpcEntity, message: String, contractGranted: Boolean, friendshipLevel: Int, closeOnly: Boolean = false, closeLabel: String = "BYE", responseToken: Long = 0L, dialogMode: String = "normal", startTalkMode: Boolean = false, friendshipDelta: Int = 0, classChangeAvailable: Boolean = false, classChangeCost: Long = 0L, classChangeOptions: List<NpcClassChangeOption> = emptyList(), quizChoices: List<NpcQuizChoice> = emptyList(), bossContractsAvailable: Boolean = BossEventsFeature.contractsAvailable(definition), bossClaimAvailable: Boolean = false, leagueAvailable: Boolean = GymLeagueFeature.leagueAvailable(definition), challengeAvailable: Boolean = false, challengeDisabledReason: String = "", friendlyBattleAvailable: Boolean = false, retryBattleAvailable: Boolean = false, leagueCompassAvailable: Boolean = false, player: ServerPlayer? = null): NpcDialogPayload {
+        val techOption = player?.let { TechLicenseFeature.dialogOption(it, definition, hasReadyWorkplace(it.level(), definition)) }
+        return NpcDialogPayload(
         definition.id,
         if (workBypassEnabled) "${definition.name} WORK OFF NPC" else definition.name,
         definition.title,
@@ -1053,7 +1057,13 @@ object NpcFeature {
         friendlyBattleAvailable = friendlyBattleAvailable,
         retryBattleAvailable = retryBattleAvailable,
         leagueCompassAvailable = leagueCompassAvailable,
+        techLicenseAvailable = techOption != null,
+        techLicenseId = techOption?.licenseId.orEmpty(),
+        techLicenseLabel = techOption?.label.orEmpty(),
+        techLicenseIconItem = techOption?.iconItem.orEmpty(),
+        techLicenseCost = techOption?.cost ?: 0L,
     )
+    }
 
     private fun friendshipMessage(set: NpcFriendshipMessageSet, friendship: NpcFriendshipSnapshot, player: ServerPlayer, definition: NpcDefinition, itemName: String = "", mood: String = "", quantity: Int = 0, totalCost: Long = 0L): String {
         val pool = set.forCategory(friendship.category)
@@ -3524,8 +3534,16 @@ object NpcFeature {
         return true
     }
 
+    fun hasActiveUnhousedCamper(server: MinecraftServer): Boolean =
+        (activeUnhousedCamper(server) ?: migrateLiveUnhousedCamper(server)) != null
+
     fun spawnConfiguredNpcAt(level: ServerLevel, definition: NpcDefinition, anchor: BlockPos): Boolean =
         spawnNpc(level, definition, anchor, markActiveCamper = false, announceCamperArrival = false)
+
+    fun spawnConfiguredNpcAsCamper(level: ServerLevel, definition: NpcDefinition, anchor: BlockPos, announceCamperArrival: Boolean = false): Boolean =
+        spawnNpc(level, definition, anchor, markActiveCamper = true, announceCamperArrival = announceCamperArrival)
+
+    fun existingConfiguredNpc(server: MinecraftServer, npcId: String): ChowNpcEntity? = existingNpc(server, npcId)
 
     private fun announceCamperArrival(level: ServerLevel, definition: NpcDefinition) {
         val notification = SnackbarNotification.npc(

@@ -2,14 +2,14 @@ package dev.gisketch.chowkingdom.roles
 
 import java.util.Locale
 
-internal enum class RolePerkDisplayGroup {
+enum class RolePerkDisplayGroup {
     STAT,
     PASSIVE,
     UNIQUE,
     OTHER,
 }
 
-internal data class RolePerkDisplay(
+data class RolePerkDisplay(
     val title: String,
     val value: String,
     val detail: String,
@@ -17,7 +17,7 @@ internal data class RolePerkDisplay(
     val rankValues: List<String> = emptyList(),
 )
 
-internal fun rolePerkDisplays(role: RoleUiDefinitionPayload, jobRank: Int): List<RolePerkDisplay> = role.perks.map { perk ->
+fun rolePerkDisplays(role: RoleUiDefinitionPayload, jobRank: Int): List<RolePerkDisplay> = role.perks.map { perk ->
     rolePerkDisplay(role, perk, jobRank)
 }
 

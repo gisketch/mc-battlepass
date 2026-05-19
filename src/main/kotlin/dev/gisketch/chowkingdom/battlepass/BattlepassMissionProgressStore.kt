@@ -14,6 +14,7 @@ import dev.gisketch.chowkingdom.snackbar.SnackbarNetwork
 import dev.gisketch.chowkingdom.snackbar.SnackbarNotification
 import dev.gisketch.chowkingdom.snackbar.SnackbarSounds
 import dev.gisketch.chowkingdom.snackbar.SnackbarType
+import dev.gisketch.chowkingdom.tech.TechLicenseQuestService
 import net.minecraft.ChatFormatting
 import net.minecraft.network.chat.Component
 import net.minecraft.server.level.ServerPlayer
@@ -230,6 +231,7 @@ object BattlepassMissionProgressStore {
 
         if (NpcQuestService.recordSignal(player, signal)) changed = true
         if (ClassMentorQuestService.recordSignal(player, signal)) changed = true
+        if (TechLicenseQuestService.recordSignal(player, signal)) changed = true
         if (changed) save()
         return changed
     }

@@ -3,6 +3,7 @@ package dev.gisketch.chowkingdom.battlepass
 import dev.gisketch.chowkingdom.ChowKingdomMod
 import dev.gisketch.chowkingdom.config.TomlConfigIO
 import dev.gisketch.chowkingdom.mobility.MobilityLicenseStore
+import dev.gisketch.chowkingdom.tech.TechLicenseFeature
 import net.neoforged.fml.loading.FMLPaths
 import java.nio.file.Files
 import java.nio.file.Path
@@ -54,6 +55,7 @@ object BattlepassPassRegistry {
             if (pass.displayName.isBlank()) {
                 pass.displayName = id
             }
+            ensureBuiltInEvents(pass)
             passes[id] = pass
         } catch (exception: Exception) {
             ChowKingdomMod.LOGGER.warn("Failed to load battlepass pass {}", path, exception)
@@ -82,6 +84,13 @@ object BattlepassPassRegistry {
         TomlConfigIO.write(path, pass)
     }
 
+    private fun ensureBuiltInEvents(pass: BattlepassPassDefinition) {
+        if (pass.id != "cozy") return
+        if (pass.permanentEvents.none { event -> event.id == "permanent_tech_licenses" }) {
+            pass.permanentEvents += mission("permanent_tech_licenses", TechLicenseFeature.TECH_LICENSE_UNLOCKED_EVENT, "Obtain {goal} Tech Licenses", listOf(1, 2, 3), listOf(250, 600, 1200))
+        }
+    }
+
     private fun defaultCozyPass(): BattlepassPassDefinition = BattlepassPassDefinition().apply {
         id = "cozy"
         displayName = "Cozy Pass"
@@ -108,6 +117,7 @@ object BattlepassPassRegistry {
                     mission("permanent_cooking_pot_meals", "farmersdelight:cooking_pot_meal_cooked", "Cook {goal} Cooking Pot Meals", listOf(25, 100, 300, 1000), listOf(200, 500, 1000, 2000)),
                     mission("permanent_feast_servings", "farmersdelight:feast_served", "Serve {goal} Feast Portions", listOf(10, 50, 150, 500), listOf(200, 600, 1200, 2200)),
                     mission("permanent_shipping_value", "gisketchs_chowkingdom_mod:shipping_bin_value_sold", "Ship {goal} Chowcoins Worth", listOf(10000, 50000, 200000, 750000), listOf(150, 500, 1200, 2500)),
+                    mission("permanent_tech_licenses", TechLicenseFeature.TECH_LICENSE_UNLOCKED_EVENT, "Obtain {goal} Tech Licenses", listOf(1, 2, 3), listOf(250, 600, 1200)),
                 )
             ).toMutableList()
         weeklyEvents = weekly(
