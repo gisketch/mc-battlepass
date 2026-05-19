@@ -13,10 +13,16 @@ import dev.gisketch.chowkingdom.roles.RolesConfig
 import dev.gisketch.chowkingdom.roles.SereneSeasonSupport
 import dev.gisketch.chowkingdom.shops.StoreShopFeature
 import net.minecraft.ChatFormatting
+import net.minecraft.core.HolderLookup
+import net.minecraft.nbt.CompoundTag
+import net.minecraft.nbt.ListTag
 import net.minecraft.network.chat.Component
 import net.minecraft.server.MinecraftServer
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.server.level.ServerPlayer
+import net.minecraft.util.datafix.DataFixTypes
+import net.minecraft.world.level.saveddata.SavedData
+import net.neoforged.neoforge.server.ServerLifecycleHooks
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
@@ -40,7 +46,6 @@ object NpcLlmService {
     private val detachedResponseTokens = ConcurrentHashMap.newKeySet<Long>()
     private val recentDialogReplies = ConcurrentHashMap<NpcRecentDialogReplyKey, NpcRecentDialogReply>()
     private val recentLlmErrors = ArrayDeque<NpcLlmDebugEntry>()
-    private val llmUsage = NpcLlmUsageTotals()
 
     fun debugErrorLines(limit: Int = 8): List<String> = synchronized(recentLlmErrors) {
         recentLlmErrors.takeLast(limit.coerceIn(1, MAX_LLM_DEBUG_ERRORS)).map { entry ->
@@ -50,7 +55,7 @@ object NpcLlmService {
         }
     }
 
-    fun usageLines(): List<String> = llmUsage.lines()
+    fun usageLines(): List<String> = NpcLlmUsageData.lines()
 
     fun cancel(player: ServerPlayer, npcId: String) {
         val session = talkSessions[npcId]
@@ -751,7 +756,7 @@ object NpcLlmService {
         val cacheMissTokens = usage?.firstLong("prompt_cache_miss_tokens", "cache_miss_tokens") ?: 0L
         val inputTokens = promptTokens ?: (cacheHitTokens + cacheMissTokens).takeIf { it > 0L } ?: estimateTokens(prompt)
         val outputTokens = completionTokens ?: totalTokens?.minus(inputTokens)?.coerceAtLeast(0L) ?: estimateTokens(output)
-        llmUsage.add(
+        NpcLlmUsageData.record(
             NpcLlmUsageSample(
                 provider = settings.provider,
                 model = settings.model,
@@ -1343,24 +1348,51 @@ private data class NpcLlmPricing(
     val outputUsdPerToken: Double,
 )
 
-private class NpcLlmUsageTotals {
-    private val startedAtMs = System.currentTimeMillis()
+private class NpcLlmUsageData : SavedData() {
+    private var firstRecordedAtMs = 0L
+    private var lastRecordedAtMs = 0L
     private val totals: MutableMap<String, NpcLlmUsageBucket> = linkedMapOf()
 
-    @Synchronized
-    fun add(sample: NpcLlmUsageSample) {
-        val key = "${sample.provider}/${sample.model}/${sample.source}"
-        totals.getOrPut(key) { NpcLlmUsageBucket(sample.provider, sample.model, sample.source) }.add(sample)
+    override fun save(tag: CompoundTag, registries: HolderLookup.Provider): CompoundTag {
+        tag.putLong("FirstRecordedAtMs", firstRecordedAtMs)
+        tag.putLong("LastRecordedAtMs", lastRecordedAtMs)
+        val buckets = ListTag()
+        totals.values.forEach { bucket ->
+            buckets.add(
+                CompoundTag().also { entry ->
+                    entry.putString("Provider", bucket.provider)
+                    entry.putString("Model", bucket.model)
+                    entry.putString("Source", bucket.source)
+                    entry.putLong("Requests", bucket.requests)
+                    entry.putLong("InputTokens", bucket.inputTokens)
+                    entry.putLong("CacheHitInputTokens", bucket.cacheHitInputTokens)
+                    entry.putLong("CacheMissInputTokens", bucket.cacheMissInputTokens)
+                    entry.putLong("OutputTokens", bucket.outputTokens)
+                    entry.putLong("EstimatedRequests", bucket.estimatedRequests)
+                    entry.putDouble("CostUsd", bucket.costUsd)
+                },
+            )
+        }
+        tag.put("Buckets", buckets)
+        return tag
     }
 
-    @Synchronized
-    fun lines(): List<String> {
-        if (totals.isEmpty()) return listOf("No NPC LLM usage recorded since server start.")
+    private fun add(sample: NpcLlmUsageSample) {
+        val now = System.currentTimeMillis()
+        if (firstRecordedAtMs <= 0L) firstRecordedAtMs = now
+        lastRecordedAtMs = now
+        val key = "${sample.provider}/${sample.model}/${sample.source}"
+        totals.getOrPut(key) { NpcLlmUsageBucket(sample.provider, sample.model, sample.source) }.add(sample)
+        setDirty()
+    }
+
+    private fun linesForWorld(): List<String> {
+        if (totals.isEmpty()) return listOf("No NPC LLM usage recorded for this world.")
         val buckets = totals.values.sortedWith(compareBy<NpcLlmUsageBucket> { it.provider }.thenBy { it.model }.thenBy { it.source })
         val total = NpcLlmUsageBucket("all", "all", "all")
         buckets.forEach(total::addBucket)
         return buildList {
-            add("NPC LLM usage since ${formatAgeLocal(startedAtMs)} ago: requests=${total.requests} input=${total.inputTokens} cache_hit=${total.cacheHitInputTokens} cache_miss=${total.cacheMissInputTokens} output=${total.outputTokens} estimated_requests=${total.estimatedRequests} est_usd=${formatUsd(total.costUsd)}")
+            add("NPC LLM world usage first=${formatAgeLocal(firstRecordedAtMs)} ago last=${formatAgeLocal(lastRecordedAtMs)} ago requests=${total.requests} input=${total.inputTokens} cache_hit=${total.cacheHitInputTokens} cache_miss=${total.cacheMissInputTokens} output=${total.outputTokens} estimated_requests=${total.estimatedRequests} est_usd=${formatUsd(total.costUsd)}")
             buckets.forEach { bucket ->
                 add("${bucket.provider}/${bucket.model} source=${bucket.source} requests=${bucket.requests} input=${bucket.inputTokens} output=${bucket.outputTokens} est_requests=${bucket.estimatedRequests} est_usd=${formatUsd(bucket.costUsd)}")
             }
@@ -1376,6 +1408,48 @@ private class NpcLlmUsageTotals {
             seconds < 3600 -> "${seconds / 60}m"
             else -> "${seconds / 3600}h"
         }
+    }
+
+    companion object {
+        private const val DATA_ID = "chowkingdom_npc_llm_usage"
+        private val FACTORY = Factory(::NpcLlmUsageData, ::load, DataFixTypes.LEVEL)
+
+        fun record(sample: NpcLlmUsageSample) {
+            val server = ServerLifecycleHooks.getCurrentServer() ?: return
+            get(server).add(sample)
+        }
+
+        fun lines(): List<String> {
+            val server = ServerLifecycleHooks.getCurrentServer() ?: return listOf("No active server for NPC LLM usage.")
+            return get(server).linesForWorld()
+        }
+
+        private fun get(server: MinecraftServer): NpcLlmUsageData =
+            server.overworld().dataStorage.computeIfAbsent(FACTORY, DATA_ID)
+
+        private fun load(tag: CompoundTag, registries: HolderLookup.Provider): NpcLlmUsageData =
+            NpcLlmUsageData().also { data ->
+                data.firstRecordedAtMs = tag.getLong("FirstRecordedAtMs")
+                data.lastRecordedAtMs = tag.getLong("LastRecordedAtMs")
+                val buckets = tag.getList("Buckets", CompoundTag.TAG_COMPOUND.toInt())
+                (0 until buckets.size).forEach { index ->
+                    val entry = buckets.getCompound(index)
+                    val bucket = NpcLlmUsageBucket(
+                        provider = entry.getString("Provider"),
+                        model = entry.getString("Model"),
+                        source = entry.getString("Source"),
+                    )
+                    bucket.requests = entry.getLong("Requests")
+                    bucket.inputTokens = entry.getLong("InputTokens")
+                    bucket.cacheHitInputTokens = entry.getLong("CacheHitInputTokens")
+                    bucket.cacheMissInputTokens = entry.getLong("CacheMissInputTokens")
+                    bucket.outputTokens = entry.getLong("OutputTokens")
+                    bucket.estimatedRequests = entry.getLong("EstimatedRequests")
+                    bucket.costUsd = entry.getDouble("CostUsd")
+                    val key = "${bucket.provider}/${bucket.model}/${bucket.source}"
+                    data.totals[key] = bucket
+                }
+            }
     }
 }
 

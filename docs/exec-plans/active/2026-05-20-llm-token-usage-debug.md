@@ -7,7 +7,7 @@ Find whether the 2026-05-19 DeepSeek spike came from runtime NPC LLM calls, Code
 ## Acceptance Criteria
 
 - Runtime LLM code exposes total requests, token counts, and estimated USD cost.
-- `/llm token` prints current in-memory totals and active provider/model pricing assumptions.
+- `/llm token` prints per-world persisted totals and active provider/model pricing assumptions.
 - Investigation records local evidence for skill-generated content vs runtime NPC calls.
 - Gradle build passes.
 
@@ -26,3 +26,9 @@ Find whether the 2026-05-19 DeepSeek spike came from runtime NPC LLM calls, Code
 3. Estimate usage from prompt/reply chars when provider usage is missing.
 4. Add `/llm token` command output.
 5. Build.
+
+## Progress Log
+
+- 2026-05-20: Added `/llm token` and centralized request/token/cost tracking in `NpcLlmService`.
+- 2026-05-20: Changed usage tracking to world `SavedData` at `chowkingdom_npc_llm_usage`, so totals survive restarts per world.
+- 2026-05-20: Cleared stale Gradle/Kotlin daemon locks and validated with `./gradlew.bat build`.
