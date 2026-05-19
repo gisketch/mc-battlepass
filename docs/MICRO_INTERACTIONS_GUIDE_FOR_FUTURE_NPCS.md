@@ -29,6 +29,26 @@ npc_interaction_exchanges = [
 - `target_ids`: optional NPC ids that can answer this exchange.
 - `source_tags`: optional tags the first NPC must have.
 - `target_tags`: optional tags the second NPC must have.
+- `required_spawned_ids`: optional NPC ids that must be alive in the world before this exchange can be selected. Use this for any concrete third-party NPC named in `line` or `response` who is not already covered by `source_ids` or `target_ids`.
+
+## Solo Moments
+
+`micro_interactions*.toml` can also define rare one-NPC ambient balloons. These are authored text only; they do not call LLMs.
+
+```toml
+[[solo_moments]]
+id = "town_checks_paths"
+topic = "roam"
+source_tags = ["town"]
+activities = ["work", "meetup"]
+line = "These paths tell you where people really walk."
+weight = 2.0
+```
+
+- `source_ids` and `source_tags` gate which NPC can say the line.
+- `required_spawned_ids` gates named third-party NPC references the same way it does for paired exchanges.
+- `activities` is optional. When present, it limits the line to schedule activities such as `work`, `home`, `meetup`, or `pokemon_roam`.
+- Keep `line` short and observational. It should sound like a thought or small daily action, not a quest prompt.
 
 ## Tags
 
@@ -72,3 +92,4 @@ Do not author every permutation. Use tag packs for scale, then add pair-specific
 - Pair-specific content uses `source_ids` and `target_ids`.
 - Trainer-only content uses trainer tags instead of listing every trainer id.
 - New NPCs get useful content with tags alone, before custom pair lines are added.
+- Any line naming a concrete NPC outside its `source_ids`/`target_ids` has `required_spawned_ids`.

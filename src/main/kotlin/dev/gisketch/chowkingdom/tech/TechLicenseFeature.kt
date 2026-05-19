@@ -81,8 +81,8 @@ object TechLicenseFeature {
         spawnPending(server)
     }
 
-    fun dialogOption(player: ServerPlayer, definition: NpcDefinition, workplaceReady: Boolean): TechLicenseDialogOption? {
-        if (!TechLicenseConfig.enabled() || !workplaceReady) return null
+    fun dialogOption(player: ServerPlayer, definition: NpcDefinition): TechLicenseDialogOption? {
+        if (!TechLicenseConfig.enabled()) return null
         val license = TechLicenseConfig.forNpc(definition.id) ?: return null
         if (!thresholdReached(license) || TechLicenseStore.has(player, license.id)) return null
         return TechLicenseDialogOption(

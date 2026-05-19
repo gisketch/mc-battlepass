@@ -157,6 +157,7 @@ object NpcConfig {
             }.normalized()
             compiled.exchanges += content.exchanges
             compiled.trainerExchanges += content.trainerExchanges
+            compiled.soloMoments += content.soloMoments
         }
         return compiled.normalized()
     }

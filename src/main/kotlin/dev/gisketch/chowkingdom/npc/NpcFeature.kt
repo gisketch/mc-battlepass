@@ -121,6 +121,10 @@ object NpcFeature {
     private val npcMicroInteractionRecent: MutableMap<String, ArrayDeque<String>> = linkedMapOf()
     private val npcMicroInteractionDialogContext: MutableMap<UUID, NpcMicroInteractionDialogContext> = linkedMapOf()
     private val npcAutoTaskCooldownUntil: MutableMap<UUID, Long> = linkedMapOf()
+    private val npcAmbientActions: MutableMap<UUID, ActiveNpcAmbientAction> = linkedMapOf()
+    private val npcAmbientCooldownUntil: MutableMap<UUID, Long> = linkedMapOf()
+    private val npcAmbientMemories: MutableMap<UUID, NpcAmbientMemory> = linkedMapOf()
+    private val npcSoloMomentRecent: MutableMap<String, ArrayDeque<String>> = linkedMapOf()
     private val pendingShopNpcs: MutableMap<UUID, String> = linkedMapOf()
     private val animationDebugTargets: MutableMap<UUID, UUID> = linkedMapOf()
     private val bossFightDebugTargets: MutableMap<UUID, UUID> = linkedMapOf()
@@ -1037,7 +1041,7 @@ object NpcFeature {
     }
 
     fun dialogPayload(definition: NpcDefinition, npc: ChowNpcEntity, message: String, contractGranted: Boolean, friendshipLevel: Int, closeOnly: Boolean = false, closeLabel: String = "BYE", responseToken: Long = 0L, dialogMode: String = "normal", startTalkMode: Boolean = false, friendshipDelta: Int = 0, classChangeAvailable: Boolean = false, classChangeCost: Long = 0L, classChangeOptions: List<NpcClassChangeOption> = emptyList(), quizChoices: List<NpcQuizChoice> = emptyList(), bossContractsAvailable: Boolean = BossEventsFeature.contractsAvailable(definition), bossClaimAvailable: Boolean = false, leagueAvailable: Boolean = GymLeagueFeature.leagueAvailable(definition), challengeAvailable: Boolean = false, challengeDisabledReason: String = "", friendlyBattleAvailable: Boolean = false, retryBattleAvailable: Boolean = false, leagueCompassAvailable: Boolean = false, player: ServerPlayer? = null): NpcDialogPayload {
-        val techOption = player?.let { TechLicenseFeature.dialogOption(it, definition, hasReadyWorkplace(it.level(), definition)) }
+        val techOption = player?.let { TechLicenseFeature.dialogOption(it, definition) }
         val shopAvailable = definition.storeId().isNotBlank() && (player == null || TechLicenseFeature.shopLock(player, definition) == null)
         return NpcDialogPayload(
         definition.id,
@@ -1284,6 +1288,30 @@ object NpcFeature {
     fun tickSmartBrainTalkingPause(npc: ChowNpcEntity): Boolean {
         if (!npc.isTalking()) return false
         npc.navigation.stop()
+        return true
+    }
+
+    fun tickSmartBrainAmbientLife(npc: ChowNpcEntity): Boolean {
+        val definition = smartBrainDefinition(npc) ?: return false
+        val level = npc.level() as? ServerLevel ?: return false
+        val activity = activityFor(npc, definition)
+        if (npc.isSleeping || npc.isTalking() || activity == "sleep") {
+            npcAmbientActions.remove(npc.uuid)
+            return false
+        }
+        npcAmbientActions[npc.uuid]?.let { action ->
+            if (action.activity != activity || level.gameTime >= action.untilTick || !npc.isAlive) {
+                finishAmbientAction(level, npc)
+                return false
+            }
+            tickAmbientAction(level, npc, action)
+            return true
+        }
+        if (!npc.navigation.isDone) return false
+        val cooldown = npcAmbientCooldownUntil[npc.uuid] ?: 0L
+        if (level.gameTime < cooldown) return false
+        val action = selectAmbientAction(level, npc, definition, activity) ?: return false
+        startAmbientAction(level, npc, definition, action)
         return true
     }
 
@@ -1673,20 +1701,22 @@ object NpcFeature {
         val content = NpcConfig.microInteractions()
         val firstTags = npcMicroInteractionTags(firstDefinition)
         val secondTags = npcMicroInteractionTags(secondDefinition)
+        val spawnedNpcIds = spawnedNpcIds(level.server)
         val candidates = buildList {
-            addAll(firstDefinition.npcInteractionExchanges.filter { exchange -> exchange.matches(firstDefinition, secondDefinition, firstTags, secondTags) })
-            addAll(content.exchanges.filter { exchange -> exchange.matches(firstDefinition, secondDefinition, firstTags, secondTags) })
+            addAll(firstDefinition.npcInteractionExchanges.filter { exchange -> exchange.matches(firstDefinition, secondDefinition, firstTags, secondTags, spawnedNpcIds) })
+            addAll(content.exchanges.filter { exchange -> exchange.matches(firstDefinition, secondDefinition, firstTags, secondTags, spawnedNpcIds) })
             if ("pokemon_trainer" in firstTags || "pokemon_trainer" in secondTags) {
-                addAll(content.trainerExchanges.filter { exchange -> exchange.matches(firstDefinition, secondDefinition, firstTags, secondTags) })
+                addAll(content.trainerExchanges.filter { exchange -> exchange.matches(firstDefinition, secondDefinition, firstTags, secondTags, spawnedNpcIds) })
             }
             if (isEmpty()) {
-                addAll(secondDefinition.npcInteractionExchanges.filter { exchange -> exchange.matches(secondDefinition, firstDefinition, secondTags, firstTags) }.map { exchange ->
+                addAll(secondDefinition.npcInteractionExchanges.filter { exchange -> exchange.matches(secondDefinition, firstDefinition, secondTags, firstTags, spawnedNpcIds) }.map { exchange ->
                     NpcMicroInteractionExchangeDefinition(
                         id = "${exchange.id}_reversed",
                         topic = exchange.topic,
                         line = exchange.response,
                         response = exchange.line,
                         weight = exchange.weight,
+                        requiredSpawnedIds = exchange.requiredSpawnedIds,
                     ).normalized("reversed_${exchange.id}")
                 })
             }
@@ -1699,11 +1729,12 @@ object NpcFeature {
         return weightedNpcMicroInteraction(level, fresh)
     }
 
-    private fun NpcMicroInteractionExchangeDefinition.matches(source: NpcDefinition, target: NpcDefinition, sourceTagSet: Set<String>, targetTagSet: Set<String>): Boolean {
+    private fun NpcMicroInteractionExchangeDefinition.matches(source: NpcDefinition, target: NpcDefinition, sourceTagSet: Set<String>, targetTagSet: Set<String>, spawnedNpcIds: Set<String>): Boolean {
         if (sourceIds.isNotEmpty() && cleanNpcMicroInteractionToken(source.id) !in sourceIds) return false
         if (targetIds.isNotEmpty() && cleanNpcMicroInteractionToken(target.id) !in targetIds) return false
         if (sourceTags.isNotEmpty() && sourceTags.none { tag -> tag in sourceTagSet }) return false
         if (targetTags.isNotEmpty() && targetTags.none { tag -> tag in targetTagSet }) return false
+        if (requiredSpawnedIds.isNotEmpty() && requiredSpawnedIds.any { npcId -> npcId !in spawnedNpcIds }) return false
         return true
     }
 
@@ -1849,6 +1880,194 @@ object NpcFeature {
         val extraTicks = NPC_AUTO_TASK_COOLDOWN_MIN_TICKS + level.random.nextInt((NPC_AUTO_TASK_COOLDOWN_MAX_TICKS - NPC_AUTO_TASK_COOLDOWN_MIN_TICKS + 1).toInt())
         npcAutoTaskCooldownUntil[npc.uuid] = level.gameTime + taskTicks + extraTicks
     }
+
+    fun ambientFocus(npc: ChowNpcEntity): NpcAmbientFocus? {
+        val level = npc.level() as? ServerLevel ?: return null
+        npcAmbientActions[npc.uuid]?.let { action ->
+            return NpcAmbientFocus(action.activity, action.goal, action.targetLabel, action.topic, action.line)
+        }
+        val memory = npcAmbientMemories[npc.uuid] ?: return null
+        if (level.gameTime <= memory.expiresAtTick) {
+            return NpcAmbientFocus(memory.activity, memory.goal, memory.targetLabel, memory.topic, memory.line)
+        }
+        npcAmbientMemories.remove(npc.uuid)
+        return null
+    }
+
+    fun recentMicroInteractionFocus(npc: ChowNpcEntity): NpcRecentMicroInteractionFocus? {
+        val level = npc.level() as? ServerLevel ?: return null
+        val context = npcMicroInteractionDialogContext(npc, level) ?: return null
+        return NpcRecentMicroInteractionFocus(context.partnerName, context.topic, context.ownMessage, context.partnerMessage)
+    }
+
+    private fun startAmbientAction(level: ServerLevel, npc: ChowNpcEntity, definition: NpcDefinition, action: ActiveNpcAmbientAction) {
+        npcAmbientActions[npc.uuid] = action
+        rememberAmbientAction(level, npc, action)
+        action.soloMomentId.takeIf(String::isNotBlank)?.let { rememberSoloMoment(definition.id, it, action.topic) }
+        if (action.line.isNotBlank()) {
+            showAmbientLine(level, npc, definition, action)
+        }
+        tickAmbientAction(level, npc, action)
+    }
+
+    private fun tickAmbientAction(level: ServerLevel, npc: ChowNpcEntity, action: ActiveNpcAmbientAction) {
+        npc.debugActivity = action.activity
+        npc.debugGoal = action.goal
+        npc.debugTargetPos = action.targetPos?.immutable()
+        action.lookPos?.let { look -> npc.lookControl.setLookAt(look.x, look.y, look.z, 30.0f, 30.0f) }
+        val target = action.targetPos
+        if (target == null) {
+            npc.navigation.stop()
+            return
+        }
+        val targetX = target.x + 0.5
+        val targetY = target.y.toDouble()
+        val targetZ = target.z + 0.5
+        if (npc.distanceToSqr(targetX, targetY, targetZ) <= NPC_AMBIENT_REACH_DISTANCE_SQR) {
+            npc.navigation.stop()
+            npc.lookControl.setLookAt(targetX, targetY + 1.0, targetZ, 30.0f, 30.0f)
+            return
+        }
+        if (npc.navigation.isDone || npc.tickCount % NPC_AMBIENT_REPATH_TICKS == 0) {
+            npc.navigation.moveTo(targetX, targetY, targetZ, NPC_AMBIENT_SPEED)
+        }
+        if (level.gameTime % 40L == 0L) rememberAmbientAction(level, npc, action)
+    }
+
+    private fun finishAmbientAction(level: ServerLevel, npc: ChowNpcEntity) {
+        npcAmbientActions.remove(npc.uuid)?.let { action -> rememberAmbientAction(level, npc, action) }
+        npcAmbientCooldownUntil[npc.uuid] = level.gameTime + NPC_AMBIENT_COOLDOWN_MIN_TICKS + level.random.nextInt((NPC_AMBIENT_COOLDOWN_MAX_TICKS - NPC_AMBIENT_COOLDOWN_MIN_TICKS + 1).toInt())
+    }
+
+    private fun rememberAmbientAction(level: ServerLevel, npc: ChowNpcEntity, action: ActiveNpcAmbientAction) {
+        npcAmbientMemories[npc.uuid] = NpcAmbientMemory(
+            activity = action.activity,
+            goal = action.goal,
+            targetLabel = action.targetLabel,
+            topic = action.topic,
+            line = action.line,
+            expiresAtTick = level.gameTime + NPC_AMBIENT_MEMORY_TICKS,
+        )
+    }
+
+    private fun selectAmbientAction(level: ServerLevel, npc: ChowNpcEntity, definition: NpcDefinition, activity: String): ActiveNpcAmbientAction? {
+        val moment = if (level.random.nextInt(100) < NPC_AMBIENT_SOLO_MOMENT_CHANCE) selectSoloMoment(level, definition, activity) else null
+        val durationTicks = NPC_AMBIENT_MIN_TICKS + level.random.nextInt((NPC_AMBIENT_MAX_TICKS - NPC_AMBIENT_MIN_TICKS + 1).toInt())
+        val untilTick = level.gameTime + durationTicks
+        val action = when (activity) {
+            "pokemon_roam" -> pokemonAmbientAction(level, npc, definition, activity, untilTick)
+            NpcScheduleDefinition.MEETUP_ACTIVITY -> plazaAmbientAction(npc, activity, untilTick)
+            "home" -> homeAmbientAction(npc, definition, activity, untilTick)
+            "work" -> workAmbientAction(level, npc, definition, activity, untilTick)
+            else -> roamAmbientAction(npc, definition, activity, untilTick)
+        } ?: return null
+        return action.withMoment(moment, definition)
+    }
+
+    private fun pokemonAmbientAction(level: ServerLevel, npc: ChowNpcEntity, definition: NpcDefinition, activity: String, untilTick: Long): ActiveNpcAmbientAction? {
+        val target = randomPokemonRoamTarget(npc, definition)
+        if (target != null) {
+            return ambientMove(activity, target.kind.id, target.kind.topic, target.kind.label, target.pos, untilTick)
+        }
+        return roamAmbientAction(npc, definition, activity, untilTick)
+    }
+
+    private fun plazaAmbientAction(npc: ChowNpcEntity, activity: String, untilTick: Long): ActiveNpcAmbientAction? {
+        val target = randomPlazaTarget(npc) ?: return null
+        return ambientMove(activity, "town_roam", "plaza", "the plaza", target, untilTick)
+    }
+
+    private fun homeAmbientAction(npc: ChowNpcEntity, definition: NpcDefinition, activity: String, untilTick: Long): ActiveNpcAmbientAction? {
+        npc.homePos?.let { home ->
+            val target = randomRoamTargetNear(npc, home, NPC_HOME_AMBIENT_RADIUS) ?: home
+            return ambientMove(activity, "home_chore", "home", "home", target, untilTick)
+        }
+        return roamAmbientAction(npc, definition, activity, untilTick)?.copy(goal = "missing_home_roam", topic = "missing_home", targetLabel = "camp")
+    }
+
+    private fun workAmbientAction(level: ServerLevel, npc: ChowNpcEntity, definition: NpcDefinition, activity: String, untilTick: Long): ActiveNpcAmbientAction? {
+        val workplace = NpcStore.workplacePos(definition.id)
+        if (workplace != null) {
+            val target = randomWorkplaceTarget(npc, workplace) ?: workplace.above()
+            return ambientMove(activity, "work_chore", "work", "workplace", target, untilTick)
+        }
+        observePokemonAction(level, npc, activity, untilTick)?.let { return it.copy(goal = "seek_workplace_pokemon") }
+        randomAmbientBlockTarget(npc, npc.homePos ?: npc.campPos ?: npc.blockPosition())?.let { (target, label) ->
+            return ambientMove(activity, "seek_workplace", "missing_workplace", label, target, untilTick)
+        }
+        plazaAmbientAction(npc, activity, untilTick)?.let { return it.copy(goal = "seek_workplace", topic = "missing_workplace", targetLabel = "town center") }
+        return roamAmbientAction(npc, definition, activity, untilTick)?.copy(goal = "seek_workplace", topic = "missing_workplace", targetLabel = "nearby paths")
+    }
+
+    private fun roamAmbientAction(npc: ChowNpcEntity, definition: NpcDefinition, activity: String, untilTick: Long): ActiveNpcAmbientAction? {
+        randomAmbientBlockTarget(npc, npc.homePos ?: npc.campPos ?: npc.blockPosition())?.let { (target, label) ->
+            return ambientMove(activity, "observe_block", "observed_object", label, target, untilTick)
+        }
+        val target = randomRoamTarget(npc, definition) ?: return null
+        return ambientMove(activity, "ambient_roam", "roam", "nearby paths", target, untilTick)
+    }
+
+    private fun observePokemonAction(level: ServerLevel, npc: ChowNpcEntity, activity: String, untilTick: Long): ActiveNpcAmbientAction? {
+        val pokemon = nearestWildPokemon(level, npc) ?: return null
+        val species = pokemon.displayName?.string?.takeIf(String::isNotBlank) ?: "Pokemon"
+        return ambientMove(activity, "observe_pokemon", "pokemon", species, pokemon.blockPosition(), untilTick)
+    }
+
+    private fun ambientMove(activity: String, goal: String, topic: String, targetLabel: String, target: BlockPos, untilTick: Long): ActiveNpcAmbientAction =
+        ActiveNpcAmbientAction(activity = activity, goal = goal, topic = topic, targetLabel = targetLabel, targetPos = target, lookPos = Vec3.atCenterOf(target), untilTick = untilTick)
+
+    private fun ActiveNpcAmbientAction.withMoment(moment: NpcSoloMomentDefinition?, definition: NpcDefinition): ActiveNpcAmbientAction {
+        if (moment == null) return this
+        val topic = moment.topic.ifBlank { this.topic }
+        return copy(topic = topic, line = renderSoloMomentLine(moment.line, definition, activity, targetLabel, topic), soloMomentId = moment.id)
+    }
+
+    private fun showAmbientLine(level: ServerLevel, npc: ChowNpcEntity, definition: NpcDefinition, action: ActiveNpcAmbientAction) {
+        showBalloonToNearby(level, npc, action.line, NPC_AMBIENT_BALLOON_TICKS)
+        val targetText = action.targetLabel.ifBlank { action.goal.replace('_', ' ') }
+        NpcStore.recordGlobalEvent("npc_solo_moment", "${definition.name} was ${action.goal.replace('_', ' ')} near $targetText.")
+    }
+
+    private fun selectSoloMoment(level: ServerLevel, definition: NpcDefinition, activity: String): NpcSoloMomentDefinition? {
+        val tags = npcMicroInteractionTags(definition)
+        val recent = npcSoloMomentRecent[definition.id].orEmpty()
+        val spawnedNpcIds = spawnedNpcIds(level.server)
+        val candidates = NpcConfig.microInteractions().soloMoments
+            .filter { moment -> moment.matchesSoloMoment(definition, tags, activity, spawnedNpcIds) && moment.weight > 0.0 && moment.line.isNotBlank() }
+        val fresh = candidates.filterNot { moment -> moment.id in recent || "topic:${moment.topic}" in recent }
+            .ifEmpty { candidates.filterNot { moment -> moment.id in recent } }
+            .ifEmpty { candidates }
+        if (fresh.isEmpty()) return null
+        val totalWeight = fresh.sumOf { moment -> moment.weight.coerceAtLeast(0.0) }
+        if (totalWeight <= 0.0) return fresh.randomOrNull()
+        var roll = level.random.nextDouble() * totalWeight
+        fresh.forEach { moment ->
+            roll -= moment.weight.coerceAtLeast(0.0)
+            if (roll <= 0.0) return moment
+        }
+        return fresh.lastOrNull()
+    }
+
+    private fun NpcSoloMomentDefinition.matchesSoloMoment(definition: NpcDefinition, sourceTagSet: Set<String>, activity: String, spawnedNpcIds: Set<String>): Boolean {
+        if (sourceIds.isNotEmpty() && cleanNpcMicroInteractionToken(definition.id) !in sourceIds) return false
+        if (sourceTags.isNotEmpty() && sourceTags.none { tag -> tag in sourceTagSet }) return false
+        if (activities.isNotEmpty() && cleanNpcMicroInteractionToken(activity) !in activities) return false
+        if (requiredSpawnedIds.isNotEmpty() && requiredSpawnedIds.any { npcId -> npcId !in spawnedNpcIds }) return false
+        return true
+    }
+
+    private fun rememberSoloMoment(npcId: String, momentId: String, topic: String) {
+        val recent = npcSoloMomentRecent.getOrPut(npcId) { ArrayDeque() }
+        recent.addLast(momentId)
+        if (topic.isNotBlank()) recent.addLast("topic:$topic")
+        while (recent.size > NPC_SOLO_MOMENT_RECENT_MEMORY) recent.removeFirst()
+    }
+
+    private fun renderSoloMomentLine(text: String, definition: NpcDefinition, activity: String, target: String, topic: String): String = text
+        .replace("{npc}", definition.name)
+        .replace("{activity}", activity)
+        .replace("{target}", target)
+        .replace("{topic}", topic)
 
     private fun updateGreetingRadiusState(npc: ChowNpcEntity, definition: NpcDefinition, playersInRadius: List<ServerPlayer>) {
         val current = playersInRadius.map { player -> player.stringUUID }.toSet()
@@ -3690,6 +3909,12 @@ object NpcFeature {
         .flatMap { level -> level.getEntities(NPC_ENTITY.get()) { npc -> npc.npcId == npcId && npc.isAlive }.asSequence() }
         .toList()
 
+    private fun spawnedNpcIds(server: MinecraftServer): Set<String> = server.allLevels.asSequence()
+        .flatMap { level -> level.getEntities(NPC_ENTITY.get()) { npc -> npc.isAlive }.asSequence() }
+        .map { npc -> cleanNpcMicroInteractionToken(npc.npcId) }
+        .filter(String::isNotBlank)
+        .toSet()
+
     private fun findNpc(server: MinecraftServer, entityId: UUID): ChowNpcEntity? = server.allLevels.asSequence()
         .mapNotNull { level -> level.getEntity(entityId) as? ChowNpcEntity }
         .firstOrNull()
@@ -3718,16 +3943,67 @@ object NpcFeature {
 
     private fun randomRoamTarget(entity: ChowNpcEntity, definition: NpcDefinition): BlockPos? {
         val base = entity.homePos ?: entity.campPos ?: entity.blockPosition()
+        return randomRoamTargetNear(entity, base, definition.jobDefinition.roamRadius)
+    }
+
+    private fun randomRoamTargetNear(entity: ChowNpcEntity, base: BlockPos, radius: Int): BlockPos? {
         val random = entity.random
-        val radius = definition.jobDefinition.roamRadius
+        val clampedRadius = radius.coerceIn(1, 64)
         repeat(16) {
-            val x = base.x + random.nextInt(radius * 2 + 1) - radius
-            val z = base.z + random.nextInt(radius * 2 + 1) - radius
+            val x = base.x + random.nextInt(clampedRadius * 2 + 1) - clampedRadius
+            val z = base.z + random.nextInt(clampedRadius * 2 + 1) - clampedRadius
             val y = entity.level().getHeightmapPos(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, BlockPos(x, base.y, z)).y
             val pos = BlockPos(x, y, z)
             if (entity.navigation.createPath(pos, 0) != null) return pos
         }
         return null
+    }
+
+    private fun randomAmbientBlockTarget(entity: ChowNpcEntity, base: BlockPos): Pair<BlockPos, String>? {
+        val level = entity.level()
+        val random = entity.random
+        val radius = NPC_AMBIENT_OBJECT_SCAN_RADIUS
+        repeat(24) {
+            val x = base.x + random.nextInt(radius * 2 + 1) - radius
+            val z = base.z + random.nextInt(radius * 2 + 1) - radius
+            val y = level.getHeightmapPos(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, BlockPos(x, base.y, z)).y
+            val surface = BlockPos(x, y, z)
+            val observed = sequenceOf(surface, surface.below(), surface.above())
+                .mapNotNull { pos -> ambientBlockLabel(level.getBlockState(pos))?.let { label -> pos to label } }
+                .firstOrNull()
+                ?: return@repeat
+            val target = pathableAmbientTarget(entity, observed.first) ?: return@repeat
+            val label = observed.second
+            return target to label
+        }
+        return null
+    }
+
+    private fun ambientBlockLabel(state: BlockState): String? = when {
+        state.`is`(BlockTags.FLOWERS) -> "flowers"
+        state.`is`(BlockTags.LEAVES) || state.`is`(BlockTags.LOGS) -> "trees"
+        state.`is`(Blocks.WATER) -> "water"
+        state.`is`(Blocks.CAMPFIRE) || state.`is`(Blocks.SOUL_CAMPFIRE) -> "campfire"
+        state.`is`(Blocks.CHEST) || state.`is`(Blocks.BARREL) -> "storage"
+        state.`is`(Blocks.CRAFTING_TABLE) -> "work table"
+        state.`is`(Blocks.FURNACE) || state.`is`(Blocks.SMOKER) || state.`is`(Blocks.BLAST_FURNACE) -> "work station"
+        state.`is`(BlockTags.BEDS) -> "bed"
+        else -> null
+    }
+
+    private fun pathableAmbientTarget(entity: ChowNpcEntity, blockPos: BlockPos): BlockPos? {
+        val candidates = sequenceOf(
+            blockPos.above(),
+            blockPos.north(),
+            blockPos.south(),
+            blockPos.east(),
+            blockPos.west(),
+            blockPos.north().above(),
+            blockPos.south().above(),
+            blockPos.east().above(),
+            blockPos.west().above(),
+        )
+        return candidates.firstOrNull { pos -> entity.navigation.createPath(pos, 0) != null }
     }
 
     private fun randomWorkplaceTarget(entity: ChowNpcEntity, center: BlockPos): BlockPos? {
@@ -3756,10 +4032,10 @@ object NpcFeature {
 
     private data class PokemonRoamTarget(val pos: BlockPos, val kind: PokemonRoamTargetKind)
 
-    private enum class PokemonRoamTargetKind(val id: String) {
-        POKEMON("pokemon_watch"),
-        TRAINER("trainer_meetup"),
-        ROAM("roam"),
+    private enum class PokemonRoamTargetKind(val id: String, val topic: String, val label: String) {
+        POKEMON("pokemon_watch", "pokemon", "nearby Pokemon"),
+        TRAINER("trainer_meetup", "trainer", "nearby trainer"),
+        ROAM("roam", "roam", "nearby paths"),
     }
 
     private data class NpcWorkBlockStatus(val counts: List<NpcWorkBlockCount>) {
@@ -3791,6 +4067,27 @@ object NpcFeature {
         val expiresAtTick: Long,
     )
 
+    private data class ActiveNpcAmbientAction(
+        val activity: String,
+        val goal: String,
+        val topic: String,
+        val targetLabel: String,
+        val targetPos: BlockPos?,
+        val lookPos: Vec3?,
+        val untilTick: Long,
+        val line: String = "",
+        val soloMomentId: String = "",
+    )
+
+    private data class NpcAmbientMemory(
+        val activity: String,
+        val goal: String,
+        val targetLabel: String,
+        val topic: String,
+        val line: String,
+        val expiresAtTick: Long,
+    )
+
     private const val DEBUG_REACH = 12.0
     private const val DEBUG_AIM_RADIUS = 1.5
     private const val REALTIME_DEBUG_INTERVAL_TICKS = 10
@@ -3816,6 +4113,19 @@ object NpcFeature {
     private const val NPC_MICRO_INTERACTION_INTERRUPT_MEMORY_TICKS = 20L * 30L
     private const val NPC_AUTO_TASK_COOLDOWN_MIN_TICKS = 200L
     private const val NPC_AUTO_TASK_COOLDOWN_MAX_TICKS = 300L
+    private const val NPC_AMBIENT_MIN_TICKS = 80L
+    private const val NPC_AMBIENT_MAX_TICKS = 220L
+    private const val NPC_AMBIENT_COOLDOWN_MIN_TICKS = 60L
+    private const val NPC_AMBIENT_COOLDOWN_MAX_TICKS = 140L
+    private const val NPC_AMBIENT_MEMORY_TICKS = 20L * 45L
+    private const val NPC_AMBIENT_REPATH_TICKS = 40
+    private const val NPC_AMBIENT_REACH_DISTANCE_SQR = 2.25 * 2.25
+    private const val NPC_AMBIENT_SPEED = 0.75
+    private const val NPC_AMBIENT_BALLOON_TICKS = 100
+    private const val NPC_AMBIENT_SOLO_MOMENT_CHANCE = 28
+    private const val NPC_AMBIENT_OBJECT_SCAN_RADIUS = 9
+    private const val NPC_HOME_AMBIENT_RADIUS = 4
+    private const val NPC_SOLO_MOMENT_RECENT_MEMORY = 12
     private const val NPC_DEFAULT_MEETUP_START_HOUR = 15
     private const val NPC_DEFAULT_MEETUP_END_HOUR = 20
     private const val NPC_PLAZA_CAMP_FALLBACK_RADIUS = 10
@@ -3845,3 +4155,18 @@ object NpcFeature {
     private const val RESPAWN_SCAN_INTERVAL_TICKS = 20
     private const val NPC_RESPAWN_HOUR = 5
 }
+
+class NpcAmbientFocus(
+    val activity: String,
+    val goal: String,
+    val targetLabel: String,
+    val topic: String,
+    val line: String,
+)
+
+class NpcRecentMicroInteractionFocus(
+    val partnerName: String,
+    val topic: String,
+    val ownMessage: String,
+    val partnerMessage: String,
+)

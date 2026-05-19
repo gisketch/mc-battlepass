@@ -42,10 +42,6 @@ object TechLicenseQuestService {
             openLicenseDialog(player, npc, definition, license, null, "The server has not shipped enough yet for <b>${license.displayName}</b>. Current total: ${TechLicenseFeature.currentShippingTotal()}/${license.thresholdChowcoins}.", "threshold_locked", null, null, "The player asked too early. Tell them this license is still locked behind server shipping progress.")
             return true
         }
-        if (!NpcFeature.hasReadyWorkplace(player.level(), definition)) {
-            openLicenseDialog(player, npc, definition, license, null, "Set up my workplace first, then we can start the <b>${license.displayName}</b>.", "workplace_missing", null, null, "The NPC workplace is not ready. Tell the player to settle the workplace before certification.")
-            return true
-        }
 
         val steps = license.quest.steps
         if (steps.isEmpty()) {

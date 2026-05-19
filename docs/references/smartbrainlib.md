@@ -115,7 +115,8 @@ Current CKDM SBL behavior order:
 7. quest offer balloon
 8. greeting balloon
 9. talking pause
-10. routine schedule movement
+10. ambient life
+11. routine schedule movement
 
 Add future town AI as focused `NpcSmartBrainTask` entries unless it truly needs its own long-running SBL behavior. The town-brain root must re-evaluate priority every tick so stale dialog/talking/task states cannot freeze routine movement. Do not put dialog, shop, gift claiming, quest UI, packets, or LLM text generation into SBL behaviors.
 

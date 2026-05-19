@@ -54,6 +54,7 @@ import dev.gisketch.chowkingdom.shops.ShopsFeature
 import dev.gisketch.chowkingdom.snackbar.SnackbarClient
 import dev.gisketch.chowkingdom.snackbar.SnackbarFeature
 import dev.gisketch.chowkingdom.skilltree.ClassSkillTreeFeature
+import dev.gisketch.chowkingdom.tech.ArsNouveauHudGateClient
 import dev.gisketch.chowkingdom.tech.TechLicenseFeature
 import dev.gisketch.chowkingdom.trading.TradingClient
 import dev.gisketch.chowkingdom.trading.TradingFeature
@@ -136,6 +137,7 @@ class ChowKingdomMod(modBus: IEventBus, container: ModContainer) {
             GymTransitionClient.register(modBus)
             NpcBossBarClient.register(modBus)
             NpcClient.register(modBus)
+            ArsNouveauHudGateClient.register(modBus)
             PunchyFirstPersonSuppressionBridge.register()
             XaeroNpcMapCompat.register()
         }

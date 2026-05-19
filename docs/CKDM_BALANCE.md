@@ -57,6 +57,7 @@ Total guaranteed battlepass relic tokens: 14.
 - Tech mods are locked by namespace interaction until the player earns that mod's license.
 - Default server-wide shipping thresholds: Create/Bulma at 100,000, Ars Nouveau/Howl at 150,000, and Oritech/Rick Sanchez at 200,000 shipped chowcoins.
 - Default personal license fee is 10,000 chowcoins each, after NPC proof steps.
+- Tech license certification is not workplace-gated; tech NPC workplaces gate their shops, friendly battles, and work routines after the license path is available.
 - Gates block right-click item use, right-clicking tech blocks, block placement, use-start, equipment changes, and equipped-state checks. Breaking blocks remains allowed.
 - Default gated namespaces live in `config/gisketchs_chowkingdom_mod/tech_licenses/licenses.toml`; always-banned item/block patterns can hard-ban specific outliers such as abusive Ars automation.
 - Tech expert daily missions unlock only after the matching player license and do not consume the normal NPC daily quest cap.

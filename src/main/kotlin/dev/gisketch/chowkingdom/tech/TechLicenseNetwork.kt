@@ -72,6 +72,9 @@ object TechLicenseClientState {
         grantedLicenseIds = payload.grantedLicenseIds.map { it.lowercase(Locale.ROOT) }.toSet()
     }
 
+    fun hasLicense(licenseId: String): Boolean =
+        licenseId.trim().lowercase(Locale.ROOT) in grantedLicenseIds
+
     fun lockInfo(stack: ItemStack): TechLicenseItemLockInfo? {
         return lockInfo(stack, allowConfiguredExemptions = stack.item !is ArmorItem)
     }

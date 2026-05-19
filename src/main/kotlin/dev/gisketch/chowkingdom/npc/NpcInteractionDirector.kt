@@ -54,15 +54,22 @@ object NpcInteractionDirector {
         val bossEvent = NpcStore.recentGlobalEvents().lastOrNull { event -> event.type.contains("boss") }
         val globalMemory = NpcStore.recentGlobalMemories().lastOrNull()
         val playerMemory = context.playerMemories.lastOrNull()
-        val nearbyNpc = level?.getEntities(NpcFeature.NPC_ENTITY.get(), npc.boundingBox.inflate(8.0)) { other ->
+        val nearbyNpcs = level?.getEntities(NpcFeature.NPC_ENTITY.get(), npc.boundingBox.inflate(8.0)) { other ->
             other.uuid != npc.uuid && other.isAlive
-        }?.minByOrNull { other -> other.distanceToSqr(npc) }?.let { other -> NpcConfig.get(other.npcId)?.name ?: other.npcId }.orEmpty()
+        }.orEmpty()
+        val nearbyNpc = nearbyNpcs.minByOrNull { other -> other.distanceToSqr(npc) }?.let { other -> NpcConfig.get(other.npcId)?.name ?: other.npcId }.orEmpty()
         val nearbyPokemon = level?.getEntities(player, player.boundingBox.inflate(10.0)) { entity -> isPokemonEntity(entity) }
             ?.minByOrNull { entity -> entity.distanceToSqr(player) }
             ?.displayName?.string.orEmpty()
         val party = playerPokemon(player).take(6).joinToString(", ") { pokemon -> pokemonSpecies(pokemon) }.ifBlank { "" }
         val role = roleSummary(player)
         val activity = NpcFeature.activityFor(npc, definition)
+        val ambient = NpcFeature.ambientFocus(npc)
+        val recentMicro = NpcFeature.recentMicroInteractionFocus(npc)
+        val missingWorkplace = if (activity == "work" && NpcStore.workplacePos(definition.id) == null) "no assigned workplace" else ""
+        val missingHome = if (definition.housing.canMoveIn && NpcStore.homePos(definition.id) == null) "no assigned home" else ""
+        val observedObject = ambient?.takeIf { focus -> focus.goal.contains("observe") || focus.topic in setOf("observed_object", "pokemon") }?.targetLabel.orEmpty()
+        val mainPokemon = definition.mainPokemon.substringAfter(':').replace('_', ' ')
         val weather = when {
             level?.isThundering == true -> "thunder"
             level?.isRaining == true -> "rain"
@@ -83,6 +90,7 @@ object NpcInteractionDirector {
                 "global_memory" to globalMemory?.text.orEmpty(),
                 "player_memory" to playerMemory?.text.orEmpty(),
                 "nearby_npc" to nearbyNpc,
+                "nearby_npc_count" to nearbyNpcs.size.toString(),
                 "nearby_pokemon" to nearbyPokemon,
                 "pokemon_party" to party,
                 "role_summary" to role,
@@ -90,6 +98,18 @@ object NpcInteractionDirector {
                 "time_hour" to NpcTime.hour(player.level()).toString().padStart(2, '0'),
                 "dimension" to (level?.dimension()?.location()?.toString() ?: "unknown"),
                 "npc_activity" to activity,
+                "ambient_goal" to ambient?.goal.orEmpty(),
+                "ambient_target" to ambient?.targetLabel.orEmpty(),
+                "ambient_topic" to ambient?.topic.orEmpty(),
+                "ambient_line" to ambient?.line.orEmpty(),
+                "missing_workplace" to missingWorkplace,
+                "missing_home" to missingHome,
+                "observed_object" to observedObject,
+                "companion_pokemon" to mainPokemon,
+                "recent_micro_partner" to recentMicro?.partnerName.orEmpty(),
+                "recent_micro_topic" to recentMicro?.topic.orEmpty(),
+                "recent_micro_line" to recentMicro?.ownMessage.orEmpty(),
+                "recent_micro_response" to recentMicro?.partnerMessage.orEmpty(),
                 "store" to definition.storeId().ifBlank { "none" },
                 "home" to (NpcStore.homePos(definition.id)?.toShortString() ?: "unset"),
                 "health" to "${player.health.toInt()}/${player.maxHealth.toInt()}",
@@ -156,11 +176,18 @@ object NpcInteractionDirector {
         "npc_hurt_by_player" -> value("hurt_player").isNotBlank() && eventAges["npc_hurt_by_player"] != Long.MAX_VALUE
         "npc_hurt_recent" -> value("hurt_player").isNotBlank()
         "nearby_npc" -> value("nearby_npc").isNotBlank()
+        "town_crowd" -> value("nearby_npc_count").toIntOrNull()?.let { it >= 2 } == true
         "nearby_pokemon" -> value("nearby_pokemon").isNotBlank()
         "pokemon_party" -> value("pokemon_party").isNotBlank()
+        "companion_pokemon" -> value("companion_pokemon").isNotBlank()
         "job_class", "class_job" -> value("role_summary") != "none"
         "store" -> value("store") != "none"
         "home" -> value("home") != "unset"
+        "missing_workplace" -> value("missing_workplace").isNotBlank()
+        "missing_home" -> value("missing_home").isNotBlank()
+        "ambient_activity" -> value("ambient_goal").isNotBlank()
+        "observed_object" -> value("observed_object").isNotBlank()
+        "recent_micro_followup" -> value("recent_micro_partner").isNotBlank()
         "weather" -> value("weather") != "clear"
         "time_of_day", "location", "npc_schedule" -> true
         else -> value(requirement).isNotBlank()
@@ -200,6 +227,13 @@ object NpcInteractionDirector {
         topic("nearby_pokemon", 12.0, "nearby_pokemon", 0, "Interaction focus: nearby_pokemon. React to the nearby Pokemon: {nearby_pokemon}. Tone: {tone}.", "That nearby Pokemon is interesting."),
         topic("nearby_npc", 8.0, "nearby_npc", 0, "Interaction focus: nearby_npc. Mention nearby NPC {nearby_npc} naturally. Tone: {tone}.", "Looks like {nearby_npc} is nearby."),
         topic("class_job", 11.0, "class_job", 0, "Interaction focus: class_job. React to the player's job/class context: {role_summary}. Tone: {tone}.", "You have been carrying yourself differently lately."),
+        topic("ambient_activity", 11.0, "ambient_activity", 0, "Interaction focus: ambient_activity. The player caught you while you were doing this ambient action: {ambient_goal} near {ambient_target}. If you had a thought line, it was: {ambient_line}. Explain it naturally in character. Tone: {tone}.", "You caught me while I was checking on {ambient_target}."),
+        topic("missing_workplace", 16.0, "missing_workplace", 0, "Interaction focus: missing_workplace. You are scheduled for work but have no assigned workplace. Ask for a job application/workplace setup without sounding broken. Tone: {tone}.", "I am ready to work, but I still need a proper workplace."),
+        topic("missing_home", 13.0, "missing_home", 0, "Interaction focus: missing_home. You have no assigned home yet. Mention needing a bed or home naturally. Tone: {tone}.", "I am still looking for a place to settle."),
+        topic("observed_object", 9.0, "observed_object", 0, "Interaction focus: observed_object. You were observing {observed_object}. Comment on it as a small daily-life detail. Tone: {tone}.", "I was looking over {observed_object}."),
+        topic("companion_pokemon", 8.0, "companion_pokemon", 0, "Interaction focus: companion_pokemon. Mention your main Pokemon companion {companion_pokemon} as part of your day. Tone: {tone}.", "{companion_pokemon} has been keeping me company."),
+        topic("town_crowd", 6.0, "town_crowd", 0, "Interaction focus: town_crowd. Several NPCs are nearby. Mention the town feeling busy without listing everyone. Tone: {tone}.", "Town feels busy today."),
+        topic("recent_micro_followup", 12.0, "recent_micro_followup", 0, "Interaction focus: recent_micro_followup. The player caught you after talking with {recent_micro_partner}. Topic: {recent_micro_topic}. You said: {recent_micro_line}. They said: {recent_micro_response}. Follow up naturally. Tone: {tone}.", "I was just talking with {recent_micro_partner}."),
         topic("weather", 6.0, "weather", 0, "Interaction focus: weather. Comment on the current weather: {weather}. Tone: {tone}.", "This weather changes the whole mood."),
         topic("npc_schedule", 6.0, "npc_schedule", 0, "Interaction focus: npc_schedule. Mention what you were doing or about to do. NPC activity: {npc_activity}. Tone: {tone}.", "You caught me between things."),
         topic("location", 5.0, "location", 0, "Interaction focus: location. Mention the current place or dimension: {dimension}. Tone: {tone}.", "This place has a strange mood today."),

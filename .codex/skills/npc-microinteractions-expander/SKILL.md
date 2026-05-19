@@ -45,7 +45,8 @@ Tell `pi`:
 - Each `line` and `response` <= 95 chars.
 - IDs must start with the chunk slug and be unique.
 - Keep exact shape:
-  `id`, `topic`, optional ids/tags, `line`, `response`, `weight`.
+  `id`, `topic`, optional ids/tags, optional `required_spawned_ids`, `line`, `response`, `weight`.
+- If a line names a concrete NPC who is not the source or target, add `required_spawned_ids`.
 
 ## Validation
 

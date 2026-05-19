@@ -7,6 +7,7 @@ import dev.gisketch.chowkingdom.battlepass.BattlepassClientState
 import dev.gisketch.chowkingdom.compat.PehkuiScaleBridge
 import dev.gisketch.chowkingdom.npc.ChowNpcEntity
 import dev.gisketch.chowkingdom.npc.NpcConfig
+import dev.gisketch.chowkingdom.tech.TechLicenseConfig
 import net.minecraft.Util
 import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
@@ -68,18 +69,26 @@ object RolesClient {
     private fun onRenderNameTag(event: RenderNameTagEvent) {
         val icons = when (val entity = event.entity) {
             is Player -> RolesClientState.iconsFor(entity.uuid)
-            is ChowNpcEntity -> npcClassIcons(entity)
+            is ChowNpcEntity -> npcNametagIcons(entity)
             else -> return
         }
         event.setCanRender(TriState.FALSE)
         renderRoleNameTag(event, icons)
     }
 
-    private fun npcClassIcons(entity: ChowNpcEntity): RoleNametagIcons {
+    private fun npcNametagIcons(entity: ChowNpcEntity): RoleNametagIcons {
+        val prefixIcons = mutableListOf<String>()
+        TechLicenseConfig.forNpc(entity.npcId)
+            ?.iconItem
+            ?.trim()
+            ?.takeIf { icon -> icon.isNotBlank() && !roleIconStack(icon).isEmpty }
+            ?.let(prefixIcons::add)
+
         val classId = NpcConfig.get(entity.npcId)?.classId?.trim().orEmpty()
-        if (classId.isBlank()) return RoleNametagIcons()
+        if (classId.isBlank()) return RoleNametagIcons(jobIcons = prefixIcons)
         val icon = RolesClientState.classIconFor(classId) ?: "textures/gui/classes/${classId.lowercase(Locale.ROOT)}.png"
-        return RoleNametagIcons(jobIcons = listOf(icon))
+        prefixIcons += icon
+        return RoleNametagIcons(jobIcons = prefixIcons)
     }
 
     private fun onGatherEffectTooltips(event: GatherEffectScreenTooltipsEvent) {

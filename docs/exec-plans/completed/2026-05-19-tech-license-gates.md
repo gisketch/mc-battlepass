@@ -8,7 +8,7 @@ Gate Create, Ars Nouveau, and Oritech behind server shipping thresholds, NPC lic
 
 - Unlicensed players cannot use, place, right-click, or equip gated tech-mod items and blocks.
 - Shipping thresholds mark tech experts pending and spawn them as normal campers when the camping area is free.
-- Resident tech experts with ready workplaces show a license dialog action.
+- Resident tech experts show a license dialog action after housing and server threshold; workplace readiness is not required for certification.
 - License quests grant per-player access, record battlepass progress, and unlock extra no-cap tech NPC missions.
 - Defaults are configurable without hardcoding future tech mods.
 
@@ -35,6 +35,7 @@ Gate Create, Ars Nouveau, and Oritech behind server shipping thresholds, NPC lic
 - License fees are 10,000 chowcoins each.
 - Default thresholds stay server-wide at 100k/150k/200k shipped chowcoins.
 - Tech daily missions use NPC quest plumbing but bypass the normal daily cap.
+- 2026-05-19 follow-up: Tech license certification must not require workplace readiness, because gated tech blocks can be needed to build the tech NPC workplace. Workplaces still gate shops and battles.
 
 ## Progress Log
 
