@@ -133,7 +133,8 @@ object BossEventsFeature {
             openClaimDialog(player, npc, definition, claimable)
             return true
         }
-        activeContractEntry() ?: return false
+        val active = activeContractEntry() ?: return false
+        if (BossEventsStore.introduced(active.id)) return false
         openContractDialog(player, npc, definition)
         return true
     }
@@ -209,7 +210,7 @@ object BossEventsFeature {
             val instruction = if (view.state == "locked") {
                 "Open the boss contract screen. Finn has no clean contract yet. Reply in character that he is scouting for strange trouble and needs more adventure before he pins another fight. Do not mention shipping, Chowcoins, thresholds, hidden boss ids, required players, or the next boss."
             } else {
-                "Open the boss contract screen. Explain the contract in character. Mention the boss name, where to look, how to access it, fight preparation, crew requirement, and reward. Do not mention shipping, thresholds, hidden boss ids, or UI button names."
+                "Open the boss contract screen. Explain the contract in character. Mention the boss name, where to look, how to access it, fight preparation, crew requirement, and reward. Wrap the XP reward with <xp>...</xp> and the Chowcoin reward with <coin>...</coin>; do not write bare reward numbers. You may wrap the boss name with <b>...</b>. Do not mention shipping, thresholds, hidden boss ids, or UI button names."
             }
             NpcLlmService.event(
                 player,
@@ -220,6 +221,7 @@ object BossEventsFeature {
                 inputLabel = "Finn boss contract screen",
                 npcRecordType = "npc_boss_contract",
                 responseToken = token,
+                messageFilter = { message -> highlightContractRewards(message, focusedEntry) },
             )
         } else {
             NpcStore.recordConversation(definition.id, player, definition.name, fallback, "npc_boss_contract")
@@ -323,16 +325,38 @@ object BossEventsFeature {
             - Boss: ${entry.displayName}
             - Status for ${player.gameProfile.name}: $status
             - Required credited players: ${entry.requiredPlayers}
-            - Reward XP: ${entry.firstClearXp}
-            - Reward Chowcoins: ${entry.firstClearChowcoins}
+            - Reward XP: <xp>+${entry.firstClearXp} Combat XP</xp>
+            - Reward Chowcoins: <coin>+${entry.firstClearChowcoins} Chowcoins</coin>
             - Lore: ${entry.lore}
             - Location hint: ${entry.locationHint}
             - Access hint: ${entry.accessHint}
             - Fight tips: ${entry.fightTips}
             - Next boss: ${next?.displayName ?: "none"}
             If this is primary context, keep the conversation focused on the contract, scouting, how to find the boss, and how to prepare.
+            If you mention rewards, preserve the <xp> and <coin> highlight tags exactly.
             Do not mention shipping, thresholds, hidden boss ids, or UI button names.
         """.trimIndent()
+    }
+
+    private fun highlightContractRewards(message: String, entry: BossEventEntry): String {
+        var highlighted = message
+        var changedXp = highlighted.contains("<xp>", ignoreCase = true)
+        var changedCoin = highlighted.contains("<coin>", ignoreCase = true)
+        if (!changedXp) {
+            val xpPattern = Regex("""\+?\b${Regex.escape(entry.firstClearXp.toString())}\s+(?:combat\s+)?XP\b""", RegexOption.IGNORE_CASE)
+            highlighted = xpPattern.replaceFirst(highlighted, "<xp>\$0</xp>")
+            changedXp = highlighted.contains("<xp>", ignoreCase = true)
+        }
+        if (!changedCoin) {
+            val coinPattern = Regex("""\+?\b${Regex.escape(entry.firstClearChowcoins.toString())}\s+Chowcoins\b""", RegexOption.IGNORE_CASE)
+            highlighted = coinPattern.replaceFirst(highlighted, "<coin>\$0</coin>")
+            changedCoin = highlighted.contains("<coin>", ignoreCase = true)
+        }
+        return if (changedXp && changedCoin) {
+            highlighted
+        } else {
+            "$highlighted Reward: <xp>+${entry.firstClearXp} Combat XP</xp> and <coin>+${entry.firstClearChowcoins} Chowcoins</coin>."
+        }
     }
 
     private fun focusKey(playerId: UUID, npcId: String): String = "$playerId:${npcId.lowercase(Locale.ROOT)}"

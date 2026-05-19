@@ -24,7 +24,7 @@ Boss Events V1 makes Finn the server-wide boss contract NPC.
 - Defaults: 96 block radius, 10 minute participation window, 8 required credited players.
 - Finn always shows a `CONTRACTS` button in normal dialogue.
 - `CONTRACTS` opens a nested boss contract dialogue for locked, active, claimable, or completed states.
-- Active boss contracts are not pinned immediately on unlock. Right-clicking Finn with an active contract opens the contract screen directly; the first such open introduces it server-wide, then everyone sees the pinned boss mission.
+- Active boss contracts are not pinned immediately on unlock. Right-clicking Finn with a newly active, unintroduced contract opens the contract screen directly; that first open introduces it server-wide. After introduction, right-clicking Finn returns to normal dialogue with `TALK`, `CONTRACTS`, `BUY`, `GIFT`, and other standard actions unless a reward is claimable.
 - After a valid clear or debug credit grant, players with claimable credit see `Talk to Finn to claim your rewards` in the pinned mission HUD and can claim through the contract dialogue.
 - Once a boss has enough credited players, it is treated as contract-complete for HUD/dialogue purposes even if credit was granted through debug commands.
 - After the player claims, Finn no longer keeps that boss as the active contract; he moves to the next locked/active contract or says no contract is ready.
@@ -34,7 +34,7 @@ Boss Events V1 makes Finn the server-wide boss contract NPC.
 - Important NPC balloons can use `@gold` or `@green` before icon markers. Gold is for new attention/discovery, camper housing needs, and boss discovery; green is for completion, boss defeated, and reward-ready cues. Both render with a tinted background and plain white text.
 - Boss reward claims are per player. One credited player claiming their reward does not remove claim credit or reward availability for other credited players.
 - Boss reward claim lines support `<xp>`, `<coin>`, and `<b>` dialogue highlights.
-- LLM is optional. When enabled, Finn receives boss context variables and authored config lines are the fallback.
+- LLM is optional. When enabled, Finn receives boss context variables and authored config lines are the fallback. Boss contract reward lines must keep `<xp>` and `<coin>` highlight tags.
 - TALK from inside `CONTRACTS` receives boss-focused context with lore, location hints, access hints, fight tips, rewards, and next-boss data. Finn dialogue avoids shipping totals, thresholds, hidden ids, and UI-button wording.
 - Locked/no-contract Finn dialogue is lore-only: Finn says he is scouting for strange trouble and does not reveal shipping totals, thresholds, hidden boss ids, or the next boss.
 - Dialogue highlight tags and quest text auto-space common number/text joins, and highlighted rewards render with the smaller crisp CKDM claim font.

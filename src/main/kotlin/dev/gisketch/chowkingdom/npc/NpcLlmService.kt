@@ -22,6 +22,7 @@ import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.time.Duration
+import java.util.Locale
 import java.util.UUID
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
@@ -39,6 +40,7 @@ object NpcLlmService {
     private val detachedResponseTokens = ConcurrentHashMap.newKeySet<Long>()
     private val recentDialogReplies = ConcurrentHashMap<NpcRecentDialogReplyKey, NpcRecentDialogReply>()
     private val recentLlmErrors = ArrayDeque<NpcLlmDebugEntry>()
+    private val llmUsage = NpcLlmUsageTotals()
 
     fun debugErrorLines(limit: Int = 8): List<String> = synchronized(recentLlmErrors) {
         recentLlmErrors.takeLast(limit.coerceIn(1, MAX_LLM_DEBUG_ERRORS)).map { entry ->
@@ -47,6 +49,8 @@ object NpcLlmService {
             "${formatAge(entry.timestamp)} provider=${entry.provider} model=${entry.model} status=$status source=${entry.source} ${entry.message}$body"
         }
     }
+
+    fun usageLines(): List<String> = llmUsage.lines()
 
     fun cancel(player: ServerPlayer, npcId: String) {
         val session = talkSessions[npcId]
@@ -501,22 +505,32 @@ object NpcLlmService {
             httpClient.send(request(url, settings, root), HttpResponse.BodyHandlers.ofString())
         } catch (exception: Exception) {
             recordLlmError(settings.provider, settings.model, "openai_compatible", null, "request failed: ${exception.javaClass.simpleName}: ${exception.message.orEmpty()}")
+            recordUsage(settings, "openai_compatible", prompt, "", null, estimated = true)
             return NpcLlmCompletion(fallbackMessage)
         }
         ChowKingdomMod.LOGGER.info("NPC LLM openai-compatible status={} bodyChars={}", response.statusCode(), response.body().length)
         if (response.statusCode() !in 200..299) {
             ChowKingdomMod.LOGGER.warn("NPC LLM openai-compatible error status={} body={}", response.statusCode(), response.body().take(LOG_BODY_LIMIT))
             recordLlmError(settings.provider, settings.model, "openai_compatible", response.statusCode(), "http error", response.body())
+            recordUsage(settings, "openai_compatible", prompt, "", null, estimated = true)
+            return NpcLlmCompletion(fallbackMessage)
+        }
+        val json = runCatching {
+            JsonParser.parseString(response.body()).asJsonObject
+        }.getOrElse { exception ->
+            recordLlmError(settings.provider, settings.model, "openai_compatible", response.statusCode(), "response parse failed: ${exception.javaClass.simpleName}", response.body())
+            recordUsage(settings, "openai_compatible", prompt, "", null, estimated = true)
             return NpcLlmCompletion(fallbackMessage)
         }
         val content = runCatching {
-            val json = JsonParser.parseString(response.body()).asJsonObject
             json.getAsJsonArray("choices")?.firstOrNull()?.asJsonObject?.getAsJsonObject("message")?.get("content")?.asString.orEmpty()
         }.getOrElse { exception ->
             recordLlmError(settings.provider, settings.model, "openai_compatible", response.statusCode(), "response parse failed: ${exception.javaClass.simpleName}", response.body())
+            recordUsage(settings, "openai_compatible", prompt, "", json.childObject("usage"), estimated = true)
             return NpcLlmCompletion(fallbackMessage)
         }
         if (content.isBlank()) recordLlmError(settings.provider, settings.model, "openai_compatible", response.statusCode(), "empty response content", response.body())
+        recordUsage(settings, "openai_compatible", prompt, content, json.childObject("usage"), estimated = false)
         return parseMessage(content, settings, fallbackMessage, "openai_compatible")
     }
 
@@ -532,15 +546,18 @@ object NpcLlmService {
         root.add("messages", messages)
         root.addProperty("temperature", 0.55)
         applyNoThinkingOptions(root, settings)
+        applyStreamingUsageOptions(root, settings)
         val url = settings.baseUrl.trimEnd('/') + "/chat/completions"
         val response = try {
             httpClient.send(request(url, settings, root), HttpResponse.BodyHandlers.ofLines())
         } catch (exception: Exception) {
             recordLlmError(settings.provider, settings.model, "openai_stream", null, "request failed: ${exception.javaClass.simpleName}: ${exception.message.orEmpty()}")
+            recordUsage(settings, "openai_stream", prompt, "", null, estimated = true)
             return NpcLlmCompletion(fallbackMessage)
         }
         if (response.statusCode() !in 200..299) {
             recordLlmError(settings.provider, settings.model, "openai_stream", response.statusCode(), "http error")
+            recordUsage(settings, "openai_stream", prompt, "", null, estimated = true)
             return NpcLlmCompletion(fallbackMessage)
         }
         val startedAtMs = System.currentTimeMillis()
@@ -549,16 +566,19 @@ object NpcLlmService {
         var contentChunks = 0
         var reasoningChunks = 0
         var firstContentMs = 0L
+        var usage: JsonObject? = null
         response.body().use { lines ->
             lines.forEach { rawLine ->
                 val line = rawLine.trim()
                 if (!line.startsWith("data:")) return@forEach
                 val data = line.removePrefix("data:").trim()
                 if (data == "[DONE]") return@forEach
-                val deltaJson = runCatching {
+                val chunkJson = runCatching {
                     val json = JsonParser.parseString(data).asJsonObject
-                    json.getAsJsonArray("choices")?.firstOrNull()?.asJsonObject?.getAsJsonObject("delta")
+                    json.childObject("usage")?.let { usage = it }
+                    json
                 }.getOrNull()
+                val deltaJson = chunkJson?.getAsJsonArray("choices")?.firstOrNull()?.asJsonObject?.getAsJsonObject("delta")
                 if (deltaJson?.get("reasoning_content")?.takeUnless { it.isJsonNull }?.asString?.isNotBlank() == true) reasoningChunks++
                 val delta = deltaJson?.get("content")?.takeUnless { it.isJsonNull }?.asString.orEmpty()
                 if (delta.isBlank()) return@forEach
@@ -574,6 +594,7 @@ object NpcLlmService {
         }
         val message = sanitizeReply(stripReasoningBlocks(builder.toString()), settings, fallbackMessage)
         if (message.isNotBlank() && message != lastSent) onPartial(message)
+        recordUsage(settings, "openai_stream", prompt, message, usage, estimated = usage == null)
         ChowKingdomMod.LOGGER.info("NPC LLM stream finished provider={} model={} contentChunks={} reasoningChunks={} chars={} firstContentMs={} totalMs={}", settings.provider, settings.model, contentChunks, reasoningChunks, message.length, firstContentMs, System.currentTimeMillis() - startedAtMs)
         return NpcLlmCompletion(message)
     }
@@ -585,6 +606,11 @@ object NpcLlmService {
     private fun applyNoThinkingOptions(root: JsonObject, settings: NpcLlmSettingsDefinition) {
         if (!isDeepSeekV4(settings)) return
         root.add("thinking", JsonObject().apply { addProperty("type", "disabled") })
+    }
+
+    private fun applyStreamingUsageOptions(root: JsonObject, settings: NpcLlmSettingsDefinition) {
+        if (!isDeepSeekV4(settings)) return
+        root.add("stream_options", JsonObject().apply { addProperty("include_usage", true) })
     }
 
     private fun isDeepSeekV4(settings: NpcLlmSettingsDefinition): Boolean {
@@ -603,22 +629,32 @@ object NpcLlmService {
             httpClient.send(request(url, settings, root, includeAuth = false), HttpResponse.BodyHandlers.ofString())
         } catch (exception: Exception) {
             recordLlmError(settings.provider, settings.model, "gemini", null, "request failed: ${exception.javaClass.simpleName}: ${exception.message.orEmpty()}")
+            recordUsage(settings, "gemini", prompt, "", null, estimated = true)
             return NpcLlmCompletion(fallbackMessage)
         }
         ChowKingdomMod.LOGGER.info("NPC LLM gemini status={} bodyChars={}", response.statusCode(), response.body().length)
         if (response.statusCode() !in 200..299) {
             ChowKingdomMod.LOGGER.warn("NPC LLM gemini error status={} body={}", response.statusCode(), response.body().take(LOG_BODY_LIMIT))
             recordLlmError(settings.provider, settings.model, "gemini", response.statusCode(), "http error", response.body())
+            recordUsage(settings, "gemini", prompt, "", null, estimated = true)
+            return NpcLlmCompletion(fallbackMessage)
+        }
+        val json = runCatching {
+            JsonParser.parseString(response.body()).asJsonObject
+        }.getOrElse { exception ->
+            recordLlmError(settings.provider, settings.model, "gemini", response.statusCode(), "response parse failed: ${exception.javaClass.simpleName}", response.body())
+            recordUsage(settings, "gemini", prompt, "", null, estimated = true)
             return NpcLlmCompletion(fallbackMessage)
         }
         val text = runCatching {
-            val json = JsonParser.parseString(response.body()).asJsonObject
             json.getAsJsonArray("candidates")?.firstOrNull()?.asJsonObject?.getAsJsonObject("content")?.getAsJsonArray("parts")?.firstOrNull()?.asJsonObject?.get("text")?.asString.orEmpty()
         }.getOrElse { exception ->
             recordLlmError(settings.provider, settings.model, "gemini", response.statusCode(), "response parse failed: ${exception.javaClass.simpleName}", response.body())
+            recordUsage(settings, "gemini", prompt, "", json.childObject("usageMetadata"), estimated = true)
             return NpcLlmCompletion(fallbackMessage)
         }
         if (text.isBlank()) recordLlmError(settings.provider, settings.model, "gemini", response.statusCode(), "empty response text", response.body())
+        recordUsage(settings, "gemini", prompt, text, json.childObject("usageMetadata"), estimated = false)
         return parseMessage(text, settings, fallbackMessage, "gemini")
     }
 
@@ -704,6 +740,67 @@ object NpcLlmService {
         synchronized(recentLlmErrors) {
             recentLlmErrors.addLast(NpcLlmDebugEntry(System.currentTimeMillis(), provider, model, source, status, message.take(180), body.cleanDebugBody()))
             while (recentLlmErrors.size > MAX_LLM_DEBUG_ERRORS) recentLlmErrors.removeFirst()
+        }
+    }
+
+    private fun recordUsage(settings: NpcLlmSettingsDefinition, source: String, prompt: String, output: String, usage: JsonObject?, estimated: Boolean) {
+        val promptTokens = usage?.firstLong("prompt_tokens", "input_tokens", "promptTokenCount")
+        val completionTokens = usage?.firstLong("completion_tokens", "output_tokens", "candidatesTokenCount")
+        val totalTokens = usage?.firstLong("total_tokens", "totalTokenCount")
+        val cacheHitTokens = usage?.firstLong("prompt_cache_hit_tokens", "cache_hit_tokens") ?: 0L
+        val cacheMissTokens = usage?.firstLong("prompt_cache_miss_tokens", "cache_miss_tokens") ?: 0L
+        val inputTokens = promptTokens ?: (cacheHitTokens + cacheMissTokens).takeIf { it > 0L } ?: estimateTokens(prompt)
+        val outputTokens = completionTokens ?: totalTokens?.minus(inputTokens)?.coerceAtLeast(0L) ?: estimateTokens(output)
+        llmUsage.add(
+            NpcLlmUsageSample(
+                provider = settings.provider,
+                model = settings.model,
+                source = source,
+                inputTokens = inputTokens,
+                cacheHitInputTokens = cacheHitTokens,
+                cacheMissInputTokens = cacheMissTokens,
+                outputTokens = outputTokens,
+                estimated = estimated || usage == null,
+                costUsd = estimateUsd(settings, inputTokens, cacheHitTokens, cacheMissTokens, outputTokens),
+            ),
+        )
+    }
+
+    private fun JsonObject.childObject(name: String): JsonObject? {
+        val element = get(name) ?: return null
+        if (element.isJsonNull || !element.isJsonObject) return null
+        return element.asJsonObject
+    }
+
+    private fun JsonObject.firstLong(vararg names: String): Long? {
+        for (name in names) {
+            val element = get(name) ?: continue
+            if (element.isJsonNull) continue
+            val value = runCatching { element.asLong }.getOrNull()
+            if (value != null) return value
+        }
+        return null
+    }
+
+    private fun estimateTokens(text: String): Long = kotlin.math.ceil(text.length * 0.3).toLong().coerceAtLeast(0L)
+
+    private fun estimateUsd(settings: NpcLlmSettingsDefinition, inputTokens: Long, cacheHitTokens: Long, cacheMissTokens: Long, outputTokens: Long): Double {
+        val pricing = deepSeekPricing(settings) ?: return 0.0
+        val inputUsd = if (cacheHitTokens + cacheMissTokens > 0L) {
+            cacheHitTokens * pricing.cacheHitInputUsdPerToken + cacheMissTokens * pricing.cacheMissInputUsdPerToken
+        } else {
+            inputTokens * pricing.cacheMissInputUsdPerToken
+        }
+        return inputUsd + outputTokens * pricing.outputUsdPerToken
+    }
+
+    private fun deepSeekPricing(settings: NpcLlmSettingsDefinition): NpcLlmPricing? {
+        if ("deepseek.com" !in settings.baseUrl.lowercase()) return null
+        val model = settings.model.lowercase()
+        return when {
+            model.contains("v4-pro") -> NpcLlmPricing(0.003625 / 1_000_000.0, 0.435 / 1_000_000.0, 0.87 / 1_000_000.0)
+            model.contains("v4-flash") || model == "deepseek-chat" || model == "deepseek-reasoner" -> NpcLlmPricing(0.0028 / 1_000_000.0, 0.14 / 1_000_000.0, 0.28 / 1_000_000.0)
+            else -> null
         }
     }
 
@@ -1227,6 +1324,94 @@ private data class NpcLlmDebugEntry(
     val message: String,
     val body: String,
 )
+
+private data class NpcLlmUsageSample(
+    val provider: String,
+    val model: String,
+    val source: String,
+    val inputTokens: Long,
+    val cacheHitInputTokens: Long,
+    val cacheMissInputTokens: Long,
+    val outputTokens: Long,
+    val estimated: Boolean,
+    val costUsd: Double,
+)
+
+private data class NpcLlmPricing(
+    val cacheHitInputUsdPerToken: Double,
+    val cacheMissInputUsdPerToken: Double,
+    val outputUsdPerToken: Double,
+)
+
+private class NpcLlmUsageTotals {
+    private val startedAtMs = System.currentTimeMillis()
+    private val totals: MutableMap<String, NpcLlmUsageBucket> = linkedMapOf()
+
+    @Synchronized
+    fun add(sample: NpcLlmUsageSample) {
+        val key = "${sample.provider}/${sample.model}/${sample.source}"
+        totals.getOrPut(key) { NpcLlmUsageBucket(sample.provider, sample.model, sample.source) }.add(sample)
+    }
+
+    @Synchronized
+    fun lines(): List<String> {
+        if (totals.isEmpty()) return listOf("No NPC LLM usage recorded since server start.")
+        val buckets = totals.values.sortedWith(compareBy<NpcLlmUsageBucket> { it.provider }.thenBy { it.model }.thenBy { it.source })
+        val total = NpcLlmUsageBucket("all", "all", "all")
+        buckets.forEach(total::addBucket)
+        return buildList {
+            add("NPC LLM usage since ${formatAgeLocal(startedAtMs)} ago: requests=${total.requests} input=${total.inputTokens} cache_hit=${total.cacheHitInputTokens} cache_miss=${total.cacheMissInputTokens} output=${total.outputTokens} estimated_requests=${total.estimatedRequests} est_usd=${formatUsd(total.costUsd)}")
+            buckets.forEach { bucket ->
+                add("${bucket.provider}/${bucket.model} source=${bucket.source} requests=${bucket.requests} input=${bucket.inputTokens} output=${bucket.outputTokens} est_requests=${bucket.estimatedRequests} est_usd=${formatUsd(bucket.costUsd)}")
+            }
+        }
+    }
+
+    private fun formatUsd(value: Double): String = "$" + String.format(Locale.US, "%.4f", value)
+
+    private fun formatAgeLocal(timestamp: Long): String {
+        val seconds = ((System.currentTimeMillis() - timestamp) / 1000L).coerceAtLeast(0L)
+        return when {
+            seconds < 60 -> "${seconds}s"
+            seconds < 3600 -> "${seconds / 60}m"
+            else -> "${seconds / 3600}h"
+        }
+    }
+}
+
+private class NpcLlmUsageBucket(
+    val provider: String,
+    val model: String,
+    val source: String,
+) {
+    var requests: Long = 0
+    var inputTokens: Long = 0
+    var cacheHitInputTokens: Long = 0
+    var cacheMissInputTokens: Long = 0
+    var outputTokens: Long = 0
+    var estimatedRequests: Long = 0
+    var costUsd: Double = 0.0
+
+    fun add(sample: NpcLlmUsageSample) {
+        requests += 1
+        inputTokens += sample.inputTokens
+        cacheHitInputTokens += sample.cacheHitInputTokens
+        cacheMissInputTokens += sample.cacheMissInputTokens
+        outputTokens += sample.outputTokens
+        if (sample.estimated) estimatedRequests += 1
+        costUsd += sample.costUsd
+    }
+
+    fun addBucket(bucket: NpcLlmUsageBucket) {
+        requests += bucket.requests
+        inputTokens += bucket.inputTokens
+        cacheHitInputTokens += bucket.cacheHitInputTokens
+        cacheMissInputTokens += bucket.cacheMissInputTokens
+        outputTokens += bucket.outputTokens
+        estimatedRequests += bucket.estimatedRequests
+        costUsd += bucket.costUsd
+    }
+}
 
 private class NpcTalkSession(
     val participants: MutableMap<UUID, NpcTalkParticipant> = linkedMapOf(),

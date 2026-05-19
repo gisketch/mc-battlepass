@@ -2754,6 +2754,7 @@ object NpcFeature {
     private fun llmRoot(): LiteralArgumentBuilder<CommandSourceStack> = Commands.literal("llm")
         .requires { source -> source.hasPermission(2) }
         .executes(::llmStatusCommand)
+        .then(Commands.literal("token").executes(::llmTokenCommand))
         .then(
             Commands.literal("switch")
                 .then(
@@ -2864,6 +2865,15 @@ object NpcFeature {
         val result = NpcConfig.switchLlmPreset(StringArgumentType.getString(context, "name"))
         if (result.success) context.source.sendSuccess({ Component.literal(result.message).withStyle(ChatFormatting.GREEN) }, true) else context.source.sendFailure(Component.literal(result.message))
         return if (result.success) 1 else 0
+    }
+
+    private fun llmTokenCommand(context: CommandContext<CommandSourceStack>): Int {
+        val lines = NpcLlmService.usageLines()
+        lines.forEachIndexed { index, line ->
+            val style = if (index == 0) ChatFormatting.GOLD else ChatFormatting.GRAY
+            context.source.sendSuccess({ Component.literal(line).withStyle(style) }, false)
+        }
+        return lines.size
     }
 
     private fun reloadCommand(context: CommandContext<CommandSourceStack>): Int {

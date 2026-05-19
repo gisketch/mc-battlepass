@@ -20,6 +20,10 @@ object NpcInteractionDirector {
         val recent = NpcStore.recentInteractionTopics(definition.id, player, settings.recentHistorySize)
         val cooldownMs = settings.topicCooldownMinutes * 60_000L
         val topics = mergedTopics(settings, definition)
+        ambientInteractionFocus(facts, topics)?.let { focus ->
+            NpcStore.recordInteractionTopic(definition.id, player, focus.topicId)
+            return focus
+        }
         val weighted = topics.mapNotNull { topic ->
             val score = score(topic, facts, friendship, recent, cooldownMs)
             if (score <= 0.0) null else topic to score
@@ -30,6 +34,23 @@ object NpcInteractionDirector {
             selected.id,
             fill(selected.prompt, facts),
             fill(selected.fallback.ifBlank { defaultFallback(selected.id) }, facts),
+        )
+    }
+
+    private fun ambientInteractionFocus(facts: NpcInteractionFacts, topics: List<NpcInteractionTopicDefinition>): NpcInteractionFocus? {
+        if (!facts.has("ambient_activity")) return null
+        val topic = topics.firstOrNull { topic -> topic.id == "ambient_activity" } ?: return null
+        val ambientTopic = facts.value("ambient_topic").ifBlank { facts.value("ambient_goal") }.ifBlank { "activity" }
+        val topicId = "ambient_${cleanTopicId(ambientTopic)}"
+        val fallback = if (facts.value("ambient_line").isNotBlank()) {
+            "I was just thinking: {ambient_line}"
+        } else {
+            topic.fallback.ifBlank { defaultFallback(topic.id) }
+        }
+        return NpcInteractionFocus(
+            topicId,
+            fill(topic.prompt, facts),
+            fill(fallback, facts),
         )
     }
 
@@ -227,7 +248,7 @@ object NpcInteractionDirector {
         topic("nearby_pokemon", 12.0, "nearby_pokemon", 0, "Interaction focus: nearby_pokemon. React to the nearby Pokemon: {nearby_pokemon}. Tone: {tone}.", "That nearby Pokemon is interesting."),
         topic("nearby_npc", 8.0, "nearby_npc", 0, "Interaction focus: nearby_npc. Mention nearby NPC {nearby_npc} naturally. Tone: {tone}.", "Looks like {nearby_npc} is nearby."),
         topic("class_job", 11.0, "class_job", 0, "Interaction focus: class_job. React to the player's job/class context: {role_summary}. Tone: {tone}.", "You have been carrying yourself differently lately."),
-        topic("ambient_activity", 11.0, "ambient_activity", 0, "Interaction focus: ambient_activity. The player caught you while you were doing this ambient action: {ambient_goal} near {ambient_target}. If you had a thought line, it was: {ambient_line}. Explain it naturally in character. Tone: {tone}.", "You caught me while I was checking on {ambient_target}."),
+        topic("ambient_activity", 11.0, "ambient_activity", 0, "Interaction focus: ambient_activity:{ambient_topic}. The player caught you while you were doing this ambient action: {ambient_goal} near {ambient_target}. The exact ambient balloon line visible to the player was: {ambient_line}. Refer to that line when it is not blank, then explain what you are doing right now, naturally in character. Tone: {tone}.", "I was checking on {ambient_target}."),
         topic("missing_workplace", 16.0, "missing_workplace", 0, "Interaction focus: missing_workplace. You are scheduled for work but have no assigned workplace. Ask for a job application/workplace setup without sounding broken. Tone: {tone}.", "I am ready to work, but I still need a proper workplace."),
         topic("missing_home", 13.0, "missing_home", 0, "Interaction focus: missing_home. You have no assigned home yet. Mention needing a bed or home naturally. Tone: {tone}.", "I am still looking for a place to settle."),
         topic("observed_object", 9.0, "observed_object", 0, "Interaction focus: observed_object. You were observing {observed_object}. Comment on it as a small daily-life detail. Tone: {tone}.", "I was looking over {observed_object}."),
@@ -242,6 +263,11 @@ object NpcInteractionDirector {
 
     private fun topic(id: String, weight: Double, require: String, maxAge: Int, prompt: String, fallback: String) =
         NpcInteractionTopicDefinition(id = id, baseWeight = weight, requires = mutableListOf(require), maxAgeMinutes = maxAge, prompt = prompt, fallback = fallback)
+
+    private fun cleanTopicId(value: String): String = value.trim().lowercase(Locale.ROOT)
+        .replace(Regex("[^a-z0-9_.:-]+"), "_")
+        .trim('_')
+        .ifBlank { "activity" }
 
     private fun itemText(stack: ItemStack): String {
         if (stack.isEmpty || stack.item == Items.AIR) return ""
