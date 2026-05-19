@@ -213,10 +213,11 @@ class BattlepassScreen(initialPassId: String? = null) : Screen(Component.transla
         }
 
         if (viewMode == ViewMode.PASS_DETAIL && claimAllClaimableCount > 0 && claimAllRect.contains(mouseX, mouseY)) {
+            val passId = selectedPassId ?: return true
             rewardSlots.filter { slot -> slot.claimable }.forEachIndexed { index, slot ->
                 enqueueRewardFlyout(slot, index * REWARD_FLYOUT_STAGGER_MS)
-                BattlepassNetwork.claim(selectedPassId ?: return true, slot.tier.xp)
             }
+            BattlepassNetwork.claimAll(passId)
             playClaimSound()
             return true
         }

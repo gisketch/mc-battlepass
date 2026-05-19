@@ -36,11 +36,11 @@ object MobilityLicenseFeature {
             else -> licenseId.trim().ifBlank { "License" }
         }
 
-    fun grantReward(player: ServerPlayer, licenseId: String, source: String): Boolean {
+    fun grantReward(player: ServerPlayer, licenseId: String, source: String, notify: Boolean = true): Boolean {
         val id = normalizeLicenseId(licenseId)
         if (id != MobilityLicenseStore.RIDING_LICENSE) return false
         val changed = MobilityLicenseStore.grantRidingLicense(player, source)
-        if (changed) {
+        if (changed && notify) {
             SnackbarNetwork.send(
                 player,
                 SnackbarNotification.item(RIDING_LICENSE_ICON, "RIDING LICENSE UNLOCKED", "Cobblemon riding is now available", SnackbarType.SUCCESS, SnackbarSounds.REWARD),

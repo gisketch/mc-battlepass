@@ -87,7 +87,7 @@ object TechLicenseClientState {
             licenseId = license.id,
             displayName = license.displayName,
             iconItem = license.iconItem,
-            message = if (hardBanned) "Disabled by server config." else "Must unlock ${license.displayName}.",
+            message = if (hardBanned) "Item is disabled by server config." else "${license.displayName} required.",
         )
     }
 

@@ -39,7 +39,7 @@ object BattlepassClaimService {
             return false
         }
 
-        tier.rewards.forEach { reward -> giveReward(player, reward) }
+        tier.rewards.forEach { reward -> giveReward(player, reward, notifyReward = true) }
         BattlepassXpStore.markClaimed(player, pass.id, tier.xp)
         SnackbarNetwork.send(player, SnackbarNotification.item(rewardIcon(tier.rewards.firstOrNull()), "BATTLEPASS REWARD CLAIMED", "${pass.displayName} ${tier.xp} XP reward", SnackbarType.SUCCESS, SnackbarSounds.REWARD))
         return true
@@ -61,14 +61,14 @@ object BattlepassClaimService {
         }
 
         claimableTiers.forEach { tier ->
-            tier.rewards.forEach { reward -> giveReward(player, reward) }
+            tier.rewards.forEach { reward -> giveReward(player, reward, notifyReward = false) }
             BattlepassXpStore.markClaimed(player, pass.id, tier.xp)
         }
-        SnackbarNetwork.send(player, SnackbarNotification.item(SnackbarIcons.BATTLEPASS, "BATTLEPASS REWARDS CLAIMED", "Claimed ${claimableTiers.size} ${pass.displayName} reward(s)", SnackbarType.SUCCESS, SnackbarSounds.REWARD))
+        SnackbarNetwork.send(player, SnackbarNotification.item(SnackbarIcons.BATTLEPASS, "BATTLEPASS REWARDS CLAIMED", "Claimed ${claimableTiers.size} rewards.", SnackbarType.SUCCESS, SnackbarSounds.REWARD))
         return claimableTiers.size
     }
 
-    private fun giveReward(player: ServerPlayer, reward: BattlepassRewardDefinition) {
+    private fun giveReward(player: ServerPlayer, reward: BattlepassRewardDefinition, notifyReward: Boolean) {
         if (isChowcoinReward(reward)) {
             ChowcoinStore.add(player, chowcoinAmount(reward))
             ChowcoinNetwork.syncTo(player)
@@ -80,7 +80,7 @@ object BattlepassClaimService {
             return
         }
         if (MobilityLicenseFeature.isLicenseReward(reward.type)) {
-            MobilityLicenseFeature.grantReward(player, reward.data["license"].orEmpty(), "battlepass")
+            MobilityLicenseFeature.grantReward(player, reward.data["license"].orEmpty(), "battlepass", notifyReward)
             return
         }
         if (reward.type != "item") return

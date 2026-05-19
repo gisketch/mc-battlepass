@@ -32,7 +32,8 @@ object SnackbarClient {
 
     @JvmStatic
     fun show(payload: SnackbarPayload) {
-        queued += QueuedSnackbar(
+        val now = System.currentTimeMillis()
+        val next = QueuedSnackbar(
             SnackbarIconKind.fromId(payload.iconKind),
             payload.icon,
             payload.title,
@@ -42,7 +43,8 @@ object SnackbarClient {
             payload.durationMs.coerceIn(1_000L, 60_000L),
             if (payload.progressTierSize > 0 && payload.progressToXp > payload.progressFromXp) SnackbarProgress(payload.progressFromXp, payload.progressToXp, payload.progressTierSize, payload.progressAnimationMs.coerceIn(1L, 60_000L)) else null,
         )
-        promoteQueued(System.currentTimeMillis())
+        if (!extendNewestDuplicate(next, now)) queued += next
+        promoteQueued(now)
     }
 
     @JvmStatic
@@ -69,6 +71,34 @@ object SnackbarClient {
             )
             playSound(next.sound)
         }
+    }
+
+    private fun extendNewestDuplicate(next: QueuedSnackbar, now: Long): Boolean {
+        val queuedIndex = queued.lastIndex
+        if (queuedIndex >= 0 && queued[queuedIndex].sameDisplayAs(next)) {
+            val current = queued[queuedIndex]
+            queued[queuedIndex] = current.copy(durationMs = extendQueuedDuration(current.durationMs, next.durationMs))
+            return true
+        }
+
+        val activeIndex = active.lastIndex
+        if (activeIndex >= 0 && active[activeIndex].sameDisplayAs(next)) {
+            val current = active[activeIndex]
+            active[activeIndex] = current.copy(durationMs = extendActiveDuration(current, next.durationMs, now))
+            return true
+        }
+
+        return false
+    }
+
+    private fun extendQueuedDuration(currentDurationMs: Long, addedDurationMs: Long): Long =
+        (currentDurationMs + addedDurationMs).coerceAtMost(MAX_EXTENDED_DURATION_MS)
+
+    private fun extendActiveDuration(current: ClientSnackbar, addedDurationMs: Long, now: Long): Long {
+        val elapsed = (now - current.createdAtMs).coerceAtLeast(0L)
+        val remaining = (current.durationMs - elapsed).coerceAtLeast(0L)
+        val extendedRemaining = (remaining + addedDurationMs).coerceAtMost(MAX_EXTENDED_DURATION_MS)
+        return elapsed + extendedRemaining
     }
 
     private fun registerGuiLayers(event: RegisterGuiLayersEvent) {
@@ -113,24 +143,21 @@ object SnackbarClient {
         val exit = if (age <= snackbar.durationMs) 1.0f else 1.0f - ((age - snackbar.durationMs).toFloat() / EXIT_MS).coerceIn(0.0f, 1.0f)
         val alpha = entrance * exit
         if (alpha <= 0.01f) return
-        val scale = 0.92f + 0.08f * entrance
         val slideY = (if (fromTop) -SLIDE_UP_OFFSET else SLIDE_UP_OFFSET) * (1.0f - entrance)
         val pose = guiGraphics.pose()
         pose.pushPose()
-        pose.translate((x + layout.width / 2.0f), (y + layout.height / 2.0f + slideY), 240.0f)
-        pose.scale(scale, scale, 1.0f)
-        pose.translate(-(x + layout.width / 2.0f), -(y + layout.height / 2.0f), 0.0f)
+        pose.translate(0.0, slideY.toDouble(), 240.0)
         renderNineSlice(guiGraphics, Rect(x, y, layout.width, layout.height), alpha)
-        renderIcon(guiGraphics, snackbar, x + PAD, y + PAD + (layout.contentHeight - ICON_SIZE) / 2, alpha)
-        val titleY = if (layout.titleOnly) y + PAD + (layout.contentHeight - TITLE_HEIGHT) / 2 else y + PAD
-        drawTitle(guiGraphics, font, snackbar, layout, x + PAD + ICON_SLOT_WIDTH, titleY, alpha)
+        renderIcon(guiGraphics, snackbar, x + PAD_X, y + PAD_TOP + (layout.contentHeight - ICON_SIZE) / 2, alpha)
+        val titleY = if (layout.titleOnly) y + PAD_TOP + (layout.contentHeight - TITLE_HEIGHT) / 2 else y + PAD_TOP
+        drawTitle(guiGraphics, font, snackbar, layout, x + PAD_X + ICON_SLOT_WIDTH, titleY, alpha)
         if (!layout.titleOnly) {
             layout.contentLines.forEachIndexed { index, line ->
-                guiGraphics.drawString(font, line, x + PAD + ICON_SLOT_WIDTH, y + PAD + TITLE_HEIGHT + CONTENT_GAP + index * CONTENT_LINE_HEIGHT, colorAlpha(CONTENT_COLOR, alpha), false)
+                guiGraphics.drawString(font, line, x + PAD_X + ICON_SLOT_WIDTH, y + PAD_TOP + TITLE_HEIGHT + CONTENT_GAP + index * CONTENT_LINE_HEIGHT, colorAlpha(CONTENT_COLOR, alpha), false)
             }
             snackbar.progress?.let { progress ->
-                val barY = y + PAD + TITLE_HEIGHT + if (layout.contentLines.isEmpty()) PROGRESS_TOP_GAP else CONTENT_GAP + layout.contentLines.size * CONTENT_LINE_HEIGHT + PROGRESS_AFTER_CONTENT_GAP
-                renderProgressBar(guiGraphics, progress, x + PAD + ICON_SLOT_WIDTH, barY, layout.textWidth, age, alpha)
+                val barY = y + PAD_TOP + TITLE_HEIGHT + if (layout.contentLines.isEmpty()) PROGRESS_TOP_GAP else CONTENT_GAP + layout.contentLines.size * CONTENT_LINE_HEIGHT + PROGRESS_AFTER_CONTENT_GAP
+                renderProgressBar(guiGraphics, progress, x + PAD_X + ICON_SLOT_WIDTH, barY, layout.textWidth, age, alpha)
             }
         }
         pose.popPose()
@@ -138,7 +165,7 @@ object SnackbarClient {
     }
 
     private fun drawTitle(guiGraphics: GuiGraphics, font: Font, snackbar: ClientSnackbar, layout: SnackbarLayout, x: Int, y: Int, alpha: Float) {
-        val component = Component.literal(fitText(font, snackbar.title.uppercase(Locale.ROOT), layout.textWidth)).withStyle { style -> style.withFont(CKDM_BOLD_FONT) }
+        val component = Component.literal(fitCkdmText(font, snackbar.title.uppercase(Locale.ROOT), layout.textWidth, CKDM_BOLD_SMALL_FONT)).withStyle { style -> style.withFont(CKDM_BOLD_SMALL_FONT) }
         guiGraphics.drawString(font, component, x + 1, y + 1, colorAlpha(TITLE_SHADOW, alpha), false)
         guiGraphics.drawString(font, component, x, y, colorAlpha(titleColor(snackbar.type), alpha), false)
     }
@@ -259,14 +286,14 @@ object SnackbarClient {
     }
 
     private fun layout(font: Font, snackbar: ClientSnackbar, screenWidth: Int): SnackbarLayout {
-        val width = screenWidth.coerceAtMost(MAX_WIDTH + PAD * 2).coerceAtLeast(MIN_WIDTH)
-        val textWidth = width - PAD * 2 - ICON_SLOT_WIDTH
+        val width = screenWidth.coerceAtMost(MAX_WIDTH + PAD_X * 2).coerceAtLeast(MIN_WIDTH)
+        val textWidth = width - PAD_X * 2 - ICON_SLOT_WIDTH
         val lines = wrap(font, snackbar.content, textWidth).take(MAX_CONTENT_LINES)
         val titleOnly = lines.isEmpty() && snackbar.progress == null
         val progressHeight = if (snackbar.progress != null) progressBarTopGap(lines) + PROGRESS_BAR_HEIGHT else 0
         val textHeight = if (titleOnly) TITLE_HEIGHT else TITLE_HEIGHT + if (lines.isEmpty()) progressHeight else CONTENT_GAP + lines.size * CONTENT_LINE_HEIGHT + progressHeight
         val contentHeight = maxOf(ICON_SIZE, textHeight)
-        return SnackbarLayout(width, contentHeight + PAD * 2, contentHeight, textWidth, titleOnly, lines)
+        return SnackbarLayout(width, contentHeight + PAD_TOP + PAD_BOTTOM, contentHeight, textWidth, titleOnly, lines)
     }
 
     private fun progressBarTopGap(lines: List<String>): Int = if (lines.isEmpty()) PROGRESS_TOP_GAP else PROGRESS_AFTER_CONTENT_GAP
@@ -312,13 +339,16 @@ object SnackbarClient {
         return lines
     }
 
-    private fun fitText(font: Font, text: String, maxWidth: Int): String {
-        if (font.width(text) <= maxWidth) return text
+    private fun fitCkdmText(font: Font, text: String, maxWidth: Int, fontId: ResourceLocation): String {
+        if (font.width(ckdmText(text, fontId)) <= maxWidth) return text
         val suffix = "..."
         var trimmed = text
-        while (trimmed.isNotEmpty() && font.width(trimmed + suffix) > maxWidth) trimmed = trimmed.dropLast(1)
+        while (trimmed.isNotEmpty() && font.width(ckdmText(trimmed + suffix, fontId)) > maxWidth) trimmed = trimmed.dropLast(1)
         return trimmed + suffix
     }
+
+    private fun ckdmText(text: String, fontId: ResourceLocation): Component =
+        Component.literal(text).withStyle { style -> style.withFont(fontId) }
 
     private fun itemStack(raw: String): ItemStack {
         val id = runCatching { ResourceLocation.parse(raw) }.getOrNull() ?: return ItemStack(Items.BARRIER)
@@ -351,8 +381,25 @@ object SnackbarClient {
 
     private fun colorAlpha(color: Int, alphaFactor: Float): Int = ((((color ushr 24) and 0xFF) * alphaFactor).toInt().coerceIn(0, 255) shl 24) or (color and 0x00FFFFFF)
 
-    private data class QueuedSnackbar(val iconKind: SnackbarIconKind, val icon: String, val title: String, val content: String, val type: SnackbarType, val sound: String, val durationMs: Long, val progress: SnackbarProgress?)
-    private data class ClientSnackbar(val id: Long, val iconKind: SnackbarIconKind, val icon: String, val itemIcon: ItemStack, val title: String, val content: String, val type: SnackbarType, val sound: String, val createdAtMs: Long, val durationMs: Long, val progress: SnackbarProgress?)
+    private data class QueuedSnackbar(val iconKind: SnackbarIconKind, val icon: String, val title: String, val content: String, val type: SnackbarType, val sound: String, val durationMs: Long, val progress: SnackbarProgress?) {
+        fun sameDisplayAs(other: QueuedSnackbar): Boolean =
+            iconKind == other.iconKind &&
+                icon == other.icon &&
+                title == other.title &&
+                content == other.content &&
+                type == other.type &&
+                progress == other.progress
+    }
+
+    private data class ClientSnackbar(val id: Long, val iconKind: SnackbarIconKind, val icon: String, val itemIcon: ItemStack, val title: String, val content: String, val type: SnackbarType, val sound: String, val createdAtMs: Long, val durationMs: Long, val progress: SnackbarProgress?) {
+        fun sameDisplayAs(other: QueuedSnackbar): Boolean =
+            iconKind == other.iconKind &&
+                icon == other.icon &&
+                title == other.title &&
+                content == other.content &&
+                type == other.type &&
+                progress == other.progress
+    }
     private data class SnackbarLayout(val width: Int, val height: Int, val contentHeight: Int, val textWidth: Int, val titleOnly: Boolean, val contentLines: List<String>)
     private data class Rect(val x: Int, val y: Int, val width: Int, val height: Int) {
         val right: Int get() = x + width
@@ -362,22 +409,24 @@ object SnackbarClient {
     private val FRAME_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_container_yellow.png")
     private val PROGRESS_EMPTY_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_progress_empty.png")
     private val PROGRESS_FILL_TEXTURE = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "textures/gui/9slice_progress_fill.png")
-    private val CKDM_BOLD_FONT = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "ckdm_bold")
+    private val CKDM_BOLD_SMALL_FONT = ResourceLocation.fromNamespaceAndPath(ChowKingdomMod.MOD_ID, "ckdm_bold_small")
     private const val FRAME_WIDTH = 1646
     private const val FRAME_HEIGHT = 256
     private const val FRAME_SOURCE_CORNER = 75
     private const val FRAME_DEST_CORNER = 14
-    private const val MIN_WIDTH = 190
-    private const val MAX_WIDTH = 270
-    private const val PAD = 10
-    private const val ICON_SIZE = 24
+    private const val MIN_WIDTH = 154
+    private const val MAX_WIDTH = 218
+    private const val PAD_X = 7
+    private const val PAD_TOP = 9
+    private const val PAD_BOTTOM = 6
+    private const val ICON_SIZE = 18
     private const val ICON_SCALE = ICON_SIZE / 16.0f
     private const val TEXTURE_ICON_SOURCE_SIZE = 16
     private const val PLAYER_SKIN_SOURCE_SIZE = 64
-    private const val ICON_SLOT_WIDTH = 34
-    private const val TITLE_HEIGHT = 10
-    private const val CONTENT_GAP = 3
-    private const val CONTENT_LINE_HEIGHT = 10
+    private const val ICON_SLOT_WIDTH = 25
+    private const val TITLE_HEIGHT = 8
+    private const val CONTENT_GAP = 2
+    private const val CONTENT_LINE_HEIGHT = 9
     private const val MAX_CONTENT_LINES = 3
     private const val PROGRESS_TOP_GAP = 6
     private const val PROGRESS_AFTER_CONTENT_GAP = 4
@@ -389,6 +438,7 @@ object SnackbarClient {
     private const val DIALOG_TOP_OFFSET_Y = 14
     private const val STACK_GAP = 6
     private const val MAX_ACTIVE = 3
+    private const val MAX_EXTENDED_DURATION_MS = 60_000L
     private const val ENTER_MS = 260L
     private const val EXIT_MS = 180L
     private const val SLIDE_UP_OFFSET = 14.0f
