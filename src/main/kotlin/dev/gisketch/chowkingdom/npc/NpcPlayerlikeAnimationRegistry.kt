@@ -75,7 +75,7 @@ object NpcPlayerlikeAnimationRegistry {
     private var animations: Map<String, NpcPlayerlikeAnimationDefinition> = fallbackIds.associate { id -> id to NpcPlayerlikeAnimationDefinition(id) }
 
     fun reload(): List<NpcPlayerlikeAnimationDefinition> {
-        animations = (scanClasspath() + readDevManifest() + fallbackIds)
+        animations = (scanClasspath() + readDevManifest() + fallbackIds + NpcEmotecraftBridge.ids())
             .map(::normalize)
             .filter(String::isNotBlank)
             .distinct()
@@ -94,6 +94,10 @@ object NpcPlayerlikeAnimationRegistry {
     fun resolve(id: String): NpcPlayerlikeAnimationDefinition? {
         val normalized = normalize(id)
         if (normalized.isBlank()) return null
+        if (NpcEmotecraftBridge.isEmotecraftId(normalized)) {
+            return normalized.takeIf { NpcEmotecraftBridge.resolve(it) != null }
+                ?.let(::NpcPlayerlikeAnimationDefinition)
+        }
         val byId = animations.ifEmpty { reload().associateBy { animation -> animation.id } }
         return aliasCandidates(normalized).firstNotNullOfOrNull(byId::get)
             ?: reload().firstOrNull { animation -> animation.id == normalized }
@@ -101,7 +105,9 @@ object NpcPlayerlikeAnimationRegistry {
     }
 
     fun normalize(id: String): String {
-        val clean = id.trim()
+        val raw = id.trim()
+        if (raw.startsWith("${NpcEmotecraftBridge.NAMESPACE}:", ignoreCase = true)) return NpcEmotecraftBridge.normalizeId(raw)
+        val clean = raw
             .removeSuffix(".json")
             .lowercase()
             .replace(Regex("[^a-z0-9_.:/-]"), "")

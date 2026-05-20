@@ -24,6 +24,7 @@ object NpcConfig {
     fun load() {
         dir.createDirectories()
         writeDefaultIfMissing()
+        NpcEmoteCatalog.load()
         settings = loadSettings()
         genericQuests = loadGenericQuests()
         microInteractions = loadMicroInteractions()
@@ -110,6 +111,7 @@ object NpcConfig {
                     fileName != FRIENDSHIP_MESSAGES_FILE &&
                     fileName != NPC_SETTINGS_FILE &&
                     fileName != GENERIC_QUESTS_FILE &&
+                    fileName != NpcEmoteCatalog.CONFIG_FILE &&
                     !fileName.startsWith(MICRO_INTERACTIONS_PREFIX)
                 ) {
                     paths.add(path)

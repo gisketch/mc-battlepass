@@ -136,14 +136,14 @@ object NpcLlmService {
             return sendFinal(player, npc, definition, fallbackMessage, fallbackMessage = fallbackMessage, sendTalkResponse = sendTalkResponse, excludePlayerFromBalloon = excludePlayerFromBalloon, showBalloon = showBalloon, relayToNearby = relayToNearby, npcRecordType = npcRecordType, responseToken = responseToken)
         }
         if (showBalloon) NpcFeature.showBalloonToNearby(npc.level() as ServerLevel, npc, "...", NPC_LLM_PENDING_BALLOON_TICKS, if (excludePlayerFromBalloon) player.uuid else null)
-        CompletableFuture.supplyAsync({ complete(player, definition, input, settings, fallbackMessage, inputLabel) { partial -> player.server.execute { NpcNetwork.sendTalkResponse(player, definition.id, partial, responseToken, partial = true) } } }, executor).whenComplete { result, throwable ->
+        CompletableFuture.supplyAsync({ complete(player, definition, input, settings, fallbackMessage, inputLabel, NpcEmoteSurfaces.CONVERSATION) { partial -> player.server.execute { NpcNetwork.sendTalkResponse(player, definition.id, partial, responseToken, partial = true) } } }, executor).whenComplete { result, throwable ->
             player.server.execute {
                 if (!finishRequest(definition.id, responseToken)) return@execute
                 val liveNpc = NpcFeature.existingNpc(player.server, definition.id) ?: return@execute NpcNetwork.sendTalkResponse(player, definition.id, fallbackMessage, responseToken)
                 if (throwable != null) ChowKingdomMod.LOGGER.warn("NPC LLM event request failed npc={} player={}", definition.id, player.gameProfile.name, throwable)
                 val completion = if (throwable == null) result else NpcLlmCompletion(fallbackMessage)
                 val filteredMessage = messageFilter?.invoke(completion.message) ?: completion.message
-                sendFinal(player, liveNpc, definition, filteredMessage, fallbackMessage = fallbackMessage, sendTalkResponse = sendTalkResponse, excludePlayerFromBalloon = excludePlayerFromBalloon, showBalloon = showBalloon, relayToNearby = relayToNearby, npcRecordType = npcRecordType, responseToken = responseToken, memorable = completion.memorable)
+                sendFinal(player, liveNpc, definition, filteredMessage, fallbackMessage = fallbackMessage, sendTalkResponse = sendTalkResponse, excludePlayerFromBalloon = excludePlayerFromBalloon, showBalloon = showBalloon, relayToNearby = relayToNearby, npcRecordType = npcRecordType, responseToken = responseToken, memorable = completion.memorable, emote = completion.emote)
             }
         }
     }
@@ -151,12 +151,12 @@ object NpcLlmService {
     fun giftSentiment(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, fallbackMessage: String, input: String, responseToken: Long, onComplete: (NpcGiftSentimentResult) -> Unit) {
         val settings = NpcConfig.settings().llm
         if (!startRequest(definition.id, player, responseToken)) return onComplete(NpcGiftSentimentResult(fallbackMessage, "neutral"))
-        CompletableFuture.supplyAsync({ complete(player, definition, input, settings, fallbackMessage, "Gift sentiment") }, executor).whenComplete { result, throwable ->
+        CompletableFuture.supplyAsync({ complete(player, definition, input, settings, fallbackMessage, "Gift sentiment", NpcEmoteSurfaces.CONVERSATION) }, executor).whenComplete { result, throwable ->
             player.server.execute {
                 if (!finishRequest(definition.id, responseToken)) return@execute
                 if (throwable != null) ChowKingdomMod.LOGGER.warn("NPC LLM gift sentiment request failed npc={} player={}", definition.id, player.gameProfile.name, throwable)
                 val completion = if (throwable == null) result else NpcLlmCompletion(fallbackMessage, giftSentiment = "neutral")
-                onComplete(NpcGiftSentimentResult(completion.message, completion.giftSentiment.ifBlank { "neutral" }, completion.memorable))
+                onComplete(NpcGiftSentimentResult(completion.message, completion.giftSentiment.ifBlank { "neutral" }, completion.memorable, completion.emote))
             }
         }
     }
@@ -166,7 +166,7 @@ object NpcLlmService {
         if (!settings.enabled) return onComplete(fallback)
         if (!startRequest(definition.id, player, responseToken)) return onComplete(fallback)
         val input = quizPrompt(player, definition, mission)
-        CompletableFuture.supplyAsync({ complete(player, definition, input, settings, fallback.message, "Quiz request") }, executor).whenComplete { result, throwable ->
+        CompletableFuture.supplyAsync({ complete(player, definition, input, settings, fallback.message, "Quiz request", NpcEmoteSurfaces.DISABLED) }, executor).whenComplete { result, throwable ->
             player.server.execute {
                 if (!finishRequest(definition.id, responseToken)) return@execute
                 if (throwable != null) ChowKingdomMod.LOGGER.warn("NPC LLM quiz request failed npc={} player={}", definition.id, player.gameProfile.name, throwable)
@@ -207,13 +207,13 @@ object NpcLlmService {
             }
             return
         }
-        CompletableFuture.supplyAsync({ complete(player, definition, promptInput, settings, inputLabel = "Conversation") { partial -> player.server.execute { NpcNetwork.sendTalkResponse(player, definition.id, partial, responseToken, partial = true) } } }, executor).whenComplete { result, throwable ->
+        CompletableFuture.supplyAsync({ complete(player, definition, promptInput, settings, inputLabel = "Conversation", emoteSurface = NpcEmoteSurfaces.CONVERSATION) { partial -> player.server.execute { NpcNetwork.sendTalkResponse(player, definition.id, partial, responseToken, partial = true) } } }, executor).whenComplete { result, throwable ->
             player.server.execute {
                 val target = finishTalkRequest(definition.id, session, responseToken) ?: return@execute
                 val liveNpc = NpcFeature.existingNpc(player.server, definition.id) ?: return@execute NpcNetwork.sendTalkResponse(player, definition.id, settings.errorMessage, responseToken)
                 if (throwable != null) ChowKingdomMod.LOGGER.warn("NPC LLM request failed npc={} player={}", definition.id, player.gameProfile.name, throwable)
                 val completion = if (throwable == null) result else NpcLlmCompletion(settings.errorMessage)
-                sendGroupFinal(player, liveNpc, definition, completion.message, target, fallbackMessage = settings.errorMessage, memorable = completion.memorable)
+                sendGroupFinal(player, liveNpc, definition, completion.message, target, fallbackMessage = settings.errorMessage, memorable = completion.memorable, emote = completion.emote)
             }
         }
     }
@@ -234,12 +234,12 @@ object NpcLlmService {
         startWorldChatRequest(definition.id, responseToken)
         NpcWorldChatService.beginThinking(player.server, responseToken, definition.id, definition.name)
         val input = buildWorldChatInput(player, definition, cleanMessage, channel, matchedCallName)
-        CompletableFuture.supplyAsync({ complete(player, definition, input, settings, inputLabel = "World chat message") }, executor).whenComplete { result, throwable ->
+        CompletableFuture.supplyAsync({ complete(player, definition, input, settings, inputLabel = "World chat message", emoteSurface = NpcEmoteSurfaces.WORLD_CHAT) }, executor).whenComplete { result, throwable ->
             player.server.execute {
                 if (!finishWorldChatRequest(definition.id, responseToken)) return@execute
                 if (throwable != null) ChowKingdomMod.LOGGER.warn("NPC world chat LLM failed npc={} player={} channel={}", definition.id, player.gameProfile.name, channel, throwable)
                 val completion = if (throwable == null) result else NpcLlmCompletion(settings.errorMessage)
-                sendWorldChatFinal(player, definition, cleanMessage, completion.message, settings.errorMessage, channel, discordMentionUserId, completion.memorable)
+                sendWorldChatFinal(player, definition, cleanMessage, completion.message, settings.errorMessage, channel, discordMentionUserId, completion.memorable, completion.emote)
             }
         }
     }
@@ -260,25 +260,25 @@ object NpcLlmService {
         startWorldChatRequest(definition.id, responseToken)
         NpcWorldChatService.beginThinking(server, responseToken, definition.id, definition.name)
         val input = buildDiscordGuestWorldChatPrompt(server, definition, cleanMessage, matchedCallName, discordAuthorName)
-        CompletableFuture.supplyAsync({ completeRaw(input, settings, settings.errorMessage) }, executor).whenComplete { result, throwable ->
+        CompletableFuture.supplyAsync({ completeRaw(input, settings, settings.errorMessage, NpcEmoteSurfaces.WORLD_CHAT) }, executor).whenComplete { result, throwable ->
             server.execute {
                 if (!finishWorldChatRequest(definition.id, responseToken)) return@execute
                 if (throwable != null) ChowKingdomMod.LOGGER.warn("NPC Discord guest world chat LLM failed npc={} discordUser={}", definition.id, discordAuthorName, throwable)
                 val completion = if (throwable == null) result else NpcLlmCompletion(settings.errorMessage)
-                sendDiscordGuestWorldChatFinal(server, definition, discordAuthorName, cleanMessage, completion.message, settings.errorMessage, completion.memorable)
+                sendDiscordGuestWorldChatFinal(server, definition, discordAuthorName, cleanMessage, completion.message, settings.errorMessage, completion.memorable, completion.emote)
             }
         }
     }
 
-    private fun completeRaw(prompt: String, settings: NpcLlmSettingsDefinition, fallbackMessage: String): NpcLlmCompletion {
+    private fun completeRaw(prompt: String, settings: NpcLlmSettingsDefinition, fallbackMessage: String, emoteSurface: String = NpcEmoteSurfaces.CONVERSATION): NpcLlmCompletion {
         if (settings.apiKey.isBlank()) {
             ChowKingdomMod.LOGGER.warn("NPC LLM missing api_key provider={} model={}", settings.provider, settings.model)
             recordLlmError(settings.provider, settings.model, "config", null, "missing api_key")
             return NpcLlmCompletion(fallbackMessage)
         }
         val raw = when (settings.provider) {
-            "gemini" -> completeGemini(prompt, settings, fallbackMessage)
-            else -> completeOpenAiCompatible(prompt, settings, fallbackMessage)
+            "gemini" -> completeGemini(prompt, settings, fallbackMessage, emoteSurface)
+            else -> completeOpenAiCompatible(prompt, settings, fallbackMessage, emoteSurface)
         }
         return raw.copy(message = sanitizeReply(raw.message, settings, fallbackMessage))
     }
@@ -355,7 +355,8 @@ object NpcLlmService {
             - Do not highlight whole sentences. Prefer 1 to 4 highlighted spans per reply.
             - Only use the exact tags <b> and </b>; do not use markdown, HTML tags besides <b>, or nested tags.
             - Do not claim you gave items, changed friendship, changed prices, completed quests, teleported anyone, healed anyone, or changed the world.
-            - Return JSON only: {"message":"NPC reply here","memorable":null}
+            - Return JSON only: {"message":"NPC reply here","emote":"none","memorable":null}
+            - Choose emote from the allowed list only. Use "none" when no movement fits remote chat.
 
             Channel context:
             - Channel: discord_chat
@@ -369,6 +370,9 @@ object NpcLlmService {
 
             Store context:
             $storeContext
+
+            Allowed emotes:
+            ${NpcEmoteCatalog.promptSection(NpcEmoteSurfaces.WORLD_CHAT)}
 
             Recent global events:
             $recentGlobalEvents
@@ -475,6 +479,7 @@ object NpcLlmService {
         settings: NpcLlmSettingsDefinition,
         fallbackMessage: String = settings.fallbackMessage,
         inputLabel: String = "Player says",
+        emoteSurface: String = NpcEmoteSurfaces.CONVERSATION,
         onPartial: ((String) -> Unit)? = null,
     ): NpcLlmCompletion {
         if (settings.apiKey.isBlank()) {
@@ -482,19 +487,20 @@ object NpcLlmService {
             recordLlmError(settings.provider, settings.model, "config", null, "missing api_key")
             return NpcLlmCompletion(fallbackMessage)
         }
-        val prompt = buildPrompt(player, definition, playerMessage, settings, inputLabel)
+        val prompt = buildPrompt(player, definition, playerMessage, settings, inputLabel, emoteSurface)
         ChowKingdomMod.LOGGER.info("NPC LLM request provider={} model={} npc={} player={} promptChars={}", settings.provider, settings.model, definition.id, player.gameProfile.name, prompt.length)
         ChowKingdomMod.LOGGER.info("NPC LLM prompt npc={} player={} input=\n{}", definition.id, player.gameProfile.name, prompt)
-        val raw = if (settings.llmStreaming && settings.provider != "gemini" && onPartial != null) {
+        val emoteAware = NpcEmoteSurfaces.normalize(emoteSurface) != NpcEmoteSurfaces.DISABLED && NpcEmoteCatalog.availableFor(emoteSurface, requireResolvedAnimation = true).isNotEmpty()
+        val raw = if (settings.llmStreaming && !emoteAware && settings.provider != "gemini" && onPartial != null) {
             completeOpenAiCompatibleStreaming(streamingPrompt(prompt), settings, fallbackMessage, onPartial)
         } else when (settings.provider) {
-            "gemini" -> completeGemini(prompt, settings, fallbackMessage)
-            else -> completeOpenAiCompatible(prompt, settings, fallbackMessage)
+            "gemini" -> completeGemini(prompt, settings, fallbackMessage, emoteSurface)
+            else -> completeOpenAiCompatible(prompt, settings, fallbackMessage, emoteSurface)
         }
         return raw.copy(message = sanitizeReply(raw.message, settings, fallbackMessage))
     }
 
-    private fun completeOpenAiCompatible(prompt: String, settings: NpcLlmSettingsDefinition, fallbackMessage: String): NpcLlmCompletion {
+    private fun completeOpenAiCompatible(prompt: String, settings: NpcLlmSettingsDefinition, fallbackMessage: String, emoteSurface: String): NpcLlmCompletion {
         val root = JsonObject()
         root.addProperty("model", settings.model)
         val messages = JsonArray()
@@ -536,7 +542,7 @@ object NpcLlmService {
         }
         if (content.isBlank()) recordLlmError(settings.provider, settings.model, "openai_compatible", response.statusCode(), "empty response content", response.body())
         recordUsage(settings, "openai_compatible", prompt, content, json.childObject("usage"), estimated = false)
-        return parseMessage(content, settings, fallbackMessage, "openai_compatible")
+        return parseMessage(content, settings, fallbackMessage, "openai_compatible", emoteSurface)
     }
 
     private fun completeOpenAiCompatibleStreaming(prompt: String, settings: NpcLlmSettingsDefinition, fallbackMessage: String, onPartial: (String) -> Unit): NpcLlmCompletion {
@@ -605,6 +611,7 @@ object NpcLlmService {
     }
 
     private fun streamingPrompt(prompt: String): String = prompt
+        .replace("- Return JSON only: {\"message\":\"NPC reply here\",\"emote\":\"none\",\"memorable\":null}", "- Return the NPC reply text only. Do not return JSON.")
         .replace("- Return JSON only: {\"message\":\"NPC reply here\",\"memorable\":null}", "- Return the NPC reply text only. Do not return JSON.")
         .replace("- Set memorable to one short player-specific fact only when the player reveals something important, lasting, and useful later. Otherwise use null.", "- Do not include notes, labels, or explanations outside the NPC reply.")
 
@@ -624,7 +631,7 @@ object NpcLlmService {
         return "deepseek.com" in baseUrl && (model.startsWith("deepseek-v4") || model == "deepseek-chat")
     }
 
-    private fun completeGemini(prompt: String, settings: NpcLlmSettingsDefinition, fallbackMessage: String): NpcLlmCompletion {
+    private fun completeGemini(prompt: String, settings: NpcLlmSettingsDefinition, fallbackMessage: String, emoteSurface: String): NpcLlmCompletion {
         val root = JsonObject()
         val parts = JsonArray().apply { add(JsonObject().apply { addProperty("text", prompt) }) }
         val contents = JsonArray().apply { add(JsonObject().apply { add("parts", parts) }) }
@@ -660,7 +667,7 @@ object NpcLlmService {
         }
         if (text.isBlank()) recordLlmError(settings.provider, settings.model, "gemini", response.statusCode(), "empty response text", response.body())
         recordUsage(settings, "gemini", prompt, text, json.childObject("usageMetadata"), estimated = false)
-        return parseMessage(text, settings, fallbackMessage, "gemini")
+        return parseMessage(text, settings, fallbackMessage, "gemini", emoteSurface)
     }
 
     private fun request(url: String, settings: NpcLlmSettingsDefinition, body: JsonObject, includeAuth: Boolean = true): HttpRequest {
@@ -672,19 +679,20 @@ object NpcLlmService {
         return builder.build()
     }
 
-    private fun parseMessage(content: String, settings: NpcLlmSettingsDefinition, fallbackMessage: String, source: String): NpcLlmCompletion {
+    private fun parseMessage(content: String, settings: NpcLlmSettingsDefinition, fallbackMessage: String, source: String, emoteSurface: String): NpcLlmCompletion {
         val cleaned = content.trim().removePrefix("```json").removePrefix("```").removeSuffix("```").trim()
         val parsed = runCatching {
             val obj = JsonParser.parseString(cleaned).asJsonObject
             val message = obj.get("message")?.takeUnless { it.isJsonNull }?.asString.orEmpty()
             val memorable = obj.get("memorable")?.takeUnless { it.isJsonNull }?.asString.orEmpty()
+            val emote = obj.get("emote")?.takeUnless { it.isJsonNull }?.asString.orEmpty()
             val giftSentiment = obj.get("gift_sentiment")?.takeUnless { it.isJsonNull }?.asString.orEmpty()
             val choices = obj.getAsJsonArray("choices")
                 ?.mapNotNull { element -> element.takeUnless { it.isJsonNull }?.asString?.trim()?.take(160) }
                 ?.filter(String::isNotBlank)
                 .orEmpty()
             val answer = obj.get("answer")?.takeUnless { it.isJsonNull }?.asString?.trim().orEmpty()
-            NpcLlmCompletion(message, sanitizeMemory(memorable), sanitizeGiftSentiment(giftSentiment), choices, answer)
+            NpcLlmCompletion(message = message, memorable = sanitizeMemory(memorable), giftSentiment = sanitizeGiftSentiment(giftSentiment), quizChoices = choices, quizAnswer = answer, emote = NpcEmoteCatalog.sanitizeEmote(emote, emoteSurface))
         }
             .onFailure { exception ->
                 ChowKingdomMod.LOGGER.warn("NPC LLM response was not JSON message. raw={}", cleaned.take(LOG_BODY_LIMIT), exception)
@@ -903,6 +911,7 @@ object NpcLlmService {
         npcRecordType: String = "npc_llm_reply",
         responseToken: Long = 0L,
         memorable: String = "",
+        emote: String = NpcEmoteCatalog.NONE,
     ) {
         val settings = NpcConfig.settings().llm
         val reply = sanitizeReply(message, settings, fallbackMessage)
@@ -910,6 +919,7 @@ object NpcLlmService {
         val detached = responseToken != 0L && detachedResponseTokens.remove(responseToken)
         rememberDialogReply(player.uuid, definition.id, publicReply)
         npc.startTalkingTo(player, NPC_LLM_TALK_DURATION_TICKS)
+        NpcEmoteController.tryPlay(npc, NpcEmoteSurfaces.CONVERSATION, emote, npcRecordType)
         if (playerMessage.isNotBlank()) NpcStore.recordConversation(definition.id, player, player.gameProfile.name, playerMessage.take(MAX_PLAYER_MESSAGE_LENGTH), "player_llm_talk")
         NpcStore.recordConversation(definition.id, player, definition.name, publicReply, npcRecordType)
         if (memorable.isNotBlank()) NpcStore.recordPlayerMemory(player, "llm_memorable", memorable)
@@ -931,11 +941,13 @@ object NpcLlmService {
         target: NpcTalkResponseTarget,
         fallbackMessage: String,
         memorable: String = "",
+        emote: String = NpcEmoteCatalog.NONE,
     ) {
         val settings = NpcConfig.settings().llm
         val reply = sanitizeReply(message, settings, fallbackMessage)
         val publicReply = stripDialogMarkup(reply)
         npc.startTalkingTo(speaker, NPC_LLM_TALK_DURATION_TICKS)
+        NpcEmoteController.tryPlay(npc, NpcEmoteSurfaces.CONVERSATION, emote, "npc_llm_group_reply")
         target.turns.forEach { turn ->
             speaker.server.playerList.getPlayer(turn.playerId)?.let { turnPlayer ->
                 NpcStore.recordConversation(definition.id, turnPlayer, turn.playerName, turn.message.take(MAX_PLAYER_MESSAGE_LENGTH), "player_llm_talk")
@@ -971,12 +983,14 @@ object NpcLlmService {
         channel: String,
         discordMentionUserId: String?,
         memorable: String = "",
+        emote: String = NpcEmoteCatalog.NONE,
     ) {
         val settings = NpcConfig.settings().llm
         val reply = sanitizeReply(message, settings, fallbackMessage)
         val publicReply = stripDialogMarkup(reply)
         NpcStore.recordConversation(definition.id, player, player.gameProfile.name, playerMessage.take(MAX_PLAYER_MESSAGE_LENGTH), "player_world_chat")
         NpcStore.recordConversation(definition.id, player, definition.name, publicReply, "npc_world_chat_reply")
+        NpcFeature.existingNpc(player.server, definition.id)?.let { npc -> NpcEmoteController.tryPlay(npc, NpcEmoteSurfaces.WORLD_CHAT, emote, "npc_world_chat_reply") }
         if (memorable.isNotBlank()) NpcStore.recordPlayerMemory(player, "llm_memorable", memorable)
         NpcNetwork.broadcastWorldChat(player.server, NpcWorldChatPayload(definition.id, definition.name, player.gameProfile.name, player.uuid, "player", publicReply))
         DiscordRelay.npcWorldChat(definition.id, definition.name, publicReply, discordMentionUserId) { messageId ->
@@ -994,11 +1008,13 @@ object NpcLlmService {
         message: String,
         fallbackMessage: String,
         memorable: String = "",
+        emote: String = NpcEmoteCatalog.NONE,
     ) {
         val settings = NpcConfig.settings().llm
         val reply = sanitizeReply(message, settings, fallbackMessage)
         val publicReply = stripDialogMarkup(reply)
         val speakerName = discordAuthorName.trim().ifBlank { "Discord" }
+        NpcFeature.existingNpc(server, definition.id)?.let { npc -> NpcEmoteController.tryPlay(npc, NpcEmoteSurfaces.WORLD_CHAT, emote, "npc_discord_world_chat_reply") }
         NpcNetwork.broadcastWorldChat(server, NpcWorldChatPayload(definition.id, definition.name, speakerName, null, "discord", publicReply))
         DiscordRelay.npcWorldChat(definition.id, definition.name, publicReply, fallbackName = discordAuthorName) { messageId ->
             NpcWorldChatService.rememberDiscordNpcMessage(messageId, definition.id)
@@ -1050,7 +1066,7 @@ object NpcLlmService {
         }
     }
 
-    private fun buildPrompt(player: ServerPlayer, definition: NpcDefinition, playerMessage: String, settings: NpcLlmSettingsDefinition, inputLabel: String): String {
+    private fun buildPrompt(player: ServerPlayer, definition: NpcDefinition, playerMessage: String, settings: NpcLlmSettingsDefinition, inputLabel: String, emoteSurface: String): String {
         val friendship = NpcStore.friendshipSnapshot(definition.id, player)
         val context = NpcStore.llmContext(definition.id, player, NpcTime.hour(player.level()))
         val recentHistory = context.conversation
@@ -1068,6 +1084,17 @@ object NpcLlmService {
         val globalEvents = buildGlobalEvents(context)
         val playerMemories = buildMemories(context.playerMemories)
         val globalMemories = buildMemories(context.globalMemories)
+        val emoteSection = NpcEmoteCatalog.promptSection(emoteSurface)
+        val emoteRules = if (emoteSection.isBlank()) {
+            """- Return JSON only: {"message":"NPC reply here","memorable":null}"""
+        } else {
+            """
+            - Return JSON only: {"message":"NPC reply here","emote":"none","memorable":null}
+            - Choose emote from the allowed list only. Use "none" when the reply is neutral, serious, or does not need movement.
+            - Do not use sitting or lying emotes while talking unless they appear in the allowed list.
+            """.trimIndent()
+        }
+        val allowedEmotes = if (emoteSection.isBlank()) "" else "\nAllowed emotes:\n$emoteSection\n"
         return """
             You are roleplaying as an NPC in a Minecraft multiplayer server.
 
@@ -1098,7 +1125,7 @@ object NpcLlmService {
             - Home, bed, camp, workplace, and schedule in NPC state belong to you, the NPC, not the player.
             - If your home bed is unset, you are the one without a home. Ask the player for help with your bed or rent contract; do not say the player lacks a house.
             - Your Pokemon companion in NPC state belongs to you. Mention them only when it fits the conversation, not every reply.
-            - Return JSON only: {"message":"NPC reply here","memorable":null}
+            $emoteRules
             - Set memorable to one short player-specific fact only when the player reveals something important, lasting, and useful later. Otherwise use null.
 
             Relationship:
@@ -1133,6 +1160,7 @@ object NpcLlmService {
 
             Important global memories:
             $globalMemories
+            $allowedEmotes
 
             Hurt context:
             $hurtContext
@@ -1310,9 +1338,9 @@ object NpcLlmService {
 
 private data class ActiveNpcRequest(val playerId: UUID, val responseToken: Long)
 
-data class NpcGiftSentimentResult(val message: String, val giftSentiment: String, val memorable: String = "")
+data class NpcGiftSentimentResult(val message: String, val giftSentiment: String, val memorable: String = "", val emote: String = NpcEmoteCatalog.NONE)
 
-private data class NpcLlmCompletion(val message: String, val memorable: String = "", val giftSentiment: String = "", val quizChoices: List<String> = emptyList(), val quizAnswer: String = "")
+private data class NpcLlmCompletion(val message: String, val memorable: String = "", val giftSentiment: String = "", val quizChoices: List<String> = emptyList(), val quizAnswer: String = "", val emote: String = NpcEmoteCatalog.NONE)
 
 data class NpcQuizLlmResult(val message: String, val choices: List<String>, val answerIndex: Int)
 

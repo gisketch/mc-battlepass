@@ -26,6 +26,8 @@ npc_interaction_exchanges = [
 - `topic`: small category such as `town_patrol`, `training`, `weather`, `pokemon_match`, or `shop_stock`.
 - `line`: first NPC balloon.
 - `response`: second NPC balloon.
+- `source_emote`: optional emote catalog id for the first NPC, such as `wave`, `clap`, `shrug`, or `proud`. Do not use sitting/lying emotes here.
+- `target_emote`: optional emote catalog id for the second NPC. Blank lets runtime auto-pick a safe gesture sometimes.
 - `weight`: optional selection weight. Default `1.0`.
 - `source_ids`: optional NPC ids that can start this exchange.
 - `target_ids`: optional NPC ids that can answer this exchange.
@@ -44,12 +46,14 @@ topic = "roam"
 source_tags = ["town"]
 activities = ["work", "meetup"]
 line = "These paths tell you where people really walk."
+emote = "lookout"
 weight = 2.0
 ```
 
 - `source_ids` and `source_tags` gate which NPC can say the line.
 - `required_spawned_ids` gates named third-party NPC references the same way it does for paired exchanges.
 - `activities` is optional. When present, it limits the line to schedule activities such as `work`, `home`, `meetup`, or `pokemon_roam`.
+- `emote` is optional. Ambient solo moments may use normal ambient gestures or ambient posture ids such as `sit_cool`; posture ids cancel when the NPC talks, moves, takes damage, or enters combat/battle locks.
 - Keep `line` short and observational. It should sound like a thought or small daily action, not a quest prompt.
 - Solo moment balloons trigger for a player who enters close range during the active ambient event. Do not write lines that require the player to have seen the NPC from the first tick of the action.
 

@@ -401,6 +401,8 @@ class NpcMicroInteractionExchangeDefinition(
     var topic: String = "",
     var line: String = "",
     var response: String = "",
+    @SerializedName("source_emote") var sourceEmote: String = "",
+    @SerializedName("target_emote") var targetEmote: String = "",
     var weight: Double = 1.0,
     @SerializedName("source_ids") var sourceIds: MutableList<String> = mutableListOf(),
     @SerializedName("target_ids") var targetIds: MutableList<String> = mutableListOf(),
@@ -415,6 +417,8 @@ class NpcMicroInteractionExchangeDefinition(
         }
         line = cleanNpcMicroInteractionLine(line)
         response = cleanNpcMicroInteractionLine(response)
+        sourceEmote = NpcEmoteCatalog.normalizeId(sourceEmote).takeUnless { it == NpcEmoteCatalog.NONE }.orEmpty()
+        targetEmote = NpcEmoteCatalog.normalizeId(targetEmote).takeUnless { it == NpcEmoteCatalog.NONE }.orEmpty()
         weight = weight.coerceIn(0.0, 1000.0)
         sourceIds = sourceIds.map(::cleanNpcMicroInteractionToken).filter(String::isNotBlank).distinct().toMutableList()
         targetIds = targetIds.map(::cleanNpcMicroInteractionToken).filter(String::isNotBlank).distinct().toMutableList()
@@ -428,6 +432,7 @@ class NpcSoloMomentDefinition(
     var id: String = "",
     var topic: String = "",
     var line: String = "",
+    var emote: String = "",
     var weight: Double = 1.0,
     @SerializedName("source_ids") var sourceIds: MutableList<String> = mutableListOf(),
     @SerializedName("source_tags") var sourceTags: MutableList<String> = mutableListOf(),
@@ -440,6 +445,7 @@ class NpcSoloMomentDefinition(
             cleanNpcMicroInteractionToken("${fallbackPrefix}_${topic}_${line.hashCode().toUInt().toString(16)}")
         }
         line = cleanNpcMicroInteractionLine(line)
+        emote = NpcEmoteCatalog.normalizeId(emote).takeUnless { it == NpcEmoteCatalog.NONE }.orEmpty()
         weight = weight.coerceIn(0.0, 1000.0)
         sourceIds = sourceIds.map(::cleanNpcMicroInteractionToken).filter(String::isNotBlank).distinct().toMutableList()
         sourceTags = sourceTags.map(::cleanNpcMicroInteractionToken).filter(String::isNotBlank).distinct().toMutableList()

@@ -305,6 +305,11 @@ class ChowNpcEntity(entityType: EntityType<out PathfinderMob>, level: Level) : P
         return true
     }
 
+    fun clearPlayerlikeAnimation() {
+        playerlikeAnimationKey = ""
+        playerlikeAnimationPlayId = playerlikeAnimationPlayId + 1
+    }
+
     fun setHeldItemDebugRotation(x: Float, y: Float, z: Float) {
         heldItemDebugRotX = x
         heldItemDebugRotY = y
@@ -384,6 +389,7 @@ class ChowNpcEntity(entityType: EntityType<out PathfinderMob>, level: Level) : P
     }
 
     fun startTalkingTo(player: ServerPlayer, durationTicks: Int) {
+        NpcEmoteController.cancelPosture(this, "talking")
         talkingTarget = player.uuid
         talkingUntilTick = tickCount + durationTicks
         debugActivity = "dialog"

@@ -71,6 +71,13 @@ ordering="AFTER"
 side="CLIENT"
 
 [[dependencies."${mod_id}"]]
+modId="emotecraft"
+type="optional"
+versionRange="${emotecraft_version_range}"
+ordering="AFTER"
+side="BOTH"
+
+[[dependencies."${mod_id}"]]
 modId="cloth_config"
 type="required"
 versionRange="${cloth_config_version_range}"

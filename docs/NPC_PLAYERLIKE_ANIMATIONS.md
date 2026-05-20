@@ -6,8 +6,11 @@ CKDM NPC playerlike animation mode is a visual debug/compat path for Mob Player 
 
 - `/npc animation debug`: spawn the Steve-textured debug NPC.
 - `/npc animation playerlike true`: switch the active debug NPC, or looked-at NPC, to playerlike animation mode.
-- `/npc animation list`: while playerlike is true, list known PlayerAnimator ids.
-- `/npc animations <namespace:clip>`: queue a namespaced PlayerAnimator clip.
+- `/npc animation list`: while playerlike is true, list known PlayerAnimator and Emotecraft ids.
+- `/npc animations <namespace:clip>`: queue a namespaced PlayerAnimator or Emotecraft clip.
+- `/npc emote list`: list curated NPC emote ids, backing animation ids, surfaces, and resolved/missing status.
+- `/npc emote reload`: reload `emotes.toml` and playerlike animation ids.
+- `/npc emote test <id>`: play a curated NPC emote on the active debug NPC or looked-at NPC.
 
 Examples:
 
@@ -17,6 +20,8 @@ Examples:
 /npc animations bettercombat:one_handed_slash_horizontal_right
 /npc animations bettercombat:dual_handed_slash_cross
 /npc animations combat_roll:roll
+/npc animations emotecraft:wave
+/npc emote test wave
 ```
 
 The canonical Better Combat namespace is `bettercombat`. CKDM normalizes `better_combat` to `bettercombat` only as a debug convenience.
@@ -28,12 +33,17 @@ Playerlike command suggestions come from:
 - Loaded classpath/resource-pack files at `assets/<namespace>/player_animations/*.json`.
 - Local dev scrape data at `build/playeranimator-clips/manifest.csv`, when present.
 - A small Better Combat fallback list.
+- Emotecraft `.emotecraft` files loaded from the runtime `.minecraft/emotes` tree when Emotecraft is installed. CKDM uses ids such as `emotecraft:wave` and `emotecraft:uuid/<uuid>`.
 
 The command accepts arbitrary `namespace:clip` ids even when not suggested. If PlayerAnimator does not have that id loaded, the client logs:
 
 ```text
 No client PlayerAnimator animation found for NPC playerlike key ...
 ```
+
+For Emotecraft ids, place `.emotecraft` files in the runtime instance under `.minecraft/emotes/server`. The repo `refs/emotes` folder is source/reference material; Emotecraft does not discover raw `.emotecraft` files from CKDM's mod resources by default.
+
+NPC life/LLM emotes use stable catalog ids from `<game config>/gisketchs_chowkingdom_mod/npcs/emotes.toml`. The catalog maps ids such as `wave`, `shrug`, or `sit_cool` to raw animation ids such as `emotecraft:wave`; add new `.emotecraft` files to the runtime emotes folder, then add or edit catalog rows.
 
 ## Renderer Notes
 

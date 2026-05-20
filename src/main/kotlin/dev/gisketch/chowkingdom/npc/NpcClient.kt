@@ -981,23 +981,30 @@ private class NpcPlayerlikeAnimationLayer(val entity: ChowNpcEntity) : ModifierL
             return
         }
         if (playId != observedPlayId || animationKey != observedAnimationKey) {
-            val animationId = runCatching { ResourceLocation.parse(animationKey) }.getOrNull()
-            val playable = animationId?.let(PlayerAnimationRegistry::getAnimation)
-            val animation = when (playable) {
-                is KeyframeAnimation -> NpcSmoothCustomAnimationPlayer(playable, 0)
-                else -> (playable?.playAnimation() as? IAnimation)?.let(::NpcSmoothPlayerlikeAnimation)
+            val emotecraftAnimation = NpcEmotecraftBridge.resolve(animationKey)
+            val animation = if (emotecraftAnimation != null) {
+                NpcSmoothCustomAnimationPlayer(emotecraftAnimation, 0)
+            } else {
+                val animationId = runCatching { ResourceLocation.parse(animationKey) }.getOrNull()
+                val playable = animationId?.let(PlayerAnimationRegistry::getAnimation)
+                when (playable) {
+                    is KeyframeAnimation -> NpcSmoothCustomAnimationPlayer(playable, 0)
+                    else -> (playable?.playAnimation() as? IAnimation)?.let(::NpcSmoothPlayerlikeAnimation)
+                }
             }
             setAnimation(animation)
             if (animation == null && warnedMissingAnimationKey != animationKey) {
                 warnedMissingAnimationKey = animationKey
                 ChowKingdomMod.LOGGER.warn(
-                    "No client PlayerAnimator animation found for NPC playerlike key {}. Loaded namespaces/ids sample: {}",
+                    "No client PlayerAnimator/Emotecraft animation found for NPC playerlike key {}. Loaded namespaces/ids sample: {}. {}",
                     animationKey,
                     PlayerAnimationRegistry.getAnimations().keys.take(20).joinToString(", "),
+                    NpcEmotecraftBridge.debugStatus(),
                 )
             } else if (animation != null) {
                 warnedMissingAnimationKey = ""
-                ChowKingdomMod.LOGGER.info("Playing NPC playerlike animation {} on {}", animationKey, entity.npcId)
+                val source = if (emotecraftAnimation != null) "Emotecraft" else "PlayerAnimator"
+                ChowKingdomMod.LOGGER.info("Playing NPC {} animation {} on {}", source, animationKey, entity.npcId)
             }
             observedAnimationKey = animationKey
             observedPlayId = playId

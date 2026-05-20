@@ -956,7 +956,7 @@ object NpcFeature {
                 responseToken,
             ) { result ->
                 val mood = normalizeGiftMood(result.giftSentiment)
-                finishGiftToNpc(player, npc, definition, itemName, mood, result.message, responseToken)
+                finishGiftToNpc(player, npc, definition, itemName, mood, result.message, responseToken, result.emote)
                 if (result.memorable.isNotBlank()) NpcStore.recordPlayerMemory(player, "llm_memorable", result.memorable)
             }
             return
@@ -989,7 +989,7 @@ object NpcFeature {
         relayNpcDialog(player, npc, definition, message)
     }
 
-    private fun finishGiftToNpc(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, itemName: String, mood: String, message: String, responseToken: Long) {
+    private fun finishGiftToNpc(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, itemName: String, mood: String, message: String, responseToken: Long, emote: String = NpcEmoteCatalog.NONE) {
         val friendshipDelta = PerformerPerks.giftFriendshipDelta(player, mood, giftFriendshipDelta(mood))
         val appliedFriendshipDelta = NpcStore.effectiveFriendshipDelta(player, friendshipDelta)
         val friendship = NpcStore.adjustFriendship(definition.id, player, friendshipDelta, "gift_$mood")
@@ -997,6 +997,7 @@ object NpcFeature {
         val fallback = friendshipMessage(definition.friendshipMessages.gift, friendship, player, definition, itemName, mood)
         val reply = message.trim().ifBlank { fallback }
         npc.startTalkingTo(player, NPC_DIALOG_DURATION_TICKS)
+        NpcEmoteController.tryPlay(npc, NpcEmoteSurfaces.CONVERSATION, emote, "npc_gift_$mood")
         NpcStore.recordConversation(definition.id, player, player.gameProfile.name, "gifts $itemName to ${definition.name}", "player_gift")
         NpcStore.recordPlayerMemory(player, "gift_to_npc", "${player.gameProfile.name} gave $itemName to ${definition.name}; reaction mood was $mood.")
         NpcStore.recordConversation(definition.id, player, definition.name, reply, "npc_gift_$mood")
@@ -1259,7 +1260,11 @@ object NpcFeature {
     }
 
     fun prepareSmartBrainTick(entity: ChowNpcEntity): Boolean {
-        if (NpcBossFights.isActive(entity)) return true
+        NpcEmoteController.tick(entity)
+        if (NpcBossFights.isActive(entity)) {
+            NpcEmoteController.cancel(entity, "boss_active")
+            return true
+        }
         val definition = NpcConfig.get(entity.npcId) ?: return false
         entity.homePos = validHomePos(entity.level(), definition.id)
         entity.campPos = entity.campPos ?: NpcStore.campPos(definition.id)
@@ -1302,6 +1307,7 @@ object NpcFeature {
         val activity = activityFor(npc, definition)
         if (npc.isSleeping || npc.isTalking() || activity == "sleep") {
             npcAmbientActions.remove(npc.uuid)
+            NpcEmoteController.cancelPosture(npc, "ambient_interrupted")
             return false
         }
         npcAmbientActions[npc.uuid]?.let { action ->
@@ -1613,6 +1619,10 @@ object NpcFeature {
                 npc.navigation.moveTo(other.x, other.y, other.z, NPC_MICRO_INTERACTION_SPEED)
             } else {
                 npc.navigation.stop()
+                if (!active.emotePlayed) {
+                    NpcEmoteController.tryPlay(npc, NpcEmoteSurfaces.MICRO, active.emote, "npc_micro_interaction")
+                    active.emotePlayed = true
+                }
             }
             showMicroInteractionBalloonToClosePlayers(level, npc, active)
             return true
@@ -1729,11 +1739,13 @@ object NpcFeature {
             ?: npcMicroInteractionMessage(firstDefinition, secondDefinition, settings)
         val secondMessage = exchange?.let { renderNpcMicroInteractionLine(it.response, secondDefinition, firstDefinition, it.topic) }
             ?: npcMicroInteractionMessage(secondDefinition, firstDefinition, settings)
+        val firstEmote = exchange?.sourceEmote?.takeIf(String::isNotBlank) ?: autoMicroInteractionEmote(level, exchange?.topic.orEmpty())
+        val secondEmote = exchange?.targetEmote?.takeIf(String::isNotBlank) ?: autoMicroInteractionEmote(level, exchange?.topic.orEmpty())
         val now = level.gameTime
         val untilTick = now + durationTicks
         val topic = exchange?.topic.orEmpty()
-        npcMicroInteractions[first.uuid] = ActiveNpcMicroInteraction(second.uuid, secondDefinition.id, secondDefinition.name, firstMessage, secondMessage, topic, untilTick)
-        npcMicroInteractions[second.uuid] = ActiveNpcMicroInteraction(first.uuid, firstDefinition.id, firstDefinition.name, secondMessage, firstMessage, topic, untilTick)
+        npcMicroInteractions[first.uuid] = ActiveNpcMicroInteraction(second.uuid, secondDefinition.id, secondDefinition.name, firstMessage, secondMessage, firstEmote, topic, untilTick)
+        npcMicroInteractions[second.uuid] = ActiveNpcMicroInteraction(first.uuid, firstDefinition.id, firstDefinition.name, secondMessage, firstMessage, secondEmote, topic, untilTick)
         rememberNpcMicroInteractionDialogContext(first.uuid, second.uuid, secondDefinition.id, secondDefinition.name, firstMessage, secondMessage, topic, untilTick)
         rememberNpcMicroInteractionDialogContext(second.uuid, first.uuid, firstDefinition.id, firstDefinition.name, secondMessage, firstMessage, topic, untilTick)
         markAutoTaskCooldown(first, durationTicks)
@@ -1771,6 +1783,9 @@ object NpcFeature {
             ?.replace("{other}", otherDefinition.name)
             ?: "Talking with ${otherDefinition.name}..."
     }
+
+    private fun autoMicroInteractionEmote(level: ServerLevel, topic: String): String =
+        if (level.random.nextInt(100) < NPC_MICRO_INTERACTION_EMOTE_CHANCE) NpcEmoteCatalog.choose(NpcEmoteSurfaces.MICRO, topic, level.random) else NpcEmoteCatalog.NONE
 
     private fun selectNpcMicroInteractionExchange(level: ServerLevel, firstDefinition: NpcDefinition, secondDefinition: NpcDefinition, settings: NpcInteractionSettingsDefinition): NpcMicroInteractionExchangeDefinition? {
         val content = NpcConfig.microInteractions()
@@ -1994,6 +2009,7 @@ object NpcFeature {
         val target = action.targetPos
         if (target == null) {
             npc.navigation.stop()
+            playAmbientActionEmote(npc, action)
             return
         }
         val targetX = target.x + 0.5
@@ -2002,6 +2018,7 @@ object NpcFeature {
         if (npc.distanceToSqr(targetX, targetY, targetZ) <= NPC_AMBIENT_REACH_DISTANCE_SQR) {
             npc.navigation.stop()
             npc.lookControl.setLookAt(targetX, targetY + 1.0, targetZ, 30.0f, 30.0f)
+            playAmbientActionEmote(npc, action)
             return
         }
         if (npc.navigation.isDone || npc.tickCount % NPC_AMBIENT_REPATH_TICKS == 0) {
@@ -2010,8 +2027,15 @@ object NpcFeature {
         if (level.gameTime % 40L == 0L) rememberAmbientAction(level, npc, action)
     }
 
+    private fun playAmbientActionEmote(npc: ChowNpcEntity, action: ActiveNpcAmbientAction) {
+        if (action.emotePlayed || action.emote.isBlank()) return
+        NpcEmoteController.tryPlay(npc, action.emoteSurface, action.emote, "ambient_${action.goal}")
+        action.emotePlayed = true
+    }
+
     private fun finishAmbientAction(level: ServerLevel, npc: ChowNpcEntity) {
         npcAmbientActions.remove(npc.uuid)?.let { action -> rememberAmbientAction(level, npc, action) }
+        NpcEmoteController.cancelPosture(npc, "ambient_finished")
         npcAmbientCooldownUntil[npc.uuid] = level.gameTime + NPC_AMBIENT_COOLDOWN_MIN_TICKS + level.random.nextInt((NPC_AMBIENT_COOLDOWN_MAX_TICKS - NPC_AMBIENT_COOLDOWN_MIN_TICKS + 1).toInt())
     }
 
@@ -2030,6 +2054,7 @@ object NpcFeature {
         val moment = if (level.random.nextInt(100) < NPC_AMBIENT_SOLO_MOMENT_CHANCE) selectSoloMoment(level, definition, activity) else null
         val durationTicks = NPC_AMBIENT_MIN_TICKS + level.random.nextInt((NPC_AMBIENT_MAX_TICKS - NPC_AMBIENT_MIN_TICKS + 1).toInt())
         val untilTick = level.gameTime + durationTicks
+        selectAmbientEmoteOnly(level, npc, activity, untilTick)?.let { action -> return action.withMoment(moment, definition) }
         val action = when (activity) {
             "pokemon_roam" -> pokemonAmbientAction(level, npc, definition, activity, untilTick)
             NpcScheduleDefinition.MEETUP_ACTIVITY -> plazaAmbientAction(npc, activity, untilTick)
@@ -2037,7 +2062,27 @@ object NpcFeature {
             "work" -> workAmbientAction(level, npc, definition, activity, untilTick)
             else -> roamAmbientAction(npc, definition, activity, untilTick)
         } ?: return null
-        return action.withMoment(moment, definition)
+        return action.withMoment(moment, definition).withAutoAmbientEmote(level)
+    }
+
+    private fun selectAmbientEmoteOnly(level: ServerLevel, npc: ChowNpcEntity, activity: String, untilTick: Long): ActiveNpcAmbientAction? {
+        if (level.random.nextInt(100) >= NPC_AMBIENT_EMOTE_ONLY_CHANCE) return null
+        val surface = when {
+            activity == "pokemon_roam" -> NpcEmoteSurfaces.POKEMON
+            activity == "home" || activity == "work" || activity == NpcScheduleDefinition.MEETUP_ACTIVITY -> {
+                if (level.random.nextInt(100) < NPC_AMBIENT_POSTURE_EMOTE_CHANCE) NpcEmoteSurfaces.AMBIENT_POSTURE else NpcEmoteSurfaces.AMBIENT
+            }
+            else -> NpcEmoteSurfaces.AMBIENT
+        }
+        val topic = if (surface == NpcEmoteSurfaces.POKEMON) "pokemon" else activity
+        val emote = NpcEmoteCatalog.choose(surface, topic, level.random)
+        if (emote == NpcEmoteCatalog.NONE) return null
+        val label = when (surface) {
+            NpcEmoteSurfaces.AMBIENT_POSTURE -> "resting spot"
+            NpcEmoteSurfaces.POKEMON -> "nearby Pokemon"
+            else -> "nearby paths"
+        }
+        return ActiveNpcAmbientAction(activity = activity, goal = "ambient_emote", topic = topic, targetLabel = label, targetPos = null, lookPos = null, untilTick = untilTick, emote = emote, emoteSurface = surface)
     }
 
     private fun pokemonAmbientAction(level: ServerLevel, npc: ChowNpcEntity, definition: NpcDefinition, activity: String, untilTick: Long): ActiveNpcAmbientAction? {
@@ -2095,7 +2140,17 @@ object NpcFeature {
     private fun ActiveNpcAmbientAction.withMoment(moment: NpcSoloMomentDefinition?, definition: NpcDefinition): ActiveNpcAmbientAction {
         if (moment == null) return this
         val topic = moment.topic.ifBlank { this.topic }
-        return copy(topic = topic, line = renderSoloMomentLine(moment.line, definition, activity, targetLabel, topic), soloMomentId = moment.id)
+        val momentEmote = moment.emote.takeIf(String::isNotBlank)
+        val surface = momentEmote?.let { emote -> NpcEmoteCatalog.surfaceFor(emote, listOf(NpcEmoteSurfaces.AMBIENT, NpcEmoteSurfaces.AMBIENT_POSTURE, NpcEmoteSurfaces.POKEMON)) } ?: emoteSurface
+        return copy(topic = topic, line = renderSoloMomentLine(moment.line, definition, activity, targetLabel, topic), soloMomentId = moment.id, emote = momentEmote ?: emote, emoteSurface = surface)
+    }
+
+    private fun ActiveNpcAmbientAction.withAutoAmbientEmote(level: ServerLevel): ActiveNpcAmbientAction {
+        if (emote.isNotBlank() || level.random.nextInt(100) >= NPC_AMBIENT_MOVE_EMOTE_CHANCE) return this
+        val surface = if (topic == "pokemon") NpcEmoteSurfaces.POKEMON else NpcEmoteSurfaces.AMBIENT
+        val selected = NpcEmoteCatalog.choose(surface, topic, level.random)
+        if (selected == NpcEmoteCatalog.NONE) return this
+        return copy(emote = selected, emoteSurface = surface)
     }
 
     private fun showAmbientLine(level: ServerLevel, npc: ChowNpcEntity, definition: NpcDefinition, action: ActiveNpcAmbientAction) {
@@ -2368,6 +2423,7 @@ object NpcFeature {
             return
         }
         val npc = event.entity as? ChowNpcEntity ?: return
+        NpcEmoteController.cancel(npc, "damage")
         if (NpcBossFights.isActive(npc)) {
             NpcBossFights.handleNpcDamage(npc, event.source.entity as? ServerPlayer, event.newDamage)
             event.newDamage = 0.0f
@@ -2401,6 +2457,7 @@ object NpcFeature {
             return
         }
         val npc = event.target as? ChowNpcEntity ?: return
+        NpcEmoteController.cancel(npc, "attack_attempt")
         if (!NpcBossFights.handleNpcAttackAttempt(npc, player)) return
         event.isCanceled = true
     }
@@ -2423,6 +2480,7 @@ object NpcFeature {
             event.amount = 0.0f
             return
         }
+        if (npc != null) NpcEmoteController.cancel(npc, "incoming_damage")
         if (!NpcBossFights.shouldBlockDamage(event.entity, event.source.entity, event.source.directEntity)) return
         event.isCanceled = true
         event.amount = 0.0f
@@ -2733,6 +2791,8 @@ object NpcFeature {
         )
         .then(animationRoot("animation"))
         .then(animationRoot("animations"))
+        .then(emoteRoot("emote"))
+        .then(emoteRoot("emotes"))
         .then(
             Commands.literal("work")
                 .requires { source -> source.hasPermission(2) }
@@ -2936,6 +2996,15 @@ object NpcFeature {
     private fun suggestCustomAnimationIds(context: CommandContext<CommandSourceStack>, builder: com.mojang.brigadier.suggestion.SuggestionsBuilder) =
         SharedSuggestionProvider.suggest((NpcAnimationRegistry.ids() + NpcPlayerlikeAnimationRegistry.ids() + listOf("attack", "slash", "dagger", "stab")).distinct(), builder)
 
+    private fun emoteRoot(name: String): LiteralArgumentBuilder<CommandSourceStack> = Commands.literal(name)
+        .requires { source -> source.hasPermission(2) }
+        .then(Commands.literal("list").executes(::emoteListCommand))
+        .then(Commands.literal("reload").executes(::emoteReloadCommand))
+        .then(Commands.literal("test").then(Commands.argument("id", StringArgumentType.word()).suggests(::suggestNpcEmoteIds).executes(::emoteTestCommand)))
+
+    private fun suggestNpcEmoteIds(context: CommandContext<CommandSourceStack>, builder: com.mojang.brigadier.suggestion.SuggestionsBuilder) =
+        SharedSuggestionProvider.suggest(NpcEmoteCatalog.ids(), builder)
+
     private fun suggestAnimationWearables(context: CommandContext<CommandSourceStack>, builder: com.mojang.brigadier.suggestion.SuggestionsBuilder): java.util.concurrent.CompletableFuture<com.mojang.brigadier.suggestion.Suggestions> {
         animationWearAliases.forEach(builder::suggest)
         return SharedSuggestionProvider.suggestResource(BuiltInRegistries.ITEM.keySet(), builder)
@@ -2975,8 +3044,8 @@ object NpcFeature {
         ChowClockConfig.load()
         NpcConfig.load()
         val movesets = NpcBossMovesets.load()
-        context.source.sendSuccess({ Component.literal("Reloaded ${NpcConfig.all().size} NPC definition(s), ${movesets.size} boss moveset(s). Clock source: ${ChowClockConfig.sourceName()}.") }, true)
-        return NpcConfig.all().size + movesets.size
+        context.source.sendSuccess({ Component.literal("Reloaded ${NpcConfig.all().size} NPC definition(s), ${movesets.size} boss moveset(s), ${NpcEmoteCatalog.all().size} emote(s). Clock source: ${ChowClockConfig.sourceName()}.") }, true)
+        return NpcConfig.all().size + movesets.size + NpcEmoteCatalog.all().size
     }
 
     private fun questFinishCommand(context: CommandContext<CommandSourceStack>): Int {
@@ -3415,22 +3484,56 @@ object NpcFeature {
         return 1
     }
 
+    private fun emoteListCommand(context: CommandContext<CommandSourceStack>): Int {
+        val lines = NpcEmoteCatalog.debugLines()
+        context.source.sendSuccess({ Component.literal("NPC emotes: ${NpcEmoteCatalog.debugStatus()} ${NpcEmotecraftBridge.debugStatus()}").withStyle(ChatFormatting.AQUA) }, false)
+        lines.take(40).forEach { line -> context.source.sendSuccess({ Component.literal(line).withStyle(ChatFormatting.GRAY) }, false) }
+        if (lines.size > 40) context.source.sendSuccess({ Component.literal("...and ${lines.size - 40} more.").withStyle(ChatFormatting.DARK_GRAY) }, false)
+        return lines.size
+    }
+
+    private fun emoteReloadCommand(context: CommandContext<CommandSourceStack>): Int {
+        NpcEmoteCatalog.reload()
+        val playerlikeAnimations = NpcPlayerlikeAnimationRegistry.reload()
+        context.source.sendSuccess({ Component.literal("Reloaded ${NpcEmoteCatalog.all().size} NPC emote(s) and ${playerlikeAnimations.size} playerlike animation id(s). ${NpcEmotecraftBridge.debugStatus()}").withStyle(ChatFormatting.GREEN) }, true)
+        return NpcEmoteCatalog.all().size
+    }
+
+    private fun emoteTestCommand(context: CommandContext<CommandSourceStack>): Int {
+        val player = context.source.playerOrException
+        val requested = StringArgumentType.getString(context, "id")
+        val npc = animationCommandTarget(player) ?: run {
+            context.source.sendFailure(Component.literal("No animation debug Steve or Chow Kingdom NPC under crosshair."))
+            return 0
+        }
+        val surface = NpcEmoteCatalog.surfaceFor(requested, listOf(NpcEmoteSurfaces.CONVERSATION, NpcEmoteSurfaces.AMBIENT, NpcEmoteSurfaces.AMBIENT_POSTURE, NpcEmoteSurfaces.POKEMON, NpcEmoteSurfaces.MICRO)) ?: NpcEmoteSurfaces.CONVERSATION
+        val result = NpcEmoteController.tryPlay(npc, surface, requested, "command", force = true)
+        if (!result.played) {
+            context.source.sendFailure(Component.literal("Could not play NPC emote '$requested' on ${animationTargetName(npc)}: ${result.reason}."))
+            return 0
+        }
+        context.source.sendSuccess({ Component.literal("Played NPC emote ${result.id} on ${animationTargetName(npc)} surface=$surface.").withStyle(ChatFormatting.AQUA) }, true)
+        return 1
+    }
+
     private fun animationListCommand(context: CommandContext<CommandSourceStack>): Int {
         val player = context.source.playerOrException
         val npc = animationCommandTarget(player)
         val playerlike = npc?.playerlikeAnimation == true
         val animations = if (playerlike) NpcPlayerlikeAnimationRegistry.ids() else NpcAnimationRegistry.ids()
-        val label = if (playerlike) "playerlike Better Combat" else "Gecko"
-        context.source.sendSuccess({ Component.literal("$label NPC animation id(s): ${animations.joinToString(", ")}").withStyle(if (playerlike) ChatFormatting.AQUA else ChatFormatting.GREEN) }, false)
+        val label = if (playerlike) "playerlike PlayerAnimator/Emotecraft" else "Gecko"
+        val suffix = if (playerlike) " ${NpcEmotecraftBridge.debugStatus()}" else ""
+        context.source.sendSuccess({ Component.literal("$label NPC animation id(s): ${animations.joinToString(", ")}$suffix").withStyle(if (playerlike) ChatFormatting.AQUA else ChatFormatting.GREEN) }, false)
         return animations.size
     }
 
     private fun animationReloadCommand(context: CommandContext<CommandSourceStack>): Int {
         val player = context.source.playerOrException
+        NpcEmoteCatalog.reload()
         val animations = NpcAnimationRegistry.reload()
         val playerlikeAnimations = NpcPlayerlikeAnimationRegistry.reload()
         NpcNetwork.reloadAnimations(player)
-        context.source.sendSuccess({ Component.literal("Reloaded ${animations.size} Gecko id(s) and ${playerlikeAnimations.size} playerlike id(s). Client resource reload requested.").withStyle(ChatFormatting.GREEN) }, true)
+        context.source.sendSuccess({ Component.literal("Reloaded ${animations.size} Gecko id(s), ${playerlikeAnimations.size} playerlike id(s), and ${NpcEmoteCatalog.all().size} emote catalog id(s). ${NpcEmotecraftBridge.debugStatus()} Client resource reload requested.").withStyle(ChatFormatting.GREEN) }, true)
         return animations.size + playerlikeAnimations.size
     }
 
@@ -3622,7 +3725,8 @@ object NpcFeature {
                 context.source.sendFailure(Component.literal("Invalid playerlike NPC animation '${animation.id}'."))
                 return 0
             }
-            context.source.sendSuccess({ Component.literal("Queued ${animation.id} playerlike animation on ${animationTargetName(npc)}. If it does not move, check client log for CKDM playerlike animation warnings.").withStyle(ChatFormatting.AQUA) }, true)
+            val status = if (NpcEmotecraftBridge.isEmotecraftId(animation.id)) " ${NpcEmotecraftBridge.debugStatus()}" else ""
+            context.source.sendSuccess({ Component.literal("Queued ${animation.id} playerlike animation on ${animationTargetName(npc)}.$status If it does not move, check client log for CKDM playerlike animation warnings.").withStyle(ChatFormatting.AQUA) }, true)
             return 1
         }
         val animation = NpcAnimationRegistry.resolve(animationId) ?: run {
@@ -4158,9 +4262,11 @@ object NpcFeature {
         val partnerName: String,
         val message: String,
         val partnerMessage: String,
+        val emote: String,
         val topic: String,
         val untilTick: Long,
         val shownToPlayers: MutableSet<UUID> = linkedSetOf(),
+        var emotePlayed: Boolean = false,
     )
 
     private data class NpcDailyMicroInteractionCount(val day: Long, val count: Int)
@@ -4187,6 +4293,9 @@ object NpcFeature {
         val untilTick: Long,
         val line: String = "",
         val soloMomentId: String = "",
+        val emote: String = "",
+        val emoteSurface: String = NpcEmoteSurfaces.AMBIENT,
+        var emotePlayed: Boolean = false,
         val shownToPlayers: MutableSet<UUID> = linkedSetOf(),
     )
 
@@ -4224,6 +4333,7 @@ object NpcFeature {
     private const val NPC_MICRO_INTERACTION_AREA_CELL_SIZE = 24
     private const val NPC_MICRO_INTERACTION_RECENT_MEMORY = 48
     private const val NPC_MICRO_INTERACTION_INTERRUPT_MEMORY_TICKS = 20L * 30L
+    private const val NPC_MICRO_INTERACTION_EMOTE_CHANCE = 45
     private const val NPC_AUTO_TASK_COOLDOWN_MIN_TICKS = 200L
     private const val NPC_AUTO_TASK_COOLDOWN_MAX_TICKS = 300L
     private const val NPC_AMBIENT_MIN_TICKS = 80L
@@ -4236,6 +4346,9 @@ object NpcFeature {
     private const val NPC_AMBIENT_SPEED = 0.75
     private const val NPC_AMBIENT_BALLOON_TICKS = 100
     private const val NPC_AMBIENT_SOLO_MOMENT_CHANCE = 28
+    private const val NPC_AMBIENT_EMOTE_ONLY_CHANCE = 22
+    private const val NPC_AMBIENT_MOVE_EMOTE_CHANCE = 32
+    private const val NPC_AMBIENT_POSTURE_EMOTE_CHANCE = 45
     private const val NPC_AMBIENT_OBJECT_SCAN_RADIUS = 9
     private const val NPC_HOME_AMBIENT_RADIUS = 4
     private const val NPC_SOLO_MOMENT_RECENT_MEMORY = 12

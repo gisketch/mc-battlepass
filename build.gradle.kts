@@ -26,6 +26,8 @@ val playerAnimatorVersion = providers.gradleProperty("playeranimator_version").g
 val playerAnimatorVersionRange = providers.gradleProperty("playeranimator_version_range").get()
 val mobPlayerAnimatorVersion = providers.gradleProperty("mobplayeranimator_version").get()
 val mobPlayerAnimatorVersionRange = providers.gradleProperty("mobplayeranimator_version_range").get()
+val emotecraftVersion = providers.gradleProperty("emotecraft_version").get()
+val emotecraftVersionRange = providers.gradleProperty("emotecraft_version_range").get()
 val clothConfigVersion = providers.gradleProperty("cloth_config_version").get()
 val clothConfigVersionRange = providers.gradleProperty("cloth_config_version_range").get()
 val modId = providers.gradleProperty("mod_id").get()
@@ -125,6 +127,7 @@ dependencies {
     implementation("maven.modrinth:better-combat:$betterCombatVersion")
     implementation("maven.modrinth:playeranimator:$playerAnimatorVersion")
     compileOnly("maven.modrinth:mob-player-animator-neo:$mobPlayerAnimatorVersion")
+    compileOnly("maven.modrinth:emotecraft:$emotecraftVersion")
     implementation("maven.modrinth:cloth-config:$clothConfigVersion")
     implementation("curse.maven:cobblemon-687131:7553231")
     compileOnly("maven.modrinth:jade:15.9.3+neoforge")
@@ -149,6 +152,7 @@ tasks.processResources {
         "bettercombat_version_range" to betterCombatVersionRange,
         "playeranimator_version_range" to playerAnimatorVersionRange,
         "mobplayeranimator_version_range" to mobPlayerAnimatorVersionRange,
+        "emotecraft_version_range" to emotecraftVersionRange,
         "cloth_config_version_range" to clothConfigVersionRange,
         "mod_id" to modId,
         "mod_name" to modName,
