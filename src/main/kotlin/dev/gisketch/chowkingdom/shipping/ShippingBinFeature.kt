@@ -14,6 +14,7 @@ import dev.gisketch.chowkingdom.ChowKingdomMod
 import dev.gisketch.chowkingdom.bosses.BossEventsFeature
 import dev.gisketch.chowkingdom.discord.DiscordRelay
 import dev.gisketch.chowkingdom.profiles.NicknameStore
+import dev.gisketch.chowkingdom.scaling.ScalingFeature
 import dev.gisketch.chowkingdom.snackbar.SnackbarIcons
 import dev.gisketch.chowkingdom.snackbar.SnackbarNetwork
 import dev.gisketch.chowkingdom.snackbar.SnackbarNotification
@@ -111,6 +112,7 @@ object ShippingBinFeature {
             }
         }
         announceTopSeller(event.server, sales)
+        if (sales.isNotEmpty()) ScalingFeature.invalidateShippingCache()
         BossEventsFeature.checkShippingUnlocks(event.server)
         TechLicenseFeature.checkShippingUnlocks(event.server)
     }
@@ -146,6 +148,7 @@ object ShippingBinFeature {
             notifyReward(player, payout)
             recordShippingMissions(player, payout)
             announceTopSeller(player.server, listOf(ShippingBinSaleResult(NicknameStore.displayName(player), payout)))
+            ScalingFeature.invalidateShippingCache()
             BossEventsFeature.checkShippingUnlocks(player.server)
             TechLicenseFeature.checkShippingUnlocks(player.server)
         }
@@ -160,6 +163,7 @@ object ShippingBinFeature {
             BattlepassMissionEventBank.record(player, VALUE_SOLD_EVENT, amount.coerceAtMost(Int.MAX_VALUE.toLong()).toInt())
         }
         BattlepassNetwork.syncAllPlayers()
+        ScalingFeature.invalidateShippingCache()
         BossEventsFeature.checkShippingUnlocks(context.source.server)
         TechLicenseFeature.checkShippingUnlocks(context.source.server)
         context.source.sendSuccess(

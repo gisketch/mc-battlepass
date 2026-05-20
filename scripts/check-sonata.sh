@@ -8,6 +8,8 @@ cd "$repo_root"
 required_files=(
   "AGENTS.md"
   "README.md"
+  ".gitignore"
+  ".sonata/manifest.json"
   "docs/index.md"
   "docs/core-beliefs.md"
   "docs/agent-targets.md"
@@ -20,6 +22,9 @@ required_files=(
   ".codex/prompts/init-sonata.md"
   ".codex/prompts/caveman-sonata.md"
   ".codex/prompts/retrofit-sonata.md"
+  ".codex/skills/init-sonata/SKILL.md"
+  ".codex/skills/caveman-sonata/SKILL.md"
+  ".codex/skills/retrofit-sonata/SKILL.md"
   ".github/skills/init-sonata/SKILL.md"
   ".github/skills/caveman-sonata/SKILL.md"
   ".github/skills/retrofit-sonata/SKILL.md"
@@ -31,6 +36,50 @@ required_files=(
   "tests/README.md"
   "config/README.md"
 )
+
+manifest_has() {
+  grep -q "\"$1\"" .sonata/manifest.json 2>/dev/null
+}
+
+if manifest_has "pi" || [[ -d ".pi" ]]; then
+  required_files+=(
+    ".pi/settings.json"
+    ".pi/skills/init-sonata/SKILL.md"
+    ".pi/skills/caveman-sonata/SKILL.md"
+    ".pi/skills/retrofit-sonata/SKILL.md"
+    ".pi/prompts/init-sonata.md"
+    ".pi/prompts/caveman-sonata.md"
+    ".pi/prompts/retrofit-sonata.md"
+  )
+fi
+
+if manifest_has "graphify"; then
+  required_files+=(
+    "docs/context/graphify.md"
+    ".graphifyignore"
+  )
+fi
+
+if manifest_has "serena"; then
+  required_files+=(
+    "docs/context/serena.md"
+    ".codex/skills/serena/SKILL.md"
+  )
+  if manifest_has "pi" || [[ -d ".pi" ]]; then
+    required_files+=(".pi/skills/serena/SKILL.md")
+  fi
+fi
+
+if manifest_has "lean-ctx"; then
+  required_files+=("docs/context/lean-ctx.md")
+fi
+
+if manifest_has "pi" || manifest_has "serena" || manifest_has "graphify" || manifest_has "lean-ctx"; then
+  required_files+=(
+    "scripts/setup-context.sh"
+    "scripts/check-context.sh"
+  )
+fi
 
 missing=0
 

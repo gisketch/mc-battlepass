@@ -49,8 +49,9 @@ Run client/in-game smoke tests when UI, rendering, event hooks, or runtime-only 
 
 | Check | Command | When To Run |
 |---|---|---|
-| Context setup | `./scripts/setup-context.sh` | After enabling Pi, Graphify, or lean-ctx |
+| Context setup | `./scripts/setup-context.sh` | After enabling Pi, Serena, Graphify, or lean-ctx |
 | Context check | `./scripts/check-context.sh` | Before handoff when selected tools are expected |
+| Serena MCP setup | `serena init` | After install or MCP/client setup changes |
 | Graph build | `graphify .` | After broad architecture, doc, or source changes |
 | LeanCTX doctor | `lean-ctx doctor` | After install or shell/agent setup changes |
 <!-- sonata:block=context-checks:end -->

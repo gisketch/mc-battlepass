@@ -209,12 +209,12 @@ object WorldsFeature {
     ) {
         val column = BlockPos.containing(x, level.minBuildHeight.toDouble(), z)
         val surface = heightmapSafePos(level, column)
-        val targetX = surface?.let { x } ?: (level.sharedSpawnPos.x + 0.5)
-        val targetZ = surface?.let { z } ?: (level.sharedSpawnPos.z + 0.5)
-        val targetSurface = surface ?: safeSpawnPos(level, level.sharedSpawnPos)
+        val targetX = x
+        val targetZ = z
+        val targetSurfaceY = surface?.y ?: level.sharedSpawnPos.y
         val ceilingY = minOf(level.maxBuildHeight - OVERWORLD_SKY_DROP_TOP_MARGIN, OVERWORLD_SKY_RETURN_Y.toInt() - OVERWORLD_SKY_DROP_RETURN_GAP)
         val desiredY = ceilingY
-        val minDropY = targetSurface.y + OVERWORLD_SKY_DROP_MIN_ABOVE_SURFACE
+        val minDropY = targetSurfaceY + OVERWORLD_SKY_DROP_MIN_ABOVE_SURFACE
         val targetY = if (minDropY <= ceilingY) desiredY.coerceIn(minDropY, ceilingY) else ceilingY
         player.teleportTo(level, targetX, targetY.toDouble(), targetZ, player.yRot, player.xRot)
         player.deltaMovement = if (velocity.y < 0.0) velocity else velocity.add(0.0, -0.08, 0.0)

@@ -204,20 +204,20 @@ DONE:
 
 TODO (Mod):
 
-- [ ] Create `scaling/` module or fold into a future combat balance module.
-- [ ] Add config under `config/gisketchs_chowkingdom_mod/scaling/mobs.toml`.
-- [ ] Add per-dimension scaling rules.
-- [ ] Add distance-from-anchor scaling rules, using world spawn/town portal as default anchors.
-- [ ] Add safe radius where mobs keep vanilla stats.
-- [ ] Add max stat caps so far chunks do not become impossible.
-- [ ] Scale hostile mob max health.
-- [ ] Scale hostile mob damage lightly or not at all at first.
+- [x] Create `scaling/` module or fold into a future combat balance module.
+- [x] Add config under `config/gisketchs_chowkingdom_mod/scaling/mobs.toml`.
+- [x] Add per-dimension scaling rules.
+- [x] Add distance-from-anchor scaling rules, using world spawn/town portal as default anchors.
+- [x] Add safe radius where mobs keep vanilla stats.
+- [x] Add max stat caps so far chunks do not become impossible.
+- [x] Scale hostile mob max health.
+- [x] Scale hostile mob damage lightly or not at all at first.
 - [ ] Scale armor/knockback resistance only for elite mobs, not every mob.
-- [ ] Add optional group-size scaling for natural mobs based on nearby players.
-- [ ] Exclude passive mobs, NPCs, pets, summons, Cobblemon Pokemon, and CKDM boss entities unless explicitly configured.
-- [ ] Add debug command `/ck scaling inspect` for looked-at mob effective rules.
-- [ ] Add debug command `/ck scaling reload`.
-- [ ] Add snackbar warning when players enter a harder danger band for the first time.
+- [x] Add optional group-size scaling for natural mobs based on nearby players.
+- [x] Exclude passive mobs, NPCs, pets, summons, Cobblemon Pokemon, and CKDM boss entities unless explicitly configured.
+- [x] Add debug command `/ck scaling inspect` for looked-at mob effective rules.
+- [x] Add debug command `/ck scaling reload`.
+- [x] Add snackbar warning when players enter a harder danger band for the first time.
 
 TODO (Configuration):
 
@@ -243,10 +243,11 @@ Suggested starter formula:
 effective_health = base_health * dimension_multiplier * distance_band_multiplier * player_count_multiplier
 
 distance_band_multiplier:
-0-1000 blocks = 1.0x
-1000-3000 blocks = 1.2x
-3000-7000 blocks = 1.5x
-7000+ blocks = 2.0x
+0-500 blocks = 1.0x
+500-2000 blocks = 1.15x
+2000-5000 blocks = 1.35x
+5000-10000 blocks = 1.6x
+10000+ blocks = 1.85x
 
 nearby player multiplier:
 1 player = 1.0x
@@ -257,6 +258,8 @@ nearby player multiplier:
 ```
 
 Rule: normal mobs should get tougher, not spongey. If fights feel slow, lower health and add better AI/elite variants only in dungeons.
+
+Implemented V1 also adds server-era scaling from lifetime shipping-bin Chowcoin value. The shipping multiplier becomes the new configurable baseline, then dimension, distance, and nearby-player rules stack on top. Defaults keep 500k-550k shipped value near 2.0x baseline and reserve 5.0x for stacked far/deep danger.
 
 ## Phase 4 - Server-Wide Boss Event System
 
@@ -285,9 +288,9 @@ TODO (Mod):
 - [x] Add command/status output that shows current total server shipped Chowcoin value and next boss threshold.
 - [ ] Track helper participation separately from first-clear credit.
 - [x] Track participating players during fight.
-- [ ] Add per-player boss HP scaling.
+- [x] Add per-player boss HP scaling.
 - [ ] Add per-player boss add/spawn scaling only for specific bosses.
-- [ ] Add max participant scaling cap so 10 players does not create an impossible sponge.
+- [x] Add max participant scaling cap so 10 players does not create an impossible sponge.
 - [x] Add configurable minimum credited-player count so solo/duo testing can count smaller bosses.
 - [x] Add first-clear reward channel.
 - [ ] Add helper reward channel separate from first-clear rewards.
@@ -329,6 +332,8 @@ TODO (Configuration):
 - [x] Keep raw boss loot controlled before unlock by suppressing locked boss item drops.
 - [ ] Start boss HP scaling around `base * (1.0 + 0.65 * extra_players)` with a cap.
 - [ ] Avoid scaling boss damage strongly with player count. More players already create chaos and revive load.
+- [x] Add configurable boss outgoing damage scaling with conservative caps.
+- [x] Add configurable boss flat health from shipping era and per-boss overrides.
 - [ ] Prefer extra mechanics/adds/phases over pure HP for major event bosses.
 
 NEED MORE BRAINSTORM:

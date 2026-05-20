@@ -51,7 +51,11 @@ Codex reads this file first. Keep it short. It is the map, not the manual.
 <!-- sonata:block=integrations:start -->
 ## Sonata Integrations
 
-- Pi is enabled. Project skills live in `.pi/skills/`; prompt templates live in `.pi/prompts/`.
+- Pi is enabled. Project skills live in `.pi/skills/`; prompt templates live in `.pi/prompts/`. For Serena in Pi, install `pi-serena-tools` only after reviewing the package.
+- Daily coding stack: use Serena for symbol-aware navigation/refactors and lean-ctx for compressed file reads, searches, and shell output.
+- Serena: prefer semantic tools for code structure work: symbol overview, find symbol, find references, and symbol-level edits. Use for non-trivial code navigation and refactors.
+- Do not use Serena for tiny text-only edits, docs-only changes, exact log inspection, or when no MCP/Pi Serena tools are available; fall back and mention why.
+- See [docs/context/serena.md](docs/context/serena.md).
 - Graphify: use before broad repo navigation, architecture questions, or cross-module planning. Prefer `graphify query`, `graphify path`, and `graphify explain` over blind search when a graph exists.
 - Rebuild Graphify with `graphify .` only after broad source/docs/architecture changes or before handoff when graph freshness matters. Do not rebuild for tiny edits.
 - Commit durable Graphify outputs: `graphify-out/graph.json`, `graphify-out/GRAPH_REPORT.md`, and `graphify-out/graph.html`. Do not commit local metadata.
@@ -73,3 +77,10 @@ Rules:
 - If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
 - Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
 - After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
+
+<!-- lean-ctx -->
+## lean-ctx
+
+Prefer lean-ctx MCP tools over native equivalents for token savings.
+Full rules: @LEAN-CTX.md
+<!-- /lean-ctx -->

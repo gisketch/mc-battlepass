@@ -11,6 +11,7 @@ logs/
 .idea/
 .vscode/
 !/.vscode/extensions.json
+.eclipse/
 .github/
 openspec/
 src/generated/resources/.cache/
@@ -20,6 +21,9 @@ refs/**
 # Local agent/runtime noise
 .pi/sessions/
 .codex-analysis/
+.serena/cache/
+.serena/logs/
+.serena/project.local.yml
 
 # Graphify team map: commit durable outputs, keep local metadata out.
 !graphify-out/

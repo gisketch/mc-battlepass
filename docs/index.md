@@ -22,6 +22,7 @@
 - [Battlepass Events](PASS_EVENTS.md)
 - [CKDM Mission Curation](CKDM_MISSION_CURATION.md)
 - [Boss Events](BOSS_EVENTS.md)
+- [Progressive Scaling](SCALING.md)
 - [CKDM Balance](CKDM_BALANCE.md)
 - [CKDM Pending In-Game Tests](CKDM_PENDING_INGAME_TESTS.md)
 - [Discord Integration](DISCORD.md)
@@ -67,6 +68,7 @@ When adapting an existing project, use `/retrofit-sonata` first. Inventory, pres
 ## Context And Agent Integrations
 
 - [Agent Targets](agent-targets.md)
+- [Serena](context/serena.md)
 - [Graphify](context/graphify.md)
 - [LeanCTX](context/lean-ctx.md)
 - Pi local skills and prompts live under `.pi/`.

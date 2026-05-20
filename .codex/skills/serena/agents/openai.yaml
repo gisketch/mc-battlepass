@@ -1,0 +1,4 @@
+interface:
+  display_name: "Serena"
+  short_description: "Use Serena MCP for semantic code navigation/refactors"
+  default_prompt: "Use Serena for symbol-aware code navigation, references, diagnostics, and refactors in this project."

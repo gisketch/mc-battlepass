@@ -51,6 +51,7 @@ import dev.gisketch.chowkingdom.profiles.ProfilesFeature
 import dev.gisketch.chowkingdom.shipping.ShippingBinFeature
 import dev.gisketch.chowkingdom.shops.ShopsClient
 import dev.gisketch.chowkingdom.shops.ShopsFeature
+import dev.gisketch.chowkingdom.scaling.ScalingFeature
 import dev.gisketch.chowkingdom.snackbar.SnackbarClient
 import dev.gisketch.chowkingdom.snackbar.SnackbarFeature
 import dev.gisketch.chowkingdom.skilltree.ClassSkillTreeFeature
@@ -92,6 +93,7 @@ class ChowKingdomMod(modBus: IEventBus, container: ModContainer) {
         TechLicenseFeature.register(modBus)
         BattlepassCommands.register()
         BossEventsFeature.register()
+        ScalingFeature.register()
         GymTransitionNetwork.register(modBus)
         GymLeagueNetwork.register(modBus)
         LeagueCompassFeature.register(modBus)
