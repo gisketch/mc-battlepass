@@ -11,7 +11,8 @@ Let CKDM playerlike NPCs play Emotecraft `.emotecraft` clips through the existin
 - `/npc animation list` shows Emotecraft ids when Emotecraft is installed and files parse.
 - `/npc animations emotecraft:<id>` queues the clip on playerlike NPCs.
 - `emotes.toml` curates stable NPC emote ids for LLM, microinteraction, ambient, and posture use.
-- LLM replies can return `{"message":"...","emote":"none"}`; invalid or wrong-surface emotes safely fall back to `none`.
+- LLM replies can return `{"message":"...","emote":"none"}`; invalid or wrong-surface emotes safely fall back to `none`, and blank/`none` can use `settings.toml` `default_speaking_emote`.
+- Loopable catalog entries such as `speaking` can replay until dialog talking state or paired micro-interaction hold time ends.
 - `/npc emote list|reload|test <id>` supports debug and smoke testing.
 - CKDM still boots and Better Combat playerlike animations still work without Emotecraft.
 
@@ -69,3 +70,14 @@ Let CKDM playerlike NPCs play Emotecraft `.emotecraft` clips through the existin
 - 2026-05-20: `.\gradlew.bat build` passed after emote life integration.
 - 2026-05-20: Installed built CKDM jar into Prism runtime after emote life integration with `.\scripts\run-client.ps1 -SkipBuild -NoLaunch`.
 - 2026-05-20: `bash ./scripts/check-sonata.sh` and `git diff --check` passed after emote life integration.
+- 2026-05-20: Added `/npc debug emote` live admin traces for requested/resolved emote ids, surface, source, and play result.
+- 2026-05-20: Changed unauthored paired microinteractions to play configured/default speech emotes instead of forcing random micro emotes.
+- 2026-05-20: `.\gradlew.bat build`, `bash ./scripts/check-sonata.sh`, and `git diff --check` passed after emote debug work.
+- 2026-05-20: Installed built CKDM jar into Prism runtime after emote debug work with `.\scripts\run-client.ps1 -SkipBuild -NoLaunch`.
+- 2026-05-20: Added `scripts/prefill_micro_emotes.py` and used it to prefill 3,581 runtime paired microinteraction entries with safe `source_emote` and `target_emote` values.
+- 2026-05-20: Runtime microinteraction validation passed after emote prefill: exchanges=3,273, trainer_exchanges=308, missing emotes=0, invalid emotes=0.
+- 2026-05-20: Added new runtime/catalog ids for `speaking`, `head_scratches`, `hands_in_back`, `threaten`, `six_seven`, and ambient-posture `criss_cross_sit`; synced the files into `refs/emotes`.
+- 2026-05-20: Refilled 939 paired microinteraction emote fields to use the expanded safe micro pool; dry-run is idempotent with missing=0 and invalid=0.
+- 2026-05-20: Fixed client playerlike renderer selection so live NPC emote playback overrides config `playerlike_animation = false`, and ensured both playerlike renderers attach the Mob Player Animator layer.
+- 2026-05-20: Added `default_speaking_emote`, defaulting to `speaking`, for dialog/world-chat/micro speech with no explicit emote; `none` or blank disables it.
+- 2026-05-20: Fixed micro-interaction interrupt dialogs to keep resident NPC action buttons, and added `loop_while_talking` replay for the default speaking emote during dialog/micro speech.

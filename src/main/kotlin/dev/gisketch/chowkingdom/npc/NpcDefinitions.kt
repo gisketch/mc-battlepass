@@ -207,6 +207,7 @@ private const val DEFAULT_NPC_BODY_SCALE = 1.0
 
 class NpcSettingsDefinition(
     @SerializedName("protect_npcs_during_pokemon_battles") var protectNpcsDuringPokemonBattles: Boolean = true,
+    @SerializedName("default_speaking_emote") var defaultSpeakingEmote: String? = "speaking",
     var greetings: NpcGreetingsDefinition = NpcGreetingsDefinition(),
     var rendering: NpcRenderingSettingsDefinition = NpcRenderingSettingsDefinition(),
     var llm: NpcLlmSettingsDefinition = NpcLlmSettingsDefinition(),
@@ -220,6 +221,7 @@ class NpcSettingsDefinition(
     @SerializedName("interaction_director") var interactionDirector: NpcInteractionDirectorSettingsDefinition = NpcInteractionDirectorSettingsDefinition(),
 ) {
     fun normalized(): NpcSettingsDefinition = apply {
+        defaultSpeakingEmote = normalizeDefaultSpeakingEmote(defaultSpeakingEmote)
         greetings = greetings.normalized()
         rendering = rendering.normalized()
         llm = llm.normalized()
@@ -232,6 +234,11 @@ class NpcSettingsDefinition(
         pokemonCompanions = pokemonCompanions.normalized()
         interactionDirector = interactionDirector.normalized()
     }
+}
+
+private fun normalizeDefaultSpeakingEmote(value: String?): String? {
+    val id = NpcEmoteCatalog.normalizeId(value.orEmpty())
+    return id.takeUnless { it == NpcEmoteCatalog.NONE }
 }
 
 class NpcQuestSettingsDefinition(

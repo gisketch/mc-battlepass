@@ -740,12 +740,15 @@ private class ChowNpcDelegatingRenderer(context: EntityRendererProvider.Context)
 
     override fun getTextureLocation(entity: ChowNpcEntity): ResourceLocation = rendererFor(entity).getTextureLocation(entity)
 
-    private fun rendererFor(entity: ChowNpcEntity): EntityRenderer<ChowNpcEntity> = when {
-        NpcConfig.get(entity.npcId)?.playerlikeAnimation ?: entity.playerlikeAnimation -> betterCombatPlayerlikeRenderer
-        NpcConfig.get(entity.npcId)?.customAnimation ?: entity.customAnimation -> geckoRenderer
-        NpcConfig.settings().rendering.betterCombatPlayerlikeRenderer -> betterCombatPlayerlikeRenderer
-        NpcConfig.settings().rendering.playerlikeRenderer -> playerlikeRenderer
-        else -> vanillaRenderer
+    private fun rendererFor(entity: ChowNpcEntity): EntityRenderer<ChowNpcEntity> {
+        val definition = NpcConfig.get(entity.npcId)
+        return when {
+            entity.playerlikeAnimation || definition?.playerlikeAnimation == true -> betterCombatPlayerlikeRenderer
+            entity.customAnimation || definition?.customAnimation == true -> geckoRenderer
+            NpcConfig.settings().rendering.betterCombatPlayerlikeRenderer -> betterCombatPlayerlikeRenderer
+            NpcConfig.settings().rendering.playerlikeRenderer -> playerlikeRenderer
+            else -> vanillaRenderer
+        }
     }
 }
 
@@ -795,6 +798,7 @@ private class ChowNpcPlayerlikeRenderer(context: EntityRendererProvider.Context)
     }
 
     override fun render(entity: ChowNpcEntity, entityYaw: Float, partialTicks: Float, poseStack: PoseStack, buffer: MultiBufferSource, packedLight: Int) {
+        NpcClient.ensurePlayerlikeAnimationLayer(entity)
         model = if (entity.bodyType == NpcBodyTypes.SLIM) slimModel else normalModel
         model.rightArmPose = if (entity.mainHandItem.isEmpty) HumanoidModel.ArmPose.EMPTY else HumanoidModel.ArmPose.ITEM
         model.leftArmPose = if (entity.offhandItem.isEmpty) HumanoidModel.ArmPose.EMPTY else HumanoidModel.ArmPose.ITEM

@@ -43,11 +43,13 @@ No client PlayerAnimator animation found for NPC playerlike key ...
 
 For Emotecraft ids, place `.emotecraft` files in the runtime instance under `.minecraft/emotes/server`. The repo `refs/emotes` folder is source/reference material; Emotecraft does not discover raw `.emotecraft` files from CKDM's mod resources by default.
 
-NPC life/LLM emotes use stable catalog ids from `<game config>/gisketchs_chowkingdom_mod/npcs/emotes.toml`. The catalog maps ids such as `wave`, `shrug`, or `sit_cool` to raw animation ids such as `emotecraft:wave`; add new `.emotecraft` files to the runtime emotes folder, then add or edit catalog rows.
+NPC life/LLM emotes use stable catalog ids from `<game config>/gisketchs_chowkingdom_mod/npcs/emotes.toml`. The catalog maps ids such as `wave`, `shrug`, `speaking`, `head_scratches`, or `sit_cool` to raw animation ids such as `emotecraft:wave`; add new `.emotecraft` files to the runtime emotes folder, then add or edit catalog rows. `settings.toml` top-level `default_speaking_emote` defaults to `speaking` and is used when dialog, group talk, world chat, or micro-interaction speech has no explicit emote. Catalog entries with `loop_while_talking = true` replay while the NPC's talking state is active; micro interactions can also hold those loopable clips until the paired exchange expires. Sitting/lying ids such as `criss_cross_sit` stay on `ambient_posture`, not normal talk.
 
 ## Renderer Notes
 
 Use `PlayerModel` for the Better Combat playerlike NPC renderer. Mob Player Animator 1.4 has a `PlayerModel` mob hook for non-player entities, and Better Combat player clips expect the vanilla player part tree names (`torso`, `rightArm`, `leftArm`, `rightLeg`, `leftLeg`).
+
+Live emote playback sets the entity's synced `playerlikeAnimation` state even when the NPC config does not permanently use `playerlike_animation = true`. Renderer selection must let that live state override config `false`, otherwise the server can report `played` while the client keeps rendering the vanilla/Gecko path.
 
 The animation layer is attached client-side through:
 
@@ -55,7 +57,7 @@ The animation layer is attached client-side through:
 MobAnimationAccess.getMobAnimLayer(entity).addAnimLayer(2000, layer)
 ```
 
-Expected client log after the NPC is rendered:
+Both playerlike renderers attach the layer. Expected client log after the NPC is rendered:
 
 ```text
 Attached NPC playerlike animation layer to animation_debug_steve (...)

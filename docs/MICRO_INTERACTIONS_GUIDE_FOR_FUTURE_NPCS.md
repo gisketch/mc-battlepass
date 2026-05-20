@@ -27,7 +27,7 @@ npc_interaction_exchanges = [
 - `line`: first NPC balloon.
 - `response`: second NPC balloon.
 - `source_emote`: optional emote catalog id for the first NPC, such as `wave`, `clap`, `shrug`, or `proud`. Do not use sitting/lying emotes here.
-- `target_emote`: optional emote catalog id for the second NPC. Blank lets runtime auto-pick a safe gesture sometimes.
+- `target_emote`: optional emote catalog id for the second NPC. Blank lets runtime auto-pick a safe micro gesture when the exchange starts.
 - `weight`: optional selection weight. Default `1.0`.
 - `source_ids`: optional NPC ids that can start this exchange.
 - `target_ids`: optional NPC ids that can answer this exchange.
@@ -35,6 +35,7 @@ npc_interaction_exchanges = [
 - `target_tags`: optional tags the second NPC must have.
 - `required_spawned_ids`: optional NPC ids that must be alive in the world before this exchange can be selected. Use this for any concrete third-party NPC named in `line` or `response` who is not already covered by `source_ids` or `target_ids`.
 
+Use `python scripts/prefill_micro_emotes.py --npc-dir "<runtime-npcs-dir>"` after bulk-generating paired exchanges to prefill safe `source_emote` and `target_emote` values from `emotes.toml`. Current safe micro ids include `hi`, `wave`, `clap`, `facepalm`, `shrug`, `proud`, `lookout`, `speaking`, `head_scratches`, `hands_in_back`, `threaten`, and `six_seven`. Blank `source_emote` / `target_emote` values are allowed; runtime falls back to `settings.toml` `default_speaking_emote` when configured, or no animation when it is `none`/blank.
 ## Solo Moments
 
 `micro_interactions*.toml` can also define rare one-NPC ambient balloons. These are authored text only; they do not call LLMs.

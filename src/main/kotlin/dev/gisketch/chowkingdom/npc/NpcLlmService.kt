@@ -919,7 +919,7 @@ object NpcLlmService {
         val detached = responseToken != 0L && detachedResponseTokens.remove(responseToken)
         rememberDialogReply(player.uuid, definition.id, publicReply)
         npc.startTalkingTo(player, NPC_LLM_TALK_DURATION_TICKS)
-        NpcEmoteController.tryPlay(npc, NpcEmoteSurfaces.CONVERSATION, emote, npcRecordType)
+        NpcEmoteController.tryPlayOrDefaultSpeaking(npc, NpcEmoteSurfaces.CONVERSATION, emote, npcRecordType)
         if (playerMessage.isNotBlank()) NpcStore.recordConversation(definition.id, player, player.gameProfile.name, playerMessage.take(MAX_PLAYER_MESSAGE_LENGTH), "player_llm_talk")
         NpcStore.recordConversation(definition.id, player, definition.name, publicReply, npcRecordType)
         if (memorable.isNotBlank()) NpcStore.recordPlayerMemory(player, "llm_memorable", memorable)
@@ -947,7 +947,7 @@ object NpcLlmService {
         val reply = sanitizeReply(message, settings, fallbackMessage)
         val publicReply = stripDialogMarkup(reply)
         npc.startTalkingTo(speaker, NPC_LLM_TALK_DURATION_TICKS)
-        NpcEmoteController.tryPlay(npc, NpcEmoteSurfaces.CONVERSATION, emote, "npc_llm_group_reply")
+        NpcEmoteController.tryPlayOrDefaultSpeaking(npc, NpcEmoteSurfaces.CONVERSATION, emote, "npc_llm_group_reply")
         target.turns.forEach { turn ->
             speaker.server.playerList.getPlayer(turn.playerId)?.let { turnPlayer ->
                 NpcStore.recordConversation(definition.id, turnPlayer, turn.playerName, turn.message.take(MAX_PLAYER_MESSAGE_LENGTH), "player_llm_talk")
@@ -990,7 +990,7 @@ object NpcLlmService {
         val publicReply = stripDialogMarkup(reply)
         NpcStore.recordConversation(definition.id, player, player.gameProfile.name, playerMessage.take(MAX_PLAYER_MESSAGE_LENGTH), "player_world_chat")
         NpcStore.recordConversation(definition.id, player, definition.name, publicReply, "npc_world_chat_reply")
-        NpcFeature.existingNpc(player.server, definition.id)?.let { npc -> NpcEmoteController.tryPlay(npc, NpcEmoteSurfaces.WORLD_CHAT, emote, "npc_world_chat_reply") }
+        NpcFeature.existingNpc(player.server, definition.id)?.let { npc -> NpcEmoteController.tryPlayOrDefaultSpeaking(npc, NpcEmoteSurfaces.WORLD_CHAT, emote, "npc_world_chat_reply") }
         if (memorable.isNotBlank()) NpcStore.recordPlayerMemory(player, "llm_memorable", memorable)
         NpcNetwork.broadcastWorldChat(player.server, NpcWorldChatPayload(definition.id, definition.name, player.gameProfile.name, player.uuid, "player", publicReply))
         DiscordRelay.npcWorldChat(definition.id, definition.name, publicReply, discordMentionUserId) { messageId ->
@@ -1014,7 +1014,7 @@ object NpcLlmService {
         val reply = sanitizeReply(message, settings, fallbackMessage)
         val publicReply = stripDialogMarkup(reply)
         val speakerName = discordAuthorName.trim().ifBlank { "Discord" }
-        NpcFeature.existingNpc(server, definition.id)?.let { npc -> NpcEmoteController.tryPlay(npc, NpcEmoteSurfaces.WORLD_CHAT, emote, "npc_discord_world_chat_reply") }
+        NpcFeature.existingNpc(server, definition.id)?.let { npc -> NpcEmoteController.tryPlayOrDefaultSpeaking(npc, NpcEmoteSurfaces.WORLD_CHAT, emote, "npc_discord_world_chat_reply") }
         NpcNetwork.broadcastWorldChat(server, NpcWorldChatPayload(definition.id, definition.name, speakerName, null, "discord", publicReply))
         DiscordRelay.npcWorldChat(definition.id, definition.name, publicReply, fallbackName = discordAuthorName) { messageId ->
             NpcWorldChatService.rememberDiscordNpcMessage(messageId, definition.id)

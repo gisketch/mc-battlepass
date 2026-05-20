@@ -52,6 +52,7 @@ class NpcEmoteDefinition(
     @SerializedName("movement_lock") var movementLock: Boolean = false,
     var posture: Boolean = false,
     @SerializedName("ambient_only") var ambientOnly: Boolean = false,
+    @SerializedName("loop_while_talking") var loopWhileTalking: Boolean = false,
     var enabled: Boolean = true,
 ) {
     fun normalized(): NpcEmoteDefinition = apply {
@@ -92,6 +93,7 @@ class NpcEmoteDefinition(
         movementLock = movementLock,
         posture = posture,
         ambientOnly = ambientOnly,
+        loopWhileTalking = loopWhileTalking,
         enabled = enabled,
     ).normalized()
 }
@@ -106,7 +108,13 @@ object NpcEmoteDefaults {
         emote("proud", "emotecraft:proud", "confidence or victory", listOf(NpcEmoteSurfaces.CONVERSATION, NpcEmoteSurfaces.WORLD_CHAT, NpcEmoteSurfaces.MICRO, NpcEmoteSurfaces.AMBIENT, NpcEmoteSurfaces.POKEMON), listOf("proud", "confident", "victory", "quest", "class"), 50, 80, 120),
         emote("lookout", "emotecraft:lookout", "watching or scanning nearby things", listOf(NpcEmoteSurfaces.CONVERSATION, NpcEmoteSurfaces.WORLD_CHAT, NpcEmoteSurfaces.MICRO, NpcEmoteSurfaces.AMBIENT, NpcEmoteSurfaces.POKEMON), listOf("watch", "observe", "pokemon", "search"), 60, 80, 100),
         emote("time_check", "emotecraft:time-check", "waiting, work, or schedule awareness", listOf(NpcEmoteSurfaces.CONVERSATION, NpcEmoteSurfaces.WORLD_CHAT, NpcEmoteSurfaces.AMBIENT), listOf("waiting", "work", "schedule"), 40, 70, 120),
+        emote("speaking", "emotecraft:speaking", "talking, explaining, or answering", listOf(NpcEmoteSurfaces.CONVERSATION, NpcEmoteSurfaces.WORLD_CHAT, NpcEmoteSurfaces.MICRO), listOf("talk", "speak", "explain", "answer", "neutral"), 85, 70, 0, loopWhileTalking = true),
+        emote("head_scratches", "emotecraft:head_scratches", "thinking, awkwardness, or uncertainty", listOf(NpcEmoteSurfaces.CONVERSATION, NpcEmoteSurfaces.WORLD_CHAT, NpcEmoteSurfaces.MICRO, NpcEmoteSurfaces.AMBIENT, NpcEmoteSurfaces.POKEMON), listOf("thinking", "confused", "uncertain", "awkward"), 50, 80, 110),
+        emote("hands_in_back", "emotecraft:hands_in_back", "calm formal attention", listOf(NpcEmoteSurfaces.CONVERSATION, NpcEmoteSurfaces.WORLD_CHAT, NpcEmoteSurfaces.MICRO, NpcEmoteSurfaces.AMBIENT), listOf("calm", "formal", "waiting", "polite", "duty"), 45, 90, 120),
+        emote("threaten", "emotecraft:threaten", "warning, anger, or intimidation", listOf(NpcEmoteSurfaces.CONVERSATION, NpcEmoteSurfaces.WORLD_CHAT, NpcEmoteSurfaces.MICRO), listOf("angry", "warning", "hostile", "threat"), 18, 80, 180),
+        emote("six_seven", "emotecraft:six_seven", "playful or silly reaction", listOf(NpcEmoteSurfaces.CONVERSATION, NpcEmoteSurfaces.WORLD_CHAT, NpcEmoteSurfaces.MICRO), listOf("playful", "silly", "joke", "confused"), 12, 70, 180),
         posture("sit", "emotecraft:sit", "simple seated ambient rest", 150),
+        posture("criss_cross_sit", "emotecraft:criss_cross_sit", "cross-legged ambient rest", 160),
         posture("sit_cool", "emotecraft:sit-cool", "relaxed seated ambient rest", 150),
         posture("sit_cool_2", "emotecraft:sit-cool-2", "relaxed seated ambient rest variant", 150),
         posture("sit_cute", "emotecraft:sit-cute", "soft seated ambient rest", 150),
@@ -115,8 +123,18 @@ object NpcEmoteDefaults {
         posture("lay_on_back", "emotecraft:lay_on_back", "lying ambient rest", 180),
     ).map { emote -> emote.normalized() }
 
-    private fun emote(id: String, animationId: String, description: String, surfaces: List<String>, tags: List<String>, weight: Int, durationTicks: Int, cooldownTicks: Int): NpcEmoteDefinition =
-        NpcEmoteDefinition(id = id, animationId = animationId, description = description, surfaces = surfaces.toMutableList(), tags = tags.toMutableList(), weight = weight.toDouble(), durationTicks = durationTicks, cooldownTicks = cooldownTicks)
+    private fun emote(
+        id: String,
+        animationId: String,
+        description: String,
+        surfaces: List<String>,
+        tags: List<String>,
+        weight: Int,
+        durationTicks: Int,
+        cooldownTicks: Int,
+        loopWhileTalking: Boolean = false,
+    ): NpcEmoteDefinition =
+        NpcEmoteDefinition(id = id, animationId = animationId, description = description, surfaces = surfaces.toMutableList(), tags = tags.toMutableList(), weight = weight.toDouble(), durationTicks = durationTicks, cooldownTicks = cooldownTicks, loopWhileTalking = loopWhileTalking)
 
     private fun posture(id: String, animationId: String, description: String, durationTicks: Int): NpcEmoteDefinition =
         NpcEmoteDefinition(id = id, animationId = animationId, description = description, surfaces = mutableListOf(NpcEmoteSurfaces.AMBIENT_POSTURE), tags = mutableListOf("posture", "rest", "ambient"), weight = 25.0, durationTicks = durationTicks, cooldownTicks = 20 * 20, movementLock = true, posture = true, ambientOnly = true)

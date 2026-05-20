@@ -112,6 +112,7 @@ object NpcFeature {
     private val BLOCK_ENTITIES: DeferredRegister<BlockEntityType<*>> = DeferredRegister.create(Registries.BLOCK_ENTITY_TYPE, ChowKingdomMod.MOD_ID)
     private val realtimeDebugTargets: MutableMap<UUID, UUID> = linkedMapOf()
     private val clockDebugPlayers: MutableSet<UUID> = linkedSetOf()
+    private val emoteDebugPlayers: MutableSet<UUID> = linkedSetOf()
     private val greetingRadiusPlayers: MutableMap<UUID, MutableSet<String>> = linkedMapOf()
     private val outgoingGiftApproaches: MutableMap<UUID, NpcOutgoingGiftApproach> = linkedMapOf()
     private val camperBalloonRefreshAt: MutableMap<UUID, Long> = linkedMapOf()
@@ -997,7 +998,7 @@ object NpcFeature {
         val fallback = friendshipMessage(definition.friendshipMessages.gift, friendship, player, definition, itemName, mood)
         val reply = message.trim().ifBlank { fallback }
         npc.startTalkingTo(player, NPC_DIALOG_DURATION_TICKS)
-        NpcEmoteController.tryPlay(npc, NpcEmoteSurfaces.CONVERSATION, emote, "npc_gift_$mood")
+        NpcEmoteController.tryPlayOrDefaultSpeaking(npc, NpcEmoteSurfaces.CONVERSATION, emote, "npc_gift_$mood")
         NpcStore.recordConversation(definition.id, player, player.gameProfile.name, "gifts $itemName to ${definition.name}", "player_gift")
         NpcStore.recordPlayerMemory(player, "gift_to_npc", "${player.gameProfile.name} gave $itemName to ${definition.name}; reaction mood was $mood.")
         NpcStore.recordConversation(definition.id, player, definition.name, reply, "npc_gift_$mood")
@@ -1113,6 +1114,7 @@ object NpcFeature {
 
     private fun relayNpcDialog(player: ServerPlayer, npc: ChowNpcEntity, definition: NpcDefinition, message: String) {
         val level = npc.level() as? ServerLevel ?: return
+        if (!NpcEmoteController.isActive(npc)) NpcEmoteController.tryPlayDefaultSpeaking(npc, NpcEmoteSurfaces.CONVERSATION, "npc_dialog")
         sendNpcBalloon(level, npc, message, excludePlayer = player.uuid)
         relayNpcDialogToDiscord(player, definition, message)
     }
@@ -1620,7 +1622,7 @@ object NpcFeature {
             } else {
                 npc.navigation.stop()
                 if (!active.emotePlayed) {
-                    NpcEmoteController.tryPlay(npc, NpcEmoteSurfaces.MICRO, active.emote, "npc_micro_interaction")
+                    NpcEmoteController.tryPlayOrDefaultSpeaking(npc, NpcEmoteSurfaces.MICRO, active.emote, "npc_micro_interaction", loopUntilTick = active.untilTick)
                     active.emotePlayed = true
                 }
             }
@@ -1739,8 +1741,8 @@ object NpcFeature {
             ?: npcMicroInteractionMessage(firstDefinition, secondDefinition, settings)
         val secondMessage = exchange?.let { renderNpcMicroInteractionLine(it.response, secondDefinition, firstDefinition, it.topic) }
             ?: npcMicroInteractionMessage(secondDefinition, firstDefinition, settings)
-        val firstEmote = exchange?.sourceEmote?.takeIf(String::isNotBlank) ?: autoMicroInteractionEmote(level, exchange?.topic.orEmpty())
-        val secondEmote = exchange?.targetEmote?.takeIf(String::isNotBlank) ?: autoMicroInteractionEmote(level, exchange?.topic.orEmpty())
+        val firstEmote = exchange?.sourceEmote?.takeIf(String::isNotBlank).orEmpty()
+        val secondEmote = exchange?.targetEmote?.takeIf(String::isNotBlank).orEmpty()
         val now = level.gameTime
         val untilTick = now + durationTicks
         val topic = exchange?.topic.orEmpty()
@@ -1783,9 +1785,6 @@ object NpcFeature {
             ?.replace("{other}", otherDefinition.name)
             ?: "Talking with ${otherDefinition.name}..."
     }
-
-    private fun autoMicroInteractionEmote(level: ServerLevel, topic: String): String =
-        if (level.random.nextInt(100) < NPC_MICRO_INTERACTION_EMOTE_CHANCE) NpcEmoteCatalog.choose(NpcEmoteSurfaces.MICRO, topic, level.random) else NpcEmoteCatalog.NONE
 
     private fun selectNpcMicroInteractionExchange(level: ServerLevel, firstDefinition: NpcDefinition, secondDefinition: NpcDefinition, settings: NpcInteractionSettingsDefinition): NpcMicroInteractionExchangeDefinition? {
         val content = NpcConfig.microInteractions()
@@ -1855,9 +1854,16 @@ object NpcFeature {
         val friendship = NpcStore.friendshipSnapshot(definition.id, player)
         val fallback = microInteractionInterruptFallback(context)
         val responseToken = if (NpcConfig.settings().llm.enabled) NpcDialogTokens.next() else 0L
+        val validHome = validHomePos(npc.level(), definition.id)
+        npc.homePos = validHome
+        val hasHome = validHome != null
+        val friendlyBattleAvailable = hasHome && NpcPokemonBattleService.friendlyBattleAvailable(player, npc, definition)
+        val retryBattleAvailable = hasHome && NpcQuestService.retryBattleAvailable(player, definition)
+        val closeOnly = !hasHome
+        val closeLabel = if (hasHome) "BYE" else "OKAY"
         NpcStore.recordConversation(definition.id, player, player.gameProfile.name, "interrupts ${definition.name}'s conversation with ${context.partnerName}", "player_interrupt_npc_micro_interaction")
         if (responseToken != 0L) {
-            NpcNetwork.openDialog(player, dialogPayload(definition, npc, "...", false, friendship.level, closeOnly = true, closeLabel = "OKAY", responseToken = responseToken))
+            NpcNetwork.openDialog(player, dialogPayload(definition, npc, "...", false, friendship.level, closeOnly = closeOnly, closeLabel = closeLabel, responseToken = responseToken, friendlyBattleAvailable = friendlyBattleAvailable, retryBattleAvailable = retryBattleAvailable, player = player))
             NpcLlmService.event(
                 player = player,
                 npc = npc,
@@ -1870,7 +1876,7 @@ object NpcFeature {
             return true
         }
         NpcStore.recordConversation(definition.id, player, definition.name, fallback, "npc_micro_interaction_interrupt")
-        NpcNetwork.openDialog(player, dialogPayload(definition, npc, fallback, false, friendship.level, closeOnly = true, closeLabel = "OKAY"))
+        NpcNetwork.openDialog(player, dialogPayload(definition, npc, fallback, false, friendship.level, closeOnly = closeOnly, closeLabel = closeLabel, friendlyBattleAvailable = friendlyBattleAvailable, retryBattleAvailable = retryBattleAvailable, player = player))
         relayNpcDialog(player, npc, definition, fallback)
         return true
     }
@@ -2518,6 +2524,7 @@ object NpcFeature {
         NpcConfig.all().forEach { definition -> NpcLlmService.cancel(player, definition.id) }
         removeAnimationDebugEntity(player)
         playerMicroInteractionWitnessNudge.remove(player.uuid)
+        emoteDebugPlayers.remove(player.uuid)
     }
 
     private fun onPlayerChangedDimension(event: PlayerEvent.PlayerChangedDimensionEvent) {
@@ -2764,6 +2771,10 @@ object NpcFeature {
                 .then(
                     Commands.literal("llm")
                         .executes(::debugLlmCommand),
+                )
+                .then(
+                    Commands.literal("emote")
+                        .executes(::debugEmoteCommand),
                 )
                 .then(
                     Commands.literal("time")
@@ -3219,6 +3230,38 @@ object NpcFeature {
         }
         lines.forEach { line -> context.source.sendSuccess({ Component.literal(line).withStyle(ChatFormatting.GRAY) }, false) }
         return lines.size
+    }
+
+    private fun debugEmoteCommand(context: CommandContext<CommandSourceStack>): Int {
+        val player = context.source.playerOrException
+        if (!emoteDebugPlayers.add(player.uuid)) {
+            emoteDebugPlayers.remove(player.uuid)
+            player.sendSystemMessage(Component.literal("NPC emote debug disabled.").withStyle(ChatFormatting.GRAY))
+            return 1
+        }
+        player.sendSystemMessage(Component.literal("NPC EMOTE DEBUG enabled. You will see every emote attempt: requested id, surface, source, and result. Run /npc debug emote again to stop.").withStyle(ChatFormatting.GOLD))
+        return 1
+    }
+
+    fun debugNpcEmoteAttempt(npc: ChowNpcEntity, surface: String, requestedId: String, source: String, result: NpcEmotePlayResult) {
+        val server = (npc.level() as? ServerLevel)?.server ?: return
+        if (emoteDebugPlayers.isEmpty()) return
+        val requested = requestedId.trim().ifBlank { "none" }
+        val status = if (result.played) "played" else result.reason
+        val line = "NPC EMOTE ${npc.npcId}: requested=$requested resolved=${result.id} surface=${NpcEmoteSurfaces.normalize(surface)} source=$source -> $status"
+        val style = when {
+            result.played -> ChatFormatting.AQUA
+            result.reason == "none" -> ChatFormatting.GRAY
+            else -> ChatFormatting.RED
+        }
+        val iterator = emoteDebugPlayers.iterator()
+        while (iterator.hasNext()) {
+            val player = server.playerList.getPlayer(iterator.next()) ?: run {
+                iterator.remove()
+                continue
+            }
+            player.sendSystemMessage(Component.literal(line).withStyle(style))
+        }
     }
 
     private fun debugTimeCommand(context: CommandContext<CommandSourceStack>): Int {
@@ -4333,7 +4376,6 @@ object NpcFeature {
     private const val NPC_MICRO_INTERACTION_AREA_CELL_SIZE = 24
     private const val NPC_MICRO_INTERACTION_RECENT_MEMORY = 48
     private const val NPC_MICRO_INTERACTION_INTERRUPT_MEMORY_TICKS = 20L * 30L
-    private const val NPC_MICRO_INTERACTION_EMOTE_CHANCE = 45
     private const val NPC_AUTO_TASK_COOLDOWN_MIN_TICKS = 200L
     private const val NPC_AUTO_TASK_COOLDOWN_MAX_TICKS = 300L
     private const val NPC_AMBIENT_MIN_TICKS = 80L
