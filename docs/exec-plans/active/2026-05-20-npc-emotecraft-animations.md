@@ -81,3 +81,4 @@ Let CKDM playerlike NPCs play Emotecraft `.emotecraft` clips through the existin
 - 2026-05-20: Fixed client playerlike renderer selection so live NPC emote playback overrides config `playerlike_animation = false`, and ensured both playerlike renderers attach the Mob Player Animator layer.
 - 2026-05-20: Added `default_speaking_emote`, defaulting to `speaking`, for dialog/world-chat/micro speech with no explicit emote; `none` or blank disables it.
 - 2026-05-20: Fixed micro-interaction interrupt dialogs to keep resident NPC action buttons, and added `loop_while_talking` replay for the default speaking emote during dialog/micro speech.
+- 2026-05-20: Added synced `playerlikeAnimationLoop` and client-side loop restart so `speaking` repeats continuously until the server clears talking/micro state.

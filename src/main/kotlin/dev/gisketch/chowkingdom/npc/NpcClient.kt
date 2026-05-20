@@ -964,39 +964,50 @@ private class NpcGeoHeldItemLayer(renderer: GeoEntityRenderer<ChowNpcEntity>) : 
 private class NpcPlayerlikeAnimationLayer(val entity: ChowNpcEntity) : ModifierLayer<IAnimation>() {
     private var observedPlayId = Int.MIN_VALUE
     private var observedAnimationKey = ""
+    private var observedLoop = false
     private var warnedMissingAnimationKey = ""
 
     override fun isActive(): Boolean {
         val pendingAnimation = entity.playerlikeAnimation &&
             entity.playerlikeAnimationKey.isNotBlank() &&
-            (entity.playerlikeAnimationPlayId != observedPlayId || entity.playerlikeAnimationKey != observedAnimationKey)
-        val pendingClear = !entity.playerlikeAnimation && observedAnimationKey.isNotBlank()
+            (entity.playerlikeAnimationPlayId != observedPlayId || entity.playerlikeAnimationKey != observedAnimationKey || entity.playerlikeAnimationLoop != observedLoop)
+        val pendingClear = observedAnimationKey.isNotBlank() && (!entity.playerlikeAnimation || entity.playerlikeAnimationKey.isBlank())
         return entity.isAlive && (pendingAnimation || pendingClear || super.isActive())
     }
 
     override fun tick() {
         val playId = entity.playerlikeAnimationPlayId
         val animationKey = entity.playerlikeAnimationKey
+        val loop = entity.playerlikeAnimationLoop
         if (!entity.playerlikeAnimation || animationKey.isBlank()) {
             if (observedAnimationKey.isNotBlank()) setAnimation(null)
             observedAnimationKey = ""
             observedPlayId = playId
+            observedLoop = false
             super.tick()
             return
         }
-        if (playId != observedPlayId || animationKey != observedAnimationKey) {
+        if (playId != observedPlayId || animationKey != observedAnimationKey || loop != observedLoop) {
             val emotecraftAnimation = NpcEmotecraftBridge.resolve(animationKey)
-            val animation = if (emotecraftAnimation != null) {
-                NpcSmoothCustomAnimationPlayer(emotecraftAnimation, 0)
-            } else {
-                val animationId = runCatching { ResourceLocation.parse(animationKey) }.getOrNull()
-                val playable = animationId?.let(PlayerAnimationRegistry::getAnimation)
-                when (playable) {
-                    is KeyframeAnimation -> NpcSmoothCustomAnimationPlayer(playable, 0)
-                    else -> (playable?.playAnimation() as? IAnimation)?.let(::NpcSmoothPlayerlikeAnimation)
+            val createAnimation = {
+                if (emotecraftAnimation != null) {
+                    NpcSmoothCustomAnimationPlayer(emotecraftAnimation, 0)
+                } else {
+                    val animationId = runCatching { ResourceLocation.parse(animationKey) }.getOrNull()
+                    val playable = animationId?.let(PlayerAnimationRegistry::getAnimation)
+                    when (playable) {
+                        is KeyframeAnimation -> NpcSmoothCustomAnimationPlayer(playable, 0)
+                        else -> (playable?.playAnimation() as? IAnimation)?.let(::NpcSmoothPlayerlikeAnimation)
+                    }
                 }
             }
-            setAnimation(animation)
+            val animation = createAnimation()
+            val finalAnimation = if (animation != null && loop) {
+                NpcLoopingPlayerlikeAnimation(createAnimation)
+            } else {
+                animation
+            }
+            setAnimation(finalAnimation)
             if (animation == null && warnedMissingAnimationKey != animationKey) {
                 warnedMissingAnimationKey = animationKey
                 ChowKingdomMod.LOGGER.warn(
@@ -1008,13 +1019,37 @@ private class NpcPlayerlikeAnimationLayer(val entity: ChowNpcEntity) : ModifierL
             } else if (animation != null) {
                 warnedMissingAnimationKey = ""
                 val source = if (emotecraftAnimation != null) "Emotecraft" else "PlayerAnimator"
-                ChowKingdomMod.LOGGER.info("Playing NPC {} animation {} on {}", source, animationKey, entity.npcId)
+                ChowKingdomMod.LOGGER.info("Playing NPC {} animation {} on {} loop={}", source, animationKey, entity.npcId, loop)
             }
             observedAnimationKey = animationKey
             observedPlayId = playId
+            observedLoop = loop
         }
         super.tick()
     }
+}
+
+private class NpcLoopingPlayerlikeAnimation(private val create: () -> IAnimation?) : IAnimation {
+    private var delegate: IAnimation? = create()
+
+    override fun tick() {
+        val current = delegate
+        if (current == null || !current.isActive()) delegate = create()
+        delegate?.tick()
+    }
+
+    override fun isActive(): Boolean = true
+
+    override fun setupAnim(tickDelta: Float) = delegate?.setupAnim(tickDelta) ?: Unit
+
+    override fun get3DTransform(modelName: String, type: TransformType, tickDelta: Float, value0: Vec3f): Vec3f =
+        delegate?.get3DTransform(modelName, type, tickDelta, value0) ?: value0
+
+    override fun getFirstPersonMode(tickDelta: Float): FirstPersonMode =
+        delegate?.getFirstPersonMode(tickDelta) ?: FirstPersonMode.NONE
+
+    override fun getFirstPersonConfiguration(tickDelta: Float): FirstPersonConfiguration =
+        delegate?.getFirstPersonConfiguration(tickDelta) ?: FirstPersonConfiguration()
 }
 
 private class NpcSmoothCustomAnimationPlayer(animation: KeyframeAnimation, startTick: Int) : CustomAnimationPlayer(animation, startTick) {

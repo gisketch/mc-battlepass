@@ -89,6 +89,9 @@ class ChowNpcEntity(entityType: EntityType<out PathfinderMob>, level: Level) : P
     var playerlikeAnimationPlayId: Int
         get() = entityData.get(PLAYERLIKE_ANIMATION_PLAY_ID_DATA)
         private set(value) = entityData.set(PLAYERLIKE_ANIMATION_PLAY_ID_DATA, value)
+    var playerlikeAnimationLoop: Boolean
+        get() = entityData.get(PLAYERLIKE_ANIMATION_LOOP_DATA)
+        private set(value) = entityData.set(PLAYERLIKE_ANIMATION_LOOP_DATA, value)
     var scriptedAttackTicks: Int
         get() = entityData.get(SCRIPTED_ATTACK_TICKS_DATA)
         private set(value) = entityData.set(SCRIPTED_ATTACK_TICKS_DATA, value.coerceAtLeast(0))
@@ -155,6 +158,7 @@ class ChowNpcEntity(entityType: EntityType<out PathfinderMob>, level: Level) : P
         builder.define(PLAYERLIKE_ANIMATION_DATA, false)
         builder.define(PLAYERLIKE_ANIMATION_KEY_DATA, "")
         builder.define(PLAYERLIKE_ANIMATION_PLAY_ID_DATA, 0)
+        builder.define(PLAYERLIKE_ANIMATION_LOOP_DATA, false)
         builder.define(SCRIPTED_ATTACK_TICKS_DATA, 0)
         builder.define(PASS_THROUGH_INTERACTIONS_DATA, false)
         builder.define(HELD_ITEM_DEBUG_ROT_X_DATA, 0.0f)
@@ -282,31 +286,38 @@ class ChowNpcEntity(entityType: EntityType<out PathfinderMob>, level: Level) : P
             customAnimationPlayId = customAnimationPlayId + 1
             playerlikeAnimation = true
             playerlikeAnimationKey = playerlikeKey
+            playerlikeAnimationLoop = false
             playerlikeAnimationPlayId = playerlikeAnimationPlayId + 1
             return
         }
         playerlikeAnimation = false
         playerlikeAnimationKey = ""
+        playerlikeAnimationLoop = false
         playerlikeAnimationPlayId = playerlikeAnimationPlayId + 1
         restoreCustomAnimation(customEnabled, customKey, customSpeed)
     }
 
     fun setPlayerlikeAnimationMode(enabled: Boolean) {
         playerlikeAnimation = enabled
-        if (enabled) setCustomAnimationMode(false) else playerlikeAnimationKey = ""
+        if (enabled) setCustomAnimationMode(false) else {
+            playerlikeAnimationKey = ""
+            playerlikeAnimationLoop = false
+        }
         playerlikeAnimationPlayId = playerlikeAnimationPlayId + 1
     }
 
-    fun playPlayerlikeAnimation(animationId: String): Boolean {
+    fun playPlayerlikeAnimation(animationId: String, loop: Boolean = false): Boolean {
         val animation = NpcPlayerlikeAnimationRegistry.resolve(animationId) ?: return false
         setPlayerlikeAnimationMode(true)
         playerlikeAnimationKey = animation.id
+        playerlikeAnimationLoop = loop
         playerlikeAnimationPlayId = playerlikeAnimationPlayId + 1
         return true
     }
 
     fun clearPlayerlikeAnimation() {
         playerlikeAnimationKey = ""
+        playerlikeAnimationLoop = false
         playerlikeAnimationPlayId = playerlikeAnimationPlayId + 1
     }
 
@@ -528,6 +539,7 @@ class ChowNpcEntity(entityType: EntityType<out PathfinderMob>, level: Level) : P
         private val PLAYERLIKE_ANIMATION_DATA: EntityDataAccessor<Boolean> = SynchedEntityData.defineId(ChowNpcEntity::class.java, EntityDataSerializers.BOOLEAN)
         private val PLAYERLIKE_ANIMATION_KEY_DATA: EntityDataAccessor<String> = SynchedEntityData.defineId(ChowNpcEntity::class.java, EntityDataSerializers.STRING)
         private val PLAYERLIKE_ANIMATION_PLAY_ID_DATA: EntityDataAccessor<Int> = SynchedEntityData.defineId(ChowNpcEntity::class.java, EntityDataSerializers.INT)
+        private val PLAYERLIKE_ANIMATION_LOOP_DATA: EntityDataAccessor<Boolean> = SynchedEntityData.defineId(ChowNpcEntity::class.java, EntityDataSerializers.BOOLEAN)
         private val SCRIPTED_ATTACK_TICKS_DATA: EntityDataAccessor<Int> = SynchedEntityData.defineId(ChowNpcEntity::class.java, EntityDataSerializers.INT)
         private val PASS_THROUGH_INTERACTIONS_DATA: EntityDataAccessor<Boolean> = SynchedEntityData.defineId(ChowNpcEntity::class.java, EntityDataSerializers.BOOLEAN)
         private val HELD_ITEM_DEBUG_ROT_X_DATA: EntityDataAccessor<Float> = SynchedEntityData.defineId(ChowNpcEntity::class.java, EntityDataSerializers.FLOAT)

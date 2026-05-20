@@ -38,9 +38,10 @@ object NpcEmoteController {
             cancel(npc, "replace")
         }
         val animation = NpcPlayerlikeAnimationRegistry.resolve(emote.animationId) ?: return finish(npc, surface, requestedId, source, NpcEmotePlayResult(false, id, "missing_animation"))
+        val loopable = emote.loopWhileTalking || emote.id == DEFAULT_LOOPING_SPEAKING_EMOTE
         if (emote.movementLock) npc.navigation.stop()
-        if (!npc.playPlayerlikeAnimation(animation.id)) return finish(npc, surface, requestedId, source, NpcEmotePlayResult(false, id, "play_failed"))
-        val loopHoldUntil = if (emote.loopWhileTalking && loopUntilTick > now) loopUntilTick else 0L
+        if (!npc.playPlayerlikeAnimation(animation.id, loop = loopable)) return finish(npc, surface, requestedId, source, NpcEmotePlayResult(false, id, "play_failed"))
+        val loopHoldUntil = if (loopable && loopUntilTick > now) loopUntilTick else 0L
         active[npc.uuid] = ActiveNpcEmote(
             id = emote.id,
             animationId = animation.id,
@@ -48,7 +49,7 @@ object NpcEmoteController {
             posture = emote.posture,
             movementLock = emote.movementLock,
             durationTicks = emote.durationTicks,
-            loopWhileTalking = emote.loopWhileTalking && npc.isTalking(),
+            loopWhileTalking = loopable,
             loopUntilTick = loopHoldUntil,
             untilTick = now + emote.durationTicks,
         )
@@ -79,12 +80,8 @@ object NpcEmoteController {
         }
         if (current.shouldLoop(now, npc)) {
             if (now >= current.untilTick) {
-                if (!npc.playPlayerlikeAnimation(current.animationId)) {
-                    cancel(npc, "loop_failed")
-                    return
-                }
                 active[npc.uuid] = current.copy(untilTick = now + current.durationTicks)
-                ChowKingdomMod.LOGGER.debug("NPC emote looped npc={} emote={} animation={}", npc.npcId, current.id, current.animationId)
+                ChowKingdomMod.LOGGER.debug("NPC emote loop held npc={} emote={} animation={}", npc.npcId, current.id, current.animationId)
             }
             if (current.movementLock) npc.navigation.stop()
             return
@@ -114,6 +111,7 @@ object NpcEmoteController {
     private fun cooldownKey(uuid: UUID, id: String): String = "$uuid:$id"
 
     private val ambientSurfaces = setOf(NpcEmoteSurfaces.AMBIENT, NpcEmoteSurfaces.AMBIENT_POSTURE, NpcEmoteSurfaces.POKEMON)
+    private const val DEFAULT_LOOPING_SPEAKING_EMOTE = "speaking"
 
     private fun defaultSpeakingEmote(surface: String): String? {
         val id = NpcConfig.settings().defaultSpeakingEmote ?: return null

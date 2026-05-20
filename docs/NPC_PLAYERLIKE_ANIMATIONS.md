@@ -49,7 +49,7 @@ NPC life/LLM emotes use stable catalog ids from `<game config>/gisketchs_chowkin
 
 Use `PlayerModel` for the Better Combat playerlike NPC renderer. Mob Player Animator 1.4 has a `PlayerModel` mob hook for non-player entities, and Better Combat player clips expect the vanilla player part tree names (`torso`, `rightArm`, `leftArm`, `rightLeg`, `leftLeg`).
 
-Live emote playback sets the entity's synced `playerlikeAnimation` state even when the NPC config does not permanently use `playerlike_animation = true`. Renderer selection must let that live state override config `false`, otherwise the server can report `played` while the client keeps rendering the vanilla/Gecko path.
+Live emote playback sets the entity's synced `playerlikeAnimation` state even when the NPC config does not permanently use `playerlike_animation = true`. Renderer selection must let that live state override config `false`, otherwise the server can report `played` while the client keeps rendering the vanilla/Gecko path. Loopable emotes also sync `playerlikeAnimationLoop`; the client animation layer keeps restarting the PlayerAnimator/Emotecraft clip locally until the server clears the animation.
 
 The animation layer is attached client-side through:
 
