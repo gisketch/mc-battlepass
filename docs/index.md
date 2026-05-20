@@ -69,7 +69,6 @@ When adapting an existing project, use `/retrofit-sonata` first. Inventory, pres
 
 - [Agent Targets](agent-targets.md)
 - [Serena](context/serena.md)
-- [Graphify](context/graphify.md)
 - [LeanCTX](context/lean-ctx.md)
 - Pi local skills and prompts live under `.pi/`.
 <!-- sonata:block=integrations:end -->

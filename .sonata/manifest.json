@@ -3,14 +3,14 @@
   "project": "mc-battlepass",
   "agents": [
     "codex",
+    "copilot",
     "pi"
   ],
   "context": [
     "serena",
-    "lean-ctx",
-    "graphify"
+    "lean-ctx"
   ],
   "createdBy": "sonata",
   "createdAt": "2026-05-20",
-  "updatedAt": "2026-05-20T11:50:00.000Z"
+  "updatedAt": "2026-05-20T14:59:52.212Z"
 }

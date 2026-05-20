@@ -56,11 +56,7 @@ Codex reads this file first. Keep it short. It is the map, not the manual.
 - Serena: prefer semantic tools for code structure work: symbol overview, find symbol, find references, and symbol-level edits. Use for non-trivial code navigation and refactors.
 - Do not use Serena for tiny text-only edits, docs-only changes, exact log inspection, or when no MCP/Pi Serena tools are available; fall back and mention why.
 - See [docs/context/serena.md](docs/context/serena.md).
-- Graphify: use before broad repo navigation, architecture questions, or cross-module planning. Prefer `graphify query`, `graphify path`, and `graphify explain` over blind search when a graph exists.
-- Rebuild Graphify with `graphify .` only after broad source/docs/architecture changes or before handoff when graph freshness matters. Do not rebuild for tiny edits.
-- Commit durable Graphify outputs: `graphify-out/graph.json`, `graphify-out/GRAPH_REPORT.md`, and `graphify-out/graph.html`. Do not commit local metadata.
-- See [docs/context/graphify.md](docs/context/graphify.md).
-- LeanCTX: prefer `lean-ctx read`, `lean-ctx grep`, `lean-ctx ls`, and `lean-ctx -c` for codebase context, searches, and noisy shell commands. Use `-m full` for files you will edit.
+- LeanCTX: prefer `lean-ctx read`, `lean-ctx grep`, `lean-ctx ls`, and `lean-ctx -c` for codebase context, searches, and noisy shell commands. Use `-m full` for files you will edit, unless Serena gives a more precise symbol-level path.
 - Use raw/native output only for exact logs, interactive commands, unsupported cases, or when lean-ctx is unavailable; mention the reason in handoff.
 - See [docs/context/lean-ctx.md](docs/context/lean-ctx.md).
 <!-- sonata:block=integrations:end -->
