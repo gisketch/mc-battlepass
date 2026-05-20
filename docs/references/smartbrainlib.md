@@ -110,12 +110,12 @@ Current CKDM SBL behavior order:
 2. quest claim approach
 3. rent contract follow
 4. job application follow
-5. NPC-to-NPC micro interaction
+5. witnessed NPC-to-NPC micro interaction
 6. outgoing gift approach
 7. quest offer balloon
 8. greeting balloon
 9. talking pause
-10. ambient life
+10. ambient life, including close-range solo balloon trigger windows
 11. routine schedule movement
 
 Add future town AI as focused `NpcSmartBrainTask` entries unless it truly needs its own long-running SBL behavior. The town-brain root must re-evaluate priority every tick so stale dialog/talking/task states cannot freeze routine movement. Do not put dialog, shop, gift claiming, quest UI, packets, or LLM text generation into SBL behaviors.

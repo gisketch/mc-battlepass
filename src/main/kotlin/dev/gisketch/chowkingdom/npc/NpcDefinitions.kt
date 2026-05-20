@@ -216,6 +216,7 @@ class NpcSettingsDefinition(
     var work: NpcWorkSettingsDefinition = NpcWorkSettingsDefinition(),
     var training: NpcTrainingSettingsDefinition = NpcTrainingSettingsDefinition(),
     @SerializedName("npc_interactions") var npcInteractions: NpcInteractionSettingsDefinition = NpcInteractionSettingsDefinition(),
+    @SerializedName("pokemon_companions") var pokemonCompanions: NpcPokemonCompanionSettingsDefinition = NpcPokemonCompanionSettingsDefinition(),
     @SerializedName("interaction_director") var interactionDirector: NpcInteractionDirectorSettingsDefinition = NpcInteractionDirectorSettingsDefinition(),
 ) {
     fun normalized(): NpcSettingsDefinition = apply {
@@ -228,6 +229,7 @@ class NpcSettingsDefinition(
         work = work.normalized()
         training = training.normalized()
         npcInteractions = npcInteractions.normalized()
+        pokemonCompanions = pokemonCompanions.normalized()
         interactionDirector = interactionDirector.normalized()
     }
 }
@@ -309,9 +311,18 @@ class NpcRenderingSettingsDefinition(
 class NpcInteractionSettingsDefinition(
     var enabled: Boolean = true,
     var radius: Double = 7.0,
-    @SerializedName("duration_seconds") var durationSeconds: Int = 12,
-    @SerializedName("cooldown_min_hours") var cooldownMinHours: Int = 2,
-    @SerializedName("cooldown_max_hours") var cooldownMaxHours: Int = 4,
+    @SerializedName("duration_seconds") var durationSeconds: Int = 30,
+    @SerializedName("cooldown_min_hours") var cooldownMinHours: Int = 1,
+    @SerializedName("cooldown_max_hours") var cooldownMaxHours: Int = 2,
+    @SerializedName("witness_required") var witnessRequired: Boolean = true,
+    @SerializedName("witness_radius") var witnessRadius: Double = 8.0,
+    @SerializedName("first_witness_nudge_min_seconds") var firstWitnessNudgeMinSeconds: Int = 5,
+    @SerializedName("first_witness_nudge_max_seconds") var firstWitnessNudgeMaxSeconds: Int = 15,
+    @SerializedName("area_cooldown_min_seconds") var areaCooldownMinSeconds: Int = 60,
+    @SerializedName("area_cooldown_max_seconds") var areaCooldownMaxSeconds: Int = 90,
+    @SerializedName("daily_participation_budget") var dailyParticipationBudget: Int = 7,
+    @SerializedName("trainer_daily_participation_budget") var trainerDailyParticipationBudget: Int = 7,
+    @SerializedName("pair_cooldown_hours") var pairCooldownHours: Int = 6,
     @SerializedName("balloon_refresh_seconds") var balloonRefreshSeconds: Int = 6,
     var messages: MutableList<String> = mutableListOf(),
 ) {
@@ -320,6 +331,14 @@ class NpcInteractionSettingsDefinition(
         durationSeconds = durationSeconds.coerceIn(5, 30)
         cooldownMinHours = cooldownMinHours.coerceIn(1, 24)
         cooldownMaxHours = cooldownMaxHours.coerceIn(cooldownMinHours, 24)
+        witnessRadius = witnessRadius.coerceIn(2.0, 32.0)
+        firstWitnessNudgeMinSeconds = firstWitnessNudgeMinSeconds.coerceIn(0, 60)
+        firstWitnessNudgeMaxSeconds = firstWitnessNudgeMaxSeconds.coerceIn(firstWitnessNudgeMinSeconds, 120)
+        areaCooldownMinSeconds = areaCooldownMinSeconds.coerceIn(0, 600)
+        areaCooldownMaxSeconds = areaCooldownMaxSeconds.coerceIn(areaCooldownMinSeconds, 900)
+        dailyParticipationBudget = dailyParticipationBudget.coerceIn(0, 48)
+        trainerDailyParticipationBudget = trainerDailyParticipationBudget.coerceIn(0, 48)
+        pairCooldownHours = pairCooldownHours.coerceIn(0, 48)
         balloonRefreshSeconds = balloonRefreshSeconds.coerceIn(3, durationSeconds)
         messages = messages.map(String::trim).filter(String::isNotBlank).ifEmpty { defaultMessages() }.toMutableList()
     }
@@ -330,6 +349,30 @@ class NpcInteractionSettingsDefinition(
         "Comparing notes with {other}.",
         "Small town meeting with {other}.",
     )
+}
+
+class NpcPokemonCompanionSettingsDefinition(
+    @SerializedName("event_windows") var eventWindows: Boolean = true,
+    @SerializedName("release_min_seconds") var releaseMinSeconds: Int = 180,
+    @SerializedName("release_max_seconds") var releaseMaxSeconds: Int = 420,
+    @SerializedName("recall_min_seconds") var recallMinSeconds: Int = 120,
+    @SerializedName("recall_max_seconds") var recallMaxSeconds: Int = 300,
+    @SerializedName("pokemon_roam_release_chance") var pokemonRoamReleaseChance: Int = 70,
+    @SerializedName("meetup_release_chance") var meetupReleaseChance: Int = 35,
+    @SerializedName("ambient_pokemon_release_chance") var ambientPokemonReleaseChance: Int = 60,
+    @SerializedName("recall_during_sleep") var recallDuringSleep: Boolean = true,
+    @SerializedName("recall_during_home") var recallDuringHome: Boolean = true,
+    @SerializedName("recall_during_work") var recallDuringWork: Boolean = true,
+) {
+    fun normalized(): NpcPokemonCompanionSettingsDefinition = apply {
+        releaseMinSeconds = releaseMinSeconds.coerceIn(30, 1800)
+        releaseMaxSeconds = releaseMaxSeconds.coerceIn(releaseMinSeconds, 3600)
+        recallMinSeconds = recallMinSeconds.coerceIn(30, 1800)
+        recallMaxSeconds = recallMaxSeconds.coerceIn(recallMinSeconds, 3600)
+        pokemonRoamReleaseChance = pokemonRoamReleaseChance.coerceIn(0, 100)
+        meetupReleaseChance = meetupReleaseChance.coerceIn(0, 100)
+        ambientPokemonReleaseChance = ambientPokemonReleaseChance.coerceIn(0, 100)
+    }
 }
 
 class NpcMicroInteractionContentDefinition(

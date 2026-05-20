@@ -118,6 +118,11 @@ object NpcFeature {
     private val questClaimBalloonRefreshAt: MutableMap<UUID, Long> = linkedMapOf()
     private val npcMicroInteractions: MutableMap<UUID, ActiveNpcMicroInteraction> = linkedMapOf()
     private val npcMicroInteractionCooldownUntil: MutableMap<String, Long> = linkedMapOf()
+    private val npcMicroInteractionPairCooldownUntil: MutableMap<String, Long> = linkedMapOf()
+    private val npcMicroInteractionAreaCooldownUntil: MutableMap<String, Long> = linkedMapOf()
+    private val npcMicroInteractionDailyCounts: MutableMap<String, NpcDailyMicroInteractionCount> = linkedMapOf()
+    private val playerMicroInteractionWitnessDay: MutableMap<UUID, Long> = linkedMapOf()
+    private val playerMicroInteractionWitnessNudge: MutableMap<UUID, NpcMicroInteractionWitnessNudge> = linkedMapOf()
     private val npcMicroInteractionRecent: MutableMap<String, ArrayDeque<String>> = linkedMapOf()
     private val npcMicroInteractionDialogContext: MutableMap<UUID, NpcMicroInteractionDialogContext> = linkedMapOf()
     private val npcAutoTaskCooldownUntil: MutableMap<UUID, Long> = linkedMapOf()
@@ -1619,7 +1624,12 @@ object NpcFeature {
         val trainerMeetup = npcActivity == "pokemon_roam"
         if (!settings.enabled || npc.isSleeping || npc.isTalking() || (!trainerMeetup && NpcTime.activityAt(definition.schedule, level) == "sleep")) return false
         if (isAutoTaskCoolingDown(npc)) return false
-        if (!plazaMeetup && !trainerMeetup && (npcMicroInteractionCooldownUntil[definition.id] ?: 0L) > level.dayTime) return false
+        val witnesses = microInteractionWitnesses(level, npc, settings)
+        if (settings.witnessRequired && witnesses.isEmpty()) return false
+        if (settings.witnessRequired && witnesses.any { player -> !hasWitnessedMicroInteractionToday(level, player) } && witnesses.none { player -> witnessNudgeReady(level, player, settings) }) return false
+        if (!canStartMicroInteractionFor(level, definition, settings)) return false
+        val areaKey = npcMicroInteractionAreaKey(level, npc, npcActivity)
+        if ((npcMicroInteractionAreaCooldownUntil[areaKey] ?: 0L) > level.gameTime) return false
         val radius = when {
             plazaMeetup -> plazaMeetupRadius().toDouble()
             trainerMeetup -> TRAINER_MEETUP_SCAN_RADIUS
@@ -1639,11 +1649,13 @@ object NpcFeature {
         }.asSequence()
             .mapNotNull { other -> NpcConfig.get(other.npcId)?.takeIf { otherDefinition ->
                 val otherActivity = activityFor(other, otherDefinition)
-                otherActivity != "sleep" && (plazaMeetup || trainerMeetup || (npcMicroInteractionCooldownUntil[otherDefinition.id] ?: 0L) <= level.dayTime)
+                otherActivity != "sleep" &&
+                    canStartMicroInteractionFor(level, otherDefinition, settings) &&
+                    (npcMicroInteractionPairCooldownUntil[npcMicroInteractionPairKey(definition.id, otherDefinition.id)] ?: 0L) <= level.dayTime
             }?.let { other to it } }
             .minByOrNull { (other, _) -> other.distanceToSqr(npc) }
             ?: return false
-        startNpcMicroInteraction(level, npc, definition, other.first, other.second, settings, plazaMeetup || trainerMeetup)
+        startNpcMicroInteraction(level, npc, definition, other.first, other.second, settings, areaKey)
         return true
     }
 
@@ -1653,7 +1665,64 @@ object NpcFeature {
         return false
     }
 
-    private fun startNpcMicroInteraction(level: ServerLevel, first: ChowNpcEntity, firstDefinition: NpcDefinition, second: ChowNpcEntity, secondDefinition: NpcDefinition, settings: NpcInteractionSettingsDefinition, plazaMeetup: Boolean = false) {
+    private fun microInteractionWitnesses(level: ServerLevel, npc: ChowNpcEntity, settings: NpcInteractionSettingsDefinition): List<ServerPlayer> {
+        val radius = minOf(settings.witnessRadius, NPC_BALLOON_CLOSE_RADIUS)
+        val radiusSqr = radius * radius
+        return level.players()
+            .filter { player -> player.isAlive && !player.isSpectator && player.distanceToSqr(npc.x, npc.y, npc.z) <= radiusSqr }
+    }
+
+    private fun hasWitnessedMicroInteractionToday(level: ServerLevel, player: ServerPlayer): Boolean =
+        playerMicroInteractionWitnessDay[player.uuid] == NpcTime.day(level)
+
+    private fun witnessNudgeReady(level: ServerLevel, player: ServerPlayer, settings: NpcInteractionSettingsDefinition): Boolean {
+        if (hasWitnessedMicroInteractionToday(level, player)) return true
+        val day = NpcTime.day(level)
+        val existing = playerMicroInteractionWitnessNudge[player.uuid]
+        if (existing != null && existing.day == day) return level.gameTime >= existing.readyAtTick
+        val delaySeconds = if (settings.firstWitnessNudgeMinSeconds == settings.firstWitnessNudgeMaxSeconds) {
+            settings.firstWitnessNudgeMinSeconds
+        } else {
+            settings.firstWitnessNudgeMinSeconds + level.random.nextInt(settings.firstWitnessNudgeMaxSeconds - settings.firstWitnessNudgeMinSeconds + 1)
+        }
+        playerMicroInteractionWitnessNudge[player.uuid] = NpcMicroInteractionWitnessNudge(day, level.gameTime + delaySeconds * 20L)
+        return delaySeconds <= 0
+    }
+
+    private fun markWitnessedMicroInteraction(level: ServerLevel, player: ServerPlayer) {
+        playerMicroInteractionWitnessDay[player.uuid] = NpcTime.day(level)
+        playerMicroInteractionWitnessNudge.remove(player.uuid)
+    }
+
+    private fun canStartMicroInteractionFor(level: ServerLevel, definition: NpcDefinition, settings: NpcInteractionSettingsDefinition): Boolean {
+        if ((npcMicroInteractionCooldownUntil[definition.id] ?: 0L) > level.dayTime) return false
+        val budget = if (GymLeagueFeature.isTrainerNpc(definition.id)) settings.trainerDailyParticipationBudget else settings.dailyParticipationBudget
+        if (budget <= 0) return false
+        val day = NpcTime.day(level)
+        val count = npcMicroInteractionDailyCounts[definition.id]?.takeIf { it.day == day }?.count ?: 0
+        return count < budget
+    }
+
+    private fun markMicroInteractionParticipation(level: ServerLevel, definition: NpcDefinition) {
+        val day = NpcTime.day(level)
+        val current = npcMicroInteractionDailyCounts[definition.id]
+        npcMicroInteractionDailyCounts[definition.id] = if (current == null || current.day != day) {
+            NpcDailyMicroInteractionCount(day, 1)
+        } else {
+            current.copy(count = current.count + 1)
+        }
+    }
+
+    private fun npcMicroInteractionAreaKey(level: ServerLevel, npc: ChowNpcEntity, activity: String): String {
+        val dimension = level.dimension().location().toString()
+        val center = if (activity == NpcScheduleDefinition.MEETUP_ACTIVITY) plazaMeetupTarget() else null
+        val pos = center ?: npc.blockPosition()
+        val cellX = Math.floorDiv(pos.x, NPC_MICRO_INTERACTION_AREA_CELL_SIZE)
+        val cellZ = Math.floorDiv(pos.z, NPC_MICRO_INTERACTION_AREA_CELL_SIZE)
+        return "$dimension:$activity:$cellX:$cellZ"
+    }
+
+    private fun startNpcMicroInteraction(level: ServerLevel, first: ChowNpcEntity, firstDefinition: NpcDefinition, second: ChowNpcEntity, secondDefinition: NpcDefinition, settings: NpcInteractionSettingsDefinition, areaKey: String) {
         val durationTicks = settings.durationSeconds * 20L
         val exchange = selectNpcMicroInteractionExchange(level, firstDefinition, secondDefinition, settings)
         val firstMessage = exchange?.let { renderNpcMicroInteractionLine(it.line, firstDefinition, secondDefinition, it.topic) }
@@ -1669,12 +1738,17 @@ object NpcFeature {
         rememberNpcMicroInteractionDialogContext(second.uuid, first.uuid, firstDefinition.id, firstDefinition.name, secondMessage, firstMessage, topic, untilTick)
         markAutoTaskCooldown(first, durationTicks)
         markAutoTaskCooldown(second, durationTicks)
-        val cooldownUntil = if (plazaMeetup) level.dayTime + NPC_PLAZA_MICRO_COOLDOWN_TICKS else {
-            val cooldownHours = if (settings.cooldownMinHours == settings.cooldownMaxHours) settings.cooldownMinHours else settings.cooldownMinHours + level.random.nextInt(settings.cooldownMaxHours - settings.cooldownMinHours + 1)
-            NpcTime.addHours(level.dayTime, cooldownHours)
-        }
+        val cooldownHours = if (settings.cooldownMinHours == settings.cooldownMaxHours) settings.cooldownMinHours else settings.cooldownMinHours + level.random.nextInt(settings.cooldownMaxHours - settings.cooldownMinHours + 1)
+        val cooldownUntil = NpcTime.addHours(level.dayTime, cooldownHours)
         npcMicroInteractionCooldownUntil[firstDefinition.id] = cooldownUntil
         npcMicroInteractionCooldownUntil[secondDefinition.id] = cooldownUntil
+        if (settings.pairCooldownHours > 0) {
+            npcMicroInteractionPairCooldownUntil[npcMicroInteractionPairKey(firstDefinition.id, secondDefinition.id)] = NpcTime.addHours(level.dayTime, settings.pairCooldownHours)
+        }
+        markMicroInteractionParticipation(level, firstDefinition)
+        markMicroInteractionParticipation(level, secondDefinition)
+        val areaCooldownSeconds = if (settings.areaCooldownMinSeconds == settings.areaCooldownMaxSeconds) settings.areaCooldownMinSeconds else settings.areaCooldownMinSeconds + level.random.nextInt(settings.areaCooldownMaxSeconds - settings.areaCooldownMinSeconds + 1)
+        if (areaCooldownSeconds > 0) npcMicroInteractionAreaCooldownUntil[areaKey] = level.gameTime + areaCooldownSeconds * 20L
         exchange?.let { rememberNpcMicroInteraction(firstDefinition.id, secondDefinition.id, it) }
         val topicText = topic.takeIf(String::isNotBlank)?.let { " about $it" }.orEmpty()
         NpcStore.recordGlobalEvent("npc_micro_interaction", "${firstDefinition.name} chatted with ${secondDefinition.name}$topicText near ${first.blockPosition().toShortString()}.")
@@ -1686,6 +1760,7 @@ object NpcFeature {
             if (listener.distanceToSqr(npc.x, npc.y, npc.z) > NPC_BALLOON_CLOSE_RADIUS_SQR) return@forEach
             NpcNetwork.showBalloon(listener, npc.id, active.message, NPC_MICRO_INTERACTION_BALLOON_TICKS)
             active.shownToPlayers += listener.uuid
+            markWitnessedMicroInteraction(level, listener)
         }
     }
 
@@ -1914,6 +1989,7 @@ object NpcFeature {
         npc.debugActivity = action.activity
         npc.debugGoal = action.goal
         npc.debugTargetPos = action.targetPos?.immutable()
+        if (action.line.isNotBlank()) showAmbientLineToClosePlayers(level, npc, action)
         action.lookPos?.let { look -> npc.lookControl.setLookAt(look.x, look.y, look.z, 30.0f, 30.0f) }
         val target = action.targetPos
         if (target == null) {
@@ -2023,9 +2099,18 @@ object NpcFeature {
     }
 
     private fun showAmbientLine(level: ServerLevel, npc: ChowNpcEntity, definition: NpcDefinition, action: ActiveNpcAmbientAction) {
-        showBalloonToNearby(level, npc, action.line, NPC_AMBIENT_BALLOON_TICKS)
+        showAmbientLineToClosePlayers(level, npc, action)
         val targetText = action.targetLabel.ifBlank { action.goal.replace('_', ' ') }
         NpcStore.recordGlobalEvent("npc_solo_moment", "${definition.name} was ${action.goal.replace('_', ' ')} near $targetText.")
+    }
+
+    private fun showAmbientLineToClosePlayers(level: ServerLevel, npc: ChowNpcEntity, action: ActiveNpcAmbientAction) {
+        level.players().forEach { listener ->
+            if (listener.uuid in action.shownToPlayers) return@forEach
+            if (listener.distanceToSqr(npc.x, npc.y, npc.z) > NPC_BALLOON_CLOSE_RADIUS_SQR) return@forEach
+            NpcNetwork.showBalloon(listener, npc.id, action.line, NPC_AMBIENT_BALLOON_TICKS)
+            action.shownToPlayers += listener.uuid
+        }
     }
 
     private fun selectSoloMoment(level: ServerLevel, definition: NpcDefinition, activity: String): NpcSoloMomentDefinition? {
@@ -2160,12 +2245,21 @@ object NpcFeature {
 
     private fun randomPokemonRoamTarget(entity: ChowNpcEntity, definition: NpcDefinition): PokemonRoamTarget? {
         val level = entity.level() as? ServerLevel ?: return null
+        val roll = level.random.nextInt(100)
+        if (roll < 45) {
+            randomRoamTarget(entity, definition)?.let { return PokemonRoamTarget(it, PokemonRoamTargetKind.ROAM) }
+        }
         val pokemon = nearestWildPokemon(level, entity)
-        if (pokemon != null && level.random.nextInt(100) < 65) {
+        if (pokemon != null && roll < 70) {
             if (level.random.nextInt(100) < 40) showTrainerPokemonBalloon(level, entity, definition, pokemon)
             return PokemonRoamTarget(BlockPos.containing(pokemon.x, pokemon.y, pokemon.z), PokemonRoamTargetKind.POKEMON)
         }
-        if (level.random.nextInt(100) < 35) {
+        if (roll < 85) {
+            randomAmbientBlockTarget(entity, entity.homePos ?: entity.campPos ?: entity.blockPosition())?.let { (target, _) ->
+                return PokemonRoamTarget(target, PokemonRoamTargetKind.OBJECT)
+            }
+        }
+        if (roll < 95) {
             val trainer = nearestTrainerNpc(level, entity)
             if (trainer != null) return PokemonRoamTarget(trainer.blockPosition(), PokemonRoamTargetKind.TRAINER)
         }
@@ -2365,6 +2459,7 @@ object NpcFeature {
         NpcStore.recordGlobalEvent("player_leave", "${player.gameProfile.name} left the server")
         NpcConfig.all().forEach { definition -> NpcLlmService.cancel(player, definition.id) }
         removeAnimationDebugEntity(player)
+        playerMicroInteractionWitnessNudge.remove(player.uuid)
     }
 
     private fun onPlayerChangedDimension(event: PlayerEvent.PlayerChangedDimensionEvent) {
@@ -4045,6 +4140,7 @@ object NpcFeature {
     private enum class PokemonRoamTargetKind(val id: String, val topic: String, val label: String) {
         POKEMON("pokemon_watch", "pokemon", "nearby Pokemon"),
         TRAINER("trainer_meetup", "trainer", "nearby trainer"),
+        OBJECT("observe_block", "observed_object", "nearby objects"),
         ROAM("roam", "roam", "nearby paths"),
     }
 
@@ -4067,6 +4163,10 @@ object NpcFeature {
         val shownToPlayers: MutableSet<UUID> = linkedSetOf(),
     )
 
+    private data class NpcDailyMicroInteractionCount(val day: Long, val count: Int)
+
+    private data class NpcMicroInteractionWitnessNudge(val day: Long, val readyAtTick: Long)
+
     private data class NpcMicroInteractionDialogContext(
         val partnerEntityId: UUID?,
         val partnerNpcId: String,
@@ -4087,6 +4187,7 @@ object NpcFeature {
         val untilTick: Long,
         val line: String = "",
         val soloMomentId: String = "",
+        val shownToPlayers: MutableSet<UUID> = linkedSetOf(),
     )
 
     private data class NpcAmbientMemory(
@@ -4104,7 +4205,8 @@ object NpcFeature {
     private const val SLEEP_REACH_DISTANCE_SQR = 4.0
     private const val SLEEP_BED_Y_OFFSET = 0.75
     private const val NPC_DIALOG_HEAR_RADIUS = 30.0
-    private const val NPC_BALLOON_CLOSE_RADIUS_SQR = 8.0 * 8.0
+    private const val NPC_BALLOON_CLOSE_RADIUS = 8.0
+    private const val NPC_BALLOON_CLOSE_RADIUS_SQR = NPC_BALLOON_CLOSE_RADIUS * NPC_BALLOON_CLOSE_RADIUS
     private const val NPC_DIALOG_ACTION_DISTANCE_SQR = 64.0
     private const val HURT_MESSAGE_INTERVAL = 3
     private const val NPC_CAMP_SPAWN_RADIUS = 2
@@ -4119,6 +4221,7 @@ object NpcFeature {
     private const val NPC_MICRO_INTERACTION_DISTANCE_SQR = 2.5 * 2.5
     private const val NPC_MICRO_INTERACTION_SPEED = 0.75
     private const val NPC_MICRO_INTERACTION_BALLOON_TICKS = 100
+    private const val NPC_MICRO_INTERACTION_AREA_CELL_SIZE = 24
     private const val NPC_MICRO_INTERACTION_RECENT_MEMORY = 48
     private const val NPC_MICRO_INTERACTION_INTERRUPT_MEMORY_TICKS = 20L * 30L
     private const val NPC_AUTO_TASK_COOLDOWN_MIN_TICKS = 200L
@@ -4139,7 +4242,6 @@ object NpcFeature {
     private const val NPC_DEFAULT_MEETUP_START_HOUR = 15
     private const val NPC_DEFAULT_MEETUP_END_HOUR = 20
     private const val NPC_PLAZA_CAMP_FALLBACK_RADIUS = 10
-    private const val NPC_PLAZA_MICRO_COOLDOWN_TICKS = 120L
     private const val TRAINER_POKEMON_SCAN_RADIUS = 10.0
     private const val TRAINER_MEETUP_SCAN_RADIUS = 12.0
     private val TRAINER_POKEMON_BALLOONS = listOf(

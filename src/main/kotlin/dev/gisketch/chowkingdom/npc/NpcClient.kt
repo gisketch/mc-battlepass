@@ -163,7 +163,7 @@ object NpcClient {
         }
 
         val minecraft = Minecraft.getInstance()
-        val targetVisibility = if ((minecraft.player?.distanceToSqr(entity) ?: Double.MAX_VALUE) <= BALLOON_RENDER_DISTANCE_SQR) 1.0f else 0.0f
+        val targetVisibility = 1.0f
         val visibilityAlpha = balloonVisibilityAlpha(entity.id, targetVisibility, now)
         if (visibilityAlpha <= 0.0f) return
         val guiGraphics = GuiGraphicsAccessor.`chowkingdom$create`(minecraft, poseStack, minecraft.renderBuffers().bufferSource())
@@ -652,7 +652,6 @@ private data class NpcBalloonIcon(val marker: String, val texture: ResourceLocat
     private const val BALLOON_BG_ALPHA = 0.90f
     private const val BALLOON_FADE_MS = 180L
     private const val BALLOON_CULL_FADE_MS = 180L
-    private const val BALLOON_RENDER_DISTANCE_SQR = 8.0 * 8.0
     private const val BALLOON_ENTITY_Y_OFFSET = 0.9
     private const val BALLOON_MAX_TEXT_WIDTH = 118
     private const val BALLOON_MIN_WIDTH = 45

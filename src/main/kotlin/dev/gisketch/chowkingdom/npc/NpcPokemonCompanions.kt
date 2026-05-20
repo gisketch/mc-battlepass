@@ -41,6 +41,7 @@ object NpcPokemonCompanions {
     private val sleepStatus: Any? by lazy { cobblemonStaticField("com.cobblemon.mod.common.api.pokemon.status.Statuses", "SLEEP") }
     private val persistentStatusContainerClass: Class<*>? by lazy { runCatching { Class.forName("com.cobblemon.mod.common.pokemon.status.PersistentStatusContainer") }.getOrNull() }
     private val battleSuspendedNpcIds: MutableSet<String> = linkedSetOf()
+    private val companionReleaseWindows: MutableMap<String, CompanionReleaseWindow> = linkedMapOf()
 
     fun registerEvents() {
         if (eventsRegistered) return
@@ -71,6 +72,10 @@ object NpcPokemonCompanions {
                 removeForNpc(server, definition.id)
                 return@forEach
             }
+            if (!shouldReleaseCompanion(npc, definition)) {
+                recallCompanions(server, definition.id)
+                return@forEach
+            }
             tickNpcCompanion(npc, definition)
         }
     }
@@ -78,11 +83,20 @@ object NpcPokemonCompanions {
     fun ensureFor(npc: ChowNpcEntity, definition: NpcDefinition) {
         if (definition.mainPokemon.isBlank()) return
         if (pokemonEntityClass == null || pokemonPropertiesClass == null) return
+        if (!shouldReleaseCompanion(npc, definition)) {
+            (npc.level() as? ServerLevel)?.server?.let { server -> recallCompanions(server, definition.id) }
+            return
+        }
         tickNpcCompanion(npc, definition)
     }
 
     fun removeForNpc(server: MinecraftServer, npcId: String) {
+        companionReleaseWindows.remove(cleanNpcId(npcId))
         companions(server, npcId).forEach { companion -> companion.discard() }
+    }
+
+    private fun recallCompanions(server: MinecraftServer, npcId: String) {
+        companions(server, npcId).forEach { companion -> recallWithEffects(companion) }
     }
 
     fun suspendForBattle(npcId: String, server: MinecraftServer) {
@@ -137,11 +151,47 @@ object NpcPokemonCompanions {
             tagCompanion(entity, definition)
             applyCompanionState(entity, definition)
             level.addFreshEntity(entity)
+            releaseEffects(entity)
             entity
         }.onFailure { exception ->
             ChowKingdomMod.LOGGER.debug("Failed to spawn NPC Pokemon companion npc={} pokemon={}", definition.id, definition.mainPokemon, exception)
         }.getOrNull()
     }
+
+    private fun shouldReleaseCompanion(npc: ChowNpcEntity, definition: NpcDefinition): Boolean {
+        val level = npc.level() as? ServerLevel ?: return false
+        val settings = NpcConfig.settings().pokemonCompanions
+        if (!settings.eventWindows) return true
+        val activity = NpcFeature.activityFor(npc, definition)
+        if (settings.recallDuringSleep && (npc.isSleeping || activity == "sleep")) return false
+        if (settings.recallDuringHome && activity == "home") return false
+        if (settings.recallDuringWork && activity == "work") return false
+        val releaseChance = when {
+            activity == "pokemon_roam" -> settings.pokemonRoamReleaseChance
+            activity == NpcScheduleDefinition.MEETUP_ACTIVITY -> settings.meetupReleaseChance
+            NpcFeature.ambientFocus(npc)?.let { focus -> focus.topic == "pokemon" || "pokemon" in focus.goal } == true -> settings.ambientPokemonReleaseChance
+            else -> return false
+        }
+        return releaseWindowAllows(level, definition.id, settings, releaseChance)
+    }
+
+    private fun releaseWindowAllows(level: ServerLevel, npcId: String, settings: NpcPokemonCompanionSettingsDefinition, releaseChance: Int): Boolean {
+        val key = cleanNpcId(npcId)
+        companionReleaseWindows[key]?.let { window ->
+            if (level.gameTime < window.untilTick) return window.released
+        }
+        val released = releaseChance >= 100 || releaseChance > 0 && level.random.nextInt(100) < releaseChance
+        val seconds = if (released) {
+            randomSeconds(level, settings.releaseMinSeconds, settings.releaseMaxSeconds)
+        } else {
+            randomSeconds(level, settings.recallMinSeconds, settings.recallMaxSeconds)
+        }
+        companionReleaseWindows[key] = CompanionReleaseWindow(released, level.gameTime + seconds * 20L)
+        return released
+    }
+
+    private fun randomSeconds(level: ServerLevel, minSeconds: Int, maxSeconds: Int): Int =
+        if (minSeconds == maxSeconds) minSeconds else minSeconds + level.random.nextInt(maxSeconds - minSeconds + 1)
 
     private fun tagCompanion(entity: Entity, definition: NpcDefinition) {
         entity.persistentData.put(COMPANION_TAG, CompoundTag().also { tag ->
@@ -266,6 +316,10 @@ object NpcPokemonCompanions {
     }
 
     private fun recallForBattle(entity: Entity) {
+        recallWithEffects(entity)
+    }
+
+    private fun recallWithEffects(entity: Entity) {
         val level = entity.level() as? ServerLevel
         if (level != null) {
             val y = entity.y + entity.bbHeight * 0.55
@@ -274,6 +328,13 @@ object NpcPokemonCompanions {
             level.playSound(null, entity.x, entity.y, entity.z, SoundEvents.ITEM_PICKUP, SoundSource.NEUTRAL, 0.55f, 1.65f)
         }
         entity.discard()
+    }
+
+    private fun releaseEffects(entity: Entity) {
+        val level = entity.level() as? ServerLevel ?: return
+        val y = entity.y + entity.bbHeight * 0.55
+        level.sendParticles(ParticleTypes.POOF, entity.x, y, entity.z, 12, 0.3, 0.3, 0.3, 0.02)
+        level.playSound(null, entity.x, entity.y, entity.z, SoundEvents.ITEM_PICKUP, SoundSource.NEUTRAL, 0.45f, 1.35f)
     }
 
     private fun companions(server: MinecraftServer, npcId: String): List<Entity> =
@@ -332,6 +393,8 @@ object NpcPokemonCompanions {
     private fun isPokemonEntity(entity: Entity): Boolean = pokemonEntityClass?.isInstance(entity) == true
 
     private fun cleanNpcId(value: String): String = value.trim().lowercase().replace(' ', '_')
+
+    private data class CompanionReleaseWindow(val released: Boolean, val untilTick: Long)
 
     private fun Class<*>.staticAccessor(name: String): Any? =
         runCatching { getMethod("get$name").invoke(null) }.getOrNull()

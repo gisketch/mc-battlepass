@@ -75,8 +75,8 @@ Each NPC is one TOML file:
 - Saved configured NPCs refresh `body_type`, `body_model`, Female Gender values, renderer mode, name, and Pehkui body scale from TOML when loaded, so old spawned NPCs pick up visual config changes after a world reload.
 - `custom_animation`: Uses the GeckoLib playerlike NPC renderer instead of the EMF-compatible renderer path. Default `false`.
 - `playerlike_animation`: Uses the Better Combat/Mob Player Animator-compatible playerlike renderer instead of Gecko custom animation. Default `false`.
-- `main_pokemon`: Optional Cobblemon species id, for example `main_pokemon = "cobblemon:growlithe"`. When Cobblemon is installed, CKDM keeps one tagged NPC-owned companion near the NPC. The companion follows the NPC, is not catchable, is not battleable, and is included in LLM prompt context so the NPC can sometimes talk about it.
-  NPC-owned Pokemon mirror their owning NPC's sleep state; they do not use their own species/world sleep schedule while assigned as a companion.
+- `main_pokemon`: Optional Cobblemon species id, for example `main_pokemon = "cobblemon:growlithe"`. When Cobblemon is installed, CKDM can release one tagged NPC-owned companion near the NPC during configured event windows. The companion follows the NPC, is not catchable, is not battleable, and is included in LLM prompt context so the NPC can sometimes talk about it.
+  By default NPC-owned Pokemon are recalled during sleep, home, and work, then released during `pokemon_roam`, some `meetup`, and Pokemon-focused ambient events.
 - `class`: Optional class id for Training dialog classification, for example `class = "rogue"`. Training starts the matching class mentor questline from that class TOML and unlocks the class only after payment and mentor duel victory.
 - `store`: Store template id, for example `store = "cosmetics"`. This selects the store TOML/pool only; runtime stock remains per NPC through `npc_<id>`.
 - `job_definition`: Static work behavior knobs loaded from TOML: `scan_interval_ticks`, `roam_radius`, and `work_scan_radius`. Legacy `job_definition.store` is still accepted as a fallback for older configs, but new configs should use top-level `store`.
@@ -315,11 +315,33 @@ NPC-to-NPC micro interaction settings live in NPC `settings.toml`:
 [npc_interactions]
 enabled = true
 radius = 7.0
-duration_seconds = 12
-cooldown_min_hours = 2
-cooldown_max_hours = 4
+duration_seconds = 30
+cooldown_min_hours = 1
+cooldown_max_hours = 2
+witness_required = true
+witness_radius = 8.0
+first_witness_nudge_min_seconds = 5
+first_witness_nudge_max_seconds = 15
+area_cooldown_min_seconds = 60
+area_cooldown_max_seconds = 90
+daily_participation_budget = 7
+trainer_daily_participation_budget = 7
+pair_cooldown_hours = 6
 balloon_refresh_seconds = 6
 messages = ["Talking with {other}...", "Catching up with {other}."]
+
+[pokemon_companions]
+event_windows = true
+release_min_seconds = 180
+release_max_seconds = 420
+recall_min_seconds = 120
+recall_max_seconds = 300
+pokemon_roam_release_chance = 70
+meetup_release_chance = 35
+ambient_pokemon_release_chance = 60
+recall_during_sleep = true
+recall_during_home = true
+recall_during_work = true
 ```
 
 Example shared `friendship_messages.toml` addition:
@@ -421,11 +443,11 @@ Gift limits are per NPC/player and reset by in-game schedule period. Finn defaul
 
 NPC-to-player gifts start at friendship level 5 by default. Each NPC/player pair rolls one scheduled hour per in-game day from that NPC's non-sleep schedule hours. If the player is nearby when the hour is ready, the NPC creates a pending weighted random gift, shows a `@gift.png` balloon, and follows the player for `follow_seconds`. The item is only granted when the player right-clicks the NPC while a pending gift exists. Ignoring the chase does not delete the gift; the pending gift can be claimed later, including on a later in-game day, and the NPC can remind the player again once per day. Claiming opens the normal NPC dialog with a `THANKS` close button and sends a snackbar using the received item as icon. Gift LLM thinking and replies stay in that dialog, not in world-space balloons. Friendship level 9+ uses the rare weighted pool when available. LLM gift messages receive `{player}`, `{npc}`, `{item}`, and `{quantity}` in the prompt; fallback messages use the same placeholders.
 
-NPC-to-NPC micro interactions run after gifting and daily greeting checks, before normal scheduled movement. When two awake, non-talking NPCs in non-sleep schedule activity meet within `npc_interactions.radius`, they can pause, walk toward each other, face each other, and show short world-space balloons for `duration_seconds`. There is no daily cap; each NPC gets a random in-game cooldown between `cooldown_min_hours` and `cooldown_max_hours` before it can start another micro interaction. Each interaction records a global summary event for future LLM context.
+NPC-to-NPC micro interactions run after gifting and daily greeting checks, before ambient life and normal scheduled movement. Authored dialogue requires a close player witness by default, so exchange content is not spent off-screen. When eligible NPCs meet within `npc_interactions.radius`, they can pause, walk toward each other, face each other, and hold the interaction open for `duration_seconds`; each nearby player receives each NPC's balloon once for the normal short balloon duration. First daily witnesses get a small 5-15 second nudge, while area cooldown, per-NPC daily budgets, per-NPC cooldowns, and same-pair cooldowns prevent rapid repeats. Each interaction records a global summary event for future LLM context.
 
 Right-clicking either NPC during a micro interaction interrupts the exchange and opens a close-only contextual dialog from the clicked NPC. The clicked NPC references the partner, the just-shown lines, and the exchange topic; when LLM is enabled, the prompt asks for a short in-character reaction instead of a generic greeting. The same context remains available briefly after the balloons end, so a player can still ask what the NPCs were just discussing.
 
-After higher-priority tasks and before routine schedule movement, NPCs can run ambient life actions. Ambient life is in-world-only SBL behavior: short movement or observation beats around Pokemon, nearby paths, home, town center, work blocks, or small scene objects. It does not open UI, ask LLMs, grant rewards, or change shop/training/workplace validity. During `work` hours with no assigned workplace, ambient life makes the NPC seek town/home/camp/Pokemon/object targets instead of standing in place, while the actual WORK flow and missing-workplace requirements remain unchanged. Authored `solo_moments` in `micro_interactions*.toml` can add rare short balloons to those beats; the Prism runtime config currently carries 250 ambient solo moments across `micro_interactions_ambient_01.toml` through `micro_interactions_ambient_06.toml`.
+After higher-priority tasks and before routine schedule movement, NPCs can run ambient life actions. Ambient life is in-world-only SBL behavior: short movement or observation beats around Pokemon, nearby paths, home, town center, work blocks, or small scene objects. It does not open UI, ask LLMs, grant rewards, or change shop/training/workplace validity. During `work` hours with no assigned workplace, ambient life makes the NPC seek town/home/camp/Pokemon/object targets instead of standing in place, while the actual WORK flow and missing-workplace requirements remain unchanged. Authored `solo_moments` in `micro_interactions*.toml` can add rare short balloons to those beats; entering close range during the active ambient event sends that player a fresh short balloon once. Client-side balloon removal is duration-based after receipt, not distance-culling based. The Prism runtime config currently carries 250 ambient solo moments across `micro_interactions_ambient_01.toml` through `micro_interactions_ambient_06.toml`.
 
 If a housed NPC dies, resident state marks it dead and the server announces the death through a global snackbar, world chat, and Discord death relay when enabled. The announcement includes the killer when the damage source is a player. Once the scheduled respawn day is due and the in-game hour is 05:00 or later, the server respawns it at its assigned bed if it has one. If an unhoused camper dies, the active camper remains reserved and respawns at the camping block instead. This is intentionally tolerant of debug time jumps that skip across the exact 05:00 scan window.
 

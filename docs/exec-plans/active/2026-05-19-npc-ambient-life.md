@@ -8,7 +8,7 @@ Make housed/configured NPCs feel alive during low-priority schedule time without
 
 - NPCs with no workplace during `work` hours do not stand still indefinitely; they choose safe ambient motion instead.
 - Existing SBL task priority remains intact: hazards, battle locks, quest/gift/follow tasks, NPC micro interactions, and talking pause beat ambient behavior.
-- Pair microinteraction duration and short balloon visibility remain as-is; quiet face-to-face time is intentional.
+- Pair microinteraction balloons stay short; later social rebalance lengthened the interaction catch window to 30 seconds.
 - Authored solo ambient moments can be loaded from NPC microinteraction TOML files.
 - Normal right-click greetings can reference recent ambient behavior through the interaction director.
 - Runtime config secrets are not copied into repo docs.
@@ -39,7 +39,7 @@ Make housed/configured NPCs feel alive during low-priority schedule time without
 
 - Engine-first, visible-motion-first.
 - Pair-plus for v1; true 3+ group interactions deferred.
-- Do not change the 5s balloon / 12s microinteraction mechanic.
+- Keep 5s balloons; social rebalance may tune the longer interaction catch window separately.
 
 ## Progress Log
 

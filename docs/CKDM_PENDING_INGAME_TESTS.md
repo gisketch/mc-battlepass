@@ -2,6 +2,19 @@
 
 Use this when someone can launch a client/server. These checks were deferred because no one is available for manual testing right now.
 
+## NPC Social Rebalance
+
+- [ ] Stop the game, confirm Prism runtime `npcs/settings.toml` has `duration_seconds = 30`, `cooldown_min_hours = 1`, `cooldown_max_hours = 2`, `daily_participation_budget = 7`, and `pair_cooldown_hours = 6`.
+- [ ] Launch `modsync-ckdm-2026`, run `/npc reload`, then stand outside close range of a meetup cluster for 2 minutes; confirm authored NPC-to-NPC balloons do not burn off-screen.
+- [ ] Walk into close range during meetup; confirm an eligible NPC-to-NPC conversation starts within about 5-15 seconds when cooldowns allow.
+- [ ] Stay in the same meetup area for 5 minutes; confirm conversations feel occasional, with roughly 60-90 seconds between starts, not constant chatter.
+- [ ] Enter range after a conversation has already started; confirm each NPC balloon appears for 5 seconds while the interaction can remain active up to 30 seconds.
+- [ ] Step away immediately after receiving a balloon; confirm the balloon expires by duration instead of vanishing because of range.
+- [ ] Watch a solo ambient moment; confirm entering close range during the active event shows that solo balloon for 5 seconds once.
+- [ ] Observe all-day gym/elite/trainer NPCs for several minutes; confirm companion Pokemon release and recall instead of staying out permanently.
+- [ ] Confirm sleep/home/work periods recall companion Pokemon, while `pokemon_roam` and some meetup/outdoor moments release them again.
+- [ ] Right-click an NPC during or soon after a witnessed microinteraction; confirm the contextual interruption dialog still references the partner/topic.
+
 ## Balance Pass Smoke
 
 - [ ] Confirm the four relic token items exist in-game:

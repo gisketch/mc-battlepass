@@ -2,6 +2,8 @@
 
 NPC-to-NPC micro interactions use paired authored exchanges. One interaction picks one exchange, then shows `line` over the first NPC and `response` over the second NPC.
 
+Runtime pacing is witness-first: authored exchanges normally start only when a player is close enough to receive balloons. The interaction window can stay open longer than the balloon duration, so late passersby can still catch the line without refreshing the same balloon repeatedly for one player.
+
 ## Content File
 
 Put shared content in:
@@ -49,6 +51,7 @@ weight = 2.0
 - `required_spawned_ids` gates named third-party NPC references the same way it does for paired exchanges.
 - `activities` is optional. When present, it limits the line to schedule activities such as `work`, `home`, `meetup`, or `pokemon_roam`.
 - Keep `line` short and observational. It should sound like a thought or small daily action, not a quest prompt.
+- Solo moment balloons trigger for a player who enters close range during the active ambient event. Do not write lines that require the player to have seen the NPC from the first tick of the action.
 
 ## Tags
 
@@ -79,6 +82,7 @@ Do not author every permutation. Use tag packs for scale, then add pair-specific
 
 - Keep each balloon short enough to read above a moving NPC.
 - Make the two lines sound like a real exchange.
+- Assume a player may catch either line mid-interaction; each line should make sense alone.
 - Avoid narrator text like `Talking with {other}` except as emergency fallback.
 - Avoid long lore dumps; one idea per balloon.
 - Do not depend on hidden state unless the exchange is gated by a tag or topic that makes it safe.
