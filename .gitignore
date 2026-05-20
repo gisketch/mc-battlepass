@@ -21,7 +21,11 @@ refs/**
 .pi/sessions/
 .codex-analysis/
 
-# Graphify durable outputs can be committed; local metadata should stay out.
+# Graphify team map: commit durable outputs, keep local metadata out.
+!graphify-out/
+!graphify-out/graph.json
+!graphify-out/GRAPH_REPORT.md
+!graphify-out/graph.html
 graphify-out/manifest.json
 graphify-out/cost.json
 graphify-out/cache/
