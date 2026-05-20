@@ -43,3 +43,14 @@ Run client/in-game smoke tests when UI, rendering, event hooks, or runtime-only 
 - Validation is reproducible by another agent.
 - New decisions update docs.
 - Repeated failures become docs, scripts, tests, or tighter prompts.
+
+<!-- sonata:block=context-checks:start -->
+## Context And Agent Checks
+
+| Check | Command | When To Run |
+|---|---|---|
+| Context setup | `./scripts/setup-context.sh` | After enabling Pi, Graphify, or lean-ctx |
+| Context check | `./scripts/check-context.sh` | Before handoff when selected tools are expected |
+| Graph build | `graphify .` | After broad architecture, doc, or source changes |
+| LeanCTX doctor | `lean-ctx doctor` | After install or shell/agent setup changes |
+<!-- sonata:block=context-checks:end -->

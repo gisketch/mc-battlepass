@@ -1,0 +1,28 @@
+# Build / generated
+node_modules/
+dist/
+build/
+coverage/
+.tmp/
+.cache/
+*.log
+
+# Local agent/runtime noise
+.pi/sessions/
+.codex-analysis/
+graphify-out/manifest.json
+graphify-out/cost.json
+graphify-out/cache/
+
+# Keep source, docs, config, scripts
+!src/
+!src/**
+!docs/
+!docs/**
+!config/
+!config/**
+!scripts/
+!scripts/**
+!AGENTS.md
+!README.md
+!package.json

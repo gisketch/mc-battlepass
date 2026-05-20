@@ -62,3 +62,12 @@ If context matters after the chat ends, put it in this repo.
 ## Retrofit Rule
 
 When adapting an existing project, use `/retrofit-sonata` first. Inventory, preserve, and reorganize before adding new features.
+
+<!-- sonata:block=integrations:start -->
+## Context And Agent Integrations
+
+- [Agent Targets](agent-targets.md)
+- [Graphify](context/graphify.md)
+- [LeanCTX](context/lean-ctx.md)
+- Pi local skills and prompts live under `.pi/`.
+<!-- sonata:block=integrations:end -->

@@ -47,3 +47,13 @@ Codex reads this file first. Keep it short. It is the map, not the manual.
 4. Implement inside documented boundaries.
 5. Validate with current checks.
 6. Update docs when behavior, decisions, or constraints change.
+
+<!-- sonata:block=integrations:start -->
+## Sonata Integrations
+
+- Pi is enabled. Project skills live in `.pi/skills/`; prompt templates live in `.pi/prompts/`.
+- For broad repo navigation, query Graphify before raw grep or large file reads.
+- See [docs/context/graphify.md](docs/context/graphify.md).
+- For repeated reads or shell-heavy work, prefer lean-ctx compressed reads and commands.
+- See [docs/context/lean-ctx.md](docs/context/lean-ctx.md).
+<!-- sonata:block=integrations:end -->
