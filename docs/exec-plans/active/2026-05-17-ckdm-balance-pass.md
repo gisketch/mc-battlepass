@@ -2,13 +2,13 @@
 
 ## Goal
 
-Rebalance relic roulette, battlepass rewards, and mission XP around a slower 1000-level CKDM season. Preserve curated stores.
+Rebalance relic roulette, battlepass rewards, and mission XP around a slower 500-level CKDM season. Preserve curated stores.
 
 ## Acceptance Criteria
 
 - Four new visible relic token items exist for common/rare cozy/combat pools.
 - Relic roulette loads four new pool configs while keeping legacy common/rare token compatibility.
-- Cozy and Combat pass configs reach level 1000 (`100000` XP) with deterministic generated rewards every level.
+- Cozy and Combat pass configs reach level 500 (`50000` XP) with deterministic generated rewards every level.
 - Battlepass configs use conservative XP rewards and remove known OP raw rewards.
 - Store configs are preserved; price-only store tuning is deferred to a targeted pass.
 - A generator script can reproduce the balance configs and summary report.
@@ -41,7 +41,8 @@ Rebalance relic roulette, battlepass rewards, and mission XP around a slower 100
 
 - 2026-05-17: Plan created from approved balance-pass spec.
 - 2026-05-17: Added four visible Cozy/Combat relic token items, lang entries, models, and source pool defaults.
-- 2026-05-17: Replaced embedded battlepass defaults with conservative 1000-level generated-style defaults.
+- 2026-05-17: Replaced embedded battlepass defaults with conservative generated-style defaults.
+- 2026-05-20: Docs/code sync corrected this plan to match the current 500-level generator and generated summary.
 - 2026-05-17: Added and ran `scripts/generate-ckdm-balance.ps1` for pass configs, relic pools, and summary report.
 - 2026-05-17: Updated balance, roadmap, and relic roulette docs.
 - 2026-05-17: Validation passed: `bash ./scripts/check-sonata.sh` and `./gradlew.bat build`.

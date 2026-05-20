@@ -49,4 +49,4 @@ Document current mod shape, preserve existing domain docs, and make future chang
 ## Open Questions
 
 - Which Gradle tasks should be required before every handoff beyond `build`?
-- Are shops intentionally stub-only or next feature target?
+- Which in-game smoke checks should graduate into scripts after repeated manual runs?

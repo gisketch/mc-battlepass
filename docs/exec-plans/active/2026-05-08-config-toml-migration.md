@@ -29,7 +29,7 @@ Move Chow Kingdom files under `config/gisketchs_chowkingdom_mod/` from JSON to T
 ## Validation
 
 - `./gradlew.bat build`
-- Client smoke when practical: `./scripts/run-client.ps1`, then inspect `runs/client/config/gisketchs_chowkingdom_mod`.
+- Client smoke when practical: `./scripts/run-client.ps1`, then inspect `<game config>/gisketchs_chowkingdom_mod` for the active instance.
 
 ## Decision Log
 
@@ -45,4 +45,4 @@ Move Chow Kingdom files under `config/gisketchs_chowkingdom_mod/` from JSON to T
 - 2026-05-08: Updated current docs for TOML config paths and examples.
 - 2026-05-08: `./gradlew.bat build` passed after implementation cleanup.
 - 2026-05-08: Switched pre-server fallback stores to `.toml` in the config tree while keeping server world data `.json`.
-- 2026-05-08: Client smoke reached mod init; `runs/client/config/gisketchs_chowkingdom_mod` has no JSON files, with legacy JSON under `json-backup/`.
+- 2026-05-08: Client smoke reached mod init; the active game config had no JSON files, with legacy JSON under `json-backup/`.

@@ -16,9 +16,9 @@ Prevent duplicate consecutive snackbar notifications from filling the stack, and
 
 ## Context Links
 
-- [Snackbar client](../../src/main/kotlin/dev/gisketch/chowkingdom/snackbar/SnackbarClient.kt)
-- [Battlepass screen](../../src/main/kotlin/dev/gisketch/chowkingdom/battlepass/BattlepassScreen.kt)
-- [Quality](../quality.md)
+- [Snackbar client](../../../src/main/kotlin/dev/gisketch/chowkingdom/snackbar/SnackbarClient.kt)
+- [Battlepass screen](../../../src/main/kotlin/dev/gisketch/chowkingdom/battlepass/BattlepassScreen.kt)
+- [Quality](../../quality.md)
 
 ## Steps
 

@@ -51,7 +51,7 @@ Rotate configured NPCs through the camping block. Only one unhoused camper can w
 
 ## Better Days Test Steps
 
-1. In `runs/client/config/betterdays-common.toml`, set `speedMethod="MINUTES"`, `daySpeedMinutes=0.5`, and `nightSpeedMinutes=0.5`.
+1. In the active instance `config/betterdays-common.toml`, set `speedMethod="MINUTES"`, `daySpeedMinutes=0.5`, and `nightSpeedMinutes=0.5`.
 2. Keep Better Days `dayStart=23500.0` and `nightStart=12500.0`.
 3. Start client and enable `/npc debug` on a housed NPC.
 4. Advance time slowly; verify debug hour changes from `06` at day start toward `18` at configured night start.

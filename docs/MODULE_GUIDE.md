@@ -49,7 +49,7 @@ object ExampleStore {
     private var loaded = false
 
     fun load() {
-        // clear maps, read JSON if exists, coerce bad values
+        // clear maps, read TOML/JSON through TomlConfigIO, coerce bad values
         loaded = true
     }
 
@@ -66,7 +66,7 @@ object ExampleStore {
 
 Rules:
 
-- Never trust JSON blindly. Coerce negative balances/progress to safe values.
+- Never trust loaded config/save data blindly. Coerce negative balances/progress to safe values.
 - Do not save on every read.
 - Use UUID string keys for player data.
 - Avoid changing existing file locations after release.
@@ -127,27 +127,25 @@ Add new reward type:
 
 1. Add type detection in `BattlepassClaimService.giveReward` before item fallback.
 2. Update `BattlepassScreen.rewardStack`, `rewardName`, and custom icon rendering if reward is not an item.
-3. Document JSON shape in pass docs or README.
+3. Document the config shape in pass docs or README. Runtime pass files are TOML; short docs may use compact JSON-like snippets only when clearly labeled.
 
 ## Shipping Bin Pricing
 
 Shipping bin prices live in `config/gisketchs_chowkingdom_mod/shipping_bin/prices.toml`.
 
-```json
-{
-    "payout_hour": 5,
-    "payout_minute": 0,
-    "entries": [
-        { "item": "minecraft:wheat", "price_amount": 100 },
-        { "tag": "minecraft:crops", "price_amount": 50 }
-    ],
-    "quality_food": {
-        "enabled": true,
-        "iron_quality": 1.1,
-        "gold_quality": 1.25,
-        "diamond_quality": 1.5
-    }
-}
+```toml
+payout_hour = 5
+payout_minute = 0
+entries = [
+  { item = "minecraft:wheat", price_amount = 100 },
+  { tag = "minecraft:crops", price_amount = 50 },
+]
+
+[quality_food]
+enabled = true
+iron_quality = 1.1
+gold_quality = 1.25
+diamond_quality = 1.5
 ```
 
 Rules:

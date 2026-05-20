@@ -65,7 +65,7 @@ Core rule: reward exploration with stories, routes, trophies, cosmetics, tokens,
 - [x] Relic roulette exists with locked tokens, per-player unique rewards, Discord relay, and transfer restrictions.
 - [x] Common and rare relic pools exist.
 - [x] Four CKDM relic token types exist: common/rare cozy and common/rare combat.
-- [x] Generated 1000-level Cozy and Combat pass configs exist.
+- [x] Generated 500-level Cozy and Combat pass configs exist.
 - [x] Balance generator exists at `scripts/generate-ckdm-balance.ps1`.
 - [x] Revive/incapacitation system exists.
 - [x] Discord relay exists.
@@ -91,11 +91,11 @@ Category: Launch baseline.
 
 TODO (Configuration):
 
-- [x] Audit `runs/client/config/gisketchs_chowkingdom_mod/battlepass/passes/cozy.toml`.
+- [x] Audit `<game config>/gisketchs_chowkingdom_mod/battlepass/passes/cozy.toml`.
 - [x] Remove or delay OP Cozy Pass rewards near the end: netherite ingot, nether star, enchanted golden apple, shulker shell, totem, recovery compass, large rare vanilla progression items. Elytra is kept, but level-500 gated.
 - [x] Keep Elytra in loot while making all Elytra unwearable until overall Battlepass Level 500.
 - [x] Replace high-power pass rewards with locked relic tokens, small supplies, and safe utility rewards. Titles, trophies, notes, and event keys are future features.
-- [x] Audit `runs/client/config/gisketchs_chowkingdom_mod/battlepass/passes/combat.toml`.
+- [x] Audit `<game config>/gisketchs_chowkingdom_mod/battlepass/passes/combat.toml`.
 - [x] Fix `minecraft:block_harvested` usage in Combat Pass because docs mark it as configured in old samples but not emitted.
 - [x] Reduce early Combat Pass OP rewards: diamonds, enchanted book, totem, diamond sword, netherite ingot.
 - [x] Replace Combat Pass raw gear with arrows, food, repair materials, modest materials, and locked relic tokens.

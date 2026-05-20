@@ -11,7 +11,7 @@ Custom Gecko animation AI planning lives in [NPC Custom Animation AI](NPC_CUSTOM
 ## Current Slice
 
 - One default NPC: `finn`; additional NPC TOML files join the camping-block camper pool.
-- Runtime config folder: `<game config>/gisketchs_chowkingdom_mod/npcs`; in local `runClient`, this is `runs/client/config/gisketchs_chowkingdom_mod/npcs`.
+- Runtime config folder: `<game config>/gisketchs_chowkingdom_mod/npcs`. Current local playtest source of truth is the Prism instance config named in `AGENTS.md`, not repo `runs/`.
 - Default file: `finn.toml`, written if missing.
 - Global NPC settings: `settings.toml`, written if missing.
 - `settings.toml` top-level `default_speaking_emote = "speaking"` is the fallback emote for NPC speech when no explicit emote is requested. Set it to `"none"` or blank to disable the fallback. The built-in `speaking` catalog entry has `loop_while_talking = true` and no cooldown, so dialog speech can restart the clip until the server-side talking state ends.

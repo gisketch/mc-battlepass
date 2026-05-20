@@ -6,7 +6,7 @@ Chow Kingdom treats Paraglider stamina as the shared stamina pool when Paraglide
 
 Config:
 
-- `runs/client/config/gisketchs_chowkingdom_mod/compat/stamina.toml`
+- `<game config>/gisketchs_chowkingdom_mod/compat/stamina.toml`
 
 Current defaults:
 
@@ -74,7 +74,7 @@ Hot reload:
 
 - `/ck stamina reload`
 
-One Paraglider stamina wheel is 1000 stamina. Tune the JSON first before changing Kotlin.
+One Paraglider stamina wheel is 1000 stamina. Tune the TOML first before changing Kotlin.
 
 ## Notes
 

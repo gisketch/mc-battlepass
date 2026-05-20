@@ -12,11 +12,11 @@ Use this when adding or tuning Chow Kingdom jobs/classes through TOML config.
 
 ## Files To Edit
 
-Runtime config files are loaded from the run folder:
+Runtime config files are loaded from the active game config folder. Current local playtest source of truth is the Prism instance config named in `AGENTS.md`.
 
-- Jobs: `runs/client/config/gisketchs_chowkingdom_mod/roles/jobs/*.toml`
-- Classes: `runs/client/config/gisketchs_chowkingdom_mod/roles/classes/*.toml`
-- Onboarding copy: `runs/client/config/gisketchs_chowkingdom_mod/roles/onboarding.toml`
+- Jobs: `<game config>/gisketchs_chowkingdom_mod/roles/jobs/*.toml`
+- Classes: `<game config>/gisketchs_chowkingdom_mod/roles/classes/*.toml`
+- Onboarding copy: `<game config>/gisketchs_chowkingdom_mod/roles/onboarding.toml`
 
 Source defaults live in Kotlin and only create runtime config files when missing:
 
@@ -47,7 +47,7 @@ Commands require permission level 2.
 
 ## Job TOML Shape
 
-Create `runs/client/config/gisketchs_chowkingdom_mod/roles/jobs/<id>.toml`.
+Create `<game config>/gisketchs_chowkingdom_mod/roles/jobs/<id>.toml`.
 
 ```toml
 id = "botanist"
@@ -78,7 +78,7 @@ Current job perk types:
 
 ## Class TOML Shape
 
-Create `runs/client/config/gisketchs_chowkingdom_mod/roles/classes/<id>.toml`.
+Create `<game config>/gisketchs_chowkingdom_mod/roles/classes/<id>.toml`.
 
 ```toml
 id = "rogue"
@@ -105,7 +105,7 @@ Current class perk types:
 
 ## Onboarding TOML Shape
 
-Create or edit `runs/client/config/gisketchs_chowkingdom_mod/roles/onboarding.toml`.
+Create or edit `<game config>/gisketchs_chowkingdom_mod/roles/onboarding.toml`.
 
 ```toml
 welcome_content = [
@@ -188,7 +188,7 @@ Use `required: false` for optional modded tags/items so the datapack still loads
 
 ## Adding A New Job
 
-1. Copy an existing job TOML from `runs/client/config/gisketchs_chowkingdom_mod/roles/jobs/`.
+1. Copy an existing job TOML from `<game config>/gisketchs_chowkingdom_mod/roles/jobs/`.
 2. Change `id`, `display_name`, and `icon`.
 3. Add supported job perks.
 4. Run `/ck roles reload`.
@@ -233,7 +233,7 @@ Debug commands:
 
 ## Adding A New Class
 
-1. Copy an existing class TOML from `runs/client/config/gisketchs_chowkingdom_mod/roles/classes/`.
+1. Copy an existing class TOML from `<game config>/gisketchs_chowkingdom_mod/roles/classes/`.
 2. Change `id`, `display_name`, and `icon`.
 3. Edit `starting_items` for inventory grants.
 4. Create or reuse weapon and armor tags under `src/main/resources/data/gisketchs_chowkingdom_mod/tags/item/class/`.

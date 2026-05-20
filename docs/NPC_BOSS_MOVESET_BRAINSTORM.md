@@ -4,8 +4,8 @@ This note maps current class mentor NPCs to usable boss move ideas.
 
 Sources:
 
-- NPC configs: `runs/client/config/gisketchs_chowkingdom_mod/npcs`
-- Class configs: `runs/client/config/gisketchs_chowkingdom_mod/roles/classes`
+- NPC configs: `<game config>/gisketchs_chowkingdom_mod/npcs`
+- Class configs: `<game config>/gisketchs_chowkingdom_mod/roles/classes`
 - PlayerAnimator scrape: `build/playeranimator-clips/PLAYER_ANIMATOR_CLIPS.md`
 - Spell scrape: `build/npc-boss-moves/spell_catalog.md`
 

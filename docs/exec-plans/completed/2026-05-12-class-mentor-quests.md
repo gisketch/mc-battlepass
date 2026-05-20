@@ -18,10 +18,10 @@ Replace direct NPC class unlock training with non-expiring one-time mentor quest
 
 ## Context Links
 
-- [NPCs](../NPCS.md)
-- [Jobs And Classes](../ROLES.md)
-- [Battlepass Events](../PASS_EVENTS.md)
-- [NPC Bossfight AI](../NPC_BOSSFIGHT_AI.md)
+- [NPCs](../../NPCS.md)
+- [Jobs And Classes](../../ROLES.md)
+- [Battlepass Events](../../PASS_EVENTS.md)
+- [NPC Bossfight AI](../../NPC_BOSSFIGHT_AI.md)
 - `src/main/kotlin/dev/gisketch/chowkingdom/npc/NpcFeature.kt`
 - `src/main/kotlin/dev/gisketch/chowkingdom/npc/NpcBossFights.kt`
 - `src/main/kotlin/dev/gisketch/chowkingdom/roles/RoleDefinitions.kt`

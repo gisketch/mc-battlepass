@@ -20,7 +20,7 @@ When enabled, Copilot receives [copilot-instructions](../.github/copilot-instruc
 
 ## Claude Code
 
-When enabled, Claude Code receives [CLAUDE.md](../CLAUDE.md) and copied skills under `.claude/skills/`.
+When enabled, Claude Code should receive `CLAUDE.md` and copied skills under `.claude/skills/`. No `CLAUDE.md` is currently checked into this repo.
 
 ## Non-Negotiables
 

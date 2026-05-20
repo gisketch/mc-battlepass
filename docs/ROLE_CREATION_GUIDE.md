@@ -6,10 +6,12 @@ Use this when making new jobs/classes or tuning existing runtime TOML.
 
 Edit runtime files while the game is stopped, then restart or run `/ck roles reload`.
 
-- Jobs: `runs/client/config/gisketchs_chowkingdom_mod/roles/jobs/*.toml`
-- Classes: `runs/client/config/gisketchs_chowkingdom_mod/roles/classes/*.toml`
-- Rank scaling: `runs/client/config/gisketchs_chowkingdom_mod/roles/job_scaling.toml`
-- Onboarding text: `runs/client/config/gisketchs_chowkingdom_mod/roles/onboarding.toml`
+- Jobs: `<game config>/gisketchs_chowkingdom_mod/roles/jobs/*.toml`
+- Classes: `<game config>/gisketchs_chowkingdom_mod/roles/classes/*.toml`
+- Rank scaling: `<game config>/gisketchs_chowkingdom_mod/roles/job_scaling.toml`
+- Onboarding text: `<game config>/gisketchs_chowkingdom_mod/roles/onboarding.toml`
+
+Current local playtest source of truth is the Prism instance config named in `AGENTS.md`, not repo `runs/`.
 
 Source defaults in [src/main/kotlin/dev/gisketch/chowkingdom/roles/RolesConfig.kt](../src/main/kotlin/dev/gisketch/chowkingdom/roles/RolesConfig.kt) only create missing runtime TOML. Existing runtime TOML wins.
 

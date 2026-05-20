@@ -17,7 +17,7 @@ Build a server-free audit for CKDM shipping prices using mod jar item, tag, and 
 
 - `docs/SHIPPING_BIN.md`
 - `scripts/audit-shipping-bin.ps1`
-- `runs/client/config/gisketchs_chowkingdom_mod/shipping_bin/prices.toml`
+- `<game config>/gisketchs_chowkingdom_mod/shipping_bin/prices.toml`
 
 ## Steps
 

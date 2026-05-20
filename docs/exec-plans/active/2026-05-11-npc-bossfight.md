@@ -45,10 +45,10 @@ Add and evolve an extensible NPC bossfight prototype using the current SmartBrai
 
 ## Context Links
 
-- [NPCs](../NPCS.md)
-- [NPC Bossfight AI](../NPC_BOSSFIGHT_AI.md)
-- [NPC Custom Animation AI](../NPC_CUSTOM_ANIMATION_AI.md)
-- [SmartBrainLib Reference](../references/smartbrainlib.md)
+- [NPCs](../../NPCS.md)
+- [NPC Bossfight AI](../../NPC_BOSSFIGHT_AI.md)
+- [NPC Custom Animation AI](../../NPC_CUSTOM_ANIMATION_AI.md)
+- [SmartBrainLib Reference](../../references/smartbrainlib.md)
 
 ## Steps
 

@@ -45,6 +45,6 @@ For every non-trivial change:
 - No automated docs freshness check yet.
 - No tests for stores/network payload codecs yet.
 - UI validation is mostly manual/in-game.
-- Shops and profiles remain stubs.
+- Large feature coverage still relies on targeted Gradle builds plus Prism instance smoke tests.
 
 Promote repeated bugs into docs or tests. Repeated manual checks should become scripts where practical.

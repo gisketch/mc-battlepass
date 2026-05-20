@@ -1,12 +1,12 @@
 # Battlepass Events
 
-Use this when curating pass JSON under `config/gisketchs_chowkingdom_mod/battlepass/passes/`.
+Use this when curating pass TOML under `config/gisketchs_chowkingdom_mod/battlepass/passes/`. Compact examples below use JSON-like inline objects to show event shape; current runtime files are TOML.
 
 ## Event Shapes
 
 Daily battlepass missions are removed. Battlepasses expose Weekly and CKDM missions only. Former daily-sized task ideas now belong in NPC quest `missions.pool` entries.
 
-Class mentor quests also reuse these event ids for their non-expiring Discipline and Signature Trial steps. They live in class TOML under `[mentor_quest]`, not in pass JSON or daily NPC quest pools. Mentor battle trials can use `kind = "timed"` plus `time_window_seconds`.
+Class mentor quests also reuse these event ids for their non-expiring Discipline and Signature Trial steps. They live in class TOML under `[mentor_quest]`, not in pass TOML or daily NPC quest pools. Mentor battle trials can use `kind = "timed"` plus `time_window_seconds`.
 
 For quick in-game testing of event progress, use NPC quests or complete a random active progressive mission:
 
@@ -30,7 +30,7 @@ Progressive event:
 
 Progressive events work in permanent and weekly pools. Weekly progressive missions reset by their rotating period. NPC task quests can also reference these event ids and reset by the NPC quest period, currently the earliest configured meetup start hour. NPC timed quests use the same event ids, but count only matching signals inside `time_window_seconds`.
 
-Daily/weekly randomization chooses one mission per rotation family before filling a pool. For example, all `cobblemon:catch_*` variants share one catch family, so one weekly roll cannot become five catch-type missions. Auto families cover Cobblemon catch, send-out, max-friendship, friendship, and befriend variants; Quality Food harvest/cook/eat variants; shipping-bin quality-food variants; shipping value missions; and Farmer's Delight cutting-board missions.
+Weekly randomization chooses one mission per rotation family before filling a pool. For example, all `cobblemon:catch_*` variants share one catch family, so one weekly roll cannot become five catch-type missions. Auto families cover Cobblemon catch, send-out, max-friendship, friendship, and befriend variants; Quality Food harvest/cook/eat variants; shipping-bin quality-food variants; shipping value missions; and Farmer's Delight cutting-board missions.
 
 Use `rotation_group` to force custom grouping:
 

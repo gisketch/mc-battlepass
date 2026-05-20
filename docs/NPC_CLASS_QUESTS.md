@@ -45,7 +45,7 @@ Class mentor quests are separate from daily NPC quests. They are one-time, non-e
 
 ## Config Surface
 
-Each class file under `runs/client/config/gisketchs_chowkingdom_mod/roles/classes` has:
+Each class file under `<game config>/gisketchs_chowkingdom_mod/roles/classes` has:
 
 ```toml
 [mentor_quest]

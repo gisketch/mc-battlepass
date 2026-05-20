@@ -51,7 +51,7 @@ docs/generated/shipping-bin-full-audit.csv
 docs/generated/shipping-bin-price-suggestions.toml
 ```
 
-The offline report reads item names, item tags, and recipe/process JSON from `runs/client/mods`. It is the preferred balance audit path because it does not require a dedicated server to boot. The suggested TOML is review-only and should not be copied blindly.
+The offline report reads item names, item tags, and recipe/process JSON from the configured mod jar folder. The script defaults to `runs/client/mods`, but current CKDM playtest audits should pass the Prism instance `mods` and `shipping_bin/prices.toml` paths explicitly. The suggested TOML is review-only and should not be copied blindly.
 
 Server audit command, when a server-safe modlist can boot:
 
@@ -67,7 +67,7 @@ Output:
 docs/generated/shipping-bin-audit.md
 ```
 
-The offline report is broad and useful for planning. The server command is more accurate because it uses the live registry and recipe manager, but it requires client-only mods to be removed from `runs/server/mods`.
+The offline report is broad and useful for planning. The server command is more accurate because it uses the live registry and recipe manager, but it requires a server-safe modlist.
 
 Versioned samples:
 
@@ -126,13 +126,11 @@ These entries are `required: false`, so the pack is safe when Cobblemon or Quali
 - `gisketchs_chowkingdom_mod:shipping_bin_value_sold`: increments by total chowcoin value sold through the shipping bin.
 - `gisketchs_chowkingdom_mod:shipping_bin_quality_food_value_sold`: increments by chowcoin value from quality items only.
 
-Testing command:
+Testing path:
 
-```text
-/battlepass daily replace gisketchs_chowkingdom_mod:shipping_bin_gold_quality_food_sold 8
-```
-
-This command is admin-only because it is registered behind permission level `2`.
+- Configure one of these event ids in a weekly pass mission or NPC quest.
+- Use `/battlepass milestone complete` for quick active-mission UI/broadcast smoke testing.
+- Use `/shippingbin sell` to trigger the command runner's current bin payout immediately.
 
 ## Quality Food Test Items
 
