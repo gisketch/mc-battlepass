@@ -18,6 +18,8 @@ Implement CKDM-owned wild random trainer spawning and battling without enabling 
 10. Double/multi trainer classes such as Twins, Couples, Double Team, Interviewers, Sis and Bro, and Crush Kin are excluded for now; current random trainers are single NPCs only.
 11. Numeric placeholder names from older source data are replaced with deterministic fallback given names during import.
 12. Natural spawning skips other unique trainers and weights tiers toward the player's current team level.
+13. Natural spawning is dimension-configurable and defaults to Overworld only via `allowedDimensions = ["minecraft:overworld"]`.
+14. Trainers freeze in place during Pokemon battles, stay in the world after normal battle end, and disable `CHALLENGE` only for players who already defeated that roster.
 
 ## Commands
 
@@ -55,8 +57,8 @@ All catalog files should normalize to:
 - `skinFolder`: folder path such as `ace_trainer/female`
 - `tier`: `low`, `mid`, `high`, `very_high`, or `unique`
 - `spawnable`: false for unique trainers such as rivals, gym leaders, Elite Four, champions, bosses, admins, and named iconic trainers
-- `height`
-- `weight`
+- `height`: Pehkui height scale multiplier, clamped to `0.6..1.4`
+- `weight`: Pehkui width scale multiplier, clamped to `0.6..1.4`
 - `bustStyle`: female-only style key, defaulting to `standard`
 - `minLevel`
 - `maxLevel`
@@ -82,6 +84,8 @@ Current Prism runtime catalog import counts:
 Total imported preset roster files after excluding Gym Leaders/Leaders, Rivals, Elite Four, Champions, known named members of those groups, and double/multi trainers: 5038.
 
 `tools/import_trainers.py` expects local checkouts under `%TEMP%/ckdm-trainer-sources`, reads RCT JSON from `%LOCALAPPDATA%/Temp/rct-mod-1.21.1/common/src/main/resources/data/rctmod/trainers` when available, and writes normalized catalog JSON under the Prism config catalog. It imports only public source data. ROM-only games still need user-owned extracted data before import.
+
+Importer body-scale defaults are lore-like Pehkui multipliers, not real-world meters/kg: kid classes are smaller, strong classes such as Hiker/Black Belt/Biker are wider/taller, and ace/veteran classes are slightly larger.
 
 ## Follow-up Data Work
 
