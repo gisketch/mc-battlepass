@@ -11,7 +11,7 @@ import hashlib
 import json
 import os
 import re
-import shutil
+import tomllib
 from pathlib import Path
 
 
@@ -19,6 +19,11 @@ DEFAULT_TARGET = (
     Path.home()
     / "AppData/Roaming/gisketch/modsync/data/launchers/prismlauncher-cracked/11.0.2-1"
     / "instances/modsync-ckdm-2026/.minecraft/config/gisketchs_chowkingdom_mod/random_trainers/catalog"
+)
+
+DEFAULT_RCT_SOURCE = (
+    Path(os.environ.get("LOCALAPPDATA", ""))
+    / "Temp/rct-mod-1.21.1/common/src/main/resources/data/rctmod/trainers"
 )
 
 
@@ -32,12 +37,105 @@ SOURCE_SPECS = {
 }
 
 DIR_ALIASES = {
+    "rct": "rct",
     "pret_pokered": "red",
     "pret_pokecrystal": "crys",
     "pret_pokeemerald": "emer",
     "pret_pokefirered": "fire",
     "pret_pokeplatinum": "plat",
     "pret_pokeheartgold": "hgss",
+}
+
+UNIQUE_TOKENS = {
+    "rival",
+    "leader",
+    "gym_leader",
+    "elite_four",
+    "champion",
+    "professor",
+    "prof",
+    "tower_tycoon",
+    "frontier_brain",
+    "commander",
+    "boss",
+    "admin",
+    "executive",
+    "red",
+    "blue",
+    "cynthia",
+    "lance",
+    "giovanni",
+    "steven",
+    "wallace",
+}
+
+BLOCKED_WILD_TOKENS = {
+    "aaron",
+    "agatha",
+    "bertha",
+    "blaine",
+    "blue",
+    "bruno",
+    "buck",
+    "bugsy",
+    "byron",
+    "candice",
+    "cheryl",
+    "clair",
+    "cynthia",
+    "crasher_wake",
+    "dawn",
+    "erika",
+    "fantina",
+    "flannery",
+    "flint",
+    "gardenia",
+    "giovanni",
+    "glacia",
+    "grimsley",
+    "juan",
+    "jupiter",
+    "koga",
+    "lance",
+    "liza",
+    "lorelei",
+    "lucas",
+    "lucian",
+    "maylene",
+    "maxie",
+    "misty",
+    "norman",
+    "phoebe",
+    "pryce",
+    "roark",
+    "roxanne",
+    "sabrina",
+    "sidney",
+    "steven",
+    "tate",
+    "thorton",
+    "volkner",
+    "wallace",
+    "whitney",
+    "winona",
+    "rival",
+    "leader",
+    "gym_leader",
+    "elite_four",
+    "champion",
+}
+
+MULTI_TRAINER_TOKENS = {
+    "cool_couple",
+    "crush_kin",
+    "double_team",
+    "interviewer",
+    "interviewers",
+    "old_couple",
+    "sis_and_bro",
+    "sr_and_jr",
+    "twins",
+    "young_couple",
 }
 
 SPECIAL_SPECIES = {
@@ -70,10 +168,92 @@ SPECIAL_MOVES = {
     "MOVE_SMELLING_SALT": "smellingsalts",
 }
 
+FEMALE_FALLBACK_NAMES = (
+    "Aika",
+    "Alina",
+    "Aya",
+    "Bianca",
+    "Bria",
+    "Celia",
+    "Clara",
+    "Dahlia",
+    "Elena",
+    "Faye",
+    "Gina",
+    "Hana",
+    "Iris",
+    "Jade",
+    "Kira",
+    "Lena",
+    "Mina",
+    "Nora",
+    "Opal",
+    "Rina",
+    "Sera",
+    "Talia",
+    "Vera",
+    "Yuna",
+)
+
+MALE_FALLBACK_NAMES = (
+    "Arlo",
+    "Basil",
+    "Cal",
+    "Dante",
+    "Eli",
+    "Finn",
+    "Galen",
+    "Hiro",
+    "Ivan",
+    "Jace",
+    "Kai",
+    "Leon",
+    "Milo",
+    "Nico",
+    "Orin",
+    "Pax",
+    "Reid",
+    "Silas",
+    "Theo",
+    "Vance",
+    "Wes",
+    "Xander",
+    "Yuri",
+    "Zane",
+)
+
+ANY_FALLBACK_NAMES = FEMALE_FALLBACK_NAMES + MALE_FALLBACK_NAMES
+
 
 def clean_id(value: str) -> str:
     value = re.sub(r"[^a-zA-Z0-9_.:-]+", "_", value.strip().lower())
     return value.strip("_")
+
+
+def read_text(path: Path) -> str:
+    raw = str(path.resolve())
+    if os.name == "nt" and not raw.startswith("\\\\?\\"):
+        raw = "\\\\?\\" + raw
+    with open(raw, encoding="utf-8") as handle:
+        return handle.read()
+
+
+def long_path(path: Path) -> str:
+    raw = str(path.resolve())
+    if os.name == "nt" and not raw.startswith("\\\\?\\"):
+        return "\\\\?\\" + raw
+    return raw
+
+
+def remove_tree(path: Path) -> None:
+    if not path.exists():
+        return
+    for root, dirs, files in os.walk(long_path(path), topdown=False):
+        for file_name in files:
+            os.remove(os.path.join(root, file_name))
+        for dir_name in dirs:
+            os.rmdir(os.path.join(root, dir_name))
+    os.rmdir(long_path(path))
 
 
 def title_words(value: str) -> str:
@@ -88,6 +268,159 @@ def title_words(value: str) -> str:
         if mapped:
             result.append(mapped)
     return " ".join(result) or "Trainer"
+
+
+def stable_index(value: str, size: int) -> int:
+    digest = hashlib.sha1(value.encode("utf-8")).hexdigest()
+    return int(digest[:8], 16) % size
+
+
+def infer_gender(title: str, value: str = "any") -> str:
+    clean = clean_id(value)
+    if clean in {"male", "female"}:
+        return clean
+    title_id = clean_id(title)
+    female_tokens = ("girl", "lady", "lass", "beauty", "picnicker", "waitress")
+    male_tokens = ("boy", "gentleman", "black_belt", "hiker", "sailor", "waiter")
+    if title_id.endswith(("_f", "_female")) or any(token in title_id for token in female_tokens):
+        return "female"
+    if title_id.endswith(("_m", "_male")) or any(token in title_id for token in male_tokens):
+        return "male"
+    return "any"
+
+
+def is_unique_title(title: str) -> bool:
+    clean = clean_id(title)
+    parts = set(clean.split("_"))
+    for token in UNIQUE_TOKENS:
+        if clean == token or token in parts:
+            return True
+        if "_" in token and token in clean:
+            return True
+    return False
+
+
+def is_blocked_wild_title(title: str) -> bool:
+    clean = clean_id(title)
+    parts = set(clean.split("_"))
+    for token in BLOCKED_WILD_TOKENS:
+        if clean == token or token in parts:
+            return True
+        if any(part == token or re.fullmatch(rf"{re.escape(token)}\d+", part) for part in parts):
+            return True
+        if "_" in token and token in clean:
+            return True
+    return False
+
+
+def is_multi_trainer(title: str, name: str = "") -> bool:
+    clean_title = clean_id(title)
+    clean_name = clean_id(name)
+    if " & " in name or re.search(r"\b(and|&)\b", name, re.IGNORECASE):
+        return True
+    for token in MULTI_TRAINER_TOKENS:
+        if clean_title == token or token in clean_title or clean_name == token or token in clean_name:
+            return True
+    return False
+
+
+def tier_for(title: str, min_level: int, max_level: int, value: str = "") -> str:
+    clean = clean_id(value)
+    if clean in {"low", "mid", "high", "very_high", "unique"}:
+        return clean
+    if is_unique_title(title):
+        return "unique"
+    center = (min_level + max_level) // 2
+    if center < 20:
+        return "low"
+    if center < 45:
+        return "mid"
+    if center < 70:
+        return "high"
+    return "very_high"
+
+
+def category_for(title: str) -> str:
+    clean = clean_id(title)
+    if is_unique_title(title):
+        return "unique"
+    if any(token in clean for token in ("rocket", "magma", "aqua", "galactic", "plasma", "flare", "skull", "yell", "star", "grunt")):
+        return "team"
+    if any(token in clean for token in ("frontier", "tower", "factory", "arcade", "castle")):
+        return "battle_facility"
+    if any(token in clean for token in ("bug", "bird", "fisher", "swimmer", "hiker", "black_belt", "psychic")):
+        return "specialist"
+    return "route_trainer"
+
+
+def skin_path(title: str, gender: str) -> str:
+    return "/".join(part for part in (clean_id(title), clean_id(gender)) if part)
+
+
+def infer_title_from_name(name: str) -> str:
+    words = [word for word in re.split(r"\s+", name.strip()) if word]
+    if len(words) < 2:
+        return "RCT Trainer"
+    title = " ".join(words[:-1])
+    return title if title else "RCT Trainer"
+
+
+def scale_jitter(key: str, amount: float = 0.02) -> float:
+    return (stable_index(key, 9) - 4) * (amount / 4.0)
+
+
+def body_defaults(title: str, gender: str) -> tuple[float, float, str]:
+    title_id = clean_id(title)
+    height = 1.0
+    weight = 1.0
+    if gender == "female":
+        height = 0.98
+        weight = 0.94
+    elif gender == "male":
+        height = 1.02
+        weight = 1.02
+
+    if any(token in title_id for token in ("youngster", "bug_catcher", "school", "kid", "camper", "tuber")):
+        height -= 0.10
+        weight -= 0.08
+    if any(token in title_id for token in ("lass", "picnicker", "aroma_lady", "twins")):
+        height -= 0.04
+        weight -= 0.04
+    if any(token in title_id for token in ("hiker", "black_belt", "crush", "roughneck", "sailor", "biker", "ranger")):
+        height += 0.08
+        weight += 0.14
+    if any(token in title_id for token in ("ace_trainer", "cooltrainer", "veteran", "dragon_tamer", "magma_admin", "aqua_admin")):
+        height += 0.04
+        weight += 0.04
+    if any(token in title_id for token in ("beauty", "lady", "idol", "dancer", "kimono")):
+        height += 0.02
+        weight -= 0.02
+
+    height += scale_jitter(f"{title}:height")
+    weight += scale_jitter(f"{title}:weight")
+    bust_style = "standard" if gender == "female" else ""
+    return round(max(0.6, min(1.4, height)), 2), round(max(0.6, min(1.4, weight)), 2), bust_style
+
+
+def fallback_trainer_name(title: str, key: str, gender: str) -> str:
+    if gender == "female":
+        pool = FEMALE_FALLBACK_NAMES
+    elif gender == "male":
+        pool = MALE_FALLBACK_NAMES
+    else:
+        pool = ANY_FALLBACK_NAMES
+    return pool[stable_index(f"{title}:{key}", len(pool))]
+
+
+def trainer_given_name(title: str, name: str, key: str, gender: str) -> str:
+    clean_name = name.strip()
+    if not clean_name:
+        return fallback_trainer_name(title, key, gender)
+    if re.fullmatch(r"\d+", clean_name):
+        return fallback_trainer_name(title, key, gender)
+    if clean_id(clean_name) == clean_id(title):
+        return fallback_trainer_name(title, key, gender)
+    return clean_name
 
 
 def species_slug(raw: str) -> str:
@@ -140,8 +473,14 @@ def definition(
 ) -> dict | None:
     if not team:
         return None
+    if is_blocked_wild_title(title) or is_multi_trainer(title, name):
+        return None
     min_level = min(mon["level"] for mon in team)
     max_level = max(mon["level"] for mon in team)
+    gender = infer_gender(title)
+    name = trainer_given_name(title, name, key, gender)
+    height, weight, bust_style = body_defaults(title, gender)
+    tier = tier_for(title, min_level, max_level)
     full_name = " ".join(part for part in [title.strip(), name.strip()] if part).strip()
     if not full_name:
         full_name = title or "Trainer"
@@ -149,11 +488,18 @@ def definition(
         "id": clean_id(f"{source}_{key}"),
         "name": full_name,
         "title": title.strip() or "Trainer",
-        "gender": "any",
+        "gender": gender,
         "archetype": clean_id(title or "trainer"),
         "region": region,
+        "category": category_for(title),
         "source": source,
         "skinSet": "",
+        "skinFolder": skin_path(title, gender),
+        "tier": tier,
+        "spawnable": not is_unique_title(title),
+        "height": height,
+        "weight": weight,
+        "bustStyle": bust_style,
         "minLevel": min_level,
         "maxLevel": max_level,
         "team": team,
@@ -164,10 +510,10 @@ def definition(
 def write_defs(target: Path, source: str, defs: list[dict]) -> int:
     legacy = target / f"imported_{source}"
     if legacy.exists():
-        shutil.rmtree(legacy)
+        remove_tree(legacy)
     out = target / f"imp_{DIR_ALIASES.get(source, source)}"
     if out.exists():
-        shutil.rmtree(out)
+        remove_tree(out)
     out.mkdir(parents=True, exist_ok=True)
     written = 0
     seen: set[str] = set()
@@ -185,6 +531,62 @@ def write_defs(target: Path, source: str, defs: list[dict]) -> int:
         (out / f"{file_stem}_{digest}.json").write_text(json.dumps(item, indent=2), encoding="utf-8")
         written += 1
     return written
+
+
+def normalize_existing_rct(target: Path) -> int:
+    source_dir = target / "imported_rct"
+    if not source_dir.exists():
+        return 0
+    defs = []
+    for path in sorted(source_dir.glob("*.toml")):
+        data = tomllib.loads(read_text(path))
+        team = data.get("team") or []
+        if not team:
+            continue
+        title = str(data.get("title") or "RCT Trainer")
+        gender = infer_gender(title, str(data.get("gender") or "any"))
+        min_level = int(data.get("minLevel") or min(mon.get("level", 1) for mon in team))
+        max_level = int(data.get("maxLevel") or max(mon.get("level", 1) for mon in team))
+        height, weight, bust_style = body_defaults(title, gender)
+        defs.append(
+            {
+                "id": clean_id(str(data.get("id") or path.stem)),
+                "name": str(data.get("name") or title),
+                "title": title,
+                "gender": gender,
+                "archetype": clean_id(str(data.get("archetype") or title)),
+                "region": str(data.get("region") or ""),
+                "category": category_for(title),
+                "source": str(data.get("source") or "rct_import"),
+                "skinSet": clean_id(str(data.get("skinSet") or "")),
+                "skinFolder": skin_path(title, gender),
+                "tier": tier_for(title, min_level, max_level, str(data.get("tier") or "")),
+                "spawnable": bool(data.get("spawnable", True)) and not is_unique_title(title),
+                "height": float(data.get("height") or height),
+                "weight": float(data.get("weight") or weight),
+                "bustStyle": str(data.get("bustStyle") or bust_style) if gender == "female" else "",
+                "minLevel": min_level,
+                "maxLevel": max_level,
+                "team": [
+                    {
+                        "species": mon.get("species", ""),
+                        "level": int(mon.get("level", 1)),
+                        "gender": mon.get("gender", "GENDERLESS"),
+                        "nature": mon.get("nature", ""),
+                        "ability": mon.get("ability", ""),
+                        "moveset": mon.get("moveset", []),
+                        "heldItem": mon.get("heldItem", ""),
+                        "shiny": bool(mon.get("shiny", False)),
+                        "aspects": mon.get("aspects", []),
+                    }
+                    for mon in team
+                ],
+                "dialogue": data.get("dialogue") or [f"{title} is ready for a battle."],
+            }
+        )
+    count = write_defs(target, "rct", defs)
+    remove_tree(source_dir)
+    return count
 
 
 def asm_tokens(line: str) -> list[str]:
@@ -256,6 +658,53 @@ def parse_pokered(root: Path) -> list[dict]:
         dialogue = [f"{title} from {last_comment or 'Kanto'} is ready for a battle."]
         item = definition("pret_pokered", "Kanto", key, title, name, team, dialogue)
         if item:
+            defs.append(item)
+    return defs
+
+
+def parse_rct(root: Path) -> list[dict]:
+    if not root.exists():
+        return []
+    defs = []
+    for path in sorted(root.rglob("*.json")):
+        data = json.loads(read_text(path))
+        raw_team = data.get("team") or []
+        team = []
+        for mon in raw_team:
+            species = mon.get("species", "")
+            if not species:
+                continue
+            team.append(
+                {
+                    "species": species if ":" in species else f"cobblemon:{species_slug(species)}",
+                    "level": max(1, min(100, int(mon.get("level", 1)))),
+                    "gender": mon.get("gender", "GENDERLESS"),
+                    "nature": mon.get("nature", ""),
+                    "ability": mon.get("ability", ""),
+                    "moveset": [move_slug(move) for move in mon.get("moveset", []) if move_slug(move)][:4],
+                    "heldItem": mon.get("heldItem", ""),
+                    "shiny": bool(mon.get("shiny", False)),
+                    "aspects": mon.get("aspects", []),
+                }
+            )
+        if not team:
+            continue
+        relative = path.relative_to(root)
+        name_raw = data.get("name", "")
+        if isinstance(name_raw, dict):
+            name_raw = name_raw.get("text") or name_raw.get("literal") or name_raw.get("key") or ""
+        name = str(name_raw).strip() or "RCT Trainer"
+        title = (
+            title_words(relative.parent.as_posix().replace("/", "_"))
+            if relative.parent.as_posix() != "."
+            else infer_title_from_name(name)
+        )
+        key = clean_id(relative.with_suffix("").as_posix())
+        item = definition("rct_import", "", key, title, name.replace(title, "", 1).strip(), team, ["I have trained this team for the road. Challenge me if you are ready."])
+        if item:
+            item["id"] = clean_id(f"rct_{key}")
+            item["name"] = name
+            item["source"] = "rct_import"
             defs.append(item)
     return defs
 
@@ -436,12 +885,18 @@ def parse_sources(sources_root: Path) -> dict[str, list[dict]]:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--sources-root", type=Path, default=Path(os.environ.get("TEMP", ".")) / "ckdm-trainer-sources")
+    parser.add_argument("--rct-source", type=Path, default=DEFAULT_RCT_SOURCE)
     parser.add_argument("--target", type=Path, default=DEFAULT_TARGET)
     args = parser.parse_args()
 
     args.target.mkdir(parents=True, exist_ok=True)
     parsed = parse_sources(args.sources_root)
     total = 0
+    rct_defs = parse_rct(args.rct_source)
+    rct_count = write_defs(args.target, "rct", rct_defs) if rct_defs else normalize_existing_rct(args.target)
+    total += rct_count
+    if rct_count:
+        print(f"rct: parsed={len(rct_defs) if rct_defs else rct_count} written={rct_count}")
     for source, defs in parsed.items():
         count = write_defs(args.target, source, defs)
         total += count
